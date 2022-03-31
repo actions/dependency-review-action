@@ -41,7 +41,7 @@
     "@vercel/ncc": "^0.33.3",
     "esbuild-register": "^3.3.2",
     "eslint": "^8.10.0",
-    "eslint-plugin-github": "^4.3.5",
+    "eslint-plugin-github": "^4.3.6",
     "eslint-plugin-jest": "^26.1.1",
     "jest": "^27.5.1",
     "js-yaml": "^4.1.0",
