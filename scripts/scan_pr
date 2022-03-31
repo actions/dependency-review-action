@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+require 'json'
+require 'tempfile'
+require 'open3'
+require 'bundler/inline'
+
+gemfile do
+  source 'https://rubygems.org'
+  gem 'octokit'
+end
+
+github_token = ENV["GITHUB_TOKEN"]
+if !github_token || github_token.empty?
+  puts "Please set the GITHUB_TOKEN environment variable"
+  exit -1
+end
+
+arg = /(?<repo_nwo>[\w\-]+\/[\w\-]+)\/pull\/(?<pr_number>\d+)/.match(ARGV[0])
+
+if arg.nil?
+  puts "Usage: script/scan_pr <pr_url>"
+  exit -1
+end
+
+repo_nwo = arg[:repo_nwo]
+pr_number = arg[:pr_number]
+
+octo = Octokit::Client.new(access_token: github_token)
+pr = octo.pull_request(repo_nwo, pr_number)
+
+event_file = Tempfile.new
+event_file.write("{ \"pull_request\": #{pr.to_h.to_json}}")
+event_file.close
+
+dev_cmd_env = {
+  "INPUT_REPO-TOKEN" => github_token,
+  "GITHUB_REPOSITORY" => repo_nwo,
+  "GITHUB_EVENT_NAME" => "pull_request",
+  "GITHUB_EVENT_PATH" => event_file.path
+}
+
+dev_cmd = "./node_modules/.bin/nodemon --exec \"node -r esbuild-register\" src/main.ts"
+
+Open3.popen2e(dev_cmd_env, dev_cmd) do |stdin, out|
+  while line = out.gets
+    puts line
+  end
+end
