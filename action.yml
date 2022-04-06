@@ -1,5 +1,5 @@
 name: 'Dependency Review'
-description: 'GitHub Action for Dependency Review'
+description: 'Prevent the introduction of dependencies with known vulnerabilities'
 author: 'GitHub'
 inputs:
   repo-token:
