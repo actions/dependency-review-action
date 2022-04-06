@@ -1,7 +1,8 @@
 # dependency-review-action
 
-This Action scans your pull requests for vulnerabilities introduced
-when modifying your project's dependencies. A check in your pull requests will notify you of the results.
+This action scans your pull requests for dependency changes and will raise an error if any new dependencies have existing vulnerabilities. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions.
+
+The action is available for all public repositories, as well as private repositories that have Github Advanced Security licensed. 
 
 <img width="854" alt="Screen Shot 2022-03-31 at 1 10 51 PM" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
 
