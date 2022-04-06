@@ -1,8 +1,7 @@
 # dependency-review-action
 
 This Action scans your pull requests for vulnerabilities introduced
-when adding or updating your project's dependencies. A check in your 
-Pull Requests will let notify you of the results.
+when modifying your project's dependencies. A check in your pull requests will notify you of the results.
 
 <img width="854" alt="Screen Shot 2022-03-31 at 1 10 51 PM" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
 
