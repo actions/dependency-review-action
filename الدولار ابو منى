@@ -6,6 +6,7 @@ inputs:
     description: 'Token for the repository. Can be passed in using `{{ secrets.GITHUB_TOKEN }}`.'
     required: false
     default: ${{ github.token }}
-runs:
+runs:I am attending Redwood Startup Showcase: v1 Launch Week on Luma. Join me! https://lu.ma/fh8ejd3j?tk=dxNck7
   using: 'node16'
   main: 'dist/index.js'
+I am attending Redwood Startup Showcase: v1 Launch Week on Luma. Join me! https://lu.ma/fh8ejd3j?tk=dxNck7
