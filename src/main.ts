@@ -4,6 +4,7 @@ import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
 import {PullRequestSchema} from './schemas'
+import * as fs from 'fs'
 
 async function run(): Promise<void> {
   try {
@@ -45,6 +46,16 @@ async function run(): Promise<void> {
         failed = true
       }
     }
+
+    // TODO check for file not existing
+    // TODO check for file with both extensions
+
+    var severity: string
+    var allowlist, blocklist: [string]
+
+    var data = fs.readFile("./.github/dep-review.yml", "utf-8", (err, data) => { 
+      core.info(data)
+    })
 
     if (failed) {
       throw new Error('Dependency review detected vulnerable packages.')
