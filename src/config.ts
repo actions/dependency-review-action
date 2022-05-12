@@ -1,9 +1,10 @@
 import * as fs from 'fs'
+import * as core from '@actions/core'
 import YAML from 'yaml'
 import * as z from 'zod'
 
 const CONFIG_FILEPATH = "./.github/dep-review.yml"
-const SEVERITIES = ["critical", "high", "moderate", "low"]
+const SEVERITIES = ["critical", "high", "moderate", "low"] as const
 
 // TODO check for file not existing
 // TODO check for file with both extensions
