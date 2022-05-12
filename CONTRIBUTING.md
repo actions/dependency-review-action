@@ -40,7 +40,11 @@ npm run test
 ## Local Development
 
 We have a script to scan a given PR for vulnerabilities, this will
-help you test your local changes. Make sure to [grab a Personal Access Token (PAT)](https://github.com/settings/tokens) before proceeding!
+help you test your local changes. Make sure to [grab a Personal Access Token (PAT)](https://github.com/settings/tokens) before proceeding (you'll need `repo` permissions for private repos):
+
+<img width="480" alt="Screenshot 2022-05-12 at 10 22 21" src="https://user-images.githubusercontent.com/2161/168026161-16788a0a-b6c8-428e-bb6a-83ea2a403070.png">
+
+The syntax of the script is:
 
 ```sh
 $ GITHUB_TOKEN=<token> ./scripts/scan_pr <pr_url>
