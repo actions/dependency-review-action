@@ -32,12 +32,12 @@
     "ansi-styles": "^6.1.0",
     "got": "^12.0.4",
     "nodemon": "^2.0.16",
-    "zod": "^3.15.1"
+    "zod": "^3.16.0"
   },
   "devDependencies": {
     "@types/node": "^17.0.31",
     "@typescript-eslint/eslint-plugin": "^5.22.0",
-    "@typescript-eslint/parser": "^5.22.0",
+    "@typescript-eslint/parser": "^5.24.0",
     "@vercel/ncc": "^0.33.4",
     "esbuild-register": "^3.3.2",
     "eslint": "^8.15.0",
