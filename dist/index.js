@@ -10445,6 +10445,7 @@ function wrappy (fn, cb) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.setErrorMap = exports.overrideErrorMap = exports.defaultErrorMap = exports.ZodError = exports.quotelessJson = exports.ZodIssueCode = void 0;
+const parseUtil_1 = __nccwpck_require__(888);
 const util_1 = __nccwpck_require__(3985);
 exports.ZodIssueCode = util_1.util.arrayToEnum([
     "invalid_type",
@@ -10577,7 +10578,7 @@ const defaultErrorMap = (issue, _ctx) => {
     let message;
     switch (issue.code) {
         case exports.ZodIssueCode.invalid_type:
-            if (issue.received === "undefined") {
+            if (issue.received === parseUtil_1.ZodParsedType.undefined) {
                 message = "Required";
             }
             else {
@@ -10588,22 +10589,16 @@ const defaultErrorMap = (issue, _ctx) => {
             message = `Invalid literal value, expected ${JSON.stringify(issue.expected)}`;
             break;
         case exports.ZodIssueCode.unrecognized_keys:
-            message = `Unrecognized key(s) in object: ${issue.keys
-                .map((k) => `'${k}'`)
-                .join(", ")}`;
+            message = `Unrecognized key(s) in object: ${util_1.util.joinValues(issue.keys, ", ")}`;
             break;
         case exports.ZodIssueCode.invalid_union:
             message = `Invalid input`;
             break;
         case exports.ZodIssueCode.invalid_union_discriminator:
-            message = `Invalid discriminator value. Expected ${issue.options
-                .map((val) => (typeof val === "string" ? `'${val}'` : val))
-                .join(" | ")}`;
+            message = `Invalid discriminator value. Expected ${util_1.util.joinValues(issue.options)}`;
             break;
         case exports.ZodIssueCode.invalid_enum_value:
-            message = `Invalid enum value. Expected ${issue.options
-                .map((val) => (typeof val === "string" ? `'${val}'` : val))
-                .join(" | ")}`;
+            message = `Invalid enum value. Expected ${util_1.util.joinValues(issue.options)}, received '${issue.received}'`;
             break;
         case exports.ZodIssueCode.invalid_arguments:
             message = `Invalid function arguments`;
@@ -10957,6 +10952,12 @@ var util;
     util.isInteger = typeof Number.isInteger === "function"
         ? (val) => Number.isInteger(val) // eslint-disable-line ban/ban
         : (val) => typeof val === "number" && isFinite(val) && Math.floor(val) === val;
+    function joinValues(array, separator = " | ") {
+        return array
+            .map((val) => (typeof val === "string" ? `'${val}'` : val))
+            .join(separator);
+    }
+    util.joinValues = joinValues;
 })(util = exports.util || (exports.util = {}));
 
 
@@ -13005,11 +13006,23 @@ function createZodEnum(values) {
 }
 class ZodEnum extends ZodType {
     _parse(input) {
+        if (typeof input.data !== "string") {
+            const ctx = this._getOrReturnCtx(input);
+            const expectedValues = this._def.values;
+            (0, parseUtil_1.addIssueToContext)(ctx, {
+                expected: util_1.util.joinValues(expectedValues),
+                received: ctx.parsedType,
+                code: ZodError_1.ZodIssueCode.invalid_type,
+            });
+            return parseUtil_1.INVALID;
+        }
         if (this._def.values.indexOf(input.data) === -1) {
             const ctx = this._getOrReturnCtx(input);
+            const expectedValues = this._def.values;
             (0, parseUtil_1.addIssueToContext)(ctx, {
+                received: ctx.data,
                 code: ZodError_1.ZodIssueCode.invalid_enum_value,
-                options: this._def.values,
+                options: expectedValues,
             });
             return parseUtil_1.INVALID;
         }
@@ -13045,11 +13058,23 @@ ZodEnum.create = createZodEnum;
 class ZodNativeEnum extends ZodType {
     _parse(input) {
         const nativeEnumValues = util_1.util.getValidEnumValues(this._def.values);
-        if (nativeEnumValues.indexOf(input.data) === -1) {
-            const ctx = this._getOrReturnCtx(input);
+        const ctx = this._getOrReturnCtx(input);
+        if (ctx.parsedType !== parseUtil_1.ZodParsedType.string &&
+            ctx.parsedType !== parseUtil_1.ZodParsedType.number) {
+            const expectedValues = util_1.util.objectValues(nativeEnumValues);
             (0, parseUtil_1.addIssueToContext)(ctx, {
+                expected: util_1.util.joinValues(expectedValues),
+                received: ctx.parsedType,
+                code: ZodError_1.ZodIssueCode.invalid_type,
+            });
+            return parseUtil_1.INVALID;
+        }
+        if (nativeEnumValues.indexOf(input.data) === -1) {
+            const expectedValues = util_1.util.objectValues(nativeEnumValues);
+            (0, parseUtil_1.addIssueToContext)(ctx, {
+                received: ctx.data,
                 code: ZodError_1.ZodIssueCode.invalid_enum_value,
-                options: util_1.util.objectValues(nativeEnumValues),
+                options: expectedValues,
             });
             return parseUtil_1.INVALID;
         }
@@ -13209,7 +13234,7 @@ class ZodEffects extends ZodType {
                     // if (base.status === "dirty") {
                     //   return { status: "dirty", value: base.value };
                     // }
-                    return Promise.resolve(effect.transform(base.value, checkCtx)).then(parseUtil_1.OK);
+                    return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({ status: status.value, value: result }));
                 });
             }
         }
