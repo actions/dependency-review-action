@@ -28,6 +28,8 @@ jobs:
         uses: actions/dependency-review-action@v1
 ```
 
+Please keep in mind that you need a GitHub Advanced Security license if you're running this Action on private repos.
+
 ## Getting help
 
 If you have bug reports, questions or suggestions please [create a new
