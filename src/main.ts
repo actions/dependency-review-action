@@ -60,7 +60,7 @@ async function run(): Promise<void> {
       core.setFailed(
         `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled, see https://github.com/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
       )
-    } else if (error instanceof Error) {
+    } else (error instanceof Error) {
       core.setFailed(error.message)
     }
   }
