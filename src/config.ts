@@ -2,19 +2,41 @@ import * as fs from 'fs'
 import * as core from '@actions/core'
 import YAML from 'yaml'
 import * as z from 'zod'
+import path from 'path'
+import { type } from 'os'
+
 
 const CONFIG_FILEPATH = "./.github/dep-review.yml"
 const SEVERITIES = ["critical", "high", "moderate", "low"] as const
 
-// TODO check for file not existing
-// TODO check for file with both extensions
-// TODO parse yaml format, validate keys
+type ConfigurationOptions = {
+    fail_on_severity: string,
+    allow_licenses: Array<string>,
+    deny_licenses: Array<string>
+}
 
-var severity: string
-var allowlist, blocklist: [string]
+export function readConfigFile(filePath: string = CONFIG_FILEPATH): ConfigurationOptions {
+    // By default we want to fail on all severities and allow all licenses.
+    var defaultOptions: ConfigurationOptions = {
+        fail_on_severity: "all",
+        allow_licenses: ['all'],
+        deny_licenses: []
+    }
 
-var data = fs.readFile(CONFIG_FILEPATH, "utf-8", (err, data) => {
+    try {
+        console.log(path.resolve(filePath))
+        var data = fs.readFileSync(path.resolve(filePath), "utf-8");
+
+    } catch (error: any) {
+        if (error.code && error.code === 'ENOENT') {
+            return defaultOptions
+        } else {
+            throw error
+        }
+    }
+
     const values = YAML.parse(data)
+
     const parsed = z.object({
         fail_on_severity: z.enum(SEVERITIES),
         allow_licenses: z.array(z.string()),
@@ -24,8 +46,5 @@ var data = fs.readFile(CONFIG_FILEPATH, "utf-8", (err, data) => {
         .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Can't specify both allow_licenses and deny_licenses")
         .parse(values)
 
-    // vlaidate licenses dynamically
-    core.info(parsed.fail_on_severity!)
-    //core.info(values["allow_licenses"])
-    //core.info(values["deny_licenses"])
-})
+    return <ConfigurationOptions>parsed;
+}
