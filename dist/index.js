@@ -108,7 +108,6 @@ const github = __importStar(__nccwpck_require__(5438));
 const ansi_styles_1 = __importDefault(__nccwpck_require__(6844));
 const request_error_1 = __nccwpck_require__(537);
 const schemas_1 = __nccwpck_require__(8774);
-const fs = __importStar(__nccwpck_require__(7147));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -134,13 +133,6 @@ function run() {
                     failed = true;
                 }
             }
-            // TODO check for file not existing
-            // TODO check for file with both extensions
-            var severity;
-            var allowlist, blocklist;
-            var data = fs.readFile("./.github/dep-review.yml", "utf-8", (err, data) => {
-                core.info(data);
-            });
             if (failed) {
                 throw new Error('Dependency review detected vulnerable packages.');
             }
