@@ -25,6 +25,12 @@ async function run(): Promise<void> {
     })
 
     let failed = false
+    let severity_to_fail = core.getInput('fail-on')
+
+    let vuln_ranking_ordered = ['low', 'moderate', 'high', 'critical']
+    if ( vuln_ranking_ordered.indexOf(severity_to_fail) === -1 ){
+      throw new Error('Only the following values are accepted for the input fail-on: low, moderate, high, critical')
+    }
 
     for (const change of changes) {
       if (
@@ -33,6 +39,11 @@ async function run(): Promise<void> {
         change.vulnerabilities.length > 0
       ) {
         for (const vuln of change.vulnerabilities) {
+          if (
+            vuln_ranking_ordered.indexOf(vuln.severity) >= vuln_ranking_ordered.indexOf(severity_to_fail)
+          ){
+             failed = true
+          }
           core.info(
             `${styles.bold.open}${change.manifest} » ${change.name}@${
               change.version
@@ -42,14 +53,13 @@ async function run(): Promise<void> {
           )
           core.info(`  ↪ ${vuln.advisory_url}`)
         }
-        failed = true
       }
     }
 
     if (failed) {
       throw new Error('Dependency review detected vulnerable packages.')
     } else {
-      core.info('Dependency review did not detect any vulnerable packages.')
+      core.info('Dependency review did not detect any vulnerable packages of the severity: ' + severity_to_fail)
     }
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {

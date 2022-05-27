@@ -26,6 +26,8 @@ jobs:
         uses: actions/checkout@v3
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v1
+        with:
+          fail-on: 'critical' #Accepts low, moderate, high (default), critical
 ```
 
 Please keep in mind that you need a GitHub Advanced Security license if you're running this Action on private repos.

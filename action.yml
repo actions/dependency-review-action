@@ -6,6 +6,10 @@ inputs:
     description: 'Token for the repository. Can be passed in using `{{ secrets.GITHUB_TOKEN }}`.'
     required: false
     default: ${{ github.token }}
+  fail-on:
+    description: 'The severity at which to fail the check'
+    required: false
+    default: 'high'
 runs:
   using: 'node16'
   main: 'dist/index.js'
