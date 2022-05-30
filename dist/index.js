@@ -142,10 +142,18 @@ function run() {
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError && error.status === 404) {
+                core.setFailed(`Dependency review could not obtain dependency data for the specified owner, repository, or revision range.`);
+            }
+            else if (error instanceof request_error_1.RequestError && error.status === 403) {
                 core.setFailed(`Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled, see https://github.com/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`);
             }
-            else if (error instanceof Error) {
-                core.setFailed(error.message);
+            else {
+                if (error instanceof Error) {
+                    core.setFailed(error.message);
+                }
+                else {
+                    core.setFailed('Unexpected fatal error');
+                }
             }
         }
     });
@@ -716,8 +724,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.OidcClient = void 0;
-const http_client_1 = __nccwpck_require__(9925);
-const auth_1 = __nccwpck_require__(3702);
+const http_client_1 = __nccwpck_require__(6255);
+const auth_1 = __nccwpck_require__(5526);
 const core_1 = __nccwpck_require__(2186);
 class OidcClient {
     static createHttpClient(allowRetry = true, maxRetry = 10) {
@@ -1251,7 +1259,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getApiBaseUrl = exports.getProxyAgent = exports.getAuthString = void 0;
-const httpClient = __importStar(__nccwpck_require__(9925));
+const httpClient = __importStar(__nccwpck_require__(6255));
 function getAuthString(token, options) {
     if (!token && !options.auth) {
         throw new Error('Parameter token or opts.auth is required');
@@ -1336,28 +1344,41 @@ exports.getOctokitOptions = getOctokitOptions;
 
 /***/ }),
 
-/***/ 3702:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ 5526:
+/***/ (function(__unused_webpack_module, exports) {
 
 "use strict";
 
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PersonalAccessTokenCredentialHandler = exports.BearerCredentialHandler = exports.BasicCredentialHandler = void 0;
 class BasicCredentialHandler {
     constructor(username, password) {
         this.username = username;
         this.password = password;
     }
     prepareRequest(options) {
-        options.headers['Authorization'] =
-            'Basic ' +
-                Buffer.from(this.username + ':' + this.password).toString('base64');
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`;
     }
     // This handler cannot handle 401
-    canHandleAuthentication(response) {
+    canHandleAuthentication() {
         return false;
     }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
     }
 }
 exports.BasicCredentialHandler = BasicCredentialHandler;
@@ -1368,14 +1389,19 @@ class BearerCredentialHandler {
     // currently implements pre-authorization
     // TODO: support preAuth = false where it hooks on 401
     prepareRequest(options) {
-        options.headers['Authorization'] = 'Bearer ' + this.token;
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Bearer ${this.token}`;
     }
     // This handler cannot handle 401
-    canHandleAuthentication(response) {
+    canHandleAuthentication() {
         return false;
     }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
     }
 }
 exports.BearerCredentialHandler = BearerCredentialHandler;
@@ -1386,32 +1412,66 @@ class PersonalAccessTokenCredentialHandler {
     // currently implements pre-authorization
     // TODO: support preAuth = false where it hooks on 401
     prepareRequest(options) {
-        options.headers['Authorization'] =
-            'Basic ' + Buffer.from('PAT:' + this.token).toString('base64');
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`PAT:${this.token}`).toString('base64')}`;
     }
     // This handler cannot handle 401
-    canHandleAuthentication(response) {
+    canHandleAuthentication() {
         return false;
     }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
     }
 }
 exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
-
+//# sourceMappingURL=auth.js.map
 
 /***/ }),
 
-/***/ 9925:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ 6255:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const http = __nccwpck_require__(3685);
-const https = __nccwpck_require__(5687);
-const pm = __nccwpck_require__(6443);
-let tunnel;
+exports.HttpClient = exports.isHttps = exports.HttpClientResponse = exports.HttpClientError = exports.getProxyUrl = exports.MediaTypes = exports.Headers = exports.HttpCodes = void 0;
+const http = __importStar(__nccwpck_require__(3685));
+const https = __importStar(__nccwpck_require__(5687));
+const pm = __importStar(__nccwpck_require__(9835));
+const tunnel = __importStar(__nccwpck_require__(4294));
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -1456,7 +1516,7 @@ var MediaTypes;
  * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
  */
 function getProxyUrl(serverUrl) {
-    let proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
     return proxyUrl ? proxyUrl.href : '';
 }
 exports.getProxyUrl = getProxyUrl;
@@ -1489,20 +1549,22 @@ class HttpClientResponse {
         this.message = message;
     }
     readBody() {
-        return new Promise(async (resolve, reject) => {
-            let output = Buffer.alloc(0);
-            this.message.on('data', (chunk) => {
-                output = Buffer.concat([output, chunk]);
-            });
-            this.message.on('end', () => {
-                resolve(output.toString());
-            });
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                let output = Buffer.alloc(0);
+                this.message.on('data', (chunk) => {
+                    output = Buffer.concat([output, chunk]);
+                });
+                this.message.on('end', () => {
+                    resolve(output.toString());
+                });
+            }));
         });
     }
 }
 exports.HttpClientResponse = HttpClientResponse;
 function isHttps(requestUrl) {
-    let parsedUrl = new URL(requestUrl);
+    const parsedUrl = new URL(requestUrl);
     return parsedUrl.protocol === 'https:';
 }
 exports.isHttps = isHttps;
@@ -1545,141 +1607,169 @@ class HttpClient {
         }
     }
     options(requestUrl, additionalHeaders) {
-        return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        });
     }
     get(requestUrl, additionalHeaders) {
-        return this.request('GET', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('GET', requestUrl, null, additionalHeaders || {});
+        });
     }
     del(requestUrl, additionalHeaders) {
-        return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        });
     }
     post(requestUrl, data, additionalHeaders) {
-        return this.request('POST', requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('POST', requestUrl, data, additionalHeaders || {});
+        });
     }
     patch(requestUrl, data, additionalHeaders) {
-        return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        });
     }
     put(requestUrl, data, additionalHeaders) {
-        return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        });
     }
     head(requestUrl, additionalHeaders) {
-        return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        });
     }
     sendStream(verb, requestUrl, stream, additionalHeaders) {
-        return this.request(verb, requestUrl, stream, additionalHeaders);
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request(verb, requestUrl, stream, additionalHeaders);
+        });
     }
     /**
      * Gets a typed object from an endpoint
      * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
      */
-    async getJson(requestUrl, additionalHeaders = {}) {
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        let res = await this.get(requestUrl, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    getJson(requestUrl, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            const res = yield this.get(requestUrl, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
-    async postJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.post(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    postJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.post(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
-    async putJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.put(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    putJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.put(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
-    async patchJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.patch(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    patchJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.patch(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
     /**
      * Makes a raw http request.
      * All other methods such as get, post, patch, and request ultimately call this.
      * Prefer get, del, post and patch
      */
-    async request(verb, requestUrl, data, headers) {
-        if (this._disposed) {
-            throw new Error('Client has already been disposed.');
-        }
-        let parsedUrl = new URL(requestUrl);
-        let info = this._prepareRequest(verb, parsedUrl, headers);
-        // Only perform retries on reads since writes may not be idempotent.
-        let maxTries = this._allowRetries && RetryableHttpVerbs.indexOf(verb) != -1
-            ? this._maxRetries + 1
-            : 1;
-        let numTries = 0;
-        let response;
-        while (numTries < maxTries) {
-            response = await this.requestRaw(info, data);
-            // Check if it's an authentication challenge
-            if (response &&
-                response.message &&
-                response.message.statusCode === HttpCodes.Unauthorized) {
-                let authenticationHandler;
-                for (let i = 0; i < this.handlers.length; i++) {
-                    if (this.handlers[i].canHandleAuthentication(response)) {
-                        authenticationHandler = this.handlers[i];
-                        break;
-                    }
-                }
-                if (authenticationHandler) {
-                    return authenticationHandler.handleAuthentication(this, info, data);
-                }
-                else {
-                    // We have received an unauthorized response but have no handlers to handle it.
-                    // Let the response return to the caller.
-                    return response;
-                }
+    request(verb, requestUrl, data, headers) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._disposed) {
+                throw new Error('Client has already been disposed.');
             }
-            let redirectsRemaining = this._maxRedirects;
-            while (HttpRedirectCodes.indexOf(response.message.statusCode) != -1 &&
-                this._allowRedirects &&
-                redirectsRemaining > 0) {
-                const redirectUrl = response.message.headers['location'];
-                if (!redirectUrl) {
-                    // if there's no location to redirect to, we won't
-                    break;
-                }
-                let parsedRedirectUrl = new URL(redirectUrl);
-                if (parsedUrl.protocol == 'https:' &&
-                    parsedUrl.protocol != parsedRedirectUrl.protocol &&
-                    !this._allowRedirectDowngrade) {
-                    throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
-                }
-                // we need to finish reading the response before reassigning response
-                // which will leak the open socket.
-                await response.readBody();
-                // strip authorization header if redirected to a different hostname
-                if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
-                    for (let header in headers) {
-                        // header names are case insensitive
-                        if (header.toLowerCase() === 'authorization') {
-                            delete headers[header];
+            const parsedUrl = new URL(requestUrl);
+            let info = this._prepareRequest(verb, parsedUrl, headers);
+            // Only perform retries on reads since writes may not be idempotent.
+            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
+                ? this._maxRetries + 1
+                : 1;
+            let numTries = 0;
+            let response;
+            do {
+                response = yield this.requestRaw(info, data);
+                // Check if it's an authentication challenge
+                if (response &&
+                    response.message &&
+                    response.message.statusCode === HttpCodes.Unauthorized) {
+                    let authenticationHandler;
+                    for (const handler of this.handlers) {
+                        if (handler.canHandleAuthentication(response)) {
+                            authenticationHandler = handler;
+                            break;
                         }
                     }
+                    if (authenticationHandler) {
+                        return authenticationHandler.handleAuthentication(this, info, data);
+                    }
+                    else {
+                        // We have received an unauthorized response but have no handlers to handle it.
+                        // Let the response return to the caller.
+                        return response;
+                    }
                 }
-                // let's make the request with the new redirectUrl
-                info = this._prepareRequest(verb, parsedRedirectUrl, headers);
-                response = await this.requestRaw(info, data);
-                redirectsRemaining--;
-            }
-            if (HttpResponseRetryCodes.indexOf(response.message.statusCode) == -1) {
-                // If not a retry code, return immediately instead of retrying
-                return response;
-            }
-            numTries += 1;
-            if (numTries < maxTries) {
-                await response.readBody();
-                await this._performExponentialBackoff(numTries);
-            }
-        }
-        return response;
+                let redirectsRemaining = this._maxRedirects;
+                while (response.message.statusCode &&
+                    HttpRedirectCodes.includes(response.message.statusCode) &&
+                    this._allowRedirects &&
+                    redirectsRemaining > 0) {
+                    const redirectUrl = response.message.headers['location'];
+                    if (!redirectUrl) {
+                        // if there's no location to redirect to, we won't
+                        break;
+                    }
+                    const parsedRedirectUrl = new URL(redirectUrl);
+                    if (parsedUrl.protocol === 'https:' &&
+                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
+                        !this._allowRedirectDowngrade) {
+                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
+                    }
+                    // we need to finish reading the response before reassigning response
+                    // which will leak the open socket.
+                    yield response.readBody();
+                    // strip authorization header if redirected to a different hostname
+                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                        for (const header in headers) {
+                            // header names are case insensitive
+                            if (header.toLowerCase() === 'authorization') {
+                                delete headers[header];
+                            }
+                        }
+                    }
+                    // let's make the request with the new redirectUrl
+                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+                    response = yield this.requestRaw(info, data);
+                    redirectsRemaining--;
+                }
+                if (!response.message.statusCode ||
+                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+                    // If not a retry code, return immediately instead of retrying
+                    return response;
+                }
+                numTries += 1;
+                if (numTries < maxTries) {
+                    yield response.readBody();
+                    yield this._performExponentialBackoff(numTries);
+                }
+            } while (numTries < maxTries);
+            return response;
+        });
     }
     /**
      * Needs to be called if keepAlive is set to true in request options.
@@ -1696,14 +1786,22 @@ class HttpClient {
      * @param data
      */
     requestRaw(info, data) {
-        return new Promise((resolve, reject) => {
-            let callbackForResult = function (err, res) {
-                if (err) {
-                    reject(err);
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                function callbackForResult(err, res) {
+                    if (err) {
+                        reject(err);
+                    }
+                    else if (!res) {
+                        // If `err` is not passed, then `res` must be passed.
+                        reject(new Error('Unknown error'));
+                    }
+                    else {
+                        resolve(res);
+                    }
                 }
-                resolve(res);
-            };
-            this.requestRawWithCallback(info, data, callbackForResult);
+                this.requestRawWithCallback(info, data, callbackForResult);
+            });
         });
     }
     /**
@@ -1713,21 +1811,24 @@ class HttpClient {
      * @param onResult
      */
     requestRawWithCallback(info, data, onResult) {
-        let socket;
         if (typeof data === 'string') {
+            if (!info.options.headers) {
+                info.options.headers = {};
+            }
             info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
         }
         let callbackCalled = false;
-        let handleResult = (err, res) => {
+        function handleResult(err, res) {
             if (!callbackCalled) {
                 callbackCalled = true;
                 onResult(err, res);
             }
-        };
-        let req = info.httpModule.request(info.options, (msg) => {
-            let res = new HttpClientResponse(msg);
-            handleResult(null, res);
+        }
+        const req = info.httpModule.request(info.options, (msg) => {
+            const res = new HttpClientResponse(msg);
+            handleResult(undefined, res);
         });
+        let socket;
         req.on('socket', sock => {
             socket = sock;
         });
@@ -1736,12 +1837,12 @@ class HttpClient {
             if (socket) {
                 socket.end();
             }
-            handleResult(new Error('Request timeout: ' + info.options.path), null);
+            handleResult(new Error(`Request timeout: ${info.options.path}`));
         });
         req.on('error', function (err) {
             // err has statusCode property
             // res should have headers
-            handleResult(err, null);
+            handleResult(err);
         });
         if (data && typeof data === 'string') {
             req.write(data, 'utf8');
@@ -1762,7 +1863,7 @@ class HttpClient {
      * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
      */
     getAgent(serverUrl) {
-        let parsedUrl = new URL(serverUrl);
+        const parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
     }
     _prepareRequest(method, requestUrl, headers) {
@@ -1786,21 +1887,19 @@ class HttpClient {
         info.options.agent = this._getAgent(info.parsedUrl);
         // gives handlers an opportunity to participate
         if (this.handlers) {
-            this.handlers.forEach(handler => {
+            for (const handler of this.handlers) {
                 handler.prepareRequest(info.options);
-            });
+            }
         }
         return info;
     }
     _mergeHeaders(headers) {
-        const lowercaseKeys = obj => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
         if (this.requestOptions && this.requestOptions.headers) {
-            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers));
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
         }
         return lowercaseKeys(headers || {});
     }
     _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
-        const lowercaseKeys = obj => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
         let clientHeader;
         if (this.requestOptions && this.requestOptions.headers) {
             clientHeader = lowercaseKeys(this.requestOptions.headers)[header];
@@ -1809,8 +1908,8 @@ class HttpClient {
     }
     _getAgent(parsedUrl) {
         let agent;
-        let proxyUrl = pm.getProxyUrl(parsedUrl);
-        let useProxy = proxyUrl && proxyUrl.hostname;
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
         }
@@ -1818,29 +1917,22 @@ class HttpClient {
             agent = this._agent;
         }
         // if agent is already assigned use that agent.
-        if (!!agent) {
+        if (agent) {
             return agent;
         }
         const usingSsl = parsedUrl.protocol === 'https:';
         let maxSockets = 100;
-        if (!!this.requestOptions) {
+        if (this.requestOptions) {
             maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
         }
-        if (useProxy) {
-            // If using proxy, need tunnel
-            if (!tunnel) {
-                tunnel = __nccwpck_require__(4294);
-            }
+        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
+        if (proxyUrl && proxyUrl.hostname) {
             const agentOptions = {
-                maxSockets: maxSockets,
+                maxSockets,
                 keepAlive: this._keepAlive,
-                proxy: {
-                    ...((proxyUrl.username || proxyUrl.password) && {
-                        proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
-                    }),
-                    host: proxyUrl.hostname,
-                    port: proxyUrl.port
-                }
+                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
+                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+                })), { host: proxyUrl.hostname, port: proxyUrl.port })
             };
             let tunnelAgent;
             const overHttps = proxyUrl.protocol === 'https:';
@@ -1855,7 +1947,7 @@ class HttpClient {
         }
         // if reusing agent across request and tunneling agent isn't assigned create a new agent
         if (this._keepAlive && !agent) {
-            const options = { keepAlive: this._keepAlive, maxSockets: maxSockets };
+            const options = { keepAlive: this._keepAlive, maxSockets };
             agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
             this._agent = agent;
         }
@@ -1874,109 +1966,117 @@ class HttpClient {
         return agent;
     }
     _performExponentialBackoff(retryNumber) {
-        retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
-        const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
-        return new Promise(resolve => setTimeout(() => resolve(), ms));
+        return __awaiter(this, void 0, void 0, function* () {
+            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+            return new Promise(resolve => setTimeout(() => resolve(), ms));
+        });
     }
-    static dateTimeDeserializer(key, value) {
-        if (typeof value === 'string') {
-            let a = new Date(value);
-            if (!isNaN(a.valueOf())) {
-                return a;
-            }
-        }
-        return value;
-    }
-    async _processResponse(res, options) {
-        return new Promise(async (resolve, reject) => {
-            const statusCode = res.message.statusCode;
-            const response = {
-                statusCode: statusCode,
-                result: null,
-                headers: {}
-            };
-            // not found leads to null obj returned
-            if (statusCode == HttpCodes.NotFound) {
-                resolve(response);
-            }
-            let obj;
-            let contents;
-            // get the result from the body
-            try {
-                contents = await res.readBody();
-                if (contents && contents.length > 0) {
-                    if (options && options.deserializeDates) {
-                        obj = JSON.parse(contents, HttpClient.dateTimeDeserializer);
+    _processResponse(res, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                const statusCode = res.message.statusCode || 0;
+                const response = {
+                    statusCode,
+                    result: null,
+                    headers: {}
+                };
+                // not found leads to null obj returned
+                if (statusCode === HttpCodes.NotFound) {
+                    resolve(response);
+                }
+                // get the result from the body
+                function dateTimeDeserializer(key, value) {
+                    if (typeof value === 'string') {
+                        const a = new Date(value);
+                        if (!isNaN(a.valueOf())) {
+                            return a;
+                        }
+                    }
+                    return value;
+                }
+                let obj;
+                let contents;
+                try {
+                    contents = yield res.readBody();
+                    if (contents && contents.length > 0) {
+                        if (options && options.deserializeDates) {
+                            obj = JSON.parse(contents, dateTimeDeserializer);
+                        }
+                        else {
+                            obj = JSON.parse(contents);
+                        }
+                        response.result = obj;
+                    }
+                    response.headers = res.message.headers;
+                }
+                catch (err) {
+                    // Invalid resource (contents not json);  leaving result obj null
+                }
+                // note that 3xx redirects are handled by the http layer.
+                if (statusCode > 299) {
+                    let msg;
+                    // if exception/error in body, attempt to get better error
+                    if (obj && obj.message) {
+                        msg = obj.message;
+                    }
+                    else if (contents && contents.length > 0) {
+                        // it may be the case that the exception is in the body message as string
+                        msg = contents;
                     }
                     else {
-                        obj = JSON.parse(contents);
+                        msg = `Failed request: (${statusCode})`;
                     }
-                    response.result = obj;
-                }
-                response.headers = res.message.headers;
-            }
-            catch (err) {
-                // Invalid resource (contents not json);  leaving result obj null
-            }
-            // note that 3xx redirects are handled by the http layer.
-            if (statusCode > 299) {
-                let msg;
-                // if exception/error in body, attempt to get better error
-                if (obj && obj.message) {
-                    msg = obj.message;
-                }
-                else if (contents && contents.length > 0) {
-                    // it may be the case that the exception is in the body message as string
-                    msg = contents;
+                    const err = new HttpClientError(msg, statusCode);
+                    err.result = response.result;
+                    reject(err);
                 }
                 else {
-                    msg = 'Failed request: (' + statusCode + ')';
+                    resolve(response);
                 }
-                let err = new HttpClientError(msg, statusCode);
-                err.result = response.result;
-                reject(err);
-            }
-            else {
-                resolve(response);
-            }
+            }));
         });
     }
 }
 exports.HttpClient = HttpClient;
-
+const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+//# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 6443:
+/***/ 9835:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.checkBypass = exports.getProxyUrl = void 0;
 function getProxyUrl(reqUrl) {
-    let usingSsl = reqUrl.protocol === 'https:';
-    let proxyUrl;
+    const usingSsl = reqUrl.protocol === 'https:';
     if (checkBypass(reqUrl)) {
-        return proxyUrl;
+        return undefined;
     }
-    let proxyVar;
-    if (usingSsl) {
-        proxyVar = process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+    const proxyVar = (() => {
+        if (usingSsl) {
+            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+        }
+        else {
+            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        }
+    })();
+    if (proxyVar) {
+        return new URL(proxyVar);
     }
     else {
-        proxyVar = process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        return undefined;
     }
-    if (proxyVar) {
-        proxyUrl = new URL(proxyVar);
-    }
-    return proxyUrl;
 }
 exports.getProxyUrl = getProxyUrl;
 function checkBypass(reqUrl) {
     if (!reqUrl.hostname) {
         return false;
     }
-    let noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
+    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
     if (!noProxy) {
         return false;
     }
@@ -1992,12 +2092,12 @@ function checkBypass(reqUrl) {
         reqPort = 443;
     }
     // Format the request hostname and hostname with port
-    let upperReqHosts = [reqUrl.hostname.toUpperCase()];
+    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
     if (typeof reqPort === 'number') {
         upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
     }
     // Compare request host against noproxy
-    for (let upperNoProxyItem of noProxy
+    for (const upperNoProxyItem of noProxy
         .split(',')
         .map(x => x.trim().toUpperCase())
         .filter(x => x)) {
@@ -2008,7 +2108,7 @@ function checkBypass(reqUrl) {
     return false;
 }
 exports.checkBypass = checkBypass;
-
+//# sourceMappingURL=proxy.js.map
 
 /***/ }),
 
@@ -10574,7 +10674,7 @@ const defaultErrorMap = (issue, _ctx) => {
     let message;
     switch (issue.code) {
         case exports.ZodIssueCode.invalid_type:
-            if (issue.received === "undefined") {
+            if (issue.received === util_1.ZodParsedType.undefined) {
                 message = "Required";
             }
             else {
@@ -10585,22 +10685,16 @@ const defaultErrorMap = (issue, _ctx) => {
             message = `Invalid literal value, expected ${JSON.stringify(issue.expected)}`;
             break;
         case exports.ZodIssueCode.unrecognized_keys:
-            message = `Unrecognized key(s) in object: ${issue.keys
-                .map((k) => `'${k}'`)
-                .join(", ")}`;
+            message = `Unrecognized key(s) in object: ${util_1.util.joinValues(issue.keys, ", ")}`;
             break;
         case exports.ZodIssueCode.invalid_union:
             message = `Invalid input`;
             break;
         case exports.ZodIssueCode.invalid_union_discriminator:
-            message = `Invalid discriminator value. Expected ${issue.options
-                .map((val) => (typeof val === "string" ? `'${val}'` : val))
-                .join(" | ")}`;
+            message = `Invalid discriminator value. Expected ${util_1.util.joinValues(issue.options)}`;
             break;
         case exports.ZodIssueCode.invalid_enum_value:
-            message = `Invalid enum value. Expected ${issue.options
-                .map((val) => (typeof val === "string" ? `'${val}'` : val))
-                .join(" | ")}`;
+            message = `Invalid enum value. Expected ${util_1.util.joinValues(issue.options)}, received '${issue.received}'`;
             break;
         case exports.ZodIssueCode.invalid_arguments:
             message = `Invalid function arguments`;
@@ -10669,11 +10763,7 @@ exports.setErrorMap = setErrorMap;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -10682,8 +10772,12 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ZodParsedType = exports.getParsedType = void 0;
 __exportStar(__nccwpck_require__(888), exports);
 __exportStar(__nccwpck_require__(9449), exports);
+var util_1 = __nccwpck_require__(3985);
+Object.defineProperty(exports, "getParsedType", ({ enumerable: true, get: function () { return util_1.getParsedType; } }));
+Object.defineProperty(exports, "ZodParsedType", ({ enumerable: true, get: function () { return util_1.ZodParsedType; } }));
 __exportStar(__nccwpck_require__(9335), exports);
 __exportStar(__nccwpck_require__(9892), exports);
 
@@ -10712,74 +10806,8 @@ var errorUtil;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isAsync = exports.isValid = exports.isDirty = exports.isAborted = exports.OK = exports.DIRTY = exports.INVALID = exports.ParseStatus = exports.addIssueToContext = exports.EMPTY_PATH = exports.makeIssue = exports.getParsedType = exports.ZodParsedType = void 0;
+exports.isAsync = exports.isValid = exports.isDirty = exports.isAborted = exports.OK = exports.DIRTY = exports.INVALID = exports.ParseStatus = exports.addIssueToContext = exports.EMPTY_PATH = exports.makeIssue = void 0;
 const ZodError_1 = __nccwpck_require__(9892);
-const util_1 = __nccwpck_require__(3985);
-exports.ZodParsedType = util_1.util.arrayToEnum([
-    "string",
-    "nan",
-    "number",
-    "integer",
-    "float",
-    "boolean",
-    "date",
-    "bigint",
-    "symbol",
-    "function",
-    "undefined",
-    "null",
-    "array",
-    "object",
-    "unknown",
-    "promise",
-    "void",
-    "never",
-    "map",
-    "set",
-]);
-const getParsedType = (data) => {
-    const t = typeof data;
-    switch (t) {
-        case "undefined":
-            return exports.ZodParsedType.undefined;
-        case "string":
-            return exports.ZodParsedType.string;
-        case "number":
-            return isNaN(data) ? exports.ZodParsedType.nan : exports.ZodParsedType.number;
-        case "boolean":
-            return exports.ZodParsedType.boolean;
-        case "function":
-            return exports.ZodParsedType.function;
-        case "bigint":
-            return exports.ZodParsedType.bigint;
-        case "object":
-            if (Array.isArray(data)) {
-                return exports.ZodParsedType.array;
-            }
-            if (data === null) {
-                return exports.ZodParsedType.null;
-            }
-            if (data.then &&
-                typeof data.then === "function" &&
-                data.catch &&
-                typeof data.catch === "function") {
-                return exports.ZodParsedType.promise;
-            }
-            if (typeof Map !== "undefined" && data instanceof Map) {
-                return exports.ZodParsedType.map;
-            }
-            if (typeof Set !== "undefined" && data instanceof Set) {
-                return exports.ZodParsedType.set;
-            }
-            if (typeof Date !== "undefined" && data instanceof Date) {
-                return exports.ZodParsedType.date;
-            }
-            return exports.ZodParsedType.object;
-        default:
-            return exports.ZodParsedType.unknown;
-    }
-};
-exports.getParsedType = getParsedType;
 const makeIssue = (params) => {
     const { data, path, errorMaps, issueData } = params;
     const fullPath = [...path, ...(issueData.path || [])];
@@ -10804,7 +10832,7 @@ const makeIssue = (params) => {
 exports.makeIssue = makeIssue;
 exports.EMPTY_PATH = [];
 function addIssueToContext(ctx, issueData) {
-    const issue = (0, exports.makeIssue)({
+    const issue = exports.makeIssue({
         issueData: issueData,
         data: ctx.data,
         path: ctx.path,
@@ -10812,7 +10840,7 @@ function addIssueToContext(ctx, issueData) {
             ctx.common.contextualErrorMap,
             ctx.schemaErrorMap,
             ZodError_1.overrideErrorMap,
-            ZodError_1.defaultErrorMap, // then global default map
+            ZodError_1.defaultErrorMap,
         ].filter((x) => !!x),
     });
     ctx.common.issues.push(issue);
@@ -10906,7 +10934,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.util = void 0;
+exports.getParsedType = exports.ZodParsedType = exports.util = void 0;
 var util;
 (function (util) {
     function assertNever(_x) {
@@ -10954,7 +10982,78 @@ var util;
     util.isInteger = typeof Number.isInteger === "function"
         ? (val) => Number.isInteger(val) // eslint-disable-line ban/ban
         : (val) => typeof val === "number" && isFinite(val) && Math.floor(val) === val;
+    function joinValues(array, separator = " | ") {
+        return array
+            .map((val) => (typeof val === "string" ? `'${val}'` : val))
+            .join(separator);
+    }
+    util.joinValues = joinValues;
 })(util = exports.util || (exports.util = {}));
+exports.ZodParsedType = util.arrayToEnum([
+    "string",
+    "nan",
+    "number",
+    "integer",
+    "float",
+    "boolean",
+    "date",
+    "bigint",
+    "symbol",
+    "function",
+    "undefined",
+    "null",
+    "array",
+    "object",
+    "unknown",
+    "promise",
+    "void",
+    "never",
+    "map",
+    "set",
+]);
+const getParsedType = (data) => {
+    const t = typeof data;
+    switch (t) {
+        case "undefined":
+            return exports.ZodParsedType.undefined;
+        case "string":
+            return exports.ZodParsedType.string;
+        case "number":
+            return isNaN(data) ? exports.ZodParsedType.nan : exports.ZodParsedType.number;
+        case "boolean":
+            return exports.ZodParsedType.boolean;
+        case "function":
+            return exports.ZodParsedType.function;
+        case "bigint":
+            return exports.ZodParsedType.bigint;
+        case "object":
+            if (Array.isArray(data)) {
+                return exports.ZodParsedType.array;
+            }
+            if (data === null) {
+                return exports.ZodParsedType.null;
+            }
+            if (data.then &&
+                typeof data.then === "function" &&
+                data.catch &&
+                typeof data.catch === "function") {
+                return exports.ZodParsedType.promise;
+            }
+            if (typeof Map !== "undefined" && data instanceof Map) {
+                return exports.ZodParsedType.map;
+            }
+            if (typeof Set !== "undefined" && data instanceof Set) {
+                return exports.ZodParsedType.set;
+            }
+            if (typeof Date !== "undefined" && data instanceof Date) {
+                return exports.ZodParsedType.date;
+            }
+            return exports.ZodParsedType.object;
+        default:
+            return exports.ZodParsedType.unknown;
+    }
+};
+exports.getParsedType = getParsedType;
 
 
 /***/ }),
@@ -10966,11 +11065,7 @@ var util;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -11024,7 +11119,7 @@ class ParseInputLazyPath {
     }
 }
 const handleResult = (ctx, result) => {
-    if ((0, parseUtil_1.isValid)(result)) {
+    if (parseUtil_1.isValid(result)) {
         return { success: true, data: result.value };
     }
     else {
@@ -11086,13 +11181,13 @@ class ZodType {
         return this._def.description;
     }
     _getType(input) {
-        return (0, parseUtil_1.getParsedType)(input.data);
+        return util_1.getParsedType(input.data);
     }
     _getOrReturnCtx(input, ctx) {
         return (ctx || {
             common: input.parent.common,
             data: input.data,
-            parsedType: (0, parseUtil_1.getParsedType)(input.data),
+            parsedType: util_1.getParsedType(input.data),
             schemaErrorMap: this._def.errorMap,
             path: input.path,
             parent: input.parent,
@@ -11104,7 +11199,7 @@ class ZodType {
             ctx: {
                 common: input.parent.common,
                 data: input.data,
-                parsedType: (0, parseUtil_1.getParsedType)(input.data),
+                parsedType: util_1.getParsedType(input.data),
                 schemaErrorMap: this._def.errorMap,
                 path: input.path,
                 parent: input.parent,
@@ -11113,7 +11208,7 @@ class ZodType {
     }
     _parseSync(input) {
         const result = this._parse(input);
-        if ((0, parseUtil_1.isAsync)(result)) {
+        if (parseUtil_1.isAsync(result)) {
             throw new Error("Synchronous parse encountered promise.");
         }
         return result;
@@ -11140,7 +11235,7 @@ class ZodType {
             schemaErrorMap: this._def.errorMap,
             parent: null,
             data,
-            parsedType: (0, parseUtil_1.getParsedType)(data),
+            parsedType: util_1.getParsedType(data),
         };
         const result = this._parseSync({ data, path: ctx.path, parent: ctx });
         return handleResult(ctx, result);
@@ -11162,10 +11257,10 @@ class ZodType {
             schemaErrorMap: this._def.errorMap,
             parent: null,
             data,
-            parsedType: (0, parseUtil_1.getParsedType)(data),
+            parsedType: util_1.getParsedType(data),
         };
         const maybeAsyncResult = this._parse({ data, path: [], parent: ctx });
-        const result = await ((0, parseUtil_1.isAsync)(maybeAsyncResult)
+        const result = await (parseUtil_1.isAsync(maybeAsyncResult)
             ? maybeAsyncResult
             : Promise.resolve(maybeAsyncResult));
         return handleResult(ctx, result);
@@ -11297,18 +11392,22 @@ class ZodString extends ZodType {
             ...errorUtil_1.errorUtil.errToObj(message),
         });
         /**
-         * Deprecated.
-         * Use z.string().min(1) instead.
+         * @deprecated Use z.string().min(1) instead.
+         * @see {@link ZodString.min}
          */
         this.nonempty = (message) => this.min(1, errorUtil_1.errorUtil.errToObj(message));
+        this.trim = () => new ZodString({
+            ...this._def,
+            checks: [...this._def.checks, { kind: "trim" }],
+        });
     }
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.string) {
+        if (parsedType !== util_1.ZodParsedType.string) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.string,
+                expected: util_1.ZodParsedType.string,
                 received: ctx.parsedType,
             }
             //
@@ -11321,7 +11420,7 @@ class ZodString extends ZodType {
             if (check.kind === "min") {
                 if (input.data.length < check.value) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         code: ZodError_1.ZodIssueCode.too_small,
                         minimum: check.value,
                         type: "string",
@@ -11334,7 +11433,7 @@ class ZodString extends ZodType {
             else if (check.kind === "max") {
                 if (input.data.length > check.value) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         code: ZodError_1.ZodIssueCode.too_big,
                         maximum: check.value,
                         type: "string",
@@ -11347,7 +11446,7 @@ class ZodString extends ZodType {
             else if (check.kind === "email") {
                 if (!emailRegex.test(input.data)) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         validation: "email",
                         code: ZodError_1.ZodIssueCode.invalid_string,
                         message: check.message,
@@ -11358,7 +11457,7 @@ class ZodString extends ZodType {
             else if (check.kind === "uuid") {
                 if (!uuidRegex.test(input.data)) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         validation: "uuid",
                         code: ZodError_1.ZodIssueCode.invalid_string,
                         message: check.message,
@@ -11369,7 +11468,7 @@ class ZodString extends ZodType {
             else if (check.kind === "cuid") {
                 if (!cuidRegex.test(input.data)) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         validation: "cuid",
                         code: ZodError_1.ZodIssueCode.invalid_string,
                         message: check.message,
@@ -11383,7 +11482,7 @@ class ZodString extends ZodType {
                 }
                 catch (_a) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         validation: "url",
                         code: ZodError_1.ZodIssueCode.invalid_string,
                         message: check.message,
@@ -11396,13 +11495,19 @@ class ZodString extends ZodType {
                 const testResult = check.regex.test(input.data);
                 if (!testResult) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         validation: "regex",
                         code: ZodError_1.ZodIssueCode.invalid_string,
                         message: check.message,
                     });
                     status.dirty();
                 }
+            }
+            else if (check.kind === "trim") {
+                input.data = input.data.trim();
+            }
+            else {
+                util_1.util.assertNever(check);
             }
         }
         return { status: status.value, value: input.data };
@@ -11510,11 +11615,11 @@ class ZodNumber extends ZodType {
     }
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.number) {
+        if (parsedType !== util_1.ZodParsedType.number) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.number,
+                expected: util_1.ZodParsedType.number,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
@@ -11525,7 +11630,7 @@ class ZodNumber extends ZodType {
             if (check.kind === "int") {
                 if (!util_1.util.isInteger(input.data)) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         code: ZodError_1.ZodIssueCode.invalid_type,
                         expected: "integer",
                         received: "float",
@@ -11540,7 +11645,7 @@ class ZodNumber extends ZodType {
                     : input.data <= check.value;
                 if (tooSmall) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         code: ZodError_1.ZodIssueCode.too_small,
                         minimum: check.value,
                         type: "number",
@@ -11556,7 +11661,7 @@ class ZodNumber extends ZodType {
                     : input.data >= check.value;
                 if (tooBig) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         code: ZodError_1.ZodIssueCode.too_big,
                         maximum: check.value,
                         type: "number",
@@ -11569,7 +11674,7 @@ class ZodNumber extends ZodType {
             else if (check.kind === "multipleOf") {
                 if (floatSafeRemainder(input.data, check.value) !== 0) {
                     ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         code: ZodError_1.ZodIssueCode.not_multiple_of,
                         multipleOf: check.value,
                         message: check.message,
@@ -11695,16 +11800,16 @@ ZodNumber.create = (params) => {
 class ZodBigInt extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.bigint) {
+        if (parsedType !== util_1.ZodParsedType.bigint) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.bigint,
+                expected: util_1.ZodParsedType.bigint,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
-        return (0, parseUtil_1.OK)(input.data);
+        return parseUtil_1.OK(input.data);
     }
 }
 exports.ZodBigInt = ZodBigInt;
@@ -11717,16 +11822,16 @@ ZodBigInt.create = (params) => {
 class ZodBoolean extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.boolean) {
+        if (parsedType !== util_1.ZodParsedType.boolean) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.boolean,
+                expected: util_1.ZodParsedType.boolean,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
-        return (0, parseUtil_1.OK)(input.data);
+        return parseUtil_1.OK(input.data);
     }
 }
 exports.ZodBoolean = ZodBoolean;
@@ -11739,18 +11844,18 @@ ZodBoolean.create = (params) => {
 class ZodDate extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.date) {
+        if (parsedType !== util_1.ZodParsedType.date) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.date,
+                expected: util_1.ZodParsedType.date,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
         if (isNaN(input.data.getTime())) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_date,
             });
             return parseUtil_1.INVALID;
@@ -11771,16 +11876,16 @@ ZodDate.create = (params) => {
 class ZodUndefined extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.undefined) {
+        if (parsedType !== util_1.ZodParsedType.undefined) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.undefined,
+                expected: util_1.ZodParsedType.undefined,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
-        return (0, parseUtil_1.OK)(input.data);
+        return parseUtil_1.OK(input.data);
     }
 }
 exports.ZodUndefined = ZodUndefined;
@@ -11793,16 +11898,16 @@ ZodUndefined.create = (params) => {
 class ZodNull extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.null) {
+        if (parsedType !== util_1.ZodParsedType.null) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.null,
+                expected: util_1.ZodParsedType.null,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
-        return (0, parseUtil_1.OK)(input.data);
+        return parseUtil_1.OK(input.data);
     }
 }
 exports.ZodNull = ZodNull;
@@ -11819,7 +11924,7 @@ class ZodAny extends ZodType {
         this._any = true;
     }
     _parse(input) {
-        return (0, parseUtil_1.OK)(input.data);
+        return parseUtil_1.OK(input.data);
     }
 }
 exports.ZodAny = ZodAny;
@@ -11836,7 +11941,7 @@ class ZodUnknown extends ZodType {
         this._unknown = true;
     }
     _parse(input) {
-        return (0, parseUtil_1.OK)(input.data);
+        return parseUtil_1.OK(input.data);
     }
 }
 exports.ZodUnknown = ZodUnknown;
@@ -11849,9 +11954,9 @@ ZodUnknown.create = (params) => {
 class ZodNever extends ZodType {
     _parse(input) {
         const ctx = this._getOrReturnCtx(input);
-        (0, parseUtil_1.addIssueToContext)(ctx, {
+        parseUtil_1.addIssueToContext(ctx, {
             code: ZodError_1.ZodIssueCode.invalid_type,
-            expected: parseUtil_1.ZodParsedType.never,
+            expected: util_1.ZodParsedType.never,
             received: ctx.parsedType,
         });
         return parseUtil_1.INVALID;
@@ -11867,16 +11972,16 @@ ZodNever.create = (params) => {
 class ZodVoid extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.undefined) {
+        if (parsedType !== util_1.ZodParsedType.undefined) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.void,
+                expected: util_1.ZodParsedType.void,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
-        return (0, parseUtil_1.OK)(input.data);
+        return parseUtil_1.OK(input.data);
     }
 }
 exports.ZodVoid = ZodVoid;
@@ -11890,17 +11995,17 @@ class ZodArray extends ZodType {
     _parse(input) {
         const { ctx, status } = this._processInputParams(input);
         const def = this._def;
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.array) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+        if (ctx.parsedType !== util_1.ZodParsedType.array) {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.array,
+                expected: util_1.ZodParsedType.array,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
         if (def.minLength !== null) {
             if (ctx.data.length < def.minLength.value) {
-                (0, parseUtil_1.addIssueToContext)(ctx, {
+                parseUtil_1.addIssueToContext(ctx, {
                     code: ZodError_1.ZodIssueCode.too_small,
                     minimum: def.minLength.value,
                     type: "array",
@@ -11912,7 +12017,7 @@ class ZodArray extends ZodType {
         }
         if (def.maxLength !== null) {
             if (ctx.data.length > def.maxLength.value) {
-                (0, parseUtil_1.addIssueToContext)(ctx, {
+                parseUtil_1.addIssueToContext(ctx, {
                     code: ZodError_1.ZodIssueCode.too_big,
                     maximum: def.maxLength.value,
                     type: "array",
@@ -11978,7 +12083,7 @@ var objectUtil;
     objectUtil.mergeShapes = (first, second) => {
         return {
             ...first,
-            ...second, // second overwrites first
+            ...second,
         };
     };
 })(objectUtil = exports.objectUtil || (exports.objectUtil = {}));
@@ -12040,11 +12145,11 @@ class ZodObject extends ZodType {
     }
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.object) {
+        if (parsedType !== util_1.ZodParsedType.object) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.object,
+                expected: util_1.ZodParsedType.object,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
@@ -12079,7 +12184,7 @@ class ZodObject extends ZodType {
             }
             else if (unknownKeys === "strict") {
                 if (extraKeys.length > 0) {
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
+                    parseUtil_1.addIssueToContext(ctx, {
                         code: ZodError_1.ZodIssueCode.unrecognized_keys,
                         keys: extraKeys,
                     });
@@ -12194,7 +12299,9 @@ class ZodObject extends ZodType {
     pick(mask) {
         const shape = {};
         util_1.util.objectKeys(mask).map((key) => {
-            shape[key] = this.shape[key];
+            // only add to shape if key corresponds to an element of the current shape
+            if (this.shape[key])
+                shape[key] = this.shape[key];
         });
         return new ZodObject({
             ...this._def,
@@ -12307,7 +12414,7 @@ class ZodUnion extends ZodType {
             }
             // return invalid
             const unionErrors = results.map((result) => new ZodError_1.ZodError(result.ctx.common.issues));
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_union,
                 unionErrors,
             });
@@ -12365,7 +12472,7 @@ class ZodUnion extends ZodType {
                 return dirty.result;
             }
             const unionErrors = issues.map((issues) => new ZodError_1.ZodError(issues));
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_union,
                 unionErrors,
             });
@@ -12387,10 +12494,10 @@ ZodUnion.create = (types, params) => {
 class ZodDiscriminatedUnion extends ZodType {
     _parse(input) {
         const { ctx } = this._processInputParams(input);
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.object) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+        if (ctx.parsedType !== util_1.ZodParsedType.object) {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.object,
+                expected: util_1.ZodParsedType.object,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
@@ -12399,7 +12506,7 @@ class ZodDiscriminatedUnion extends ZodType {
         const discriminatorValue = ctx.data[discriminator];
         const option = this.options.get(discriminatorValue);
         if (!option) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_union_discriminator,
                 options: this.validDiscriminatorValues,
                 path: [discriminator],
@@ -12464,12 +12571,12 @@ class ZodDiscriminatedUnion extends ZodType {
 }
 exports.ZodDiscriminatedUnion = ZodDiscriminatedUnion;
 function mergeValues(a, b) {
-    const aType = (0, parseUtil_1.getParsedType)(a);
-    const bType = (0, parseUtil_1.getParsedType)(b);
+    const aType = util_1.getParsedType(a);
+    const bType = util_1.getParsedType(b);
     if (a === b) {
         return { valid: true, data: a };
     }
-    else if (aType === parseUtil_1.ZodParsedType.object && bType === parseUtil_1.ZodParsedType.object) {
+    else if (aType === util_1.ZodParsedType.object && bType === util_1.ZodParsedType.object) {
         const bKeys = util_1.util.objectKeys(b);
         const sharedKeys = util_1.util
             .objectKeys(a)
@@ -12484,7 +12591,7 @@ function mergeValues(a, b) {
         }
         return { valid: true, data: newObj };
     }
-    else if (aType === parseUtil_1.ZodParsedType.array && bType === parseUtil_1.ZodParsedType.array) {
+    else if (aType === util_1.ZodParsedType.array && bType === util_1.ZodParsedType.array) {
         if (a.length !== b.length) {
             return { valid: false };
         }
@@ -12500,8 +12607,8 @@ function mergeValues(a, b) {
         }
         return { valid: true, data: newArray };
     }
-    else if (aType === parseUtil_1.ZodParsedType.date &&
-        bType === parseUtil_1.ZodParsedType.date &&
+    else if (aType === util_1.ZodParsedType.date &&
+        bType === util_1.ZodParsedType.date &&
         +a === +b) {
         return { valid: true, data: a };
     }
@@ -12513,17 +12620,17 @@ class ZodIntersection extends ZodType {
     _parse(input) {
         const { status, ctx } = this._processInputParams(input);
         const handleParsed = (parsedLeft, parsedRight) => {
-            if ((0, parseUtil_1.isAborted)(parsedLeft) || (0, parseUtil_1.isAborted)(parsedRight)) {
+            if (parseUtil_1.isAborted(parsedLeft) || parseUtil_1.isAborted(parsedRight)) {
                 return parseUtil_1.INVALID;
             }
             const merged = mergeValues(parsedLeft.value, parsedRight.value);
             if (!merged.valid) {
-                (0, parseUtil_1.addIssueToContext)(ctx, {
+                parseUtil_1.addIssueToContext(ctx, {
                     code: ZodError_1.ZodIssueCode.invalid_intersection_types,
                 });
                 return parseUtil_1.INVALID;
             }
-            if ((0, parseUtil_1.isDirty)(parsedLeft) || (0, parseUtil_1.isDirty)(parsedRight)) {
+            if (parseUtil_1.isDirty(parsedLeft) || parseUtil_1.isDirty(parsedRight)) {
                 status.dirty();
             }
             return { status: status.value, value: merged.data };
@@ -12567,16 +12674,16 @@ ZodIntersection.create = (left, right, params) => {
 class ZodTuple extends ZodType {
     _parse(input) {
         const { status, ctx } = this._processInputParams(input);
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.array) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+        if (ctx.parsedType !== util_1.ZodParsedType.array) {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.array,
+                expected: util_1.ZodParsedType.array,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
         if (ctx.data.length < this._def.items.length) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.too_small,
                 minimum: this._def.items.length,
                 inclusive: true,
@@ -12586,7 +12693,7 @@ class ZodTuple extends ZodType {
         }
         const rest = this._def.rest;
         if (!rest && ctx.data.length > this._def.items.length) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.too_big,
                 maximum: this._def.items.length,
                 inclusive: true,
@@ -12639,10 +12746,10 @@ class ZodRecord extends ZodType {
     }
     _parse(input) {
         const { status, ctx } = this._processInputParams(input);
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.object) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+        if (ctx.parsedType !== util_1.ZodParsedType.object) {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.object,
+                expected: util_1.ZodParsedType.object,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
@@ -12687,10 +12794,10 @@ exports.ZodRecord = ZodRecord;
 class ZodMap extends ZodType {
     _parse(input) {
         const { status, ctx } = this._processInputParams(input);
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.map) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+        if (ctx.parsedType !== util_1.ZodParsedType.map) {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.map,
+                expected: util_1.ZodParsedType.map,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
@@ -12749,10 +12856,10 @@ ZodMap.create = (keyType, valueType, params) => {
 class ZodSet extends ZodType {
     _parse(input) {
         const { status, ctx } = this._processInputParams(input);
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.set) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+        if (ctx.parsedType !== util_1.ZodParsedType.set) {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.set,
+                expected: util_1.ZodParsedType.set,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
@@ -12760,7 +12867,7 @@ class ZodSet extends ZodType {
         const def = this._def;
         if (def.minSize !== null) {
             if (ctx.data.size < def.minSize.value) {
-                (0, parseUtil_1.addIssueToContext)(ctx, {
+                parseUtil_1.addIssueToContext(ctx, {
                     code: ZodError_1.ZodIssueCode.too_small,
                     minimum: def.minSize.value,
                     type: "set",
@@ -12772,7 +12879,7 @@ class ZodSet extends ZodType {
         }
         if (def.maxSize !== null) {
             if (ctx.data.size > def.maxSize.value) {
-                (0, parseUtil_1.addIssueToContext)(ctx, {
+                parseUtil_1.addIssueToContext(ctx, {
                     code: ZodError_1.ZodIssueCode.too_big,
                     maximum: def.maxSize.value,
                     type: "set",
@@ -12838,16 +12945,16 @@ class ZodFunction extends ZodType {
     }
     _parse(input) {
         const { ctx } = this._processInputParams(input);
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.function) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+        if (ctx.parsedType !== util_1.ZodParsedType.function) {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.function,
+                expected: util_1.ZodParsedType.function,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
         function makeArgsIssue(args, error) {
-            return (0, parseUtil_1.makeIssue)({
+            return parseUtil_1.makeIssue({
                 data: args,
                 path: ctx.path,
                 errorMaps: [
@@ -12863,7 +12970,7 @@ class ZodFunction extends ZodType {
             });
         }
         function makeReturnsIssue(returns, error) {
-            return (0, parseUtil_1.makeIssue)({
+            return parseUtil_1.makeIssue({
                 data: returns,
                 path: ctx.path,
                 errorMaps: [
@@ -12881,7 +12988,7 @@ class ZodFunction extends ZodType {
         const params = { errorMap: ctx.common.contextualErrorMap };
         const fn = ctx.data;
         if (this._def.returns instanceof ZodPromise) {
-            return (0, parseUtil_1.OK)(async (...args) => {
+            return parseUtil_1.OK(async (...args) => {
                 const error = new ZodError_1.ZodError([]);
                 const parsedArgs = await this._def.args
                     .parseAsync(args, params)
@@ -12900,7 +13007,7 @@ class ZodFunction extends ZodType {
             });
         }
         else {
-            return (0, parseUtil_1.OK)((...args) => {
+            return parseUtil_1.OK((...args) => {
                 const parsedArgs = this._def.args.safeParse(args, params);
                 if (!parsedArgs.success) {
                     throw new ZodError_1.ZodError([makeArgsIssue(args, parsedArgs.error)]);
@@ -12974,7 +13081,7 @@ class ZodLiteral extends ZodType {
     _parse(input) {
         if (input.data !== this._def.value) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_literal,
                 expected: this._def.value,
             });
@@ -12994,23 +13101,36 @@ ZodLiteral.create = (value, params) => {
         ...processCreateParams(params),
     });
 };
-function createZodEnum(values) {
+function createZodEnum(values, params) {
     return new ZodEnum({
         values: values,
         typeName: ZodFirstPartyTypeKind.ZodEnum,
+        ...processCreateParams(params),
     });
 }
 class ZodEnum extends ZodType {
     _parse(input) {
-        if (this._def.values.indexOf(input.data) === -1) {
+        if (typeof input.data !== "string") {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
-                code: ZodError_1.ZodIssueCode.invalid_enum_value,
-                options: this._def.values,
+            const expectedValues = this._def.values;
+            parseUtil_1.addIssueToContext(ctx, {
+                expected: util_1.util.joinValues(expectedValues),
+                received: ctx.parsedType,
+                code: ZodError_1.ZodIssueCode.invalid_type,
             });
             return parseUtil_1.INVALID;
         }
-        return (0, parseUtil_1.OK)(input.data);
+        if (this._def.values.indexOf(input.data) === -1) {
+            const ctx = this._getOrReturnCtx(input);
+            const expectedValues = this._def.values;
+            parseUtil_1.addIssueToContext(ctx, {
+                received: ctx.data,
+                code: ZodError_1.ZodIssueCode.invalid_enum_value,
+                options: expectedValues,
+            });
+            return parseUtil_1.INVALID;
+        }
+        return parseUtil_1.OK(input.data);
     }
     get options() {
         return this._def.values;
@@ -13042,15 +13162,27 @@ ZodEnum.create = createZodEnum;
 class ZodNativeEnum extends ZodType {
     _parse(input) {
         const nativeEnumValues = util_1.util.getValidEnumValues(this._def.values);
-        if (nativeEnumValues.indexOf(input.data) === -1) {
-            const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
-                code: ZodError_1.ZodIssueCode.invalid_enum_value,
-                options: util_1.util.objectValues(nativeEnumValues),
+        const ctx = this._getOrReturnCtx(input);
+        if (ctx.parsedType !== util_1.ZodParsedType.string &&
+            ctx.parsedType !== util_1.ZodParsedType.number) {
+            const expectedValues = util_1.util.objectValues(nativeEnumValues);
+            parseUtil_1.addIssueToContext(ctx, {
+                expected: util_1.util.joinValues(expectedValues),
+                received: ctx.parsedType,
+                code: ZodError_1.ZodIssueCode.invalid_type,
             });
             return parseUtil_1.INVALID;
         }
-        return (0, parseUtil_1.OK)(input.data);
+        if (nativeEnumValues.indexOf(input.data) === -1) {
+            const expectedValues = util_1.util.objectValues(nativeEnumValues);
+            parseUtil_1.addIssueToContext(ctx, {
+                received: ctx.data,
+                code: ZodError_1.ZodIssueCode.invalid_enum_value,
+                options: expectedValues,
+            });
+            return parseUtil_1.INVALID;
+        }
+        return parseUtil_1.OK(input.data);
     }
     get enum() {
         return this._def.values;
@@ -13067,19 +13199,19 @@ ZodNativeEnum.create = (values, params) => {
 class ZodPromise extends ZodType {
     _parse(input) {
         const { ctx } = this._processInputParams(input);
-        if (ctx.parsedType !== parseUtil_1.ZodParsedType.promise &&
+        if (ctx.parsedType !== util_1.ZodParsedType.promise &&
             ctx.common.async === false) {
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.promise,
+                expected: util_1.ZodParsedType.promise,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
         }
-        const promisified = ctx.parsedType === parseUtil_1.ZodParsedType.promise
+        const promisified = ctx.parsedType === util_1.ZodParsedType.promise
             ? ctx.data
             : Promise.resolve(ctx.data);
-        return (0, parseUtil_1.OK)(promisified.then((data) => {
+        return parseUtil_1.OK(promisified.then((data) => {
             return this._def.type.parseAsync(data, {
                 path: ctx.path,
                 errorMap: ctx.common.contextualErrorMap,
@@ -13123,7 +13255,7 @@ class ZodEffects extends ZodType {
         }
         const checkCtx = {
             addIssue: (arg) => {
-                (0, parseUtil_1.addIssueToContext)(ctx, arg);
+                parseUtil_1.addIssueToContext(ctx, arg);
                 if (arg.fatal) {
                     status.abort();
                 }
@@ -13188,7 +13320,7 @@ class ZodEffects extends ZodType {
                 // if (base.status === "dirty") {
                 //   return { status: "dirty", value: base.value };
                 // }
-                if (!(0, parseUtil_1.isValid)(base))
+                if (!parseUtil_1.isValid(base))
                     return base;
                 const result = effect.transform(base.value, checkCtx);
                 if (result instanceof Promise) {
@@ -13200,13 +13332,13 @@ class ZodEffects extends ZodType {
                 return this._def.schema
                     ._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx })
                     .then((base) => {
-                    if (!(0, parseUtil_1.isValid)(base))
+                    if (!parseUtil_1.isValid(base))
                         return base;
                     // if (base.status === "aborted") return INVALID;
                     // if (base.status === "dirty") {
                     //   return { status: "dirty", value: base.value };
                     // }
-                    return Promise.resolve(effect.transform(base.value, checkCtx)).then(parseUtil_1.OK);
+                    return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({ status: status.value, value: result }));
                 });
             }
         }
@@ -13234,8 +13366,8 @@ ZodEffects.createWithPreprocess = (preprocess, schema, params) => {
 class ZodOptional extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType === parseUtil_1.ZodParsedType.undefined) {
-            return (0, parseUtil_1.OK)(undefined);
+        if (parsedType === util_1.ZodParsedType.undefined) {
+            return parseUtil_1.OK(undefined);
         }
         return this._def.innerType._parse(input);
     }
@@ -13254,8 +13386,8 @@ ZodOptional.create = (type, params) => {
 class ZodNullable extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType === parseUtil_1.ZodParsedType.null) {
-            return (0, parseUtil_1.OK)(null);
+        if (parsedType === util_1.ZodParsedType.null) {
+            return parseUtil_1.OK(null);
         }
         return this._def.innerType._parse(input);
     }
@@ -13275,7 +13407,7 @@ class ZodDefault extends ZodType {
     _parse(input) {
         const { ctx } = this._processInputParams(input);
         let data = ctx.data;
-        if (ctx.parsedType === parseUtil_1.ZodParsedType.undefined) {
+        if (ctx.parsedType === util_1.ZodParsedType.undefined) {
             data = this._def.defaultValue();
         }
         return this._def.innerType._parse({
@@ -13299,11 +13431,11 @@ ZodDefault.create = (type, params) => {
 class ZodNaN extends ZodType {
     _parse(input) {
         const parsedType = this._getType(input);
-        if (parsedType !== parseUtil_1.ZodParsedType.nan) {
+        if (parsedType !== util_1.ZodParsedType.nan) {
             const ctx = this._getOrReturnCtx(input);
-            (0, parseUtil_1.addIssueToContext)(ctx, {
+            parseUtil_1.addIssueToContext(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_type,
-                expected: parseUtil_1.ZodParsedType.nan,
+                expected: util_1.ZodParsedType.nan,
                 received: ctx.parsedType,
             });
             return parseUtil_1.INVALID;
@@ -13318,9 +13450,15 @@ ZodNaN.create = (params) => {
         ...processCreateParams(params),
     });
 };
-const custom = (check, params) => {
+const custom = (check, params = {}, fatal) => {
     if (check)
-        return ZodAny.create().refine(check, params);
+        return ZodAny.create().superRefine((data, ctx) => {
+            if (!check(data)) {
+                const p = typeof params === "function" ? params(data) : params;
+                const p2 = typeof p === "string" ? { message: p } : p;
+                ctx.addIssue({ code: "custom", ...p2, fatal });
+            }
+        });
     return ZodAny.create();
 };
 exports.custom = custom;
@@ -13363,7 +13501,7 @@ var ZodFirstPartyTypeKind;
 })(ZodFirstPartyTypeKind = exports.ZodFirstPartyTypeKind || (exports.ZodFirstPartyTypeKind = {}));
 const instanceOfType = (cls, params = {
     message: `Input not instance of ${cls.name}`,
-}) => (0, exports.custom)((data) => data instanceof cls, params);
+}) => exports.custom((data) => data instanceof cls, params, true);
 exports["instanceof"] = instanceOfType;
 const stringType = ZodString.create;
 exports.string = stringType;
