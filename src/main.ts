@@ -4,6 +4,8 @@ import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import { RequestError } from '@octokit/request-error'
 import { Change, PullRequestSchema } from './schemas'
+import { Severity, readConfigFile } from '../src/config'
+import { filterChangesBySeverity } from '../src/filter'
 
 async function run(): Promise<void> {
   try {
@@ -24,7 +26,11 @@ async function run(): Promise<void> {
       headRef: pull_request.head.sha
     })
 
+    let config = readConfigFile()
+    let minSeverity = config.fail_on_severity
     let failed = false
+
+    let filteredChanges = filterChangesBySeverity(minSeverity as Severity, changes)
 
     for (const change of changes) {
       if (

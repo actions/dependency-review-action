@@ -1,13 +1,12 @@
 import * as fs from 'fs'
-import * as core from '@actions/core'
 import YAML from 'yaml'
 import * as z from 'zod'
 import path from 'path'
-import { type } from 'os'
 
+export type Severity = "critical" | "high" | "moderate" | "low"
 
-const CONFIG_FILEPATH = "./.github/dep-review.yml"
-const SEVERITIES = ["critical", "high", "moderate", "low"] as const
+export const SEVERITIES = ["critical", "high", "moderate", "low"] as const
+export const CONFIG_FILEPATH = "./.github/dep-review.yml"
 
 type ConfigurationOptions = {
     fail_on_severity: string,
@@ -24,7 +23,6 @@ export function readConfigFile(filePath: string = CONFIG_FILEPATH): Configuratio
     }
 
     try {
-        console.log(path.resolve(filePath))
         var data = fs.readFileSync(path.resolve(filePath), "utf-8");
 
     } catch (error: any) {

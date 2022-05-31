@@ -11,7 +11,7 @@ test('has a default config filepath', async () => {
     expect(true).toEqual(true)
 })
 
-test('can read files with both extensions', async () => {
+test('the default config path handles .yml and .yaml', async () => {
     expect(true).toEqual(true)
 })
 
