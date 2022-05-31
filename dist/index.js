@@ -126,10 +126,7 @@ function run() {
                 if (change.change_type === 'added' &&
                     change.vulnerabilities !== undefined &&
                     change.vulnerabilities.length > 0) {
-                    for (const vuln of change.vulnerabilities) {
-                        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – ${vuln.advisory_summary} ${renderSeverity(vuln.severity)}`);
-                        core.info(`  ↪ ${vuln.advisory_url}`);
-                    }
+                    printChangeVulnerabilities(change);
                     failed = true;
                 }
             }
@@ -157,6 +154,12 @@ function run() {
             }
         }
     });
+}
+function printChangeVulnerabilities(change) {
+    for (const vuln of change.vulnerabilities) {
+        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – ${vuln.advisory_summary} ${renderSeverity(vuln.severity)}`);
+        core.info(`  ↪ ${vuln.advisory_url}`);
+    }
 }
 function renderSeverity(severity) {
     const color = {
@@ -201,9 +204,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.PullRequestSchema = void 0;
+exports.ChangesSchema = exports.PullRequestSchema = exports.ChangeSchema = void 0;
 const z = __importStar(__nccwpck_require__(3301));
-const ChangeSchema = z.object({
+exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
     ecosystem: z.string(),
@@ -226,7 +229,7 @@ exports.PullRequestSchema = z.object({
     base: z.object({ sha: z.string() }),
     head: z.object({ sha: z.string() })
 });
-exports.ChangesSchema = z.array(ChangeSchema);
+exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 
 /***/ }),
