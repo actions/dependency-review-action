@@ -24,7 +24,6 @@ export function readConfigFile(filePath: string = CONFIG_FILEPATH): Configuratio
 
     try {
         var data = fs.readFileSync(path.resolve(filePath), "utf-8");
-
     } catch (error: any) {
         if (error.code && error.code === 'ENOENT') {
             return defaultOptions

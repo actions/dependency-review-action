@@ -16,7 +16,6 @@ export function filterChangesBySeverity(severity: Severity, changes: Changes): C
                 return true
             }
         })
-
     }
 
     // don't want to deal with changes with no vulnerabilities
