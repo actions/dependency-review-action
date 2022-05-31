@@ -3,8 +3,7 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import { RequestError } from '@octokit/request-error'
-import { PullRequestSchema } from './schemas'
-
+import { Change, PullRequestSchema } from './schemas'
 
 async function run(): Promise<void> {
   try {
@@ -33,15 +32,7 @@ async function run(): Promise<void> {
         change.vulnerabilities !== undefined &&
         change.vulnerabilities.length > 0
       ) {
-        for (const vuln of change.vulnerabilities) {
-          core.info(
-            `${styles.bold.open}${change.manifest} » ${change.name}@${change.version
-            }${styles.bold.close} – ${vuln.advisory_summary} ${renderSeverity(
-              vuln.severity
-            )}`
-          )
-          core.info(`  ↪ ${vuln.advisory_url}`)
-        }
+        printChangeVulnerabilities(change)
         failed = true
       }
     }
@@ -67,6 +58,18 @@ async function run(): Promise<void> {
         core.setFailed('Unexpected fatal error')
       }
     }
+  }
+}
+
+function printChangeVulnerabilities(change: Change) {
+  for (const vuln of change.vulnerabilities!) {
+    core.info(
+      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version
+      }${styles.bold.close} – ${vuln.advisory_summary} ${renderSeverity(
+        vuln.severity
+      )}`
+    )
+    core.info(`  ↪ ${vuln.advisory_url}`)
   }
 }
 
