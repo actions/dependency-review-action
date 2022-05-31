@@ -32,7 +32,7 @@ async function run(): Promise<void> {
 
     let filteredChanges = filterChangesBySeverity(minSeverity as Severity, changes)
 
-    for (const change of changes) {
+    for (const change of filteredChanges) {
       if (
         change.change_type === 'added' &&
         change.vulnerabilities !== undefined &&

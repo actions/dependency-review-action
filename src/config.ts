@@ -17,7 +17,7 @@ type ConfigurationOptions = {
 export function readConfigFile(filePath: string = CONFIG_FILEPATH): ConfigurationOptions {
     // By default we want to fail on all severities and allow all licenses.
     var defaultOptions: ConfigurationOptions = {
-        fail_on_severity: "all",
+        fail_on_severity: "low",
         allow_licenses: ['all'],
         deny_licenses: []
     }
