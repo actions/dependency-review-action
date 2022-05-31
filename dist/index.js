@@ -127,7 +127,7 @@ function run() {
             let minSeverity = config.fail_on_severity;
             let failed = false;
             let filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
-            for (const change of changes) {
+            for (const change of filteredChanges) {
                 if (change.change_type === 'added' &&
                     change.vulnerabilities !== undefined &&
                     change.vulnerabilities.length > 0) {
@@ -13628,7 +13628,7 @@ exports.CONFIG_FILEPATH = "./.github/dep-review.yml";
 function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
     // By default we want to fail on all severities and allow all licenses.
     var defaultOptions = {
-        fail_on_severity: "all",
+        fail_on_severity: "low",
         allow_licenses: ['all'],
         deny_licenses: []
     };
