@@ -19,6 +19,7 @@ export const ChangeSchema = z.object({
       })
     )
     .optional()
+    .default([])
 })
 
 export const PullRequestSchema = z.object({

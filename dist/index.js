@@ -228,6 +228,7 @@ exports.ChangeSchema = z.object({
         advisory_url: z.string()
     }))
         .optional()
+        .default([])
 });
 exports.PullRequestSchema = z.object({
     number: z.number(),

@@ -68,7 +68,7 @@ async function run(): Promise<void> {
 }
 
 function printChangeVulnerabilities(change: Change) {
-  for (const vuln of change.vulnerabilities!) {
+  for (const vuln of change.vulnerabilities) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version
       }${styles.bold.close} – ${vuln.advisory_summary} ${renderSeverity(
