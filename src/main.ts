@@ -49,7 +49,9 @@ async function run(): Promise<void> {
     if (failed) {
       throw new Error('Dependency review detected vulnerable packages.')
     } else {
-      core.info('Dependency review did not detect any vulnerable packages.')
+      core.info(
+        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or above.`
+      )
     }
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
