@@ -47,8 +47,8 @@ let rubyChange: Change = {
 }
 
 test('it properly filters changes by severity', async () => {
-    let changes: Changes = [npmChange, rubyChange]
-    const expectedChanges: Changes = [npmChange]
+    let changes = [npmChange, rubyChange]
+    const expectedChanges = [npmChange]
     changes = filterChangesBySeverity('high', changes)
     expect(changes).toEqual(expectedChanges)
 })

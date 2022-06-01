@@ -13627,13 +13627,14 @@ exports.SEVERITIES = ["critical", "high", "moderate", "low"];
 exports.CONFIG_FILEPATH = "./.github/dep-review.yml";
 function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
     // By default we want to fail on all severities and allow all licenses.
-    var defaultOptions = {
+    const defaultOptions = {
         fail_on_severity: "low",
         allow_licenses: ['all'],
         deny_licenses: []
     };
+    let data;
     try {
-        var data = fs.readFileSync(path_1.default.resolve(filePath), "utf-8");
+        data = fs.readFileSync(path_1.default.resolve(filePath), "utf-8");
     }
     catch (error) {
         if (error.code && error.code === 'ENOENT') {
