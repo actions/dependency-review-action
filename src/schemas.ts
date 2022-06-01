@@ -1,4 +1,5 @@
 import * as z from 'zod'
+import { SEVERITIES } from './config'
 
 export const ChangeSchema = z.object({
   change_type: z.enum(['added', 'removed']),
@@ -28,6 +29,15 @@ export const PullRequestSchema = z.object({
   head: z.object({ sha: z.string() })
 })
 
+export const ConfigurationOptionsSchema = z.object({
+  fail_on_severity: z.enum(SEVERITIES).default("low"),
+  allow_licenses: z.array(z.string()).default([]),
+  deny_licenses: z.array(z.string()).default([])
+}).partial()
+  .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Can't specify both allow_licenses and deny_licenses")
+
 export const ChangesSchema = z.array(ChangeSchema)
+
 export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
+export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
