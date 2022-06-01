@@ -7,10 +7,6 @@ test('reads the config file', async () => {
   expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
-test('has a default config filepath', async () => {
-  expect(true).toEqual(true)
-})
-
 test('the default config path handles .yml and .yaml', async () => {
   expect(true).toEqual(true)
 })
