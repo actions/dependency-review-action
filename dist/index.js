@@ -1,74 +1,6 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 88:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readConfigFile = exports.CONFIG_FILEPATH = exports.SEVERITIES = void 0;
-const fs = __importStar(__nccwpck_require__(7147));
-const yaml_1 = __importDefault(__nccwpck_require__(4083));
-const schemas_1 = __nccwpck_require__(8774);
-const path_1 = __importDefault(__nccwpck_require__(1017));
-exports.SEVERITIES = ["critical", "high", "moderate", "low"];
-exports.CONFIG_FILEPATH = "./.github/dep-review.yml";
-function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
-    // By default we want to fail on all severities and allow all licenses.
-    const defaultOptions = {
-        fail_on_severity: 'low',
-        allow_licenses: []
-    };
-    let data;
-    try {
-        data = fs.readFileSync(path_1.default.resolve(filePath), "utf-8");
-    }
-    catch (error) {
-        if (error.code && error.code === 'ENOENT') {
-            return defaultOptions;
-        }
-        else {
-            throw error;
-        }
-    }
-    // This is a copy of line 34, not sure why this is failing!
-    schemas_1.ConfigurationOptionsSchema.parse({ fail_on_severity: 'critical', allow_licenses: ['BSD', 'GPL 2'] });
-    const values = yaml_1.default.parse(data);
-    const parsed = schemas_1.ConfigurationOptionsSchema.parse(values);
-    return parsed;
-}
-exports.readConfigFile = readConfigFile;
-
-
-/***/ }),
-
 /***/ 4966:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -277,9 +209,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = void 0;
+exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
-const config_1 = __nccwpck_require__(88);
+exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -304,11 +236,13 @@ exports.PullRequestSchema = z.object({
     base: z.object({ sha: z.string() }),
     head: z.object({ sha: z.string() })
 });
-exports.ConfigurationOptionsSchema = z.object({
-    fail_on_severity: z.enum(config_1.SEVERITIES).default("low"),
+exports.ConfigurationOptionsSchema = z
+    .object({
+    fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([])
-}).partial()
+})
+    .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Can't specify both allow_licenses and deny_licenses");
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
@@ -13694,13 +13628,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readConfigFile = exports.CONFIG_FILEPATH = exports.SEVERITIES = void 0;
+exports.readConfigFile = exports.CONFIG_FILEPATH = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
 const schemas_1 = __nccwpck_require__(1129);
 const path_1 = __importDefault(__nccwpck_require__(1017));
-exports.SEVERITIES = ["critical", "high", "moderate", "low"];
-exports.CONFIG_FILEPATH = "./.github/dep-review.yml";
+exports.CONFIG_FILEPATH = './.github/dep-review.yml';
 function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
     // By default we want to fail on all severities and allow all licenses.
     const defaultOptions = {
@@ -13709,7 +13642,7 @@ function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
     };
     let data;
     try {
-        data = fs.readFileSync(path_1.default.resolve(filePath), "utf-8");
+        data = fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
     }
     catch (error) {
         if (error.code && error.code === 'ENOENT') {
@@ -13719,8 +13652,6 @@ function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
             throw error;
         }
     }
-    // This is a copy of line 34, not sure why this is failing!
-    schemas_1.ConfigurationOptionsSchema.parse({ fail_on_severity: 'critical', allow_licenses: ['BSD', 'GPL 2'] });
     const values = yaml_1.default.parse(data);
     const parsed = schemas_1.ConfigurationOptionsSchema.parse(values);
     return parsed;
@@ -13737,24 +13668,24 @@ exports.readConfigFile = readConfigFile;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.filterChangesBySeverity = void 0;
-const config_1 = __nccwpck_require__(6373);
+const schemas_1 = __nccwpck_require__(1129);
 function filterChangesBySeverity(severity, changes) {
-    const severityIdx = config_1.SEVERITIES.indexOf(severity);
+    const severityIdx = schemas_1.SEVERITIES.indexOf(severity);
     for (let change of changes) {
         if (change === undefined ||
             change.vulnerabilities === undefined ||
             change.vulnerabilities.length === 0) {
             continue;
         }
-        change.vulnerabilities = change.vulnerabilities.filter((vuln) => {
-            const vulnIdx = config_1.SEVERITIES.indexOf(vuln.severity);
+        change.vulnerabilities = change.vulnerabilities.filter(vuln => {
+            const vulnIdx = schemas_1.SEVERITIES.indexOf(vuln.severity);
             if (vulnIdx <= severityIdx) {
                 return true;
             }
         });
     }
     // don't want to deal with changes with no vulnerabilities
-    let filteredChanges = changes.filter((change) => change.vulnerabilities.length > 0);
+    let filteredChanges = changes.filter(change => change.vulnerabilities.length > 0);
     return filteredChanges;
 }
 exports.filterChangesBySeverity = filterChangesBySeverity;
@@ -13791,9 +13722,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = void 0;
+exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
-const config_1 = __nccwpck_require__(6373);
+exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -13818,11 +13749,13 @@ exports.PullRequestSchema = z.object({
     base: z.object({ sha: z.string() }),
     head: z.object({ sha: z.string() })
 });
-exports.ConfigurationOptionsSchema = z.object({
-    fail_on_severity: z.enum(config_1.SEVERITIES).default("low"),
+exports.ConfigurationOptionsSchema = z
+    .object({
+    fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([])
-}).partial()
+})
+    .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Can't specify both allow_licenses and deny_licenses");
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 

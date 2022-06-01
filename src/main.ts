@@ -2,10 +2,10 @@ import * as core from '@actions/core'
 import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
-import { RequestError } from '@octokit/request-error'
-import { Change, PullRequestSchema } from './schemas'
-import { Severity, readConfigFile } from '../src/config'
-import { filterChangesBySeverity } from '../src/filter'
+import {RequestError} from '@octokit/request-error'
+import {Change, PullRequestSchema, Severity} from './schemas'
+import {readConfigFile} from '../src/config'
+import {filterChangesBySeverity} from '../src/filter'
 
 async function run(): Promise<void> {
   try {
@@ -30,7 +30,10 @@ async function run(): Promise<void> {
     let minSeverity = config.fail_on_severity
     let failed = false
 
-    let filteredChanges = filterChangesBySeverity(minSeverity as Severity, changes)
+    let filteredChanges = filterChangesBySeverity(
+      minSeverity as Severity,
+      changes
+    )
 
     for (const change of filteredChanges) {
       if (
@@ -70,7 +73,8 @@ async function run(): Promise<void> {
 function printChangeVulnerabilities(change: Change) {
   for (const vuln of change.vulnerabilities) {
     core.info(
-      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version
+      `${styles.bold.open}${change.manifest} » ${change.name}@${
+        change.version
       }${styles.bold.close} – ${vuln.advisory_summary} ${renderSeverity(
         vuln.severity
       )}`
