@@ -19,6 +19,6 @@ export function filterChangesBySeverity(severity: Severity, changes: Changes): C
     }
 
     // don't want to deal with changes with no vulnerabilities
-    changes = changes.filter((change: any) => change.vulnerabilities.length > 0)
-    return changes
+    let filteredChanges = changes.filter((change: any) => change.vulnerabilities.length > 0)
+    return filteredChanges
 }

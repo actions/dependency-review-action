@@ -13684,8 +13684,8 @@ function filterChangesBySeverity(severity, changes) {
         });
     }
     // don't want to deal with changes with no vulnerabilities
-    changes = changes.filter((change) => change.vulnerabilities.length > 0);
-    return changes;
+    let filteredChanges = changes.filter((change) => change.vulnerabilities.length > 0);
+    return filteredChanges;
 }
 exports.filterChangesBySeverity = filterChangesBySeverity;
 
