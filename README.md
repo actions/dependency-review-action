@@ -28,7 +28,34 @@ jobs:
         uses: actions/dependency-review-action@v1
 ```
 
-Please keep in mind that you need a GitHub Advanced Security license if you're running this Action on private repos.
+Please keep in mind that you need a GitHub Advanced Security license
+if you're running this Action on private repos.
+
+## Configuration
+
+The Dependency Review Action uses a YAML configuration file. It
+expects this file to be named `dependency-review.yml`, inside your
+`.github/` directory.
+
+Here's a sample configuration file:
+
+```yaml
+fail_on_severity: low
+```
+
+[Here](https://github.com/actions/dependency-review-action/blob/main/.github/dependency-review.yml)
+you can see an example of the configuration file we use for this repository.
+
+### Severity
+
+By default this Action blocks any pull request that contains a
+vulnerability of any severity level. You can override this behavior by
+setting an option in your configuration file:
+
+```yaml
+# choose one of: 'critical', 'high', 'moderate' or 'low'
+fail_on_severity: high
+```
 
 ## Getting help
 
