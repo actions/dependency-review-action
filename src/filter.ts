@@ -6,7 +6,7 @@ export function filterChangesBySeverity(
   changes: Changes
 ): Changes {
   const severityIdx = SEVERITIES.indexOf(severity)
-
+  let filteredChanges = []
   for (let change of changes) {
     if (
       change === undefined ||
@@ -15,16 +15,21 @@ export function filterChangesBySeverity(
     ) {
       continue
     }
-    change.vulnerabilities = change.vulnerabilities.filter(vuln => {
-      const vulnIdx = SEVERITIES.indexOf(vuln.severity)
-      if (vulnIdx <= severityIdx) {
-        return true
-      }
-    })
+
+    let fChange = {
+      ...change,
+      vulnerabilities: change.vulnerabilities.filter(vuln => {
+        const vulnIdx = SEVERITIES.indexOf(vuln.severity)
+        if (vulnIdx <= severityIdx) {
+          return true
+        }
+      })
+    }
+    filteredChanges.push(fChange)
   }
 
   // don't want to deal with changes with no vulnerabilities
-  let filteredChanges = changes.filter(
+  filteredChanges = filteredChanges.filter(
     change => change.vulnerabilities.length > 0
   )
   return filteredChanges
