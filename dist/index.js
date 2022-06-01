@@ -13633,7 +13633,7 @@ const fs = __importStar(__nccwpck_require__(7147));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
 const schemas_1 = __nccwpck_require__(1129);
 const path_1 = __importDefault(__nccwpck_require__(1017));
-exports.CONFIG_FILEPATH = './.github/dep-review.yml';
+exports.CONFIG_FILEPATH = './.github/dependency-review.yml';
 function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
     // By default we want to fail on all severities and allow all licenses.
     const defaultOptions = {

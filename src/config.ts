@@ -3,7 +3,7 @@ import YAML from 'yaml'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
 import path from 'path'
 
-export const CONFIG_FILEPATH = './.github/dep-review.yml'
+export const CONFIG_FILEPATH = './.github/dependency-review.yml'
 
 export function readConfigFile(
   filePath: string = CONFIG_FILEPATH

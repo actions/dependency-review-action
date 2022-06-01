@@ -53,4 +53,7 @@ test('it properly filters changes by severity', async () => {
 
   result = filterChangesBySeverity('low', changes)
   expect(changes).toEqual([npmChange, rubyChange])
+
+  result = filterChangesBySeverity('critical', changes)
+  expect(changes).toEqual([npmChange, rubyChange])
 })
