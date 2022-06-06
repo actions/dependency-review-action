@@ -26,8 +26,5 @@ export function readConfigFile(
     }
   }
 
-  const values = YAML.parse(data)
-  const parsed = ConfigurationOptionsSchema.parse(values)
-
-  return parsed
+  return ConfigurationOptionsSchema.parse(YAML.parse(data))
 }
