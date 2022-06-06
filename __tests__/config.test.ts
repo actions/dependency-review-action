@@ -16,3 +16,16 @@ test('returns a default config when the config file was not found', async () => 
   expect(options.fail_on_severity).toEqual('low')
   expect(options.allow_licenses).toEqual([])
 })
+
+test('it reads config files with empty options', async () => {
+  let options = readConfigFile('./__tests__/fixtures/no-licenses-config.yml')
+  expect(options.fail_on_severity).toEqual('critical')
+  expect(options.allow_licenses).toEqual(undefined)
+  expect(options.deny_licenses).toEqual(undefined)
+})
+
+test('it raises an error if both an allow and denylist are specified', async () => {
+  expect(() =>
+    readConfigFile('./__tests__/fixtures/conflictive-config.yml')
+  ).toThrow()
+})

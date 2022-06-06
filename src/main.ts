@@ -6,6 +6,7 @@ import {RequestError} from '@octokit/request-error'
 import {Change, PullRequestSchema, Severity} from './schemas'
 import {readConfigFile} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
+import {hasInvalidLicenses, printLicensesError} from './licenses'
 
 async function run(): Promise<void> {
   try {
@@ -34,6 +35,17 @@ async function run(): Promise<void> {
       minSeverity as Severity,
       changes
     )
+
+    let licenseErrors = hasInvalidLicenses(
+      changes,
+      config.allow_licenses,
+      config.deny_licenses
+    )
+
+    if (licenseErrors.length > 0) {
+      printLicensesError(licenseErrors)
+      throw new Error('Dependency review detected incompatible licenses.')
+    }
 
     for (const change of filteredChanges) {
       if (
