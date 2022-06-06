@@ -61,6 +61,45 @@ exports.compare = compare;
 
 /***/ }),
 
+/***/ 3247:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.hasInvalidLicenses = void 0;
+function hasInvalidLicenses(changes, allowLicenses, failLicenses) {
+    let disallowed = [];
+    if (allowLicenses === undefined) {
+        allowLicenses = [];
+    }
+    if (failLicenses === undefined) {
+        failLicenses = [];
+    }
+    for (const change of changes) {
+        let license = change.license;
+        // TODO: be loud about unknown licenses
+        if (license === null) {
+            continue;
+        }
+        if (allowLicenses.length > 0) {
+            if (!allowLicenses.includes(license)) {
+                disallowed.push(change);
+            }
+        }
+        else if (failLicenses.length > 0) {
+            if (failLicenses.includes(license)) {
+                disallowed.push(change);
+            }
+        }
+    }
+    return disallowed;
+}
+exports.hasInvalidLicenses = hasInvalidLicenses;
+
+
+/***/ }),
+
 /***/ 3109:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -110,6 +149,7 @@ const request_error_1 = __nccwpck_require__(537);
 const schemas_1 = __nccwpck_require__(8774);
 const config_1 = __nccwpck_require__(6373);
 const filter_1 = __nccwpck_require__(8752);
+const licenses_1 = __nccwpck_require__(3247);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -126,6 +166,12 @@ function run() {
             let config = (0, config_1.readConfigFile)();
             let minSeverity = config.fail_on_severity;
             let failed = false;
+            let licenseErrors = (0, licenses_1.hasInvalidLicenses)(changes, config.allow_licenses, config.deny_licenses);
+            if (licenseErrors.length > 0) {
+                printLicensesError(licenseErrors, config.allow_licenses, config.deny_licenses);
+                core.setFailed('Dependency review detected incompatible licenses.');
+                return;
+            }
             let filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
             for (const change of filteredChanges) {
                 if (change.change_type === 'added' &&
@@ -174,6 +220,19 @@ function renderSeverity(severity) {
         low: 'grey'
     }[severity];
     return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
+}
+function printLicensesError(changes, allowLicenses, denyLicenses) {
+    core.info('Dependency review detected incompatible licenses.');
+    if (allowLicenses !== undefined) {
+        core.info('\nAllowed licenses: ' + allowLicenses.join(', ') + '\n');
+    }
+    if (denyLicenses !== undefined) {
+        core.info('\nDenied licenses: ' + denyLicenses.join(', ') + '\n');
+    }
+    core.info('The following dependencies have incompatible licenses:\n');
+    for (const change of changes) {
+        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
+    }
 }
 run();
 
@@ -13652,9 +13711,7 @@ function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
             throw error;
         }
     }
-    const values = yaml_1.default.parse(data);
-    const parsed = schemas_1.ConfigurationOptionsSchema.parse(values);
-    return parsed;
+    return schemas_1.ConfigurationOptionsSchema.parse(yaml_1.default.parse(data));
 }
 exports.readConfigFile = readConfigFile;
 
