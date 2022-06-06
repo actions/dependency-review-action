@@ -49,5 +49,5 @@ let rubyChange: Change = {
 test('hasInvalidLicenses fails if an unallowed license is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
   const result = hasInvalidLicenses(changes, ['BSD'], [])
-  expect(result.length).toBe(1)
+  expect(result[0]).toBe(npmChange)
 })

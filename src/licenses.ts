@@ -1,3 +1,4 @@
+import * as core from '@actions/core'
 import {Change, ChangeSchema} from './schemas'
 
 export function hasInvalidLicenses(
@@ -21,14 +22,10 @@ export function hasInvalidLicenses(
       continue
     }
 
-    if (allowLicenses.includes(license)) {
+    if (!allowLicenses.includes(license)) {
       disallowed.push(change)
     }
   }
 
   return disallowed
-}
-
-export function printLicensesError(changes: Array<Change>): void {
-  return
 }

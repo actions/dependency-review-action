@@ -6,7 +6,7 @@ import {RequestError} from '@octokit/request-error'
 import {Change, PullRequestSchema, Severity} from './schemas'
 import {readConfigFile} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
-import {hasInvalidLicenses, printLicensesError} from './licenses'
+import {hasInvalidLicenses} from './licenses'
 
 async function run(): Promise<void> {
   try {
@@ -43,7 +43,7 @@ async function run(): Promise<void> {
     )
 
     if (licenseErrors.length > 0) {
-      printLicensesError(licenseErrors)
+      printLicensesError(licenseErrors, config.allow_licenses!)
       throw new Error('Dependency review detected incompatible licenses.')
     }
 
@@ -109,6 +109,20 @@ function renderSeverity(
     } as const
   )[severity]
   return `${styles.color[color].open}(${severity} severity)${styles.color[color].close}`
+}
+
+function printLicensesError(
+  changes: Array<Change>,
+  allowLicenses: Array<string>
+): void {
+  core.info('Dependency review detected incompatible licenses.')
+  core.info('\nAllowed licenses: ' + allowLicenses.join(', ') + '\n')
+  core.info('The following dependencies have incompatible licenses:')
+  for (const change of changes) {
+    core.info(
+      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – ${change.license}`
+    )
+  }
 }
 
 run()
