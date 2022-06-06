@@ -44,7 +44,8 @@ async function run(): Promise<void> {
 
     if (licenseErrors.length > 0) {
       printLicensesError(licenseErrors, config.allow_licenses!)
-      throw new Error('Dependency review detected incompatible licenses.')
+      core.setFailed('Dependency review detected incompatible licenses.')
+      return
     }
 
     for (const change of filteredChanges) {
@@ -117,10 +118,10 @@ function printLicensesError(
 ): void {
   core.info('Dependency review detected incompatible licenses.')
   core.info('\nAllowed licenses: ' + allowLicenses.join(', ') + '\n')
-  core.info('The following dependencies have incompatible licenses:')
+  core.info('The following dependencies have incompatible licenses:\n')
   for (const change of changes) {
     core.info(
-      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – ${change.license}`
+      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – License: ${styles.color.red.open}${change.license}${styles.color.red.close}`
     )
   }
 }
