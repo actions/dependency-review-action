@@ -31,11 +31,6 @@ async function run(): Promise<void> {
     let minSeverity = config.fail_on_severity
     let failed = false
 
-    let filteredChanges = filterChangesBySeverity(
-      minSeverity as Severity,
-      changes
-    )
-
     let licenseErrors = hasInvalidLicenses(
       changes,
       config.allow_licenses,
@@ -43,10 +38,19 @@ async function run(): Promise<void> {
     )
 
     if (licenseErrors.length > 0) {
-      printLicensesError(licenseErrors, config.allow_licenses!)
+      printLicensesError(
+        licenseErrors,
+        config.allow_licenses,
+        config.deny_licenses
+      )
       core.setFailed('Dependency review detected incompatible licenses.')
       return
     }
+
+    let filteredChanges = filterChangesBySeverity(
+      minSeverity as Severity,
+      changes
+    )
 
     for (const change of filteredChanges) {
       if (
@@ -114,10 +118,19 @@ function renderSeverity(
 
 function printLicensesError(
   changes: Array<Change>,
-  allowLicenses: Array<string>
+  allowLicenses: Array<string> | undefined,
+  denyLicenses: Array<string> | undefined
 ): void {
   core.info('Dependency review detected incompatible licenses.')
-  core.info('\nAllowed licenses: ' + allowLicenses.join(', ') + '\n')
+
+  if (allowLicenses !== undefined) {
+    core.info('\nAllowed licenses: ' + allowLicenses.join(', ') + '\n')
+  }
+
+  if (denyLicenses !== undefined) {
+    core.info('\nDenied licenses: ' + denyLicenses.join(', ') + '\n')
+  }
+
   core.info('The following dependencies have incompatible licenses:\n')
   for (const change of changes) {
     core.info(

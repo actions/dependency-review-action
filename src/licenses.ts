@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import {Change, ChangeSchema} from './schemas'
 
 export function hasInvalidLicenses(
@@ -21,9 +20,14 @@ export function hasInvalidLicenses(
     if (license === null) {
       continue
     }
-
-    if (!allowLicenses.includes(license)) {
-      disallowed.push(change)
+    if (allowLicenses.length > 0) {
+      if (!allowLicenses.includes(license)) {
+        disallowed.push(change)
+      }
+    } else if (failLicenses.length > 0) {
+      if (failLicenses.includes(license)) {
+        disallowed.push(change)
+      }
     }
   }
 
