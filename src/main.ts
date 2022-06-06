@@ -3,7 +3,9 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {PullRequestSchema} from './schemas'
+import {Change, PullRequestSchema, Severity} from './schemas'
+import {readConfigFile} from '../src/config'
+import {filterChangesBySeverity} from '../src/filter'
 
 async function run(): Promise<void> {
   try {
@@ -24,24 +26,22 @@ async function run(): Promise<void> {
       headRef: pull_request.head.sha
     })
 
+    let config = readConfigFile()
+    let minSeverity = config.fail_on_severity
     let failed = false
 
-    for (const change of changes) {
+    let filteredChanges = filterChangesBySeverity(
+      minSeverity as Severity,
+      changes
+    )
+
+    for (const change of filteredChanges) {
       if (
         change.change_type === 'added' &&
         change.vulnerabilities !== undefined &&
         change.vulnerabilities.length > 0
       ) {
-        for (const vuln of change.vulnerabilities) {
-          core.info(
-            `${styles.bold.open}${change.manifest} » ${change.name}@${
-              change.version
-            }${styles.bold.close} – ${vuln.advisory_summary} ${renderSeverity(
-              vuln.severity
-            )}`
-          )
-          core.info(`  ↪ ${vuln.advisory_url}`)
-        }
+        printChangeVulnerabilities(change)
         failed = true
       }
     }
@@ -49,7 +49,9 @@ async function run(): Promise<void> {
     if (failed) {
       throw new Error('Dependency review detected vulnerable packages.')
     } else {
-      core.info('Dependency review did not detect any vulnerable packages.')
+      core.info(
+        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or above.`
+      )
     }
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
@@ -67,6 +69,19 @@ async function run(): Promise<void> {
         core.setFailed('Unexpected fatal error')
       }
     }
+  }
+}
+
+function printChangeVulnerabilities(change: Change) {
+  for (const vuln of change.vulnerabilities) {
+    core.info(
+      `${styles.bold.open}${change.manifest} » ${change.name}@${
+        change.version
+      }${styles.bold.close} – ${vuln.advisory_summary} ${renderSeverity(
+        vuln.severity
+      )}`
+    )
+    core.info(`  ↪ ${vuln.advisory_url}`)
   }
 }
 

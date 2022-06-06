@@ -1,0 +1,8 @@
+fail_on_severity: low
+allow_licenses:
+  - 'GPL 3.0'
+  - 'BSD 3 Clause'
+  - 'MIT'
+#deny_licenses:
+#  - "LGPL 2.0"
+#  - "BSD 2 Clause"
