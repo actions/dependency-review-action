@@ -76,7 +76,7 @@ exports.getDeniedLicenseChanges = void 0;
  * @returns {Array<Change} The list of denied changes.
  */
 function getDeniedLicenseChanges(changes, licenses) {
-    let { allow = [], deny = [] } = licenses;
+    let { allow = null, deny = null } = licenses;
     let disallowed = [];
     for (const change of changes) {
         let license = change.license;
@@ -84,12 +84,12 @@ function getDeniedLicenseChanges(changes, licenses) {
         if (license === null) {
             continue;
         }
-        if (allow.length > 0) {
+        if (allow !== null) {
             if (!allow.includes(license)) {
                 disallowed.push(change);
             }
         }
-        else if (deny.length > 0) {
+        else if (deny !== null) {
             if (deny.includes(license)) {
                 disallowed.push(change);
             }

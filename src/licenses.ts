@@ -14,7 +14,7 @@ export function getDeniedLicenseChanges(
     deny?: Array<string>
   }
 ): Array<Change> {
-  let {allow = [], deny = []} = licenses
+  let {allow = null, deny = null} = licenses
 
   let disallowed: Change[] = []
 
@@ -24,11 +24,11 @@ export function getDeniedLicenseChanges(
     if (license === null) {
       continue
     }
-    if (allow.length > 0) {
+    if (allow !== null) {
       if (!allow.includes(license)) {
         disallowed.push(change)
       }
-    } else if (deny.length > 0) {
+    } else if (deny !== null) {
       if (deny.includes(license)) {
         disallowed.push(change)
       }
