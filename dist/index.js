@@ -67,35 +67,37 @@ exports.compare = compare;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.hasInvalidLicenses = void 0;
-function hasInvalidLicenses(changes, allowLicenses, failLicenses) {
+exports.getDeniedLicenseChanges = void 0;
+/**
+ * Loops through a list of changes, filtering and returning the
+ * ones that don't conform to the licenses allow/deny lists.
+ * @param {Change[]} changes The list of changes to filter.
+ * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
+ * @returns {Array<Change} The list of denied changes.
+ */
+function getDeniedLicenseChanges(changes, licenses) {
+    let { allow = [], deny = [] } = licenses;
     let disallowed = [];
-    if (allowLicenses === undefined) {
-        allowLicenses = [];
-    }
-    if (failLicenses === undefined) {
-        failLicenses = [];
-    }
     for (const change of changes) {
         let license = change.license;
         // TODO: be loud about unknown licenses
         if (license === null) {
             continue;
         }
-        if (allowLicenses.length > 0) {
-            if (!allowLicenses.includes(license)) {
+        if (allow.length > 0) {
+            if (!allow.includes(license)) {
                 disallowed.push(change);
             }
         }
-        else if (failLicenses.length > 0) {
-            if (failLicenses.includes(license)) {
+        else if (deny.length > 0) {
+            if (deny.includes(license)) {
                 disallowed.push(change);
             }
         }
     }
     return disallowed;
 }
-exports.hasInvalidLicenses = hasInvalidLicenses;
+exports.getDeniedLicenseChanges = getDeniedLicenseChanges;
 
 
 /***/ }),
@@ -166,9 +168,13 @@ function run() {
             let config = (0, config_1.readConfigFile)();
             let minSeverity = config.fail_on_severity;
             let failed = false;
-            let licenseErrors = (0, licenses_1.hasInvalidLicenses)(changes, config.allow_licenses, config.deny_licenses);
+            let licenses = {
+                allow: config.allow_licenses,
+                deny: config.deny_licenses
+            };
+            let licenseErrors = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
-                printLicensesError(licenseErrors, config.allow_licenses, config.deny_licenses);
+                printLicensesError(licenseErrors, licenses);
                 core.setFailed('Dependency review detected incompatible licenses.');
                 return;
             }
@@ -221,13 +227,17 @@ function renderSeverity(severity) {
     }[severity];
     return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
 }
-function printLicensesError(changes, allowLicenses, denyLicenses) {
-    core.info('Dependency review detected incompatible licenses.');
-    if (allowLicenses !== undefined) {
-        core.info('\nAllowed licenses: ' + allowLicenses.join(', ') + '\n');
+function printLicensesError(changes, licenses) {
+    if (changes.length == 0) {
+        return;
     }
-    if (denyLicenses !== undefined) {
-        core.info('\nDenied licenses: ' + denyLicenses.join(', ') + '\n');
+    let { allow = [], deny = [] } = licenses;
+    core.info('Dependency review detected incompatible licenses.');
+    if (allow.length > 0) {
+        core.info('\nAllowed licenses: ' + allow.join(', ') + '\n');
+    }
+    if (deny.length > 0) {
+        core.info('\nDenied licenses: ' + deny.join(', ') + '\n');
     }
     core.info('The following dependencies have incompatible licenses:\n');
     for (const change of changes) {
