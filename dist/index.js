@@ -13706,8 +13706,7 @@ exports.CONFIG_FILEPATH = './.github/dependency-review.yml';
 function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
     // By default we want to fail on all severities and allow all licenses.
     const defaultOptions = {
-        fail_on_severity: 'low',
-        allow_licenses: []
+        fail_on_severity: 'low'
     };
     let data;
     try {

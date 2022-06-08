@@ -14,7 +14,7 @@ test('the default config path handles .yml and .yaml', async () => {
 test('returns a default config when the config file was not found', async () => {
   let options = readConfigFile('fixtures/i-dont-exist')
   expect(options.fail_on_severity).toEqual('low')
-  expect(options.allow_licenses).toEqual([])
+  expect(options.allow_licenses).toEqual(undefined)
 })
 
 test('it reads config files with empty options', async () => {

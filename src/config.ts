@@ -10,8 +10,7 @@ export function readConfigFile(
 ): ConfigurationOptions {
   // By default we want to fail on all severities and allow all licenses.
   const defaultOptions: ConfigurationOptions = {
-    fail_on_severity: 'low',
-    allow_licenses: []
+    fail_on_severity: 'low'
   }
 
   let data
