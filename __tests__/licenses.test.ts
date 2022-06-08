@@ -1,6 +1,6 @@
 import {expect, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {hasInvalidLicenses} from '../src/licenses'
+import {getDeniedLicenseChanges} from '../src/licenses'
 
 let npmChange: Change = {
   manifest: 'package.json',
@@ -46,14 +46,14 @@ let rubyChange: Change = {
   ]
 }
 
-test('hasInvalidLicenses fails a licenses outside the allow list is found', async () => {
+test('it fails if a license outside the allow list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const invalidChanges = hasInvalidLicenses(changes, {allow: ['BSD']})
+  const invalidChanges = getDeniedLicenseChanges(changes, {allow: ['BSD']})
   expect(invalidChanges[0]).toBe(npmChange)
 })
 
-test('hasInvalidLicenses fails if a denied license is found', async () => {
+test('it fails if a license inside the deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const invalidChanges = hasInvalidLicenses(changes, {deny: ['BSD']})
+  const invalidChanges = getDeniedLicenseChanges(changes, {deny: ['BSD']})
   expect(invalidChanges[0]).toBe(rubyChange)
 })

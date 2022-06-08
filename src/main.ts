@@ -6,7 +6,7 @@ import {RequestError} from '@octokit/request-error'
 import {Change, PullRequestSchema, Severity} from './schemas'
 import {readConfigFile} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
-import {hasInvalidLicenses} from './licenses'
+import {getDeniedLicenseChanges} from './licenses'
 
 async function run(): Promise<void> {
   try {
@@ -31,18 +31,15 @@ async function run(): Promise<void> {
     let minSeverity = config.fail_on_severity
     let failed = false
 
-    let licenseErrors = hasInvalidLicenses(
-      changes,
-      config.allow_licenses,
-      config.deny_licenses
-    )
+    let licenses = {
+      allow: config.allow_licenses,
+      deny: config.deny_licenses
+    }
+
+    let licenseErrors = getDeniedLicenseChanges(changes, licenses)
 
     if (licenseErrors.length > 0) {
-      printLicensesError(
-        licenseErrors,
-        config.allow_licenses,
-        config.deny_licenses
-      )
+      printLicensesError(licenseErrors, licenses)
       core.setFailed('Dependency review detected incompatible licenses.')
       return
     }
@@ -118,17 +115,25 @@ function renderSeverity(
 
 function printLicensesError(
   changes: Array<Change>,
-  allowLicenses: Array<string> | undefined,
-  denyLicenses: Array<string> | undefined
+  licenses: {
+    allow?: Array<string>
+    deny?: Array<string>
+  }
 ): void {
-  core.info('Dependency review detected incompatible licenses.')
-
-  if (allowLicenses !== undefined) {
-    core.info('\nAllowed licenses: ' + allowLicenses.join(', ') + '\n')
+  if (changes.length == 0) {
+    return
   }
 
-  if (denyLicenses !== undefined) {
-    core.info('\nDenied licenses: ' + denyLicenses.join(', ') + '\n')
+  let {allow = [], deny = []} = licenses
+
+  core.info('Dependency review detected incompatible licenses.')
+
+  if (allow.length > 0) {
+    core.info('\nAllowed licenses: ' + allow.join(', ') + '\n')
+  }
+
+  if (deny.length > 0) {
+    core.info('\nDenied licenses: ' + deny.join(', ') + '\n')
   }
 
   core.info('The following dependencies have incompatible licenses:\n')

@@ -1,18 +1,22 @@
 import {Change, ChangeSchema} from './schemas'
 
-export function hasInvalidLicenses(
+/**
+ * Loops through a list of changes, filtering and returning the
+ * ones that don't conform to the licenses allow/deny lists.
+ * @param {Change[]} changes The list of changes to filter.
+ * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
+ * @returns {Array<Change} The list of denied changes.
+ */
+export function getDeniedLicenseChanges(
   changes: Array<Change>,
-  allowLicenses: Array<string> | undefined,
-  failLicenses: Array<string> | undefined
+  licenses: {
+    allow?: Array<string>
+    deny?: Array<string>
+  }
 ): Array<Change> {
-  let disallowed: Change[] = []
+  let {allow = [], deny = []} = licenses
 
-  if (allowLicenses === undefined) {
-    allowLicenses = []
-  }
-  if (failLicenses === undefined) {
-    failLicenses = []
-  }
+  let disallowed: Change[] = []
 
   for (const change of changes) {
     let license = change.license
@@ -20,12 +24,12 @@ export function hasInvalidLicenses(
     if (license === null) {
       continue
     }
-    if (allowLicenses.length > 0) {
-      if (!allowLicenses.includes(license)) {
+    if (allow.length > 0) {
+      if (!allow.includes(license)) {
         disallowed.push(change)
       }
-    } else if (failLicenses.length > 0) {
-      if (failLicenses.includes(license)) {
+    } else if (deny.length > 0) {
+      if (deny.includes(license)) {
         disallowed.push(change)
       }
     }
