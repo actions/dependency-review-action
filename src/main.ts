@@ -40,7 +40,7 @@ async function run(): Promise<void> {
 
     if (licenseErrors.length > 0) {
       printLicensesError(licenseErrors, licenses)
-      core.setFailed('Dependency review detected incompatible licenses.')
+      core.setFailed('Dependency review detected prohibited licenses.')
       return
     }
 
@@ -126,7 +126,7 @@ function printLicensesError(
 
   let {allow = [], deny = []} = licenses
 
-  core.info('Dependency review detected incompatible licenses.')
+  core.info('Dependency review detected prohibited licenses.')
 
   if (allow.length > 0) {
     core.info('\nAllowed licenses: ' + allow.join(', ') + '\n')

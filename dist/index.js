@@ -180,7 +180,7 @@ function run() {
             let licenseErrors = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
                 printLicensesError(licenseErrors, licenses);
-                core.setFailed('Dependency review detected incompatible licenses.');
+                core.setFailed('Dependency review detected prohibited licenses.');
                 return;
             }
             let filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
@@ -237,7 +237,7 @@ function printLicensesError(changes, licenses) {
         return;
     }
     let { allow = [], deny = [] } = licenses;
-    core.info('Dependency review detected incompatible licenses.');
+    core.info('Dependency review detected prohibited licenses.');
     if (allow.length > 0) {
         core.info('\nAllowed licenses: ' + allow.join(', ') + '\n');
     }
