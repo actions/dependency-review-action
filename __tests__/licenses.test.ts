@@ -57,3 +57,14 @@ test('it fails if a license inside the deny list is found', async () => {
   const invalidChanges = getDeniedLicenseChanges(changes, {deny: ['BSD']})
   expect(invalidChanges[0]).toBe(rubyChange)
 })
+
+// This is more of a "here's a behavior that might be surprising" than an actual
+// thing we want in the system. Please remove this test after refactoring.
+test('it fails all license checks when allow is provided an empty array', async () => {
+  const changes: Changes = [npmChange, rubyChange]
+  let invalidChanges = getDeniedLicenseChanges(changes, {
+    allow: [],
+    deny: ['BSD']
+  })
+  expect(invalidChanges.length).toBe(2)
+})
