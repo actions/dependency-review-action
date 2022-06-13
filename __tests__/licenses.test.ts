@@ -8,7 +8,7 @@ let npmChange: Change = {
   ecosystem: 'npm',
   name: 'Reeuhq',
   version: '1.0.2',
-  package_url: 'somepurl',
+  package_url: 'pkg:npm/reeuhq@1.0.2',
   license: 'MIT',
   source_repository_url: 'github.com/some-repo',
   vulnerabilities: [
@@ -27,7 +27,7 @@ let rubyChange: Change = {
   ecosystem: 'rubygems',
   name: 'actionsomething',
   version: '3.2.0',
-  package_url: 'somerubypurl',
+  package_url: 'pkg:gem/actionsomething@3.2.0',
   license: 'BSD',
   source_repository_url: 'github.com/some-repo',
   vulnerabilities: [
