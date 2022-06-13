@@ -1,29 +1,33 @@
-import * as fs from 'fs'
-import YAML from 'yaml'
+import * as core from '@actions/core'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
-import path from 'path'
+import {Severity} from './schemas'
 
 export const CONFIG_FILEPATH = './.github/dependency-review.yml'
 
-export function readConfigFile(
-  filePath: string = CONFIG_FILEPATH
-): ConfigurationOptions {
+export function readConfig(): ConfigurationOptions {
   // By default we want to fail on all severities and allow all licenses.
-  const defaultOptions: ConfigurationOptions = {
-    fail_on_severity: 'low'
+  let options = {
+    fail_on_severity: 'low',
+    allow_licenses: [] as string[],
+    deny_licenses: [] as string[]
   }
 
-  let data
+  let severity = core.getInput('fail-on-severity')
+  let allowedLicenses = core.getInput('allowed-licenses')
+  let denyLicenses = core.getInput('deny-licenses')
 
-  try {
-    data = fs.readFileSync(path.resolve(filePath), 'utf-8')
-  } catch (error: any) {
-    if (error.code && error.code === 'ENOENT') {
-      return defaultOptions
-    } else {
-      throw error
-    }
+  // TODO test the empty string case
+  if (severity.length > 0) {
+    options.fail_on_severity = severity as Severity
   }
 
-  return ConfigurationOptionsSchema.parse(YAML.parse(data))
+  if (allowedLicenses.length > 0) {
+    options.allow_licenses = allowedLicenses.split(',').map(s => s.trim())
+  }
+
+  if (denyLicenses.length > 0) {
+    options.deny_licenses = denyLicenses.split(',').map(s => s.trim())
+  }
+
+  return ConfigurationOptionsSchema.parse(options)
 }

@@ -4,7 +4,7 @@ import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
 import {Change, PullRequestSchema, Severity} from './schemas'
-import {readConfigFile} from '../src/config'
+import {readConfig} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
 
@@ -27,7 +27,7 @@ async function run(): Promise<void> {
       headRef: pull_request.head.sha
     })
 
-    let config = readConfigFile()
+    let config = readConfig()
     let minSeverity = config.fail_on_severity
     let failed = false
 

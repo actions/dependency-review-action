@@ -1,31 +1,39 @@
-import {expect, test} from '@jest/globals'
-import {readConfigFile} from '../src/config'
+import * as core from '@actions/core'
+import {expect, test, jest, beforeEach} from '@jest/globals'
+import {readConfig} from '../src/config'
 
-test('reads the config file', async () => {
-  let options = readConfigFile('./__tests__/fixtures/config-allow-sample.yml')
+beforeEach(() => {
+  /* reset to our defaults after every test run */
+  process.env['INPUT_FAIL-ON-SEVERITY'] = 'low'
+  process.env['INPUT_ALLOWED-LICENSES'] = ''
+  process.env['INPUT_DENY-LICENSES'] = ''
+})
+
+test('it defaults to low severity', async () => {
+  let options = readConfig()
+  expect(options.fail_on_severity).toEqual('low')
+})
+
+test('it reads custom configs', async () => {
+  process.env['INPUT_FAIL-ON-SEVERITY'] = 'critical'
+  process.env['INPUT_ALLOWED-LICENSES'] = ' BSD, GPL 2 '
+
+  let options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
   expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
-test('the default config path handles .yml and .yaml', async () => {
-  expect(true).toEqual(true)
-})
+test('it defaults to empty allow/deny lists ', async () => {
+  let options = readConfig()
 
-test('returns a default config when the config file was not found', async () => {
-  let options = readConfigFile('fixtures/i-dont-exist')
-  expect(options.fail_on_severity).toEqual('low')
-  expect(options.allow_licenses).toEqual(undefined)
-})
-
-test('it reads config files with empty options', async () => {
-  let options = readConfigFile('./__tests__/fixtures/no-licenses-config.yml')
-  expect(options.fail_on_severity).toEqual('critical')
   expect(options.allow_licenses).toEqual(undefined)
   expect(options.deny_licenses).toEqual(undefined)
 })
 
 test('it raises an error if both an allow and denylist are specified', async () => {
-  expect(() =>
-    readConfigFile('./__tests__/fixtures/conflictive-config.yml')
-  ).toThrow()
+  process.env['INPUT_ALLOWED-LICENSES'] = 'MIT'
+  process.env['INPUT_DENY-LICENSES'] = 'BSD'
+  expect(() => readConfig()).toThrow()
 })
+
+test('it raises an error when given an unknown severity', async () => {})
