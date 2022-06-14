@@ -10,10 +10,10 @@ inputs:
     description: 'Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.'
     required: false
     default: 'low'
-  allow_licenses:
+  allow-licenses:
     description: Comma-separated list of allowed licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
-  deny_licenses:
+  deny-licenses:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
 runs:
