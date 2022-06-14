@@ -180,7 +180,7 @@ function run() {
             let licenseErrors = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
                 printLicensesError(licenseErrors, licenses);
-                core.setFailed('Dependency review detected prohibited licenses.');
+                core.setFailed('Dependency review detected incompatible licenses.');
                 return;
             }
             let filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
@@ -196,7 +196,7 @@ function run() {
                 throw new Error('Dependency review detected vulnerable packages.');
             }
             else {
-                core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or above.`);
+                core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
             }
         }
         catch (error) {
@@ -237,13 +237,6 @@ function printLicensesError(changes, licenses) {
         return;
     }
     let { allow = [], deny = [] } = licenses;
-    core.info('Dependency review detected prohibited licenses.');
-    if (allow.length > 0) {
-        core.info('\nAllowed licenses: ' + allow.join(', ') + '\n');
-    }
-    if (deny.length > 0) {
-        core.info('\nDenied licenses: ' + deny.join(', ') + '\n');
-    }
     core.info('The following dependencies have incompatible licenses:\n');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
@@ -13708,7 +13701,7 @@ function readConfig() {
     const severity = core.getInput('fail-on-severity') || 'low';
     const allowedLicenses = core.getInput('allowed-licenses');
     const denyLicenses = core.getInput('deny-licenses');
-    options.fail_on_severity = severity;
+    options.fail_on_severity = severity.toLowerCase();
     if (allowedLicenses.length > 0) {
         options.allow_licenses = allowedLicenses.split(',').map(s => s.trim());
     }
