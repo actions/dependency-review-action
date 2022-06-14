@@ -61,6 +61,52 @@ exports.compare = compare;
 
 /***/ }),
 
+/***/ 3247:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getDeniedLicenseChanges = void 0;
+/**
+ * Loops through a list of changes, filtering and returning the
+ * ones that don't conform to the licenses allow/deny lists.
+ *
+ * Keep in mind that we don't let users specify both an allow and a deny
+ * list in their config files, so this code works under the assumption that
+ * one of the two list parameters will be empty. If both lists are provided,
+ * we will ignore the deny list.
+ * @param {Change[]} changes The list of changes to filter.
+ * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
+ * @returns {Array<Change} The list of denied changes.
+ */
+function getDeniedLicenseChanges(changes, licenses) {
+    let { allow, deny } = licenses;
+    let disallowed = [];
+    for (const change of changes) {
+        let license = change.license;
+        // TODO: be loud about unknown licenses
+        if (license === null) {
+            continue;
+        }
+        if (allow !== undefined) {
+            if (!allow.includes(license)) {
+                disallowed.push(change);
+            }
+        }
+        else if (deny !== undefined) {
+            if (deny.includes(license)) {
+                disallowed.push(change);
+            }
+        }
+    }
+    return disallowed;
+}
+exports.getDeniedLicenseChanges = getDeniedLicenseChanges;
+
+
+/***/ }),
+
 /***/ 3109:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -110,6 +156,7 @@ const request_error_1 = __nccwpck_require__(537);
 const schemas_1 = __nccwpck_require__(8774);
 const config_1 = __nccwpck_require__(6373);
 const filter_1 = __nccwpck_require__(8752);
+const licenses_1 = __nccwpck_require__(3247);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -126,6 +173,16 @@ function run() {
             let config = (0, config_1.readConfigFile)();
             let minSeverity = config.fail_on_severity;
             let failed = false;
+            let licenses = {
+                allow: config.allow_licenses,
+                deny: config.deny_licenses
+            };
+            let licenseErrors = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
+            if (licenseErrors.length > 0) {
+                printLicensesError(licenseErrors, licenses);
+                core.setFailed('Dependency review detected prohibited licenses.');
+                return;
+            }
             let filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
             for (const change of filteredChanges) {
                 if (change.change_type === 'added' &&
@@ -174,6 +231,23 @@ function renderSeverity(severity) {
         low: 'grey'
     }[severity];
     return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
+}
+function printLicensesError(changes, licenses) {
+    if (changes.length == 0) {
+        return;
+    }
+    let { allow = [], deny = [] } = licenses;
+    core.info('Dependency review detected prohibited licenses.');
+    if (allow.length > 0) {
+        core.info('\nAllowed licenses: ' + allow.join(', ') + '\n');
+    }
+    if (deny.length > 0) {
+        core.info('\nDenied licenses: ' + deny.join(', ') + '\n');
+    }
+    core.info('The following dependencies have incompatible licenses:\n');
+    for (const change of changes) {
+        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
+    }
 }
 run();
 
@@ -13637,8 +13711,7 @@ exports.CONFIG_FILEPATH = './.github/dependency-review.yml';
 function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
     // By default we want to fail on all severities and allow all licenses.
     const defaultOptions = {
-        fail_on_severity: 'low',
-        allow_licenses: []
+        fail_on_severity: 'low'
     };
     let data;
     try {
@@ -13652,9 +13725,7 @@ function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
             throw error;
         }
     }
-    const values = yaml_1.default.parse(data);
-    const parsed = schemas_1.ConfigurationOptionsSchema.parse(values);
-    return parsed;
+    return schemas_1.ConfigurationOptionsSchema.parse(yaml_1.default.parse(data));
 }
 exports.readConfigFile = readConfigFile;
 

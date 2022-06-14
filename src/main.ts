@@ -6,6 +6,7 @@ import {RequestError} from '@octokit/request-error'
 import {Change, PullRequestSchema, Severity} from './schemas'
 import {readConfigFile} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
+import {getDeniedLicenseChanges} from './licenses'
 
 async function run(): Promise<void> {
   try {
@@ -29,6 +30,19 @@ async function run(): Promise<void> {
     let config = readConfigFile()
     let minSeverity = config.fail_on_severity
     let failed = false
+
+    let licenses = {
+      allow: config.allow_licenses,
+      deny: config.deny_licenses
+    }
+
+    let licenseErrors = getDeniedLicenseChanges(changes, licenses)
+
+    if (licenseErrors.length > 0) {
+      printLicensesError(licenseErrors, licenses)
+      core.setFailed('Dependency review detected prohibited licenses.')
+      return
+    }
 
     let filteredChanges = filterChangesBySeverity(
       minSeverity as Severity,
@@ -97,6 +111,37 @@ function renderSeverity(
     } as const
   )[severity]
   return `${styles.color[color].open}(${severity} severity)${styles.color[color].close}`
+}
+
+function printLicensesError(
+  changes: Array<Change>,
+  licenses: {
+    allow?: Array<string>
+    deny?: Array<string>
+  }
+): void {
+  if (changes.length == 0) {
+    return
+  }
+
+  let {allow = [], deny = []} = licenses
+
+  core.info('Dependency review detected prohibited licenses.')
+
+  if (allow.length > 0) {
+    core.info('\nAllowed licenses: ' + allow.join(', ') + '\n')
+  }
+
+  if (deny.length > 0) {
+    core.info('\nDenied licenses: ' + deny.join(', ') + '\n')
+  }
+
+  core.info('The following dependencies have incompatible licenses:\n')
+  for (const change of changes) {
+    core.info(
+      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – License: ${styles.color.red.open}${change.license}${styles.color.red.close}`
+    )
+  }
 }
 
 run()

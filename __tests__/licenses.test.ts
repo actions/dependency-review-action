@@ -1,6 +1,6 @@
 import {expect, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {filterChangesBySeverity} from '../src/filter'
+import {getDeniedLicenseChanges} from '../src/licenses'
 
 let npmChange: Change = {
   manifest: 'package.json',
@@ -46,14 +46,25 @@ let rubyChange: Change = {
   ]
 }
 
-test('it properly filters changes by severity', async () => {
-  const changes = [npmChange, rubyChange]
-  let result = filterChangesBySeverity('high', changes)
-  expect(result).toEqual([npmChange])
+test('it fails if a license outside the allow list is found', async () => {
+  const changes: Changes = [npmChange, rubyChange]
+  const invalidChanges = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  expect(invalidChanges[0]).toBe(npmChange)
+})
 
-  result = filterChangesBySeverity('low', changes)
-  expect(changes).toEqual([npmChange, rubyChange])
+test('it fails if a license inside the deny list is found', async () => {
+  const changes: Changes = [npmChange, rubyChange]
+  const invalidChanges = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  expect(invalidChanges[0]).toBe(rubyChange)
+})
 
-  result = filterChangesBySeverity('critical', changes)
-  expect(changes).toEqual([npmChange, rubyChange])
+// This is more of a "here's a behavior that might be surprising" than an actual
+// thing we want in the system. Please remove this test after refactoring.
+test('it fails all license checks when allow is provided an empty array', async () => {
+  const changes: Changes = [npmChange, rubyChange]
+  let invalidChanges = getDeniedLicenseChanges(changes, {
+    allow: [],
+    deny: ['BSD']
+  })
+  expect(invalidChanges.length).toBe(2)
 })
