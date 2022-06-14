@@ -13699,30 +13699,24 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readConfig = exports.CONFIG_FILEPATH = void 0;
+exports.readConfig = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const schemas_1 = __nccwpck_require__(1129);
-exports.CONFIG_FILEPATH = './.github/dependency-review.yml';
 function readConfig() {
+    let options = {};
     // By default we want to fail on all severities and allow all licenses.
-    let options = {
-        fail_on_severity: 'low',
-        allow_licenses: [],
-        deny_licenses: []
-    };
-    let severity = core.getInput('fail-on-severity');
-    let allowedLicenses = core.getInput('allowed-licenses');
-    let denyLicenses = core.getInput('deny-licenses');
-    // TODO test the empty string case
-    if (severity.length > 0) {
-        options.fail_on_severity = severity;
-    }
+    const severity = core.getInput('fail-on-severity') || 'low';
+    const allowedLicenses = core.getInput('allowed-licenses');
+    const denyLicenses = core.getInput('deny-licenses');
+    options.fail_on_severity = severity;
     if (allowedLicenses.length > 0) {
         options.allow_licenses = allowedLicenses.split(',').map(s => s.trim());
     }
     if (denyLicenses.length > 0) {
         options.deny_licenses = denyLicenses.split(',').map(s => s.trim());
     }
+    // we call parse on the ConfigurationOptions object because we want Zod
+    // to validate part of the input.
     return schemas_1.ConfigurationOptionsSchema.parse(options);
 }
 exports.readConfig = readConfig;
