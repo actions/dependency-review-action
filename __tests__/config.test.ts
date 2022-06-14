@@ -1,13 +1,22 @@
-import * as core from '@actions/core'
-import {expect, test, jest, beforeEach} from '@jest/globals'
+import {expect, test, beforeEach} from '@jest/globals'
 import {readConfig} from '../src/config'
 
-beforeEach(() => {
-  // reset to our defaults after every test run
-  // TODO find out what the proper way of passing action inputs in tests is
+// GitHub Action inputs come in the form of environment variables
+// with an INPUT prefix (e.g. INPUT_FAIL-ON-SEVERITY)
+function setInput(input: string, value: string) {
+  process.env[`INPUT_${input.toUpperCase()}`] = value
+}
+
+// We want a clean ENV before each test. We use `delete`
+// since we want `undefined` values and not empty strings.
+function clearInputs() {
   delete process.env['INPUT_FAIL-ON-SEVERITY']
   delete process.env['INPUT_ALLOW-LICENSES']
   delete process.env['INPUT_DENY-LICENSES']
+}
+
+beforeEach(() => {
+  clearInputs()
 })
 
 test('it defaults to low severity', async () => {
@@ -16,8 +25,8 @@ test('it defaults to low severity', async () => {
 })
 
 test('it reads custom configs', async () => {
-  process.env['INPUT_FAIL-ON-SEVERITY'] = 'critical'
-  process.env['INPUT_ALLOW-LICENSES'] = ' BSD, GPL 2 '
+  setInput('fail-on-severity', 'critical')
+  setInput('allow-licenses', ' BSD, GPL 2')
 
   const options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
@@ -32,12 +41,13 @@ test('it defaults to empty allow/deny lists ', async () => {
 })
 
 test('it raises an error if both an allow and denylist are specified', async () => {
-  process.env['INPUT_ALLOW-LICENSES'] = 'MIT'
-  process.env['INPUT_DENY-LICENSES'] = 'BSD'
+  setInput('allow-licenses', 'MIT')
+  setInput('deny-licenses', 'BSD')
+
   expect(() => readConfig()).toThrow()
 })
 
 test('it raises an error when given an unknown severity', async () => {
-  process.env['INPUT_FAIL-ON-SEVERITY'] = 'zombies!'
+  setInput('fail-on-severity', 'zombies')
   expect(() => readConfig()).toThrow()
 })
