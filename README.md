@@ -25,13 +25,13 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v3
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v1
+        uses: actions/dependency-review-action@v2
 ```
 
-Please keep in mind that you need a GitHub Advanced Security license if you're running this Action on private repos.
+Please keep in mind that you need a GitHub Advanced Security license if you're running this action on private repos.
 
 ## Configuration
-You can pass additional options to Dependency Review
+You can pass additional options to the Dependency Review
 Action using your workflow file. Here's an example workflow with
 all the possible configurations:
 
@@ -57,18 +57,18 @@ jobs:
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # allow-licenses: GPL-3.0, BSD-3-Clause, MIT
           #
-          # Possible values: Any  `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
+          # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # deny-licenses: LGPL-2.0, BSD-2-Clause
 ```
 
 ### Vulnerability Severity
 
-By default the Action blocks any pull request that contains a
+By default the action will fail on any pull request that contains a
 vulnerable dependency, regardless of the severity level. You can override this behavior by
-using the `fail-on-severity` option. The possible values are: `critical`, `high`, `moderate`, `low`. The
-Action defaults to `low`.
+using the `fail-on-severity` option, which will cause a failure on any pull requests that introduce vulnerabilities of the specified severity level or higher. The possible values are: `critical`, `high`, `moderate`, or `low`. The
+action defaults to `low`.
 
-This example will only block pull requests with `critical` and `high` vulnerabilities:
+This example will only fail on pull requests with `critical` and `high` vulnerabilities:
 
 ```yaml
 - name: Dependency Review
@@ -79,9 +79,9 @@ This example will only block pull requests with `critical` and `high` vulnerabil
 
 ### Licenses
 
-You can block pull requests based on the licenses of the dependencies
+You can set the action to fail on pull requests based on the licenses of the dependencies
 they introduce. With `allow-licenses` you can define the list of licenses
-your repo will accept. Alternatively, you can use `deny-licenses` to only
+your repository will accept. Alternatively, you can use `deny-licenses` to only
 forbid a subset of licenses.
 
 You can use the [Licenses
@@ -107,12 +107,10 @@ to filter. A couple of examples:
 
 **Important**
 
-* The Action will only accept one of the two parameters, an error will
+* The action will only accept one of the two parameters; an error will
 be raised if you provide both.
-
 * By default both parameters are empty (no license checking is
 performed).
-
 * We don't have license information for all of your dependents. If we
 can't detect the license for a dependency **we will inform you, but the
 action won't fail**.
