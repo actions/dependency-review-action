@@ -13,7 +13,7 @@ export function readConfig(): ConfigurationOptions {
   const allowedLicenses = core.getInput('allowed-licenses')
   const denyLicenses = core.getInput('deny-licenses')
 
-  options.fail_on_severity = severity as Severity
+  options.fail_on_severity = severity.toLowerCase() as Severity
 
   if (allowedLicenses.length > 0) {
     options.allow_licenses = allowedLicenses.split(',').map(s => s.trim())

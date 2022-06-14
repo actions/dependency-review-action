@@ -3,7 +3,8 @@ import {expect, test, jest, beforeEach} from '@jest/globals'
 import {readConfig} from '../src/config'
 
 beforeEach(() => {
-  /* reset to our defaults after every test run */
+  // reset to our defaults after every test run
+  // TODO find out what the proper way of passing action inputs in tests is
   delete process.env['INPUT_FAIL-ON-SEVERITY']
   delete process.env['INPUT_ALLOWED-LICENSES']
   delete process.env['INPUT_DENY-LICENSES']
@@ -36,4 +37,13 @@ test('it raises an error if both an allow and denylist are specified', async () 
   expect(() => readConfig()).toThrow()
 })
 
-test('it raises an error when given an unknown severity', async () => {})
+test('it raises an error when given an unknown severity', async () => {
+  process.env['INPUT_FAIL-ON-SEVERITY'] = 'zombies!'
+  expect(() => readConfig()).toThrow()
+})
+
+test('it works on uppercase severities', async () => {
+  process.env['INPUT_FAIL-ON-SEVERITY'] = 'CRITICAL'
+  const options = readConfig()
+  expect(options.fail_on_severity).toEqual('critical')
+})
