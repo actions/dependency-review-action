@@ -5,12 +5,13 @@ import {readConfig} from '../src/config'
 beforeEach(() => {
   /* reset to our defaults after every test run */
   process.env['INPUT_FAIL-ON-SEVERITY'] = 'low'
-  process.env['INPUT_ALLOWED-LICENSES'] = ''
-  process.env['INPUT_DENY-LICENSES'] = ''
+  delete process.env['INPUT_ALLOWED-LICENSES']
+  delete process.env['INPUT_DENY-LICENSES']
 })
 
 test('it defaults to low severity', async () => {
   let options = readConfig()
+
   expect(options.fail_on_severity).toEqual('low')
 })
 
