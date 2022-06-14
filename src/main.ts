@@ -40,7 +40,7 @@ async function run(): Promise<void> {
 
     if (licenseErrors.length > 0) {
       printLicensesError(licenseErrors, licenses)
-      core.setFailed('Dependency review detected prohibited licenses.')
+      core.setFailed('Dependency review detected incompatible licenses.')
       return
     }
 
@@ -64,7 +64,7 @@ async function run(): Promise<void> {
       throw new Error('Dependency review detected vulnerable packages.')
     } else {
       core.info(
-        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or above.`
+        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
       )
     }
   } catch (error) {
@@ -125,16 +125,6 @@ function printLicensesError(
   }
 
   let {allow = [], deny = []} = licenses
-
-  core.info('Dependency review detected prohibited licenses.')
-
-  if (allow.length > 0) {
-    core.info('\nAllowed licenses: ' + allow.join(', ') + '\n')
-  }
-
-  if (deny.length > 0) {
-    core.info('\nDenied licenses: ' + deny.join(', ') + '\n')
-  }
 
   core.info('The following dependencies have incompatible licenses:\n')
   for (const change of changes) {
