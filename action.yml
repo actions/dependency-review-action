@@ -3,11 +3,11 @@ description: 'Prevent the introduction of dependencies with known vulnerabilitie
 author: 'GitHub'
 inputs:
   repo-token:
-    description: 'Token for the repository. Can be passed in using `{{ secrets.GITHUB_TOKEN }}`.'
+    description: Token for the repository. Can be passed in using `{{ secrets.GITHUB_TOKEN }}`.
     required: false
     default: ${{ github.token }}
   fail-on-severity:
-    description: 'Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.'
+    description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.
     required: false
     default: 'low'
   allow-licenses:
