@@ -113,6 +113,10 @@ be raised if you provide both.
 * By default both parameters are empty (no license checking is
 performed).
 
+* We don't have license information for all of your dependents. If we
+can't detect the license for a dependency **we will inform you, but the
+action won't fail**.
+
 ## Getting help
 
 If you have bug reports, questions or suggestions please [create a new
