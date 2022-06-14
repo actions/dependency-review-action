@@ -1,29 +1,27 @@
 import * as core from '@actions/core'
-import {
-  ConfigurationOptions,
-  ConfigurationOptionsSchema,
-  Severity
-} from './schemas'
+import * as z from 'zod'
+import {ConfigurationOptions, SEVERITIES} from './schemas'
+
+function getOptionalInput(name: string): string | undefined {
+  const value = core.getInput(name)
+  return value.length > 0 ? value : undefined
+}
 
 export function readConfig(): ConfigurationOptions {
-  let options: ConfigurationOptions = {}
+  const fail_on_severity = z
+    .enum(SEVERITIES)
+    .default('low')
+    .parse(getOptionalInput('fail-on-severity'))
+  const allow_licenses = getOptionalInput('allow-licenses')
+  const deny_licenses = getOptionalInput('deny-licenses')
 
-  // By default we want to fail on all severities and allow all licenses.
-  const severity = core.getInput('fail-on-severity') || 'low'
-  const allowedLicenses = core.getInput('allow-licenses')
-  const denyLicenses = core.getInput('deny-licenses')
-
-  options.fail_on_severity = severity.toLowerCase() as Severity
-
-  if (allowedLicenses.length > 0) {
-    options.allow_licenses = allowedLicenses.split(',').map(s => s.trim())
+  if (allow_licenses !== undefined && deny_licenses !== undefined) {
+    throw new Error("Can't specify both allow_licenses and deny_licenses")
   }
 
-  if (denyLicenses.length > 0) {
-    options.deny_licenses = denyLicenses.split(',').map(s => s.trim())
+  return {
+    fail_on_severity,
+    allow_licenses: allow_licenses?.split(',').map(x => x.trim()),
+    deny_licenses: deny_licenses?.split(',').map(x => x.trim())
   }
-
-  // we call parse on the ConfigurationOptions object because we want Zod
-  // to validate part of the input.
-  return ConfigurationOptionsSchema.parse(options)
 }

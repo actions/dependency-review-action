@@ -41,9 +41,3 @@ test('it raises an error when given an unknown severity', async () => {
   process.env['INPUT_FAIL-ON-SEVERITY'] = 'zombies!'
   expect(() => readConfig()).toThrow()
 })
-
-test('it works on uppercase severities', async () => {
-  process.env['INPUT_FAIL-ON-SEVERITY'] = 'CRITICAL'
-  const options = readConfig()
-  expect(options.fail_on_severity).toEqual('critical')
-})

@@ -13694,23 +13694,27 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.readConfig = void 0;
 const core = __importStar(__nccwpck_require__(2186));
+const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
+function getOptionalInput(name) {
+    const value = core.getInput(name);
+    return value.length > 0 ? value : undefined;
+}
 function readConfig() {
-    let options = {};
-    // By default we want to fail on all severities and allow all licenses.
-    const severity = core.getInput('fail-on-severity') || 'low';
-    const allowedLicenses = core.getInput('allow-licenses');
-    const denyLicenses = core.getInput('deny-licenses');
-    options.fail_on_severity = severity.toLowerCase();
-    if (allowedLicenses.length > 0) {
-        options.allow_licenses = allowedLicenses.split(',').map(s => s.trim());
+    const fail_on_severity = z
+        .enum(schemas_1.SEVERITIES)
+        .default('low')
+        .parse(getOptionalInput('fail-on-severity'));
+    const allow_licenses = getOptionalInput('allow-licenses');
+    const deny_licenses = getOptionalInput('deny-licenses');
+    if (allow_licenses !== undefined && deny_licenses !== undefined) {
+        throw new Error("Can't specify both allow_licenses and deny_licenses");
     }
-    if (denyLicenses.length > 0) {
-        options.deny_licenses = denyLicenses.split(',').map(s => s.trim());
-    }
-    // we call parse on the ConfigurationOptions object because we want Zod
-    // to validate part of the input.
-    return schemas_1.ConfigurationOptionsSchema.parse(options);
+    return {
+        fail_on_severity,
+        allow_licenses: allow_licenses === null || allow_licenses === void 0 ? void 0 : allow_licenses.split(',').map(x => x.trim()),
+        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim())
+    };
 }
 exports.readConfig = readConfig;
 
