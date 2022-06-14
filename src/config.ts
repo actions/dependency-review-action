@@ -1,4 +1,5 @@
 import * as core from '@actions/core'
+import {z} from 'zod'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
 import {Severity} from './schemas'
 
@@ -6,11 +7,7 @@ export const CONFIG_FILEPATH = './.github/dependency-review.yml'
 
 export function readConfig(): ConfigurationOptions {
   // By default we want to fail on all severities and allow all licenses.
-  let options = {
-    fail_on_severity: 'low',
-    allow_licenses: [] as string[],
-    deny_licenses: [] as string[]
-  }
+  let options: ConfigurationOptions = {}
 
   let severity = core.getInput('fail-on-severity')
   let allowedLicenses = core.getInput('allowed-licenses')
