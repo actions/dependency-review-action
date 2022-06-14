@@ -31,9 +31,9 @@ jobs:
 Please keep in mind that you need a GitHub Advanced Security license if you're running this Action on private repos.
 
 ## Configuration
-You can pass additional configuration options to Dependency Review
-Action using your workflow file. Here's an example workflow file with
-all the possible configuration options:
+You can pass additional options to Dependency Review
+Action using your workflow file. Here's an example workflow with
+all the possible configurations:
 
 ```yaml
 name: 'Dependency Review'
@@ -65,7 +65,7 @@ jobs:
 
 By default the Action blocks any pull request that contains a
 vulnerable dependency, regardless of the severity level. You can override this behavior by
-using the `fail-on-severity` option. The possible values are: "critical", "high", "moderate", "low". The
+using the `fail-on-severity` option. The possible values are: `critical`, `high`, `moderate`, `low`. The
 Action defaults to `low`.
 
 This example will only block pull requests with `critical` and `high` vulnerabilities:
