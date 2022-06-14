@@ -10,7 +10,7 @@ export function readConfig(): ConfigurationOptions {
 
   // By default we want to fail on all severities and allow all licenses.
   const severity = core.getInput('fail-on-severity') || 'low'
-  const allowedLicenses = core.getInput('allowed-licenses')
+  const allowedLicenses = core.getInput('allow-licenses')
   const denyLicenses = core.getInput('deny-licenses')
 
   options.fail_on_severity = severity.toLowerCase() as Severity

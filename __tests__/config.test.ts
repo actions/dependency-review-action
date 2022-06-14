@@ -6,7 +6,7 @@ beforeEach(() => {
   // reset to our defaults after every test run
   // TODO find out what the proper way of passing action inputs in tests is
   delete process.env['INPUT_FAIL-ON-SEVERITY']
-  delete process.env['INPUT_ALLOWED-LICENSES']
+  delete process.env['INPUT_ALLOW-LICENSES']
   delete process.env['INPUT_DENY-LICENSES']
 })
 
@@ -17,7 +17,7 @@ test('it defaults to low severity', async () => {
 
 test('it reads custom configs', async () => {
   process.env['INPUT_FAIL-ON-SEVERITY'] = 'critical'
-  process.env['INPUT_ALLOWED-LICENSES'] = ' BSD, GPL 2 '
+  process.env['INPUT_ALLOW-LICENSES'] = ' BSD, GPL 2 '
 
   const options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
@@ -32,7 +32,7 @@ test('it defaults to empty allow/deny lists ', async () => {
 })
 
 test('it raises an error if both an allow and denylist are specified', async () => {
-  process.env['INPUT_ALLOWED-LICENSES'] = 'MIT'
+  process.env['INPUT_ALLOW-LICENSES'] = 'MIT'
   process.env['INPUT_DENY-LICENSES'] = 'BSD'
   expect(() => readConfig()).toThrow()
 })
