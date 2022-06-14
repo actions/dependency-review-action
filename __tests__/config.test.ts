@@ -10,7 +10,7 @@ beforeEach(() => {
 })
 
 test('it defaults to low severity', async () => {
-  let options = readConfig()
+  const options = readConfig()
   expect(options.fail_on_severity).toEqual('low')
 })
 
@@ -18,13 +18,13 @@ test('it reads custom configs', async () => {
   process.env['INPUT_FAIL-ON-SEVERITY'] = 'critical'
   process.env['INPUT_ALLOWED-LICENSES'] = ' BSD, GPL 2 '
 
-  let options = readConfig()
+  const options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
   expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
 test('it defaults to empty allow/deny lists ', async () => {
-  let options = readConfig()
+  const options = readConfig()
 
   expect(options.allow_licenses).toEqual(undefined)
   expect(options.deny_licenses).toEqual(undefined)
