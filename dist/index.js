@@ -78,15 +78,17 @@ exports.getDeniedLicenseChanges = void 0;
  * we will ignore the deny list.
  * @param {Change[]} changes The list of changes to filter.
  * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
- * @returns {Array<Change} The list of denied changes.
+ * @returns {[Array<Change>, Array<Change]} A tuple where the first element is the list of denied changes and the second one is the list of changes with unknown licenses
  */
 function getDeniedLicenseChanges(changes, licenses) {
     let { allow, deny } = licenses;
     let disallowed = [];
+    let unknown = [];
     for (const change of changes) {
         let license = change.license;
         // TODO: be loud about unknown licenses
         if (license === null) {
+            unknown.push(change);
             continue;
         }
         if (allow !== undefined) {
@@ -100,7 +102,7 @@ function getDeniedLicenseChanges(changes, licenses) {
             }
         }
     }
-    return disallowed;
+    return [disallowed, unknown];
 }
 exports.getDeniedLicenseChanges = getDeniedLicenseChanges;
 
@@ -177,12 +179,6 @@ function run() {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             };
-            let licenseErrors = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
-            if (licenseErrors.length > 0) {
-                printLicensesError(licenseErrors, licenses);
-                core.setFailed('Dependency review detected incompatible licenses.');
-                return;
-            }
             let filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
             for (const change of filteredChanges) {
                 if (change.change_type === 'added' &&
@@ -192,8 +188,14 @@ function run() {
                     failed = true;
                 }
             }
+            let [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
+            if (licenseErrors.length > 0) {
+                printLicensesError(licenseErrors, licenses);
+                printNullLicenses(unknownLicenses);
+                core.setFailed('Dependency review detected incompatible licenses.');
+            }
             if (failed) {
-                throw new Error('Dependency review detected vulnerable packages.');
+                core.setFailed('Dependency review detected vulnerable packages.');
             }
             else {
                 core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
@@ -237,9 +239,15 @@ function printLicensesError(changes, licenses) {
         return;
     }
     let { allow = [], deny = [] } = licenses;
-    core.info('The following dependencies have incompatible licenses:\n');
+    core.info('\nThe following dependencies have incompatible licenses:\n');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
+    }
+}
+function printNullLicenses(changes) {
+    core.info('\nWe could not detect a license for the following dependencies:\n');
+    for (const change of changes) {
+        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
     }
 }
 run();

@@ -48,13 +48,13 @@ let rubyChange: Change = {
 
 test('it fails if a license outside the allow list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const invalidChanges = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
   expect(invalidChanges[0]).toBe(npmChange)
 })
 
 test('it fails if a license inside the deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const invalidChanges = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
   expect(invalidChanges[0]).toBe(rubyChange)
 })
 
@@ -62,7 +62,7 @@ test('it fails if a license inside the deny list is found', async () => {
 // thing we want in the system. Please remove this test after refactoring.
 test('it fails all license checks when allow is provided an empty array', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  let invalidChanges = getDeniedLicenseChanges(changes, {
+  let [invalidChanges, _] = getDeniedLicenseChanges(changes, {
     allow: [],
     deny: ['BSD']
   })
