@@ -73,6 +73,33 @@ Here are a few things you can do that will increase the likelihood of your pull 
 - Keep your change as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
 - Write a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
+## Cutting a new release
+
+1. Go to [Draft a new
+release](https://github.com/actions/dependency-review-action/releases/new)
+in the Releases page.
+2. Make sure that the `Publish this Action to the GitHub Marketplace`
+checkbox is enabled
+3. Click "Choose a tag" and then "Create new tag", where the tag name
+will be your version prefixed by a `v` (e.g. `v1.2.3`).
+4. Use a version number for the release title (e.g. "1.2.3").
+5. Add your release notes. If this is a major version make sure to
+include a small description of the biggest changes in the new version.
+6. Click "Publish Release".
+
+You now have a tag and release using the semver version you used
+above. The last remaining thing to do is to move the dynamic version
+identifier to match the current SHA. This allows users to adopt a
+major version number (e.g. `v1`) in their workflows while
+automatically getting all the
+minor/patch updates.
+
+To do this just force-create a new annotated tag and push it:
+```
+git tag -fa v1 -m "Updating v1 tag"
+git push origin v1 --force
+```
+
 ## Resources
 
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
