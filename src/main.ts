@@ -59,9 +59,10 @@ async function run(): Promise<void> {
 
     if (licenseErrors.length > 0) {
       printLicensesError(licenseErrors, licenses)
-      printNullLicenses(unknownLicenses)
       core.setFailed('Dependency review detected incompatible licenses.')
     }
+
+    printNullLicenses(unknownLicenses)
 
     if (failed) {
       core.setFailed('Dependency review detected vulnerable packages.')

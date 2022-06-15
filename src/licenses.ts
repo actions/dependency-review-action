@@ -26,7 +26,6 @@ export function getDeniedLicenseChanges(
 
   for (const change of changes) {
     let license = change.license
-    // TODO: be loud about unknown licenses
     if (license === null) {
       unknown.push(change)
       continue
