@@ -318,7 +318,7 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).default([])
 })
     .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Can't specify both allow_licenses and deny_licenses");
+    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.");
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 
@@ -13826,7 +13826,7 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).default([])
 })
     .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Can't specify both allow_licenses and deny_licenses");
+    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.");
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 
