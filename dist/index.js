@@ -86,7 +86,6 @@ function getDeniedLicenseChanges(changes, licenses) {
     let unknown = [];
     for (const change of changes) {
         let license = change.license;
-        // TODO: be loud about unknown licenses
         if (license === null) {
             unknown.push(change);
             continue;
@@ -191,9 +190,9 @@ function run() {
             let [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
                 printLicensesError(licenseErrors, licenses);
-                printNullLicenses(unknownLicenses);
                 core.setFailed('Dependency review detected incompatible licenses.');
             }
+            printNullLicenses(unknownLicenses);
             if (failed) {
                 core.setFailed('Dependency review detected vulnerable packages.');
             }
