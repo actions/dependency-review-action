@@ -115,6 +115,10 @@ performed).
 can't detect the license for a dependency **we will inform you, but the
 action won't fail**.
 
+## Blocking pull requests
+
+The Dependency Review GitHub Action check will only block a pull request from being merged if the repository owner has required the check to pass before merging. For more information, see the [documentation on protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging).
+
 ## Getting help
 
 If you have bug reports, questions or suggestions please [create a new
