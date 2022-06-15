@@ -3,9 +3,19 @@ description: 'Prevent the introduction of dependencies with known vulnerabilitie
 author: 'GitHub'
 inputs:
   repo-token:
-    description: 'Token for the repository. Can be passed in using `{{ secrets.GITHUB_TOKEN }}`.'
+    description: Token for the repository. Can be passed in using `{{ secrets.GITHUB_TOKEN }}`.
     required: false
     default: ${{ github.token }}
+  fail-on-severity:
+    description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.
+    required: false
+    default: 'low'
+  allow-licenses:
+    description: Comma-separated list of allowed licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
+    required: false
+  deny-licenses:
+    description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
+    required: false
 runs:
   using: 'node16'
   main: 'dist/index.js'

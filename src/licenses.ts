@@ -10,7 +10,7 @@ import {Change, ChangeSchema} from './schemas'
  * we will ignore the deny list.
  * @param {Change[]} changes The list of changes to filter.
  * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
- * @returns {Array<Change} The list of denied changes.
+ * @returns {[Array<Change>, Array<Change]} A tuple where the first element is the list of denied changes and the second one is the list of changes with unknown licenses
  */
 export function getDeniedLicenseChanges(
   changes: Array<Change>,
@@ -18,15 +18,17 @@ export function getDeniedLicenseChanges(
     allow?: Array<string>
     deny?: Array<string>
   }
-): Array<Change> {
+): [Array<Change>, Array<Change>] {
   let {allow, deny} = licenses
 
   let disallowed: Change[] = []
+  let unknown: Change[] = []
 
   for (const change of changes) {
     let license = change.license
     // TODO: be loud about unknown licenses
     if (license === null) {
+      unknown.push(change)
       continue
     }
     if (allow !== undefined) {
@@ -40,5 +42,5 @@ export function getDeniedLicenseChanges(
     }
   }
 
-  return disallowed
+  return [disallowed, unknown]
 }

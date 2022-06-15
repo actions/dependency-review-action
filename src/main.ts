@@ -4,7 +4,7 @@ import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
 import {Change, PullRequestSchema, Severity} from './schemas'
-import {readConfigFile} from '../src/config'
+import {readConfig} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
 
@@ -27,21 +27,13 @@ async function run(): Promise<void> {
       headRef: pull_request.head.sha
     })
 
-    let config = readConfigFile()
+    let config = readConfig()
     let minSeverity = config.fail_on_severity
     let failed = false
 
     let licenses = {
       allow: config.allow_licenses,
       deny: config.deny_licenses
-    }
-
-    let licenseErrors = getDeniedLicenseChanges(changes, licenses)
-
-    if (licenseErrors.length > 0) {
-      printLicensesError(licenseErrors, licenses)
-      core.setFailed('Dependency review detected prohibited licenses.')
-      return
     }
 
     let filteredChanges = filterChangesBySeverity(
@@ -60,11 +52,22 @@ async function run(): Promise<void> {
       }
     }
 
+    let [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
+      changes,
+      licenses
+    )
+
+    if (licenseErrors.length > 0) {
+      printLicensesError(licenseErrors, licenses)
+      printNullLicenses(unknownLicenses)
+      core.setFailed('Dependency review detected incompatible licenses.')
+    }
+
     if (failed) {
-      throw new Error('Dependency review detected vulnerable packages.')
+      core.setFailed('Dependency review detected vulnerable packages.')
     } else {
       core.info(
-        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or above.`
+        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
       )
     }
   } catch (error) {
@@ -126,20 +129,19 @@ function printLicensesError(
 
   let {allow = [], deny = []} = licenses
 
-  core.info('Dependency review detected prohibited licenses.')
-
-  if (allow.length > 0) {
-    core.info('\nAllowed licenses: ' + allow.join(', ') + '\n')
-  }
-
-  if (deny.length > 0) {
-    core.info('\nDenied licenses: ' + deny.join(', ') + '\n')
-  }
-
-  core.info('The following dependencies have incompatible licenses:\n')
+  core.info('\nThe following dependencies have incompatible licenses:\n')
   for (const change of changes) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – License: ${styles.color.red.open}${change.license}${styles.color.red.close}`
+    )
+  }
+}
+
+function printNullLicenses(changes: Array<Change>): void {
+  core.info('\nWe could not detect a license for the following dependencies:\n')
+  for (const change of changes) {
+    core.info(
+      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`
     )
   }
 }
