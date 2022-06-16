@@ -244,6 +244,9 @@ function printLicensesError(changes, licenses) {
     }
 }
 function printNullLicenses(changes) {
+    if (changes.length === 0) {
+        return;
+    }
     core.info('\nWe could not detect a license for the following dependencies:\n');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);

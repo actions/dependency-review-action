@@ -139,6 +139,10 @@ function printLicensesError(
 }
 
 function printNullLicenses(changes: Array<Change>): void {
+  if (changes.length === 0) {
+    return
+  }
+
   core.info('\nWe could not detect a license for the following dependencies:\n')
   for (const change of changes) {
     core.info(
