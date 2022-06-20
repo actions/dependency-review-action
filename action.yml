@@ -19,3 +19,7 @@ inputs:
 runs:
   using: 'node16'
   main: 'dist/index.js'
+  
+- nazwa: Przegląd zależności
+   używa: działania/przegląd-zależności@v2.0.2
+ 
