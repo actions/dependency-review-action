@@ -55,14 +55,27 @@ test('it passes if a license inside the allow list is found', async () => {
 test('it fails if a license outside the allow list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
   const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD-2-Clause']})
-  expect(invalidChanges[0]).toBe(npmChange)
+  expect(invalidChanges).toStrictEqual([npmChange])
+})
+
+test('it passes if license outside at least one of deny list is found', async () => {
+  const changes: Changes = [npmChange, rubyChange]
+  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['MIT']})
+  expect(invalidChanges.length).toBe(0)
 })
 
 test('it fails if a license inside the deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
   const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['BSD-2-Clause']})
-  expect(invalidChanges[0]).toBe(rubyChange)
+  expect(invalidChanges).toStrictEqual([rubyChange])
 })
+
+test.skip('it fails if a multiple license inside the all of deny list is found', async () => {
+  const changes: Changes = [npmChange, rubyChange]
+  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['MIT', 'CC0-1.0']})
+  expect(invalidChanges).toStrictEqual([npmChange])
+})
+
 
 // This is more of a "here's a behavior that might be surprising" than an actual
 // thing we want in the system. Please remove this test after refactoring.
