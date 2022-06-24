@@ -52,7 +52,7 @@ jobs:
           # Possible values: "critical", "high", "moderate", "low"
           # fail-on-severity: critical
           #
-          # You can only include one of these two options: `allow-licenses` and `deny-licences`
+          # You can only include one of these two options: `allow-licenses` and `deny-licenses`
           #
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # allow-licenses: GPL-3.0, BSD-3-Clause, MIT
