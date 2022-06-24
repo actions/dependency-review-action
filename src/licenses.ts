@@ -1,3 +1,4 @@
+import spdxSatisfies from 'spdx-satisfies'
 import {Change, ChangeSchema} from './schemas'
 
 /**
@@ -19,19 +20,19 @@ export function getDeniedLicenseChanges(
     deny?: Array<string>
   }
 ): [Array<Change>, Array<Change>] {
-  let {allow, deny} = licenses
+  const {allow, deny} = licenses
 
   let disallowed: Change[] = []
   let unknown: Change[] = []
 
   for (const change of changes) {
-    let license = change.license
+    const license = change.license
     if (license === null) {
       unknown.push(change)
       continue
     }
     if (allow !== undefined) {
-      if (!allow.includes(license)) {
+      if (allow.every(allowLicense => !spdxSatisfies(allowLicense, license))) {
         disallowed.push(change)
       }
     } else if (deny !== undefined) {

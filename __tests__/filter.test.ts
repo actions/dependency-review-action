@@ -28,7 +28,7 @@ let rubyChange: Change = {
   name: 'actionsomething',
   version: '3.2.0',
   package_url: 'pkg:gem/actionsomething@3.2.0',
-  license: 'BSD',
+  license: 'BSD-2-Clause',
   source_repository_url: 'github.com/some-repo',
   vulnerabilities: [
     {

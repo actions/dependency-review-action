@@ -9,7 +9,7 @@ let npmChange: Change = {
   name: 'Reeuhq',
   version: '1.0.2',
   package_url: 'pkg:npm/reeuhq@1.0.2',
-  license: 'MIT',
+  license: 'CC0-1.0 OR MIT OR (CC0-1.0 AND MIT)',
   source_repository_url: 'github.com/some-repo',
   vulnerabilities: [
     {
@@ -28,7 +28,7 @@ let rubyChange: Change = {
   name: 'actionsomething',
   version: '3.2.0',
   package_url: 'pkg:gem/actionsomething@3.2.0',
-  license: 'BSD',
+  license: 'BSD-2-Clause',
   source_repository_url: 'github.com/some-repo',
   vulnerabilities: [
     {
@@ -46,15 +46,21 @@ let rubyChange: Change = {
   ]
 }
 
+test('it passes if a license inside the allow list is found', async () => {
+  const changes: Changes = [npmChange]
+  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['MIT']})
+  expect(invalidChanges.length).toBe(0)
+})
+
 test('it fails if a license outside the allow list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD-2-Clause']})
   expect(invalidChanges[0]).toBe(npmChange)
 })
 
 test('it fails if a license inside the deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['BSD-2-Clause']})
   expect(invalidChanges[0]).toBe(rubyChange)
 })
 
@@ -64,7 +70,7 @@ test('it fails all license checks when allow is provided an empty array', async 
   const changes: Changes = [npmChange, rubyChange]
   let [invalidChanges, _] = getDeniedLicenseChanges(changes, {
     allow: [],
-    deny: ['BSD']
+    deny: ['BSD-2-Clause']
   })
   expect(invalidChanges.length).toBe(2)
 })
