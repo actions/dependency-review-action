@@ -76,7 +76,6 @@ test.skip('it fails if a multiple license inside the all of deny list is found',
   expect(invalidChanges).toStrictEqual([npmChange])
 })
 
-
 // This is more of a "here's a behavior that might be surprising" than an actual
 // thing we want in the system. Please remove this test after refactoring.
 test('it fails all license checks when allow is provided an empty array', async () => {

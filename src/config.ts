@@ -1,10 +1,30 @@
 import * as core from '@actions/core'
+import parse from 'spdx-expression-parse'
 import * as z from 'zod'
 import {ConfigurationOptions, SEVERITIES} from './schemas'
 
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
   return value.length > 0 ? value : undefined
+}
+
+function parseLicenses(ids: string | undefined): string[] | undefined {
+  return ids?.split(',').map(x => {
+    const id = x.trim()
+    try {
+      parse(id)
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        err.message.match(/Unexpected \S+ at offset/)
+      ) {
+        throw new Error(
+          `given an unknown spdx_id \`${id}\`, you can only choose ids from https://docs.github.com/en/rest/licenses`
+        )
+      }
+    }
+    return id
+  })
 }
 
 export function readConfig(): ConfigurationOptions {
@@ -21,7 +41,7 @@ export function readConfig(): ConfigurationOptions {
 
   return {
     fail_on_severity,
-    allow_licenses: allow_licenses?.split(',').map(x => x.trim()),
-    deny_licenses: deny_licenses?.split(',').map(x => x.trim())
+    allow_licenses: parseLicenses(allow_licenses),
+    deny_licenses: parseLicenses(deny_licenses)
   }
 }

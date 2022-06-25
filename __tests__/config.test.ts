@@ -47,6 +47,18 @@ test('it raises an error if both an allow and denylist are specified', async () 
   expect(() => readConfig()).toThrow()
 })
 
+test('it raises an error when given an unknown SPDX ID in allowlist', async () => {
+  setInput('allow-licenses', 'BSD')
+
+  expect(() => readConfig()).toThrow('given an unknown spdx_id `BSD`')
+})
+
+test('it raises an error when given an unknown SPDX ID in denylist', async () => {
+  setInput('deny-licenses', 'GPL 2')
+
+  expect(() => readConfig()).toThrow('given an unknown spdx_id `GPL 2`')
+})
+
 test('it raises an error when given an unknown severity', async () => {
   setInput('fail-on-severity', 'zombies')
   expect(() => readConfig()).toThrow()
