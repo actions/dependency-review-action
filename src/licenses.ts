@@ -13,19 +13,19 @@ import {Change, ChangeSchema} from './schemas'
  * @returns {[Array<Change>, Array<Change]} A tuple where the first element is the list of denied changes and the second one is the list of changes with unknown licenses
  */
 export function getDeniedLicenseChanges(
-  changes: Array<Change>,
+  changes: Change[],
   licenses: {
-    allow?: Array<string>
-    deny?: Array<string>
+    allow?: string[]
+    deny?: string[]
   }
-): [Array<Change>, Array<Change>] {
-  let {allow, deny} = licenses
+): [Change[], Change[]] {
+  const {allow, deny} = licenses
 
-  let disallowed: Change[] = []
-  let unknown: Change[] = []
+  const disallowed: Change[] = []
+  const unknown: Change[] = []
 
   for (const change of changes) {
-    let license = change.license
+    const license = change.license
     if (license === null) {
       unknown.push(change)
       continue

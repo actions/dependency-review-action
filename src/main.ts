@@ -27,16 +27,16 @@ async function run(): Promise<void> {
       headRef: pull_request.head.sha
     })
 
-    let config = readConfig()
-    let minSeverity = config.fail_on_severity
+    const config = readConfig()
+    const minSeverity = config.fail_on_severity
     let failed = false
 
-    let licenses = {
+    const licenses = {
       allow: config.allow_licenses,
       deny: config.deny_licenses
     }
 
-    let filteredChanges = filterChangesBySeverity(
+    const filteredChanges = filterChangesBySeverity(
       minSeverity as Severity,
       changes
     )
@@ -52,7 +52,7 @@ async function run(): Promise<void> {
       }
     }
 
-    let [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
+    const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
       changes,
       licenses
     )
@@ -118,17 +118,17 @@ function renderSeverity(
 }
 
 function printLicensesError(
-  changes: Array<Change>,
+  changes: Change[],
   licenses: {
-    allow?: Array<string>
-    deny?: Array<string>
+    allow?: string[]
+    deny?: string[]
   }
 ): void {
   if (changes.length == 0) {
     return
   }
 
-  let {allow = [], deny = []} = licenses
+  const {allow = [], deny = []} = licenses
 
   core.info('\nThe following dependencies have incompatible licenses:\n')
   for (const change of changes) {
@@ -138,7 +138,7 @@ function printLicensesError(
   }
 }
 
-function printNullLicenses(changes: Array<Change>): void {
+function printNullLicenses(changes: Change[]): void {
   if (changes.length === 0) {
     return
   }
