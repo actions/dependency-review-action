@@ -9,3 +9,6 @@ updates:
     directory: /
     schedule:
       interval: daily
+    ignore:
+      - dependency-name: '@types/*'
+        update-types: ['version-update:semver-major']
