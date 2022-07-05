@@ -11,10 +11,10 @@ inputs:
     required: false
     default: 'low'
   allow-licenses:
-    description: Comma-separated list of allowed licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
+    description: Comma-separated list of allowed licenses (e.g. "MIT, GPL-3.0-or-later, BSD-2-Clause")
     required: false
   deny-licenses:
-    description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
+    description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL-3.0-or-later, BSD-2-Clause")
     required: false
 runs:
   using: 'node16'
