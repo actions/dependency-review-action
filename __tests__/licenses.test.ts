@@ -1,6 +1,20 @@
-import {expect, test} from '@jest/globals'
+import {expect, test, describe} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {getDeniedLicenseChanges} from '../src/licenses'
+import {getDeniedLicenseChanges, isSpdxId} from '../src/licenses'
+
+describe('isSpdxId', () => {
+  test('it returns true for known SPDX ID even if it has been deprecated', () => {
+    expect(isSpdxId('GPL-3.0+')).toBe(true)
+  })
+
+  test('it returns true for known SPDX ID conjunction', () => {
+    expect(isSpdxId('GPL-3.0-or-later OR MIT')).toBe(true)
+  })
+
+  test('it returns false for unknown SPDX ID', () => {
+    expect(isSpdxId('GPL-3')).toBe(false)
+  })
+})
 
 let npmChange: Change = {
   manifest: 'package.json',
@@ -46,6 +60,13 @@ let rubyChange: Change = {
   ]
 }
 
+const nullLicense: Change = {...rubyChange, name: 'nullLicense', license: null}
+const unknownLicense: Change = {
+  ...rubyChange,
+  name: 'unknownLicense',
+  license: 'THIS-LICENSE-IS-NOT-DEFINED-IN-SPDX'
+}
+
 test('it passes if a license inside the allow list is found', async () => {
   const changes: Changes = [npmChange]
   const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['MIT']})
@@ -54,8 +75,11 @@ test('it passes if a license inside the allow list is found', async () => {
 
 test('it fails if a license outside the allow list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD-2-Clause']})
+  const [invalidChanges, unknownLicenses] = getDeniedLicenseChanges(changes, {
+    allow: ['BSD-2-Clause']
+  })
   expect(invalidChanges).toStrictEqual([npmChange])
+  expect(unknownLicenses).toStrictEqual([])
 })
 
 test('it passes if license outside at least one of deny list is found', async () => {
@@ -85,4 +109,12 @@ test('it fails all license checks when allow is provided an empty array', async 
     deny: ['BSD-2-Clause']
   })
   expect(invalidChanges.length).toBe(2)
+})
+
+test('it detects unknown licenses', async () => {
+  const changes: Changes = [nullLicense, unknownLicense]
+  const [_, unknownLicenses] = getDeniedLicenseChanges(changes, {
+    allow: ['MIT']
+  })
+  expect(unknownLicenses.sort()).toStrictEqual([nullLicense, unknownLicense])
 })

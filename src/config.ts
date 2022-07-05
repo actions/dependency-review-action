@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
-import parse from 'spdx-expression-parse'
 import * as z from 'zod'
+import {isSpdxId} from './licenses'
 import {ConfigurationOptions, SEVERITIES} from './schemas'
 
 function getOptionalInput(name: string): string | undefined {
@@ -11,19 +11,13 @@ function getOptionalInput(name: string): string | undefined {
 function parseLicenses(ids: string | undefined): string[] | undefined {
   return ids?.split(',').map(x => {
     const id = x.trim()
-    try {
-      parse(id)
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        err.message.match(/Unexpected \S+ at offset/)
-      ) {
-        throw new Error(
-          `given an unknown spdx_id \`${id}\`, you can only choose ids from https://docs.github.com/en/rest/licenses`
-        )
-      }
+    if (isSpdxId(id)) {
+      return id
+    } else {
+      throw new Error(
+        `given an unknown spdx_id \`${id}\`, you can only choose ids from https://docs.github.com/en/rest/licenses`
+      )
     }
-    return id
   })
 }
 
