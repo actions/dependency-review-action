@@ -70,8 +70,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getDeniedLicenseChanges = void 0;
+exports.getDeniedLicenseChanges = exports.isSpdxId = void 0;
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
+const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
+function isSpdxId(id) {
+    try {
+        (0, spdx_expression_parse_1.default)(id);
+    }
+    catch (err) {
+        return false;
+    }
+    return true;
+}
+exports.isSpdxId = isSpdxId;
 /**
  * Loops through a list of changes, filtering and returning the
  * ones that don't conform to the licenses allow/deny lists.
@@ -90,7 +101,7 @@ function getDeniedLicenseChanges(changes, licenses) {
     let unknown = [];
     for (const change of changes) {
         const license = change.license;
-        if (license === null) {
+        if (license === null || !isSpdxId(license)) {
             unknown.push(change);
             continue;
         }
@@ -14323,14 +14334,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.readConfig = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
 const z = __importStar(__nccwpck_require__(3301));
+const licenses_1 = __nccwpck_require__(5098);
 const schemas_1 = __nccwpck_require__(1129);
 function getOptionalInput(name) {
     const value = core.getInput(name);
@@ -14339,16 +14347,12 @@ function getOptionalInput(name) {
 function parseLicenses(ids) {
     return ids === null || ids === void 0 ? void 0 : ids.split(',').map(x => {
         const id = x.trim();
-        try {
-            (0, spdx_expression_parse_1.default)(id);
+        if ((0, licenses_1.isSpdxId)(id)) {
+            return id;
         }
-        catch (err) {
-            if (err instanceof Error &&
-                err.message.match(/Unexpected \S+ at offset/)) {
-                throw new Error(`given an unknown spdx_id \`${id}\`, you can only choose ids from https://docs.github.com/en/rest/licenses`);
-            }
+        else {
+            throw new Error(`given an unknown spdx_id \`${id}\`, you can only choose ids from https://docs.github.com/en/rest/licenses`);
         }
-        return id;
     });
 }
 function readConfig() {
@@ -14402,6 +14406,68 @@ function filterChangesBySeverity(severity, changes) {
     return filteredChanges;
 }
 exports.filterChangesBySeverity = filterChangesBySeverity;
+
+
+/***/ }),
+
+/***/ 5098:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getDeniedLicenseChanges = exports.isSpdxId = void 0;
+const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
+const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
+function isSpdxId(id) {
+    try {
+        (0, spdx_expression_parse_1.default)(id);
+    }
+    catch (err) {
+        return false;
+    }
+    return true;
+}
+exports.isSpdxId = isSpdxId;
+/**
+ * Loops through a list of changes, filtering and returning the
+ * ones that don't conform to the licenses allow/deny lists.
+ *
+ * Keep in mind that we don't let users specify both an allow and a deny
+ * list in their config files, so this code works under the assumption that
+ * one of the two list parameters will be empty. If both lists are provided,
+ * we will ignore the deny list.
+ * @param {Change[]} changes The list of changes to filter.
+ * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
+ * @returns {[Array<Change>, Array<Change]} A tuple where the first element is the list of denied changes and the second one is the list of changes with unknown licenses
+ */
+function getDeniedLicenseChanges(changes, licenses) {
+    const { allow, deny } = licenses;
+    let disallowed = [];
+    let unknown = [];
+    for (const change of changes) {
+        const license = change.license;
+        if (license === null || !isSpdxId(license)) {
+            unknown.push(change);
+            continue;
+        }
+        if (allow !== undefined) {
+            if (allow.every(allowLicense => !(0, spdx_satisfies_1.default)(allowLicense, license))) {
+                disallowed.push(change);
+            }
+        }
+        else if (deny !== undefined) {
+            if (deny.includes(license)) {
+                disallowed.push(change);
+            }
+        }
+    }
+    return [disallowed, unknown];
+}
+exports.getDeniedLicenseChanges = getDeniedLicenseChanges;
 
 
 /***/ }),
