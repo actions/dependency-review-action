@@ -15,7 +15,7 @@ let npmChange: Change = {
     {
       severity: 'critical',
       advisory_ghsa_id: 'first-random_string',
-      advisory_summary: 'very dangerouns',
+      advisory_summary: 'very dangerous',
       advisory_url: 'github.com/future-funk'
     }
   ]
@@ -34,7 +34,7 @@ let rubyChange: Change = {
     {
       severity: 'moderate',
       advisory_ghsa_id: 'second-random_string',
-      advisory_summary: 'not so dangerouns',
+      advisory_summary: 'not so dangerous',
       advisory_url: 'github.com/future-funk'
     },
     {
