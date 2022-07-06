@@ -26,11 +26,11 @@ test('it defaults to low severity', async () => {
 
 test('it reads custom configs', async () => {
   setInput('fail-on-severity', 'critical')
-  setInput('allow-licenses', ' BSD, GPL 2')
+  setInput('allow-licenses', ' BSD-2-Clause, GPL-2.0')
 
   const options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
-  expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
+  expect(options.allow_licenses).toEqual(['BSD-2-Clause', 'GPL-2.0'])
 })
 
 test('it defaults to empty allow/deny lists ', async () => {
@@ -42,9 +42,21 @@ test('it defaults to empty allow/deny lists ', async () => {
 
 test('it raises an error if both an allow and denylist are specified', async () => {
   setInput('allow-licenses', 'MIT')
-  setInput('deny-licenses', 'BSD')
+  setInput('deny-licenses', 'BSD-2-Clause')
 
   expect(() => readConfig()).toThrow()
+})
+
+test('it raises an error when given an unknown SPDX ID in allowlist', async () => {
+  setInput('allow-licenses', 'BSD')
+
+  expect(() => readConfig()).toThrow('given an unknown spdx_id `BSD`')
+})
+
+test('it raises an error when given an unknown SPDX ID in denylist', async () => {
+  setInput('deny-licenses', 'GPL 2')
+
+  expect(() => readConfig()).toThrow('given an unknown spdx_id `GPL 2`')
 })
 
 test('it raises an error when given an unknown severity', async () => {

@@ -32,11 +32,15 @@
     "ansi-styles": "^6.1.0",
     "got": "^12.1.0",
     "nodemon": "^2.0.19",
+    "spdx-expression-parse": "^3.0.1",
+    "spdx-satisfies": "^5.0.1",
     "yaml": "^2.1.1",
     "zod": "^3.17.3"
   },
   "devDependencies": {
     "@types/node": "^16.11.43",
+    "@types/spdx-expression-parse": "^3.0.2",
+    "@types/spdx-satisfies": "^0.1.0",
     "@typescript-eslint/eslint-plugin": "^5.30.5",
     "@typescript-eslint/parser": "^5.30.5",
     "@vercel/ncc": "^0.34.0",

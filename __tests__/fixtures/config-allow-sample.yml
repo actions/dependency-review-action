@@ -1,4 +1,4 @@
 fail_on_severity: critical
 allow_licenses:
-  - "BSD"
-  - "GPL 2"
+  - "BSD-2-Clause"
+  - "GPL-2.0"
