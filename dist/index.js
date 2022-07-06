@@ -81,11 +81,11 @@ exports.getDeniedLicenseChanges = void 0;
  * @returns {[Array<Change>, Array<Change]} A tuple where the first element is the list of denied changes and the second one is the list of changes with unknown licenses
  */
 function getDeniedLicenseChanges(changes, licenses) {
-    let { allow, deny } = licenses;
-    let disallowed = [];
-    let unknown = [];
+    const { allow, deny } = licenses;
+    const disallowed = [];
+    const unknown = [];
     for (const change of changes) {
-        let license = change.license;
+        const license = change.license;
         if (license === null) {
             unknown.push(change);
             continue;
@@ -171,14 +171,14 @@ function run() {
                 baseRef: pull_request.base.sha,
                 headRef: pull_request.head.sha
             });
-            let config = (0, config_1.readConfig)();
-            let minSeverity = config.fail_on_severity;
+            const config = (0, config_1.readConfig)();
+            const minSeverity = config.fail_on_severity;
             let failed = false;
-            let licenses = {
+            const licenses = {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             };
-            let filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
+            const filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
             for (const change of filteredChanges) {
                 if (change.change_type === 'added' &&
                     change.vulnerabilities !== undefined &&
@@ -187,9 +187,9 @@ function run() {
                     failed = true;
                 }
             }
-            let [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
+            const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
-                printLicensesError(licenseErrors, licenses);
+                printLicensesError(licenseErrors);
                 core.setFailed('Dependency review detected incompatible licenses.');
             }
             printNullLicenses(unknownLicenses);
@@ -233,11 +233,10 @@ function renderSeverity(severity) {
     }[severity];
     return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
 }
-function printLicensesError(changes, licenses) {
-    if (changes.length == 0) {
+function printLicensesError(changes) {
+    if (changes.length === 0) {
         return;
     }
-    let { allow = [], deny = [] } = licenses;
     core.info('\nThe following dependencies have incompatible licenses:\n');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
@@ -320,7 +319,7 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).default([])
 })
     .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.");
+    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 
@@ -13814,13 +13813,13 @@ const schemas_1 = __nccwpck_require__(1129);
 function filterChangesBySeverity(severity, changes) {
     const severityIdx = schemas_1.SEVERITIES.indexOf(severity);
     let filteredChanges = [];
-    for (let change of changes) {
+    for (const change of changes) {
         if (change === undefined ||
             change.vulnerabilities === undefined ||
             change.vulnerabilities.length === 0) {
             continue;
         }
-        let fChange = Object.assign(Object.assign({}, change), { vulnerabilities: change.vulnerabilities.filter(vuln => {
+        const fChange = Object.assign(Object.assign({}, change), { vulnerabilities: change.vulnerabilities.filter(vuln => {
                 const vulnIdx = schemas_1.SEVERITIES.indexOf(vuln.severity);
                 if (vulnIdx <= severityIdx) {
                     return true;
@@ -13900,7 +13899,7 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).default([])
 })
     .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), "Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.");
+    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 

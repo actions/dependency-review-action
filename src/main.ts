@@ -27,16 +27,16 @@ async function run(): Promise<void> {
       headRef: pull_request.head.sha
     })
 
-    let config = readConfig()
-    let minSeverity = config.fail_on_severity
+    const config = readConfig()
+    const minSeverity = config.fail_on_severity
     let failed = false
 
-    let licenses = {
+    const licenses = {
       allow: config.allow_licenses,
       deny: config.deny_licenses
     }
 
-    let filteredChanges = filterChangesBySeverity(
+    const filteredChanges = filterChangesBySeverity(
       minSeverity as Severity,
       changes
     )
@@ -52,13 +52,13 @@ async function run(): Promise<void> {
       }
     }
 
-    let [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
+    const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
       changes,
       licenses
     )
 
     if (licenseErrors.length > 0) {
-      printLicensesError(licenseErrors, licenses)
+      printLicensesError(licenseErrors)
       core.setFailed('Dependency review detected incompatible licenses.')
     }
 
@@ -90,7 +90,7 @@ async function run(): Promise<void> {
   }
 }
 
-function printChangeVulnerabilities(change: Change) {
+function printChangeVulnerabilities(change: Change): void {
   for (const vuln of change.vulnerabilities) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${
@@ -117,18 +117,10 @@ function renderSeverity(
   return `${styles.color[color].open}(${severity} severity)${styles.color[color].close}`
 }
 
-function printLicensesError(
-  changes: Array<Change>,
-  licenses: {
-    allow?: Array<string>
-    deny?: Array<string>
-  }
-): void {
-  if (changes.length == 0) {
+function printLicensesError(changes: Change[]): void {
+  if (changes.length === 0) {
     return
   }
-
-  let {allow = [], deny = []} = licenses
 
   core.info('\nThe following dependencies have incompatible licenses:\n')
   for (const change of changes) {
@@ -138,7 +130,7 @@ function printLicensesError(
   }
 }
 
-function printNullLicenses(changes: Array<Change>): void {
+function printNullLicenses(changes: Change[]): void {
   if (changes.length === 0) {
     return
   }

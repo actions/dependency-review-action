@@ -1,5 +1,4 @@
-import {Changes} from './schemas'
-import {Severity, SEVERITIES} from './schemas'
+import {Changes, Severity, SEVERITIES} from './schemas'
 
 export function filterChangesBySeverity(
   severity: Severity,
@@ -7,7 +6,7 @@ export function filterChangesBySeverity(
 ): Changes {
   const severityIdx = SEVERITIES.indexOf(severity)
   let filteredChanges = []
-  for (let change of changes) {
+  for (const change of changes) {
     if (
       change === undefined ||
       change.vulnerabilities === undefined ||
@@ -16,7 +15,7 @@ export function filterChangesBySeverity(
       continue
     }
 
-    let fChange = {
+    const fChange = {
       ...change,
       vulnerabilities: change.vulnerabilities.filter(vuln => {
         const vulnIdx = SEVERITIES.indexOf(vuln.severity)
