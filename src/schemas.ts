@@ -39,7 +39,7 @@ export const ConfigurationOptionsSchema = z
   .partial()
   .refine(
     obj => !(obj.allow_licenses && obj.deny_licenses),
-    "Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other."
+    'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.'
   )
 
 export const ChangesSchema = z.array(ChangeSchema)

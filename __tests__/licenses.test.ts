@@ -29,7 +29,7 @@ let npmChange: Change = {
     {
       severity: 'critical',
       advisory_ghsa_id: 'first-random_string',
-      advisory_summary: 'very dangerouns',
+      advisory_summary: 'very dangerous',
       advisory_url: 'github.com/future-funk'
     }
   ]
@@ -48,7 +48,7 @@ let rubyChange: Change = {
     {
       severity: 'moderate',
       advisory_ghsa_id: 'second-random_string',
-      advisory_summary: 'not so dangerouns',
+      advisory_summary: 'not so dangerous',
       advisory_url: 'github.com/future-funk'
     },
     {
@@ -90,13 +90,17 @@ test('it passes if license outside at least one of deny list is found', async ()
 
 test('it fails if a license inside the deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['BSD-2-Clause']})
+  const [invalidChanges] = getDeniedLicenseChanges(changes, {
+    deny: ['BSD-2-Clause']
+  })
   expect(invalidChanges).toStrictEqual([rubyChange])
 })
 
 test.skip('it fails if a multiple license inside the all of deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['MIT', 'CC0-1.0']})
+  const [invalidChanges] = getDeniedLicenseChanges(changes, {
+    deny: ['MIT', 'CC0-1.0']
+  })
   expect(invalidChanges).toStrictEqual([npmChange])
 })
 
