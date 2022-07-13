@@ -86,3 +86,13 @@ test('it does not fail if a license inside the deny list is found in removed cha
   const [invalidChanges, _] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
   expect(invalidChanges).toStrictEqual([])
 })
+
+test('it fails if a license outside the allow list is found in both of added and removed changes', async () => {
+  const changes: Changes = [
+    {...npmChange, change_type: 'removed'},
+    npmChange,
+    {...rubyChange, change_type: 'removed'}
+  ]
+  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  expect(invalidChanges).toStrictEqual([npmChange])
+})
