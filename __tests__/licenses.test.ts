@@ -68,3 +68,21 @@ test('it fails all license checks when allow is provided an empty array', async 
   })
   expect(invalidChanges.length).toBe(2)
 })
+
+test('it does not fail if a license outside the allow list is found in removed changes', async () => {
+  const changes: Changes = [
+    {...npmChange, change_type: 'removed'},
+    {...rubyChange, change_type: 'removed'}
+  ]
+  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  expect(invalidChanges).toStrictEqual([])
+})
+
+test('it does not fail if a license inside the deny list is found in removed changes', async () => {
+  const changes: Changes = [
+    {...npmChange, change_type: 'removed'},
+    {...rubyChange, change_type: 'removed'}
+  ]
+  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  expect(invalidChanges).toStrictEqual([])
+})

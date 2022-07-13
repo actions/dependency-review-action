@@ -25,6 +25,10 @@ export function getDeniedLicenseChanges(
   const unknown: Change[] = []
 
   for (const change of changes) {
+    if (change.change_type === 'removed') {
+      continue
+    }
+
     const license = change.license
     if (license === null) {
       unknown.push(change)
