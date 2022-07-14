@@ -102,8 +102,8 @@ minor/patch updates.
 
 To do this just force-create a new annotated tag and push it:
 ```
-git tag -fa v1 -m "Updating v1 tag"
-git push origin v1 --force
+git tag -fa v2 -m "Updating v2 tag"
+git push origin v2 --force
 ```
 
 ## Resources
