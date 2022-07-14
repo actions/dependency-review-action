@@ -102,7 +102,7 @@ minor/patch updates.
 
 To do this just force-create a new annotated tag and push it:
 ```
-git tag -fa v2 -m "Updating v2 tag"
+git tag -fa v2 -m "Updating v2 to 2.3.4"
 git push origin v2 --force
 ```
 
