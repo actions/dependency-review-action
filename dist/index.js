@@ -10792,7 +10792,8 @@ function wrappy (fn, cb) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.setErrorMap = exports.overrideErrorMap = exports.defaultErrorMap = exports.ZodError = exports.quotelessJson = exports.ZodIssueCode = void 0;
+exports.getErrorMap = exports.setErrorMap = exports.defaultErrorMap = exports.ZodError = exports.quotelessJson = exports.ZodIssueCode = void 0;
+const parseUtil_1 = __nccwpck_require__(888);
 const util_1 = __nccwpck_require__(3985);
 exports.ZodIssueCode = util_1.util.arrayToEnum([
     "invalid_type",
@@ -10893,7 +10894,7 @@ class ZodError extends Error {
         return this.message;
     }
     get message() {
-        return JSON.stringify(this.issues, null, 2);
+        return JSON.stringify(this.issues, parseUtil_1.jsonStringifyReplacer, 2);
     }
     get isEmpty() {
         return this.issues.length === 0;
@@ -10933,7 +10934,7 @@ const defaultErrorMap = (issue, _ctx) => {
             }
             break;
         case exports.ZodIssueCode.invalid_literal:
-            message = `Invalid literal value, expected ${JSON.stringify(issue.expected)}`;
+            message = `Invalid literal value, expected ${JSON.stringify(issue.expected, parseUtil_1.jsonStringifyReplacer)}`;
             break;
         case exports.ZodIssueCode.unrecognized_keys:
             message = `Unrecognized key(s) in object: ${util_1.util.joinValues(issue.keys, ", ")}`;
@@ -10957,10 +10958,23 @@ const defaultErrorMap = (issue, _ctx) => {
             message = `Invalid date`;
             break;
         case exports.ZodIssueCode.invalid_string:
-            if (issue.validation !== "regex")
+            if (typeof issue.validation === "object") {
+                if ("startsWith" in issue.validation) {
+                    message = `Invalid input: must start with "${issue.validation.startsWith}"`;
+                }
+                else if ("endsWith" in issue.validation) {
+                    message = `Invalid input: must start with "${issue.validation.endsWith}"`;
+                }
+                else {
+                    util_1.util.assertNever(issue.validation);
+                }
+            }
+            else if (issue.validation !== "regex") {
                 message = `Invalid ${issue.validation}`;
-            else
+            }
+            else {
                 message = "Invalid";
+            }
             break;
         case exports.ZodIssueCode.too_small:
             if (issue.type === "array")
@@ -10969,6 +10983,8 @@ const defaultErrorMap = (issue, _ctx) => {
                 message = `String must contain ${issue.inclusive ? `at least` : `over`} ${issue.minimum} character(s)`;
             else if (issue.type === "number")
                 message = `Number must be greater than ${issue.inclusive ? `or equal to ` : ``}${issue.minimum}`;
+            else if (issue.type === "date")
+                message = `Date must be greater than ${issue.inclusive ? `or equal to ` : ``}${new Date(issue.minimum)}`;
             else
                 message = "Invalid input";
             break;
@@ -10979,6 +10995,8 @@ const defaultErrorMap = (issue, _ctx) => {
                 message = `String must contain ${issue.inclusive ? `at most` : `under`} ${issue.maximum} character(s)`;
             else if (issue.type === "number")
                 message = `Number must be less than ${issue.inclusive ? `or equal to ` : ``}${issue.maximum}`;
+            else if (issue.type === "date")
+                message = `Date must be smaller than ${issue.inclusive ? `or equal to ` : ``}${new Date(issue.maximum)}`;
             else
                 message = "Invalid input";
             break;
@@ -10998,11 +11016,15 @@ const defaultErrorMap = (issue, _ctx) => {
     return { message };
 };
 exports.defaultErrorMap = defaultErrorMap;
-exports.overrideErrorMap = exports.defaultErrorMap;
-const setErrorMap = (map) => {
-    exports.overrideErrorMap = map;
-};
+let overrideErrorMap = exports.defaultErrorMap;
+function setErrorMap(map) {
+    overrideErrorMap = map;
+}
 exports.setErrorMap = setErrorMap;
+function getErrorMap() {
+    return overrideErrorMap;
+}
+exports.getErrorMap = getErrorMap;
 
 
 /***/ }),
@@ -11057,7 +11079,7 @@ var errorUtil;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isAsync = exports.isValid = exports.isDirty = exports.isAborted = exports.OK = exports.DIRTY = exports.INVALID = exports.ParseStatus = exports.addIssueToContext = exports.EMPTY_PATH = exports.makeIssue = void 0;
+exports.jsonStringifyReplacer = exports.isAsync = exports.isValid = exports.isDirty = exports.isAborted = exports.OK = exports.DIRTY = exports.INVALID = exports.ParseStatus = exports.addIssueToContext = exports.EMPTY_PATH = exports.makeIssue = void 0;
 const ZodError_1 = __nccwpck_require__(9892);
 const makeIssue = (params) => {
     const { data, path, errorMaps, issueData } = params;
@@ -11090,7 +11112,7 @@ function addIssueToContext(ctx, issueData) {
         errorMaps: [
             ctx.common.contextualErrorMap,
             ctx.schemaErrorMap,
-            ZodError_1.overrideErrorMap,
+            ZodError_1.getErrorMap(),
             ZodError_1.defaultErrorMap,
         ].filter((x) => !!x),
     });
@@ -11165,6 +11187,13 @@ const isValid = (x) => x.status === "valid";
 exports.isValid = isValid;
 const isAsync = (x) => typeof Promise !== undefined && x instanceof Promise;
 exports.isAsync = isAsync;
+const jsonStringifyReplacer = (_, value) => {
+    if (typeof value === "bigint") {
+        return value.toString();
+    }
+    return value;
+};
+exports.jsonStringifyReplacer = jsonStringifyReplacer;
 
 
 /***/ }),
@@ -11188,6 +11217,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getParsedType = exports.ZodParsedType = exports.util = void 0;
 var util;
 (function (util) {
+    function assertEqual(_cond) { }
+    util.assertEqual = assertEqual;
     function assertNever(_x) {
         throw new Error();
     }
@@ -11393,11 +11424,10 @@ function processCreateParams(params) {
     const customMap = (iss, ctx) => {
         if (iss.code !== "invalid_type")
             return { message: ctx.defaultError };
-        if (typeof ctx.data === "undefined" && required_error)
-            return { message: required_error };
-        if (params.invalid_type_error)
-            return { message: params.invalid_type_error };
-        return { message: ctx.defaultError };
+        if (typeof ctx.data === "undefined") {
+            return { message: required_error !== null && required_error !== void 0 ? required_error : ctx.defaultError };
+        }
+        return { message: invalid_type_error !== null && invalid_type_error !== void 0 ? invalid_type_error : ctx.defaultError };
     };
     return { errorMap: customMap, description };
 }
@@ -11757,6 +11787,28 @@ class ZodString extends ZodType {
             else if (check.kind === "trim") {
                 input.data = input.data.trim();
             }
+            else if (check.kind === "startsWith") {
+                if (!input.data.startsWith(check.value)) {
+                    ctx = this._getOrReturnCtx(input, ctx);
+                    parseUtil_1.addIssueToContext(ctx, {
+                        code: ZodError_1.ZodIssueCode.invalid_string,
+                        validation: { startsWith: check.value },
+                        message: check.message,
+                    });
+                    status.dirty();
+                }
+            }
+            else if (check.kind === "endsWith") {
+                if (!input.data.endsWith(check.value)) {
+                    ctx = this._getOrReturnCtx(input, ctx);
+                    parseUtil_1.addIssueToContext(ctx, {
+                        code: ZodError_1.ZodIssueCode.invalid_string,
+                        validation: { endsWith: check.value },
+                        message: check.message,
+                    });
+                    status.dirty();
+                }
+            }
             else {
                 util_1.util.assertNever(check);
             }
@@ -11785,6 +11837,20 @@ class ZodString extends ZodType {
         return this._addCheck({
             kind: "regex",
             regex: regex,
+            ...errorUtil_1.errorUtil.errToObj(message),
+        });
+    }
+    startsWith(value, message) {
+        return this._addCheck({
+            kind: "startsWith",
+            value: value,
+            ...errorUtil_1.errorUtil.errToObj(message),
+        });
+    }
+    endsWith(value, message) {
+        return this._addCheck({
+            kind: "endsWith",
+            value: value,
             ...errorUtil_1.errorUtil.errToObj(message),
         });
     }
@@ -12109,15 +12175,89 @@ class ZodDate extends ZodType {
             });
             return parseUtil_1.INVALID;
         }
+        const status = new parseUtil_1.ParseStatus();
+        let ctx = undefined;
+        for (const check of this._def.checks) {
+            if (check.kind === "min") {
+                if (input.data.getTime() < check.value) {
+                    ctx = this._getOrReturnCtx(input, ctx);
+                    parseUtil_1.addIssueToContext(ctx, {
+                        code: ZodError_1.ZodIssueCode.too_small,
+                        message: check.message,
+                        inclusive: true,
+                        minimum: check.value,
+                        type: "date",
+                    });
+                    status.dirty();
+                }
+            }
+            else if (check.kind === "max") {
+                if (input.data.getTime() > check.value) {
+                    ctx = this._getOrReturnCtx(input, ctx);
+                    parseUtil_1.addIssueToContext(ctx, {
+                        code: ZodError_1.ZodIssueCode.too_big,
+                        message: check.message,
+                        inclusive: true,
+                        maximum: check.value,
+                        type: "date",
+                    });
+                    status.dirty();
+                }
+            }
+            else {
+                util_1.util.assertNever(check);
+            }
+        }
         return {
-            status: "valid",
+            status: status.value,
             value: new Date(input.data.getTime()),
         };
+    }
+    _addCheck(check) {
+        return new ZodDate({
+            ...this._def,
+            checks: [...this._def.checks, check],
+        });
+    }
+    min(minDate, message) {
+        return this._addCheck({
+            kind: "min",
+            value: minDate.getTime(),
+            message: errorUtil_1.errorUtil.toString(message),
+        });
+    }
+    max(maxDate, message) {
+        return this._addCheck({
+            kind: "max",
+            value: maxDate.getTime(),
+            message: errorUtil_1.errorUtil.toString(message),
+        });
+    }
+    get minDate() {
+        let min = null;
+        for (const ch of this._def.checks) {
+            if (ch.kind === "min") {
+                if (min === null || ch.value > min)
+                    min = ch.value;
+            }
+        }
+        return min != null ? new Date(min) : null;
+    }
+    get maxDate() {
+        let max = null;
+        for (const ch of this._def.checks) {
+            if (ch.kind === "max") {
+                if (max === null || ch.value < max)
+                    max = ch.value;
+            }
+        }
+        return max != null ? new Date(max) : null;
     }
 }
 exports.ZodDate = ZodDate;
 ZodDate.create = (params) => {
     return new ZodDate({
+        checks: [],
         typeName: ZodFirstPartyTypeKind.ZodDate,
         ...processCreateParams(params),
     });
@@ -12613,6 +12753,9 @@ class ZodObject extends ZodType {
             ...this._def,
             shape: () => newShape,
         });
+    }
+    keyof() {
+        return createZodEnum(util_1.util.objectKeys(this.shape));
     }
 }
 exports.ZodObject = ZodObject;
@@ -13209,7 +13352,7 @@ class ZodFunction extends ZodType {
                 errorMaps: [
                     ctx.common.contextualErrorMap,
                     ctx.schemaErrorMap,
-                    ZodError_1.overrideErrorMap,
+                    ZodError_1.getErrorMap(),
                     ZodError_1.defaultErrorMap,
                 ].filter((x) => !!x),
                 issueData: {
@@ -13225,7 +13368,7 @@ class ZodFunction extends ZodType {
                 errorMaps: [
                     ctx.common.contextualErrorMap,
                     ctx.schemaErrorMap,
-                    ZodError_1.overrideErrorMap,
+                    ZodError_1.getErrorMap(),
                     ZodError_1.defaultErrorMap,
                 ].filter((x) => !!x),
                 issueData: {
