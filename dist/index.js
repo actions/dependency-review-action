@@ -61,6 +61,47 @@ exports.compare = compare;
 
 /***/ }),
 
+/***/ 1086:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getRefs = void 0;
+const schemas_1 = __nccwpck_require__(8774);
+function getRefs(config, context) {
+    let base_ref = config.base_ref;
+    let head_ref = config.head_ref;
+    // If possible, source default base & head refs from the GitHub event.
+    // The base/head ref from the config take priority, if provided.
+    if (context.eventName === 'pull_request' ||
+        context.eventName === 'pull_request_target') {
+        const pull_request = schemas_1.PullRequestSchema.parse(context.payload.pull_request);
+        base_ref = base_ref || pull_request.base.sha;
+        head_ref = head_ref || pull_request.head.sha;
+    }
+    if (!base_ref && !head_ref) {
+        throw new Error('Both a base ref and head ref must be provided, either via the `base_ref`/`head_ref` ' +
+            'config options, or by running a `pull_request`/`pull_request_target` workflow.');
+    }
+    else if (!base_ref) {
+        throw new Error('A base ref must be provided, either via the `base_ref` config option, ' +
+            'or by running a `pull_request`/`pull_request_target` workflow.');
+    }
+    else if (!head_ref) {
+        throw new Error('A head ref must be provided, either via the `head_ref` config option, ' +
+            'or by running a `pull_request`/`pull_request_target` workflow.');
+    }
+    return {
+        base: base_ref,
+        head: head_ref
+    };
+}
+exports.getRefs = getRefs;
+
+
+/***/ }),
+
 /***/ 3247:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -157,24 +198,21 @@ const dependencyGraph = __importStar(__nccwpck_require__(4966));
 const github = __importStar(__nccwpck_require__(5438));
 const ansi_styles_1 = __importDefault(__nccwpck_require__(6844));
 const request_error_1 = __nccwpck_require__(537);
-const schemas_1 = __nccwpck_require__(8774);
 const config_1 = __nccwpck_require__(6373);
 const filter_1 = __nccwpck_require__(8752);
 const licenses_1 = __nccwpck_require__(3247);
+const git_refs_1 = __nccwpck_require__(1086);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            if (github.context.eventName !== 'pull_request') {
-                throw new Error(`This run was triggered by the "${github.context.eventName}" event, which is unsupported. Please ensure you are using the "pull_request" event for this workflow.`);
-            }
-            const pull_request = schemas_1.PullRequestSchema.parse(github.context.payload.pull_request);
+            const config = (0, config_1.readConfig)();
+            const refs = (0, git_refs_1.getRefs)(config, github.context);
             const changes = yield dependencyGraph.compare({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo,
-                baseRef: pull_request.base.sha,
-                headRef: pull_request.head.sha
+                baseRef: refs.base,
+                headRef: refs.head
             });
-            const config = (0, config_1.readConfig)();
             const minSeverity = config.fail_on_severity;
             let failed = false;
             const licenses = {
@@ -319,7 +357,9 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([])
+    deny_licenses: z.array(z.string()).default([]),
+    base_ref: z.string(),
+    head_ref: z.string()
 })
     .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
@@ -14017,10 +14057,14 @@ function readConfig() {
     if (allow_licenses !== undefined && deny_licenses !== undefined) {
         throw new Error("Can't specify both allow_licenses and deny_licenses");
     }
+    const base_ref = getOptionalInput('base-ref');
+    const head_ref = getOptionalInput('head-ref');
     return {
         fail_on_severity,
         allow_licenses: allow_licenses === null || allow_licenses === void 0 ? void 0 : allow_licenses.split(',').map(x => x.trim()),
-        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim())
+        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim()),
+        base_ref,
+        head_ref
     };
 }
 exports.readConfig = readConfig;
@@ -14122,7 +14166,9 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([])
+    deny_licenses: z.array(z.string()).default([]),
+    base_ref: z.string(),
+    head_ref: z.string()
 })
     .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
