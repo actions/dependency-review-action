@@ -11003,7 +11003,7 @@ const defaultErrorMap = (issue, _ctx) => {
                     message = `Invalid input: must start with "${issue.validation.startsWith}"`;
                 }
                 else if ("endsWith" in issue.validation) {
-                    message = `Invalid input: must start with "${issue.validation.endsWith}"`;
+                    message = `Invalid input: must end with "${issue.validation.endsWith}"`;
                 }
                 else {
                     util_1.util.assertNever(issue.validation);
