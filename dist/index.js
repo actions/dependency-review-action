@@ -244,7 +244,8 @@ function showSummaryChangeVulnerabilities(filteredChanges) {
                         change.name,
                         change.version,
                         `[${vuln.advisory_summary}](${vuln.advisory_url})`,
-                        vuln.severity
+                        vuln.severity,
+                        vuln.advisory_url
                     ]);
                 }
             }
@@ -258,7 +259,8 @@ function showSummaryChangeVulnerabilities(filteredChanges) {
                     { data: 'Name', header: true },
                     { data: 'Version', header: true },
                     { data: 'Vulnerability', header: true },
-                    { data: 'Severity', header: true }
+                    { data: 'Severity', header: true },
+                    { data: 'TEST', header: true }
                 ],
                 ...rows
             ])
