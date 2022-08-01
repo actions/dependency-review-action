@@ -121,7 +121,9 @@ async function showSummaryChangeVulnerabilities(
 
   let previous_package = ''
   let previous_version = ''
-  for (const change of filteredChanges) {
+  for (const change of filteredChanges.sort((a, b) =>
+    (a.name + a.version).localeCompare(b.name + b.version)
+  )) {
     if (
       change.change_type === 'added' &&
       change.vulnerabilities !== undefined &&
