@@ -130,8 +130,11 @@ async function showSummaryChangeVulnerabilities(
         ])
       }
     }
+  }
+
+  if (rows.length > 0) {
     await core.summary
-      .addHeading('Known Vulnerabilities')
+      .addHeading('Added known Vulnerabilities')
       .addTable([
         [
           {data: 'Manifest', header: true},
@@ -145,27 +148,6 @@ async function showSummaryChangeVulnerabilities(
       .write()
   }
 }
-
-// function showSummaryChangeVulnerabilities()
-//   // TODO: group by manifest
-//   await core.summary
-//     .addHeading('Know Vulnerabilities')
-//     .addTable([
-//       [
-//         {data: 'Manifest', header: true},
-//         {data: 'Name', header: true},
-//         {data: 'Version', header: true},
-//         {data: 'Severity', header: true}
-//       ],
-//       ...change.vulnerabilities.map(vuln => [
-//         chg.manifest,
-//         chg.name,
-//         chg.version,
-//         renderSeverity(chg.severity)
-//       ])
-//     ])
-//     .write()
-// }
 
 function renderSeverity(
   severity: 'critical' | 'high' | 'moderate' | 'low'
