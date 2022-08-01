@@ -42,6 +42,7 @@ async function run(): Promise<void> {
       changes
     )
 
+    // TODO: refactor to get additions only
     for (const change of filteredChanges) {
       if (
         change.change_type === 'added' &&
@@ -113,51 +114,41 @@ async function showSummaryChangeVulnerabilities(
 ): Promise<void> {
   const rows: SummaryTableRow[] = []
 
-  // filteredChanges.filter(change =>
-  //     change.change_type === 'added' &&
-  //     change.vulnerabilities !== undefined &&
-  //     change.vulnerabilities.length > 0
-  //   ).groupBy(change => change.manifest).forEach(changes => {
-
-  let previous_package = ''
-  let previous_version = ''
-  for (const change of filteredChanges.sort((a, b) =>
-    (a.name + a.version).localeCompare(b.name + b.version)
-  )) {
-    if (
+  // TODO: extract this
+  const addedPackages = filteredChanges.filter(
+    change =>
       change.change_type === 'added' &&
       change.vulnerabilities !== undefined &&
       change.vulnerabilities.length > 0
-    ) {
-      core.info(`DEBUG: ${change.package_url}`)
-      // TODO: order and group by manifest/name/version
-      for (const vuln of change.vulnerabilities) {
-        const sameAsPrevious =
-          previous_package === change.name &&
-          previous_version === change.version
+  )
+  let previous_package = ''
+  let previous_version = ''
+  for (const change of addedPackages.sort((a, b) =>
+    (a.name + a.version).localeCompare(b.name + b.version)
+  )) {
+    core.info(`DEBUG: ${change.package_url}`)
+    // TODO: order and group by manifest/name/version
+    for (const vuln of change.vulnerabilities) {
+      const sameAsPrevious =
+        previous_package === change.name && previous_version === change.version
 
-        core.info(
-          `DEBUG: ${sameAsPrevious} ${change.name}@${change.version} ${previous_package}@${previous_version}`
-        )
-
-        if (!sameAsPrevious) {
-          rows.push([
-            change.manifest,
-            renderUrl(change.source_repository_url, change.name),
-            change.version,
-            renderUrl(vuln.advisory_url, vuln.advisory_summary),
-            vuln.severity
-          ])
-        } else {
-          rows.push([
-            {data: '', colspan: '3'},
-            renderUrl(vuln.advisory_url, vuln.advisory_summary),
-            vuln.severity
-          ])
-        }
-        previous_package = change.name
-        previous_version = change.version
+      if (!sameAsPrevious) {
+        rows.push([
+          change.manifest,
+          renderUrl(change.source_repository_url, change.name),
+          change.version,
+          renderUrl(vuln.advisory_url, vuln.advisory_summary),
+          vuln.severity
+        ])
+      } else {
+        rows.push([
+          {data: '', colspan: '3'},
+          renderUrl(vuln.advisory_url, vuln.advisory_summary),
+          vuln.severity
+        ])
       }
+      previous_package = change.name
+      previous_version = change.version
     }
   }
 
