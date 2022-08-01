@@ -121,40 +121,42 @@ async function showSummaryChangeVulnerabilities(
       change.vulnerabilities !== undefined &&
       change.vulnerabilities.length > 0
   )
-  let previous_package = ''
-  let previous_version = ''
-  for (const change of addedPackages.sort((a, b) =>
-    (a.name + a.version).localeCompare(b.name + b.version)
-  )) {
-    core.info(`DEBUG: ${change.package_url}`)
-    // TODO: order and group by manifest/name/version
-    for (const vuln of change.vulnerabilities) {
-      const sameAsPrevious =
-        previous_package === change.name && previous_version === change.version
 
-      if (!sameAsPrevious) {
-        rows.push([
-          change.manifest,
-          renderUrl(change.source_repository_url, change.name),
-          change.version,
-          renderUrl(vuln.advisory_url, vuln.advisory_summary),
-          vuln.severity
-        ])
-      } else {
-        rows.push([
-          {data: '', colspan: '3'},
-          renderUrl(vuln.advisory_url, vuln.advisory_summary),
-          vuln.severity
-        ])
+  const manifests = getManifests(addedPackages)
+
+  for (const manifest of manifests) {
+    for (const change of addedPackages.filter(
+      pkg => pkg.manifest === manifest
+    )) {
+      let previous_package = ''
+      let previous_version = ''
+      for (const vuln of change.vulnerabilities) {
+        const sameAsPrevious =
+          previous_package === change.name &&
+          previous_version === change.version
+
+        if (!sameAsPrevious) {
+          rows.push([
+            change.manifest,
+            renderUrl(change.source_repository_url, change.name),
+            change.version,
+            renderUrl(vuln.advisory_url, vuln.advisory_summary),
+            vuln.severity
+          ])
+        } else {
+          rows.push([
+            {data: '', colspan: '3'},
+            renderUrl(vuln.advisory_url, vuln.advisory_summary),
+            vuln.severity
+          ])
+        }
+        previous_package = change.name
+        previous_version = change.version
       }
-      previous_package = change.name
-      previous_version = change.version
     }
-  }
 
-  if (rows.length > 0) {
     await core.summary
-      .addHeading('Added known Vulnerabilities')
+      .addHeading(`Added known Vulnerabilities for ${manifest}`)
       .addTable([
         [
           {data: 'Manifest', header: true},
@@ -167,6 +169,70 @@ async function showSummaryChangeVulnerabilities(
       ])
       .write()
   }
+}
+
+// async function showSummaryChangeVulnerabilities2(
+//   filteredChanges: Changes
+// ): Promise<void> {
+//   const rows: SummaryTableRow[] = []
+
+//   // TODO: extract this
+//   const addedPackages = filteredChanges.filter(
+//     change =>
+//       change.change_type === 'added' &&
+//       change.vulnerabilities !== undefined &&
+//       change.vulnerabilities.length > 0
+//   )
+//   let previous_package = ''
+//   let previous_version = ''
+//   for (const change of addedPackages.sort((a, b) =>
+//     (a.name + a.version).localeCompare(b.name + b.version)
+//   )) {
+//     core.info(`DEBUG: ${change.package_url}`)
+//     // TODO: order and group by manifest/name/version
+//     for (const vuln of change.vulnerabilities) {
+//       const sameAsPrevious =
+//         previous_package === change.name && previous_version === change.version
+
+//       if (!sameAsPrevious) {
+//         rows.push([
+//           change.manifest,
+//           renderUrl(change.source_repository_url, change.name),
+//           change.version,
+//           renderUrl(vuln.advisory_url, vuln.advisory_summary),
+//           vuln.severity
+//         ])
+//       } else {
+//         rows.push([
+//           {data: '', colspan: '3'},
+//           renderUrl(vuln.advisory_url, vuln.advisory_summary),
+//           vuln.severity
+//         ])
+//       }
+//       previous_package = change.name
+//       previous_version = change.version
+//     }
+//   }
+
+//   if (rows.length > 0) {
+//     await core.summary
+//       .addHeading('Added known Vulnerabilities')
+//       .addTable([
+//         [
+//           {data: 'Manifest', header: true},
+//           {data: 'Name', header: true},
+//           {data: 'Version', header: true},
+//           {data: 'Vulnerability', header: true},
+//           {data: 'Severity', header: true}
+//         ],
+//         ...rows
+//       ])
+//       .write()
+//   }
+// }
+
+function getManifests(changes: Changes): Set<string> {
+  return new Set(changes.flatMap(c => c.manifest))
 }
 
 function renderUrl(url: string | null, text: string): string {
