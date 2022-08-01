@@ -125,9 +125,8 @@ async function showSummaryChangeVulnerabilities(
           change.manifest,
           change.name,
           change.version,
-          `[${vuln.advisory_summary}](${vuln.advisory_url})`,
-          vuln.severity,
-          vuln.advisory_url
+          `<a href="${vuln.advisory_url}">${vuln.advisory_summary}</a>`,
+          vuln.severity
         ])
       }
     }
@@ -142,8 +141,7 @@ async function showSummaryChangeVulnerabilities(
           {data: 'Name', header: true},
           {data: 'Version', header: true},
           {data: 'Vulnerability', header: true},
-          {data: 'Severity', header: true},
-          {data: 'TEST', header: true}
+          {data: 'Severity', header: true}
         ],
         ...rows
       ])
