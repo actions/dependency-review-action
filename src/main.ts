@@ -123,9 +123,9 @@ async function showSummaryChangeVulnerabilities(
       for (const vuln of change.vulnerabilities) {
         rows.push([
           change.manifest,
-          change.name,
+          renderUrl(change.package_url, change.name),
           change.version,
-          `<a href="${vuln.advisory_url}">${vuln.advisory_summary}</a>`,
+          renderUrl(vuln.advisory_url, vuln.advisory_summary),
           vuln.severity
         ])
       }
@@ -147,6 +147,10 @@ async function showSummaryChangeVulnerabilities(
       ])
       .write()
   }
+}
+
+function renderUrl(url: string, text: string): string {
+  return `<a href="${url}">${text}</a>`
 }
 
 function renderSeverity(

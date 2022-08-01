@@ -241,9 +241,9 @@ function showSummaryChangeVulnerabilities(filteredChanges) {
                 for (const vuln of change.vulnerabilities) {
                     rows.push([
                         change.manifest,
-                        change.name,
+                        renderUrl(change.package_url, change.name),
                         change.version,
-                        `<a href="${vuln.advisory_url}">${vuln.advisory_summary}</a>`,
+                        renderUrl(vuln.advisory_url, vuln.advisory_summary),
                         vuln.severity
                     ]);
                 }
@@ -265,6 +265,9 @@ function showSummaryChangeVulnerabilities(filteredChanges) {
                 .write();
         }
     });
+}
+function renderUrl(url, text) {
+    return `<a href="${url}">${text}</a>`;
 }
 function renderSeverity(severity) {
     const color = {
