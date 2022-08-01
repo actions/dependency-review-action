@@ -113,21 +113,44 @@ async function showSummaryChangeVulnerabilities(
 ): Promise<void> {
   const rows: SummaryTableRow[] = []
 
+  // filteredChanges.filter(change =>
+  //     change.change_type === 'added' &&
+  //     change.vulnerabilities !== undefined &&
+  //     change.vulnerabilities.length > 0
+  //   ).groupBy(change => change.manifest).forEach(changes => {
+
+  let previous_package = ''
+  let previous_version = ''
   for (const change of filteredChanges) {
     if (
       change.change_type === 'added' &&
       change.vulnerabilities !== undefined &&
       change.vulnerabilities.length > 0
     ) {
+      console.log(`DEBUG: ${change.package_url}`)
       // TODO: order and group by manifest/name/version
       for (const vuln of change.vulnerabilities) {
-        rows.push([
-          change.manifest,
-          renderUrl(change.package_url, change.name),
-          change.version,
-          renderUrl(vuln.advisory_url, vuln.advisory_summary),
-          vuln.severity
-        ])
+        const sameAsPrevious =
+          previous_package === change.name &&
+          previous_version === change.version
+
+        if (!sameAsPrevious) {
+          rows.push([
+            change.manifest,
+            renderUrl(change.package_url, change.name),
+            change.version,
+            renderUrl(vuln.advisory_url, vuln.advisory_summary),
+            vuln.severity
+          ])
+        } else {
+          rows.push([
+            {data: '', colspan: '3'},
+            renderUrl(vuln.advisory_url, vuln.advisory_summary),
+            vuln.severity
+          ])
+          previous_package = change.name
+          previous_version = change.version
+        }
       }
     }
   }
