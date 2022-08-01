@@ -182,17 +182,17 @@ function run() {
                 deny: config.deny_licenses
             };
             const filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
-            // TODO: refactor to get additions only
-            for (const change of filteredChanges) {
-                if (change.change_type === 'added' &&
-                    change.vulnerabilities !== undefined &&
-                    change.vulnerabilities.length > 0) {
+            const addedChanges = filteredChanges.filter(change => change.change_type === 'added' &&
+                change.vulnerabilities !== undefined &&
+                change.vulnerabilities.length > 0);
+            if (addedChanges.length > 0) {
+                for (const change of addedChanges) {
                     printChangeVulnerabilities(change);
-                    failed = true;
                 }
-            }
-            if (config.show_summary) {
-                yield showSummaryChangeVulnerabilities(filteredChanges);
+                failed = true;
+                if (config.show_summary) {
+                    yield showSummaryChangeVulnerabilities(addedChanges);
+                }
             }
             const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
@@ -231,13 +231,9 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
-function showSummaryChangeVulnerabilities(filteredChanges) {
+function showSummaryChangeVulnerabilities(addedPackages) {
     return __awaiter(this, void 0, void 0, function* () {
         const rows = [];
-        // TODO: extract this
-        const addedPackages = filteredChanges.filter(change => change.change_type === 'added' &&
-            change.vulnerabilities !== undefined &&
-            change.vulnerabilities.length > 0);
         const manifests = getManifests(addedPackages);
         for (const manifest of manifests) {
             for (const change of addedPackages.filter(pkg => pkg.manifest === manifest)) {

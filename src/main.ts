@@ -42,20 +42,22 @@ async function run(): Promise<void> {
       changes
     )
 
-    // TODO: refactor to get additions only
-    for (const change of filteredChanges) {
-      if (
+    const addedChanges = filteredChanges.filter(
+      change =>
         change.change_type === 'added' &&
         change.vulnerabilities !== undefined &&
         change.vulnerabilities.length > 0
-      ) {
-        printChangeVulnerabilities(change)
-        failed = true
-      }
-    }
+    )
 
-    if (config.show_summary) {
-      await showSummaryChangeVulnerabilities(filteredChanges)
+    if (addedChanges.length > 0) {
+      for (const change of addedChanges) {
+        printChangeVulnerabilities(change)
+      }
+      failed = true
+
+      if (config.show_summary) {
+        await showSummaryChangeVulnerabilities(addedChanges)
+      }
     }
 
     const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
@@ -110,17 +112,9 @@ function printChangeVulnerabilities(change: Change): void {
 }
 
 async function showSummaryChangeVulnerabilities(
-  filteredChanges: Changes
+  addedPackages: Changes
 ): Promise<void> {
   const rows: SummaryTableRow[] = []
-
-  // TODO: extract this
-  const addedPackages = filteredChanges.filter(
-    change =>
-      change.change_type === 'added' &&
-      change.vulnerabilities !== undefined &&
-      change.vulnerabilities.length > 0
-  )
 
   const manifests = getManifests(addedPackages)
 
