@@ -137,7 +137,6 @@ async function showSummaryChangeVulnerabilities(
 
         if (!sameAsPrevious) {
           rows.push([
-            change.manifest,
             renderUrl(change.source_repository_url, change.name),
             change.version,
             renderUrl(vuln.advisory_url, vuln.advisory_summary),
@@ -145,7 +144,7 @@ async function showSummaryChangeVulnerabilities(
           ])
         } else {
           rows.push([
-            {data: '', colspan: '3'},
+            {data: '', colspan: '2'},
             renderUrl(vuln.advisory_url, vuln.advisory_summary),
             vuln.severity
           ])
@@ -159,7 +158,6 @@ async function showSummaryChangeVulnerabilities(
       .addHeading(`Added known Vulnerabilities for ${manifest}`)
       .addTable([
         [
-          {data: 'Manifest', header: true},
           {data: 'Name', header: true},
           {data: 'Version', header: true},
           {data: 'Vulnerability', header: true},
