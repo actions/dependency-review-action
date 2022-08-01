@@ -16,9 +16,8 @@ export function readConfig(): ConfigurationOptions {
   const deny_licenses = getOptionalInput('deny-licenses')
 
   const show_summary = z
-    .boolean()
-    .default(false)
-    .parse(getOptionalInput('show-summary'))
+    .optional(z.boolean())
+    .parse(JSON.parse(getOptionalInput('show-summary') || 'false'))
 
   if (allow_licenses !== undefined && deny_licenses !== undefined) {
     throw new Error("Can't specify both allow_licenses and deny_licenses")

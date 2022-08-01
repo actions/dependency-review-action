@@ -19,7 +19,7 @@ inputs:
   show-summary:
     description: Show know vulnerabilities and license violations in the summary (disabled by default)
     required: false
-    default: false
+    default: 'false'
 runs:
   using: 'node16'
   main: 'dist/index.js'
