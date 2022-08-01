@@ -265,9 +265,9 @@ function showSummaryChangeVulnerabilities(filteredChanges) {
                             renderUrl(vuln.advisory_url, vuln.advisory_summary),
                             vuln.severity
                         ]);
-                        previous_package = change.name;
-                        previous_version = change.version;
                     }
+                    previous_package = change.name;
+                    previous_version = change.version;
                 }
             }
         }
