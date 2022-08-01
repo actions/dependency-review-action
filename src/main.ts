@@ -127,7 +127,7 @@ async function showSummaryChangeVulnerabilities(
       change.vulnerabilities !== undefined &&
       change.vulnerabilities.length > 0
     ) {
-      console.log(`DEBUG: ${change.package_url}`)
+      core.info(`DEBUG: ${change.package_url}`)
       // TODO: order and group by manifest/name/version
       for (const vuln of change.vulnerabilities) {
         const sameAsPrevious =
