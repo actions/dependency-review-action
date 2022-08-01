@@ -190,6 +190,9 @@ function run() {
                     failed = true;
                 }
             }
+            if (config.show_summary) {
+                yield showSummaryChangeVulnerabilities(filteredChanges);
+            }
             const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
                 printLicensesError(licenseErrors);
@@ -227,6 +230,60 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
+function showSummaryChangeVulnerabilities(filteredChanges) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const rows = [];
+        for (const change of filteredChanges) {
+            if (change.change_type === 'added' &&
+                change.vulnerabilities !== undefined &&
+                change.vulnerabilities.length > 0) {
+                // TODO: order and group by manifest/name/version
+                for (const vuln of change.vulnerabilities) {
+                    rows.push([
+                        change.manifest,
+                        change.name,
+                        change.version,
+                        `[${vuln.advisory_summary}](${vuln.advisory_url})`,
+                        vuln.severity
+                    ]);
+                }
+            }
+            yield core.summary
+                .addHeading('Known Vulnerabilities')
+                .addTable([
+                [
+                    { data: 'Manifest', header: true },
+                    { data: 'Name', header: true },
+                    { data: 'Version', header: true },
+                    { data: 'Vulnerability', header: true },
+                    { data: 'Severity', header: true }
+                ],
+                ...rows
+            ])
+                .write();
+        }
+    });
+}
+// function showSummaryChangeVulnerabilities()
+//   // TODO: group by manifest
+//   await core.summary
+//     .addHeading('Know Vulnerabilities')
+//     .addTable([
+//       [
+//         {data: 'Manifest', header: true},
+//         {data: 'Name', header: true},
+//         {data: 'Version', header: true},
+//         {data: 'Severity', header: true}
+//       ],
+//       ...change.vulnerabilities.map(vuln => [
+//         chg.manifest,
+//         chg.name,
+//         chg.version,
+//         renderSeverity(chg.severity)
+//       ])
+//     ])
+//     .write()
+// }
 function renderSeverity(severity) {
     const color = {
         critical: 'red',
@@ -319,7 +376,8 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([])
+    deny_licenses: z.array(z.string()).default([]),
+    show_summary: z.boolean().default(false)
 })
     .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
@@ -14014,13 +14072,18 @@ function readConfig() {
         .parse(getOptionalInput('fail-on-severity'));
     const allow_licenses = getOptionalInput('allow-licenses');
     const deny_licenses = getOptionalInput('deny-licenses');
+    const show_summary = z
+        .boolean()
+        .default(false)
+        .parse(getOptionalInput('show-summary'));
     if (allow_licenses !== undefined && deny_licenses !== undefined) {
         throw new Error("Can't specify both allow_licenses and deny_licenses");
     }
     return {
         fail_on_severity,
         allow_licenses: allow_licenses === null || allow_licenses === void 0 ? void 0 : allow_licenses.split(',').map(x => x.trim()),
-        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim())
+        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim()),
+        show_summary
     };
 }
 exports.readConfig = readConfig;
@@ -14122,7 +14185,8 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([])
+    deny_licenses: z.array(z.string()).default([]),
+    show_summary: z.boolean().default(false)
 })
     .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');

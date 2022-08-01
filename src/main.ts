@@ -3,10 +3,11 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, PullRequestSchema, Severity} from './schemas'
+import {Change, Changes, PullRequestSchema, Severity} from './schemas'
 import {readConfig} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
+import {SummaryTableRow} from '@actions/core/lib/summary'
 
 async function run(): Promise<void> {
   try {
@@ -50,6 +51,10 @@ async function run(): Promise<void> {
         printChangeVulnerabilities(change)
         failed = true
       }
+    }
+
+    if (config.show_summary) {
+      await showSummaryChangeVulnerabilities(filteredChanges)
     }
 
     const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
@@ -102,6 +107,65 @@ function printChangeVulnerabilities(change: Change): void {
     core.info(`  ↪ ${vuln.advisory_url}`)
   }
 }
+
+async function showSummaryChangeVulnerabilities(
+  filteredChanges: Changes
+): Promise<void> {
+  const rows: SummaryTableRow[] = []
+
+  for (const change of filteredChanges) {
+    if (
+      change.change_type === 'added' &&
+      change.vulnerabilities !== undefined &&
+      change.vulnerabilities.length > 0
+    ) {
+      // TODO: order and group by manifest/name/version
+      for (const vuln of change.vulnerabilities) {
+        rows.push([
+          change.manifest,
+          change.name,
+          change.version,
+          `[${vuln.advisory_summary}](${vuln.advisory_url})`,
+          vuln.severity
+        ])
+      }
+    }
+    await core.summary
+      .addHeading('Known Vulnerabilities')
+      .addTable([
+        [
+          {data: 'Manifest', header: true},
+          {data: 'Name', header: true},
+          {data: 'Version', header: true},
+          {data: 'Vulnerability', header: true},
+          {data: 'Severity', header: true}
+        ],
+        ...rows
+      ])
+      .write()
+  }
+}
+
+// function showSummaryChangeVulnerabilities()
+//   // TODO: group by manifest
+//   await core.summary
+//     .addHeading('Know Vulnerabilities')
+//     .addTable([
+//       [
+//         {data: 'Manifest', header: true},
+//         {data: 'Name', header: true},
+//         {data: 'Version', header: true},
+//         {data: 'Severity', header: true}
+//       ],
+//       ...change.vulnerabilities.map(vuln => [
+//         chg.manifest,
+//         chg.name,
+//         chg.version,
+//         renderSeverity(chg.severity)
+//       ])
+//     ])
+//     .write()
+// }
 
 function renderSeverity(
   severity: 'critical' | 'high' | 'moderate' | 'low'

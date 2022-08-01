@@ -16,6 +16,10 @@ inputs:
   deny-licenses:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
+  show-summary:
+    description: Show know vulnerabilities and license violations in the summary (disabled by default)
+    required: false
+    default: false
 runs:
   using: 'node16'
   main: 'dist/index.js'
