@@ -249,10 +249,11 @@ function showSummaryChangeVulnerabilities(filteredChanges) {
                 for (const vuln of change.vulnerabilities) {
                     const sameAsPrevious = previous_package === change.name &&
                         previous_version === change.version;
+                    core.info(`DEBUG: ${sameAsPrevious} ${change.name}@${change.version} ${previous_package}@${previous_version}`);
                     if (!sameAsPrevious) {
                         rows.push([
                             change.manifest,
-                            renderUrl(change.package_url, change.name),
+                            renderUrl(change.source_repository_url, change.name),
                             change.version,
                             renderUrl(vuln.advisory_url, vuln.advisory_summary),
                             vuln.severity
@@ -288,7 +289,12 @@ function showSummaryChangeVulnerabilities(filteredChanges) {
     });
 }
 function renderUrl(url, text) {
-    return `<a href="${url}">${text}</a>`;
+    if (url) {
+        return `<a href="${url}">${text}</a>`;
+    }
+    else {
+        return text;
+    }
 }
 function renderSeverity(severity) {
     const color = {

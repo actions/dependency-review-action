@@ -134,10 +134,14 @@ async function showSummaryChangeVulnerabilities(
           previous_package === change.name &&
           previous_version === change.version
 
+        core.info(
+          `DEBUG: ${sameAsPrevious} ${change.name}@${change.version} ${previous_package}@${previous_version}`
+        )
+
         if (!sameAsPrevious) {
           rows.push([
             change.manifest,
-            renderUrl(change.package_url, change.name),
+            renderUrl(change.source_repository_url, change.name),
             change.version,
             renderUrl(vuln.advisory_url, vuln.advisory_summary),
             vuln.severity
@@ -172,8 +176,12 @@ async function showSummaryChangeVulnerabilities(
   }
 }
 
-function renderUrl(url: string, text: string): string {
-  return `<a href="${url}">${text}</a>`
+function renderUrl(url: string | null, text: string): string {
+  if (url) {
+    return `<a href="${url}">${text}</a>`
+  } else {
+    return text
+  }
 }
 
 function renderSeverity(
