@@ -34,7 +34,9 @@ export const ConfigurationOptionsSchema = z
   .object({
     fail_on_severity: z.enum(SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([])
+    deny_licenses: z.array(z.string()).default([]),
+    base_ref: z.string(),
+    head_ref: z.string()
   })
   .partial()
   .refine(

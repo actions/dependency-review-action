@@ -10,6 +10,12 @@ inputs:
     description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.
     required: false
     default: 'low'
+  base-ref:
+    description: The base git ref to be used for this check. Has a default value when the workflow event is `pull_request` or `pull_request_target`. Must be provided otherwise.
+    required: false
+  head-ref:
+    description: The head git ref to be used for this check. Has a default value when the workflow event is `pull_request` or `pull_request_target`. Must be provided otherwise.
+    required: false
   allow-licenses:
     description: Comma-separated list of allowed licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
