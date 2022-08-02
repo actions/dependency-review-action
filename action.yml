@@ -16,6 +16,16 @@ inputs:
   deny-licenses:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
+  check-name-vulnerabilities:
+    description: The name of vulnerabilities check
+    required: false
+  check-name-licenses:
+    description: The name of the licenses check
+    required: false
+  fail-on-violation:
+    description: 'Should the action fail if a dependency or license violation is found. Disabled by default.'
+    default: 'false'
+    required: false
 runs:
   using: 'node16'
   main: 'dist/index.js'

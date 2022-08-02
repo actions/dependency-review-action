@@ -1,9 +1,15 @@
 import * as core from '@actions/core'
 import * as dependencyGraph from './dependency-graph'
+import * as checks from './checks'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, PullRequestSchema, Severity} from './schemas'
+import {
+  Change,
+  ConfigurationOptions,
+  PullRequestSchema,
+  Severity
+} from './schemas'
 import {readConfig} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
@@ -36,21 +42,32 @@ async function run(): Promise<void> {
       deny: config.deny_licenses
     }
 
-    const filteredChanges = filterChangesBySeverity(
+    const addedChanges = filterChangesBySeverity(
       minSeverity as Severity,
       changes
-    )
-
-    for (const change of filteredChanges) {
-      if (
+    ).filter(
+      change =>
         change.change_type === 'added' &&
         change.vulnerabilities !== undefined &&
         change.vulnerabilities.length > 0
-      ) {
-        printChangeVulnerabilities(change)
-        failed = true
-      }
+    )
+
+    core.debug(`Found ${addedChanges.length} added changes`)
+
+    for (const change of addedChanges) {
+      printChangeVulnerabilities(change)
     }
+    failed = addedChanges.length > 0
+
+    core.debug(`creating check with ${failed ? 'failure' : 'success'}`)
+
+    await checks.createVulnerabilitiesCheck(
+      addedChanges,
+      pull_request.head.sha,
+      failed,
+      minSeverity,
+      config
+    )
 
     const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
       changes,
@@ -59,13 +76,24 @@ async function run(): Promise<void> {
 
     if (licenseErrors.length > 0) {
       printLicensesError(licenseErrors)
-      core.setFailed('Dependency review detected incompatible licenses.')
+      violationFound(
+        config,
+        'Dependency review detected incompatible licenses.'
+      )
     }
+
+    await checks.createLicensesCheck(
+      licenseErrors,
+      unknownLicenses,
+      pull_request.head.sha,
+      licenseErrors.length > 0,
+      config
+    )
 
     printNullLicenses(unknownLicenses)
 
     if (failed) {
-      core.setFailed('Dependency review detected vulnerable packages.')
+      violationFound(config, 'Dependency review detected vulnerable packages.')
     } else {
       core.info(
         `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
@@ -140,6 +168,14 @@ function printNullLicenses(changes: Change[]): void {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`
     )
+  }
+}
+
+function violationFound(config: ConfigurationOptions, message: string): void {
+  if (config.fail_on_violation) {
+    core.setFailed(message)
+  } else {
+    core.warning(message)
   }
 }
 

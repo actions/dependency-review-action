@@ -1,6 +1,148 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 2321:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createVulnerabilitiesCheck = exports.createLicensesCheck = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const github = __importStar(__nccwpck_require__(5438));
+const githubUtils = __importStar(__nccwpck_require__(3030));
+const retry = __importStar(__nccwpck_require__(6298));
+const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
+function createLicensesCheck(licenseErrors, unknownLicensesErrors, sha, failed, config) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let body = '';
+        if (licenseErrors.length > 0) {
+            const manifests = getManifests(licenseErrors);
+            core.debug(`found ${manifests.size} manifests for licenses`);
+            if (config.allow_licenses && config.allow_licenses.length > 0) {
+                body += `\n> **Allowed Licenses**: ${config.allow_licenses.join(', ')}\n`;
+            }
+            if (config.deny_licenses && config.deny_licenses.length > 0) {
+                body += `\n> **Denied Licenses**: ${config.deny_licenses.join(', ')}\n`;
+            }
+            body += `\n## Incompatible Licenses`;
+            for (const manifest of manifests) {
+                body += `\n ### _${manifest}_\n|Package|Version|License|\n|---|---:|---|`;
+                for (const change of licenseErrors.filter(pkg => pkg.manifest === manifest)) {
+                    body += `\n|${renderUrl(change.source_repository_url, change.name)}|${change.version}|${change.license}|`;
+                }
+            }
+        }
+        core.info(`found ${unknownLicensesErrors.length} unknown licenses`);
+        if (unknownLicensesErrors.length > 0) {
+            const manifests = getManifests(unknownLicensesErrors);
+            core.debug(`found ${manifests.size} manifests for unknown licenses`);
+            body += `\n## Unknown Licenses\n`;
+            for (const manifest of manifests) {
+                body += `\n ### Manifest _${manifest}_:\n|Package|Version|\n|---|---:|`;
+                for (const change of unknownLicensesErrors.filter(pkg => pkg.manifest === manifest)) {
+                    body += `\n|${renderUrl(change.source_repository_url, change.name)}|${change.version}|${change.license}|`;
+                }
+            }
+        }
+        yield createCheck(config.check_name_vulnerability || 'Dependency Review Licenses', sha, body, failed);
+    });
+}
+exports.createLicensesCheck = createLicensesCheck;
+function createVulnerabilitiesCheck(addedPackages, sha, failed, severity, config) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const manifests = getManifests(addedPackages);
+        let body = `Found ${addedPackages.length} vulnerabilities`;
+        core.debug(`found ${manifests.size} manifests`);
+        if (addedPackages.length > 0) {
+            body += `\n## Vulnerabilities`;
+            body += severity
+                ? `\n> Vulnerabilities where filtered by **${severity}** severity.\n`
+                : '';
+        }
+        for (const manifest of manifests) {
+            body += `\n### _${manifest}_\n|Package|Version|Vulnerability|Severity|\n|---|---:|---|---|`;
+            for (const change of addedPackages.filter(pkg => pkg.manifest === manifest)) {
+                let previous_package = '';
+                let previous_version = '';
+                for (const vuln of change.vulnerabilities) {
+                    const sameAsPrevious = previous_package === change.name &&
+                        previous_version === change.version;
+                    if (!sameAsPrevious) {
+                        body += `\n| ${renderUrl(change.source_repository_url, change.name)} | ${change.version}|`;
+                    }
+                    else {
+                        body += '\n|||';
+                    }
+                    body += `${renderUrl(vuln.advisory_url, vuln.advisory_summary)} | ${vuln.severity} |`;
+                    previous_package = change.name;
+                    previous_version = change.version;
+                }
+            }
+        }
+        core.debug(`creating check ${config.check_name_vulnerability} failed: ${failed}`);
+        yield createCheck(config.check_name_vulnerability || 'Dependency Review Vulnerabilities', sha, body, failed);
+    });
+}
+exports.createVulnerabilitiesCheck = createVulnerabilitiesCheck;
+function renderUrl(url, text) {
+    if (url) {
+        return `[${text}](${url})`;
+    }
+    else {
+        return text;
+    }
+}
+function getManifests(changes) {
+    return new Set(changes.flatMap(c => c.manifest));
+}
+function createCheck(checkName, sha, body, failed) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`creating check ${checkName}`);
+        const res = yield octo.rest.checks.create(Object.assign({ name: checkName, head_sha: sha, conclusion: failed ? 'failure' : 'success', output: {
+                title: 'Dependency Review',
+                summary: body
+            } }, github.context.repo));
+        core.debug(`created check with id: ${res.data.id} url: ${res.data.url} sha: ${res.data.head_sha}`);
+    });
+}
+
+
+/***/ }),
+
 /***/ 4966:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -154,6 +296,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const dependencyGraph = __importStar(__nccwpck_require__(4966));
+const checks = __importStar(__nccwpck_require__(2321));
 const github = __importStar(__nccwpck_require__(5438));
 const ansi_styles_1 = __importDefault(__nccwpck_require__(6844));
 const request_error_1 = __nccwpck_require__(537);
@@ -181,23 +324,25 @@ function run() {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             };
-            const filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
-            for (const change of filteredChanges) {
-                if (change.change_type === 'added' &&
-                    change.vulnerabilities !== undefined &&
-                    change.vulnerabilities.length > 0) {
-                    printChangeVulnerabilities(change);
-                    failed = true;
-                }
+            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes).filter(change => change.change_type === 'added' &&
+                change.vulnerabilities !== undefined &&
+                change.vulnerabilities.length > 0);
+            core.debug(`Found ${addedChanges.length} added changes`);
+            for (const change of addedChanges) {
+                printChangeVulnerabilities(change);
             }
+            failed = addedChanges.length > 0;
+            core.debug(`creating check with ${failed ? 'failure' : 'success'}`);
+            yield checks.createVulnerabilitiesCheck(addedChanges, pull_request.head.sha, failed, minSeverity, config);
             const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
             if (licenseErrors.length > 0) {
                 printLicensesError(licenseErrors);
-                core.setFailed('Dependency review detected incompatible licenses.');
+                violationFound(config, 'Dependency review detected incompatible licenses.');
             }
+            yield checks.createLicensesCheck(licenseErrors, unknownLicenses, pull_request.head.sha, licenseErrors.length > 0, config);
             printNullLicenses(unknownLicenses);
             if (failed) {
-                core.setFailed('Dependency review detected vulnerable packages.');
+                violationFound(config, 'Dependency review detected vulnerable packages.');
             }
             else {
                 core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
@@ -252,6 +397,14 @@ function printNullLicenses(changes) {
     core.info('\nWe could not detect a license for the following dependencies:\n');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
+    }
+}
+function violationFound(config, message) {
+    if (config.fail_on_violation) {
+        core.setFailed(message);
+    }
+    else {
+        core.warning(message);
     }
 }
 run();
@@ -319,7 +472,10 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([])
+    deny_licenses: z.array(z.string()).default([]),
+    check_name_vulnerability: z.string().nullable(),
+    check_name_license: z.string().nullable(),
+    fail_on_violation: z.boolean().default(false)
 })
     .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
@@ -14017,10 +14173,18 @@ function readConfig() {
     if (allow_licenses !== undefined && deny_licenses !== undefined) {
         throw new Error("Can't specify both allow_licenses and deny_licenses");
     }
+    const check_name_vulnerability = getOptionalInput('check-name-vulnerabilities');
+    const check_name_license = getOptionalInput('check-name-licenses');
+    const fail_on_violation = z
+        .boolean()
+        .parse(JSON.parse(getOptionalInput('fail-on-violation') || 'false'));
     return {
         fail_on_severity,
         allow_licenses: allow_licenses === null || allow_licenses === void 0 ? void 0 : allow_licenses.split(',').map(x => x.trim()),
-        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim())
+        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim()),
+        check_name_vulnerability,
+        check_name_license,
+        fail_on_violation
     };
 }
 exports.readConfig = readConfig;
@@ -14122,7 +14286,10 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
     allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([])
+    deny_licenses: z.array(z.string()).default([]),
+    check_name_vulnerability: z.string().nullable(),
+    check_name_license: z.string().nullable(),
+    fail_on_violation: z.boolean().default(false)
 })
     .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');

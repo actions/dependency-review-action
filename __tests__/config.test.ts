@@ -10,9 +10,11 @@ function setInput(input: string, value: string) {
 // We want a clean ENV before each test. We use `delete`
 // since we want `undefined` values and not empty strings.
 function clearInputs() {
-  delete process.env['INPUT_FAIL-ON-SEVERITY']
-  delete process.env['INPUT_ALLOW-LICENSES']
-  delete process.env['INPUT_DENY-LICENSES']
+  for (var key of Object.keys(process.env)) {
+    if (key.startsWith('INPUT_')) {
+      delete process.env[key]
+    }
+  }
 }
 
 beforeEach(() => {
@@ -27,10 +29,18 @@ test('it defaults to low severity', async () => {
 test('it reads custom configs', async () => {
   setInput('fail-on-severity', 'critical')
   setInput('allow-licenses', ' BSD, GPL 2')
+  setInput('fail-on-violation', 'true')
+  setInput('check-name-vulnerabilities', 'custom check name vulnerabilities')
+  setInput('check-name-licenses', 'custom check name licenses')
 
   const options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
   expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
+  expect(options.fail_on_violation).toBeTruthy()
+  expect(options.check_name_vulnerability).toEqual(
+    'custom check name vulnerabilities'
+  )
+  expect(options.check_name_license).toEqual('custom check name licenses')
 })
 
 test('it defaults to empty allow/deny lists ', async () => {
@@ -38,6 +48,12 @@ test('it defaults to empty allow/deny lists ', async () => {
 
   expect(options.allow_licenses).toEqual(undefined)
   expect(options.deny_licenses).toEqual(undefined)
+})
+
+test('it defaults to false fail on violation', async () => {
+  const options = readConfig()
+
+  expect(options.fail_on_violation).toBeFalsy()
 })
 
 test('it raises an error if both an allow and denylist are specified', async () => {
