@@ -79,7 +79,7 @@ jobs:
           # Possible values: "critical", "high", "moderate", "low"
           # fail-on-severity: critical
           #
-          # You can only include one of these two options: `allow-licenses` and `deny-licenses`
+          # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES. 
           #
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # allow-licenses: GPL-3.0, BSD-3-Clause, MIT
@@ -109,7 +109,7 @@ This example will only fail on pull requests with `critical` and `high` vulnerab
 You can set the action to fail on pull requests based on the licenses of the dependencies
 they introduce. With `allow-licenses` you can define the list of licenses
 your repository will accept. Alternatively, you can use `deny-licenses` to only
-forbid a subset of licenses.
+forbid a subset of licenses. These options are not supported on GHES.
 
 You can use the [Licenses
 API](https://docs.github.com/en/rest/licenses) to see the full list of
@@ -134,6 +134,7 @@ to filter. A couple of examples:
 
 **Important**
 
+* Checking for licenses is not supported on GHES.
 * The action will only accept one of the two parameters; an error will
 be raised if you provide both.
 * By default both parameters are empty (no license checking is
