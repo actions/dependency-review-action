@@ -9,7 +9,7 @@ The action is available for all public repositories, as well as private reposito
 
 ## Installation
 
-**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repos.**
+**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repositories.**
 
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
