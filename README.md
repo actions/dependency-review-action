@@ -9,6 +9,8 @@ The action is available for all public repositories, as well as private reposito
 
 ## Installation
 
+**Please keep in mind that you need a GitHub Advanced Security license if you're running this action on private repos.**
+
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
 ```yaml
@@ -28,7 +30,32 @@ jobs:
         uses: actions/dependency-review-action@v2
 ```
 
-Please keep in mind that you need a GitHub Advanced Security license if you're running this action on private repos.
+### GitHub Enterprise Server
+
+This action is available in GHES starting with version 3.6. Make sure
+[GitHub Advanced
+Security](https://docs.github.com/en/enterprise-server@3.6/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
+and [GitHub
+Connect](https://docs.github.com/en/enterprise-server@3.1/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
+are enabled.
+
+You can use the same workflow as above, replacing the `runs-on` value
+with the label of any of your runners (the default label
+is `self-hosted`):
+
+```yaml
+
+# ...
+
+jobs:
+  dependency-review:
+    runs-on: self-hosted
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v2
+```
 
 ## Configuration
 You can pass additional options to the Dependency Review
