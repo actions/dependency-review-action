@@ -14,6 +14,8 @@ or on the job summary
 
 ## Installation
 
+**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repositories.**
+
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
 ```yaml
@@ -33,7 +35,32 @@ jobs:
         uses: actions/dependency-review-action@v2
 ```
 
-Please keep in mind that you need a GitHub Advanced Security license if you're running this action on private repos.
+### GitHub Enterprise Server
+
+This action is available in GHES starting with version 3.6. Make sure
+[GitHub Advanced
+Security](https://docs.github.com/en/enterprise-server@3.6/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
+and [GitHub
+Connect](https://docs.github.com/en/enterprise-server@3.6/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
+are enabled.
+
+You can use the same workflow as above, replacing the `runs-on` value
+with the label of any of your runners (the default label
+is `self-hosted`):
+
+```yaml
+
+# ...
+
+jobs:
+  dependency-review:
+    runs-on: self-hosted
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v2
+```
 
 ## Configuration
 
@@ -58,7 +85,7 @@ jobs:
           # Possible values: "critical", "high", "moderate", "low"
           # fail-on-severity: critical
           #
-          # You can only include one of these two options: `allow-licenses` and `deny-licenses`
+          # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES. 
           #
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # allow-licenses: GPL-3.0, BSD-3-Clause, MIT
@@ -88,7 +115,7 @@ This example will only fail on pull requests with `critical` and `high` vulnerab
 You can set the action to fail on pull requests based on the licenses of the dependencies
 they introduce. With `allow-licenses` you can define the list of licenses
 your repository will accept. Alternatively, you can use `deny-licenses` to only
-forbid a subset of licenses.
+forbid a subset of licenses. These options are not supported on GHES.
 
 You can use the [Licenses
 API](https://docs.github.com/en/rest/licenses) to see the full list of
@@ -113,13 +140,14 @@ to filter. A couple of examples:
 
 **Important**
 
-- The action will only accept one of the two parameters; an error will
-  be raised if you provide both.
-- By default both parameters are empty (no license checking is
-  performed).
-- We don't have license information for all of your dependents. If we
-  can't detect the license for a dependency **we will inform you, but the
-  action won't fail**.
+* Checking for licenses is not supported on GHES.
+* The action will only accept one of the two parameters; an error will
+be raised if you provide both.
+* By default both parameters are empty (no license checking is
+performed).
+* We don't have license information for all of your dependents. If we
+can't detect the license for a dependency **we will inform you, but the
+action won't fail**.
 
 ## Blocking pull requests
 
