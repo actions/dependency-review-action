@@ -10,7 +10,7 @@ export function addSummaryToSummary(
   core.summary
     .addHeading('Dependency Review')
     .addRaw(
-      `We found ${addedPackages.length} vulnerable package(s), ${licenseErrors.length} package()s with incompatible licenses, and ${unknownLicenses.length} package(s) with unknown licenses.`
+      `We found ${addedPackages.length} vulnerable package(s), ${licenseErrors.length} package(s) with incompatible licenses, and ${unknownLicenses.length} package(s) with unknown licenses.`
     )
 }
 
