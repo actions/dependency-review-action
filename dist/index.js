@@ -11871,8 +11871,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getParsedType = exports.ZodParsedType = exports.util = void 0;
 var util;
 (function (util) {
-    function assertEqual(_cond) { }
-    util.assertEqual = assertEqual;
+    util.assertEqual = (val) => val;
+    function assertIs(_arg) { }
+    util.assertIs = assertIs;
     function assertNever(_x) {
         throw new Error();
     }
@@ -12037,8 +12038,8 @@ exports["default"] = mod;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.intersection = exports["instanceof"] = exports["function"] = exports["enum"] = exports.effect = exports.discriminatedUnion = exports.date = exports.boolean = exports.bigint = exports.array = exports.any = exports.ZodFirstPartyTypeKind = exports.late = exports.ZodSchema = exports.Schema = exports.custom = exports.ZodNaN = exports.ZodDefault = exports.ZodNullable = exports.ZodOptional = exports.ZodTransformer = exports.ZodEffects = exports.ZodPromise = exports.ZodNativeEnum = exports.ZodEnum = exports.ZodLiteral = exports.ZodLazy = exports.ZodFunction = exports.ZodSet = exports.ZodMap = exports.ZodRecord = exports.ZodTuple = exports.ZodIntersection = exports.ZodDiscriminatedUnion = exports.ZodUnion = exports.ZodObject = exports.objectUtil = exports.ZodArray = exports.ZodVoid = exports.ZodNever = exports.ZodUnknown = exports.ZodAny = exports.ZodNull = exports.ZodUndefined = exports.ZodDate = exports.ZodBoolean = exports.ZodBigInt = exports.ZodNumber = exports.ZodString = exports.ZodType = void 0;
-exports["void"] = exports.unknown = exports.union = exports.undefined = exports.tuple = exports.transformer = exports.string = exports.strictObject = exports.set = exports.record = exports.promise = exports.preprocess = exports.ostring = exports.optional = exports.onumber = exports.oboolean = exports.object = exports.number = exports.nullable = exports["null"] = exports.never = exports.nativeEnum = exports.nan = exports.map = exports.literal = exports.lazy = void 0;
+exports["function"] = exports["enum"] = exports.effect = exports.discriminatedUnion = exports.date = exports.boolean = exports.bigint = exports.array = exports.any = exports.ZodFirstPartyTypeKind = exports.late = exports.ZodSchema = exports.Schema = exports.custom = exports.ZodBranded = exports.BRAND = exports.ZodNaN = exports.ZodDefault = exports.ZodNullable = exports.ZodOptional = exports.ZodTransformer = exports.ZodEffects = exports.ZodPromise = exports.ZodNativeEnum = exports.ZodEnum = exports.ZodLiteral = exports.ZodLazy = exports.ZodFunction = exports.ZodSet = exports.ZodMap = exports.ZodRecord = exports.ZodTuple = exports.ZodIntersection = exports.ZodDiscriminatedUnion = exports.ZodUnion = exports.ZodObject = exports.objectUtil = exports.ZodArray = exports.ZodVoid = exports.ZodNever = exports.ZodUnknown = exports.ZodAny = exports.ZodNull = exports.ZodUndefined = exports.ZodDate = exports.ZodBoolean = exports.ZodBigInt = exports.ZodNumber = exports.ZodString = exports.ZodType = void 0;
+exports["void"] = exports.unknown = exports.union = exports.undefined = exports.tuple = exports.transformer = exports.string = exports.strictObject = exports.set = exports.record = exports.promise = exports.preprocess = exports.ostring = exports.optional = exports.onumber = exports.oboolean = exports.object = exports.number = exports.nullable = exports["null"] = exports.never = exports.nativeEnum = exports.nan = exports.map = exports.literal = exports.lazy = exports.intersection = exports["instanceof"] = void 0;
 const errorUtil_1 = __nccwpck_require__(2513);
 const parseUtil_1 = __nccwpck_require__(888);
 const util_1 = __nccwpck_require__(3985);
@@ -12292,6 +12293,13 @@ class ZodType {
             innerType: this,
             defaultValue: defaultValueFunc,
             typeName: ZodFirstPartyTypeKind.ZodDefault,
+        });
+    }
+    brand() {
+        return new ZodBranded({
+            typeName: ZodFirstPartyTypeKind.ZodBranded,
+            type: this,
+            ...processCreateParams(undefined),
         });
     }
     describe(description) {
@@ -14496,6 +14504,22 @@ ZodNaN.create = (params) => {
         ...processCreateParams(params),
     });
 };
+exports.BRAND = Symbol("zod_brand");
+class ZodBranded extends ZodType {
+    _parse(input) {
+        const { ctx } = this._processInputParams(input);
+        const data = ctx.data;
+        return this._def.type._parse({
+            data,
+            path: ctx.path,
+            parent: ctx,
+        });
+    }
+    unwrap() {
+        return this._def.type;
+    }
+}
+exports.ZodBranded = ZodBranded;
 const custom = (check, params = {}, fatal) => {
     if (check)
         return ZodAny.create().superRefine((data, ctx) => {
@@ -14544,6 +14568,7 @@ var ZodFirstPartyTypeKind;
     ZodFirstPartyTypeKind["ZodNullable"] = "ZodNullable";
     ZodFirstPartyTypeKind["ZodDefault"] = "ZodDefault";
     ZodFirstPartyTypeKind["ZodPromise"] = "ZodPromise";
+    ZodFirstPartyTypeKind["ZodBranded"] = "ZodBranded";
 })(ZodFirstPartyTypeKind = exports.ZodFirstPartyTypeKind || (exports.ZodFirstPartyTypeKind = {}));
 const instanceOfType = (cls, params = {
     message: `Input not instance of ${cls.name}`,
