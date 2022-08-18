@@ -5,7 +5,13 @@ raise an error if any vulnerabilities or invalid licenses are being introduced. 
 
 The action is available for all public repositories, as well as private repositories that have GitHub Advanced Security licensed.
 
+You can see the results on the job logs
+
 <img width="854" alt="Screen Shot 2022-03-31 at 1 10 51 PM" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
+
+or on the job summary
+
+<img src="https://user-images.githubusercontent.com/7847935/182871416-50332bbb-b279-4621-a136-ca72a4314301.png">
 
 ## Installation
 
@@ -144,15 +150,6 @@ to filter. A couple of examples:
 
 **Important**
 
-<<<<<<< HEAD
-- The action will only accept one of the two parameters; an error will
-  be raised if you provide both.
-- By default both parameters are empty (no license checking is
-  performed).
-- We don't have license information for all of your dependents. If we
-  can't detect the license for a dependency **we will inform you, but the
-  action won't fail**.
-=======
 * Checking for licenses is not supported on GHES.
 * The action will only accept one of the two parameters; an error will
 be raised if you provide both.
@@ -161,7 +158,6 @@ performed).
 * We don't have license information for all of your dependents. If we
 can't detect the license for a dependency **we will inform you, but the
 action won't fail**.
->>>>>>> main
 
 ## Blocking pull requests
 
