@@ -10,7 +10,6 @@ import {getDeniedLicenseChanges} from './licenses'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
 
-
 async function run(): Promise<void> {
   try {
     const config = readConfig()

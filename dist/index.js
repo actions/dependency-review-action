@@ -201,6 +201,7 @@ const request_error_1 = __nccwpck_require__(537);
 const config_1 = __nccwpck_require__(6373);
 const filter_1 = __nccwpck_require__(8752);
 const licenses_1 = __nccwpck_require__(3247);
+const summary = __importStar(__nccwpck_require__(8608));
 const git_refs_1 = __nccwpck_require__(1086);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
