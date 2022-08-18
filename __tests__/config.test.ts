@@ -11,11 +11,17 @@ function setInput(input: string, value: string) {
 // We want a clean ENV before each test. We use `delete`
 // since we want `undefined` values and not empty strings.
 function clearInputs() {
-  delete process.env['INPUT_FAIL-ON-SEVERITY']
-  delete process.env['INPUT_ALLOW-LICENSES']
-  delete process.env['INPUT_DENY-LICENSES']
-  delete process.env['INPUT_BASE-REF']
-  delete process.env['INPUT_HEAD-REF']
+  const allowedOptions = [
+    'FAIL-ON-SEVERITY',
+    'ALLOW-LICENSES',
+    'DENY-LICENSES',
+    'BASE-REF',
+    'HEAD-REF'
+  ]
+
+  allowedOptions.forEach(option => {
+    delete process.env[`INPUT_${option.toUpperCase()}`]
+  })
 }
 
 beforeEach(() => {
