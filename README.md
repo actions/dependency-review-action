@@ -1,11 +1,11 @@
 # dependency-review-action
 
-This action scans your pull requests for dependency changes and will raise an error if any new dependencies have existing vulnerabilities. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions.
+This action scans your pull requests for dependency changes, and will
+raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions.
 
 The action is available for all public repositories, as well as private repositories that have GitHub Advanced Security licensed.
 
 <img width="854" alt="Screen Shot 2022-03-31 at 1 10 51 PM" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
-
 
 ## Installation
 
@@ -58,6 +58,7 @@ jobs:
 ```
 
 ## Configuration
+
 You can pass additional options to the Dependency Review
 Action using your workflow file. Here's an example workflow with
 all the possible configurations:
@@ -79,6 +80,10 @@ jobs:
           # Possible values: "critical", "high", "moderate", "low"
           # fail-on-severity: critical
           #
+          # Possible values: Any available git ref
+          # base-ref: ${{ github.event.pull_request.base.ref }}
+          # head-ref: ${{ github.event.pull_request.head.ref }}
+          #
           # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES. 
           #
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
@@ -87,6 +92,11 @@ jobs:
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # deny-licenses: LGPL-2.0, BSD-2-Clause
 ```
+
+When the workflow with this action is caused by a `pull_request` or `pull_request_target` event,
+the `base-ref` and `head-ref` values have the defaults as shown above. If the workflow is caused by
+any other event, the `base-ref` and `head-ref` options must be
+explicitly set in the configuration file.
 
 ### Vulnerability Severity
 
@@ -134,6 +144,15 @@ to filter. A couple of examples:
 
 **Important**
 
+<<<<<<< HEAD
+- The action will only accept one of the two parameters; an error will
+  be raised if you provide both.
+- By default both parameters are empty (no license checking is
+  performed).
+- We don't have license information for all of your dependents. If we
+  can't detect the license for a dependency **we will inform you, but the
+  action won't fail**.
+=======
 * Checking for licenses is not supported on GHES.
 * The action will only accept one of the two parameters; an error will
 be raised if you provide both.
@@ -142,6 +161,7 @@ performed).
 * We don't have license information for all of your dependents. If we
 can't detect the license for a dependency **we will inform you, but the
 action won't fail**.
+>>>>>>> main
 
 ## Blocking pull requests
 
@@ -159,4 +179,5 @@ We are grateful for any contributions made to this project.
 Please read [CONTRIBUTING.MD](https://github.com/actions/dependency-review-action/blob/main/CONTRIBUTING.md) to get started.
 
 ## License
+
 This project is released under the [MIT License](https://github.com/actions/dependency-review-action/blob/main/LICENSE).
