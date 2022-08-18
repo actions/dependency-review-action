@@ -1,6 +1,7 @@
 # dependency-review-action
 
-This action scans your pull requests for dependency changes and will raise an error if any new dependencies have existing vulnerabilities. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions.
+This action scans your pull requests for dependency changes, and will
+raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions.
 
 The action is available for all public repositories, as well as private repositories that have GitHub Advanced Security licensed.
 
@@ -85,6 +86,10 @@ jobs:
           # Possible values: "critical", "high", "moderate", "low"
           # fail-on-severity: critical
           #
+          # Possible values: Any available git ref
+          # base-ref: ${{ github.event.pull_request.base.ref }}
+          # head-ref: ${{ github.event.pull_request.head.ref }}
+          #
           # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES. 
           #
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
@@ -93,6 +98,11 @@ jobs:
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # deny-licenses: LGPL-2.0, BSD-2-Clause
 ```
+
+When the workflow with this action is caused by a `pull_request` or `pull_request_target` event,
+the `base-ref` and `head-ref` values have the defaults as shown above. If the workflow is caused by
+any other event, the `base-ref` and `head-ref` options must be
+explicitly set in the configuration file.
 
 ### Vulnerability Severity
 
