@@ -36,7 +36,7 @@
     "zod": "^3.18.0"
   },
   "devDependencies": {
-    "@types/node": "^16.11.54",
+    "@types/node": "^16.11.55",
     "@typescript-eslint/eslint-plugin": "^5.34.0",
     "@typescript-eslint/parser": "^5.34.0",
     "@vercel/ncc": "^0.34.0",
