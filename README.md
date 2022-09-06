@@ -65,9 +65,86 @@ jobs:
 
 ## Configuration
 
-You can pass additional options to the Dependency Review
-Action using your workflow file. Here's an example workflow with
-all the possible configurations:
+Configure this action by either using an external configuration file,
+or by inlining this option in your workflow file.
+
+### Options
+
+#### fail-on-severity
+
+Configure the severity level for alerting. See "[Vulnerability Severity](https://github.com/actions/dependency-review-action#vulnerability-severity)".
+
+**Possible values**: `critical`, `high`, `moderate`, `low`.
+**Example**: `fail-on-severity: moderate`.
+
+#### allow-licenses
+
+Only allow the licenses in this list. See "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
+
+**Possible values**: Any `spdx_id` value(s) from
+https://docs.github.com/en/rest/licenses.
+
+**Inline example**: `allow-licenses: BSD-3-Clause, MIT`
+**YAML example**:
+```yaml
+allow-licenses:
+  - BSD-3-Clause
+  - MIT
+```
+
+
+#### deny-licenses
+
+Add a custom list of licenses you want to block. See
+"[Licenses](https://github.com/actions/dependency-review-action#licenses)".
+
+**Possible values**: Any `spdx_id` value(s) from
+https://docs.github.com/en/rest/licenses.
+
+**Inline example**: `deny-licenses: LGPL-2.0, BSD-2-Clause`
+**YAML example**:
+```yaml
+deny-licenses:
+  - LGPL-2.0
+  - BSD-2-Clause
+```
+
+#### base-ref/head-ref
+
+Provide custom git references for the git base/head when performing
+the comparison. If you are using pull requests, or
+`pull_request_target` events you do not need to worry about setting
+this. The values need to be specified for all other event types.
+
+**Possible values**: Any valid git ref(s) in your project.
+**Example**:
+```yaml
+base-ref: 8bb8a58d6a4028b6c2e314d5caaf273f57644896
+head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
+```
+
+### Configuration File
+
+You can create a YAML file in
+`~/.github/dependency-review-config.yaml` to configure the
+action. **All of these fields are optional**. This is what a sample
+file could look like:
+
+```yaml
+fail-on-severity: "critical"
+allow-licenses:
+  - "GPL-3.0"
+  - "BSD-3-Clause"
+  - "MIT"
+base-ref: "781a55e"
+head-ref: "435083f"
+```
+
+### Inline Configuration
+
+You can pass options to the Dependency Review
+Action using your workflow file. Here's an example of what the full
+file would look like:
 
 ```yaml
 name: 'Dependency Review'
@@ -83,26 +160,11 @@ jobs:
       - name: Dependency Review
         uses: actions/dependency-review-action@v2
         with:
-          # Possible values: "critical", "high", "moderate", "low"
-          # fail-on-severity: critical
-          #
-          # Possible values: Any available git ref
-          # base-ref: ${{ github.event.pull_request.base.ref }}
-          # head-ref: ${{ github.event.pull_request.head.ref }}
-          #
-          # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES. 
-          #
-          # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
-          # allow-licenses: GPL-3.0, BSD-3-Clause, MIT
-          #
-          # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
-          # deny-licenses: LGPL-2.0, BSD-2-Clause
-```
+          fail-on-severity: moderate
 
-When the workflow with this action is caused by a `pull_request` or `pull_request_target` event,
-the `base-ref` and `head-ref` values have the defaults as shown above. If the workflow is caused by
-any other event, the `base-ref` and `head-ref` options must be
-explicitly set in the configuration file.
+          # Use comma-separated names to pass list arguments:
+          deny-licenses: LGPL-2.0, BSD-2-Clause
+```
 
 ### Vulnerability Severity
 
@@ -148,7 +210,7 @@ to filter. A couple of examples:
     deny-licenses: Apache-1.1, Apache-2.0
 ```
 
-**Important**
+### Considerations
 
 * Checking for licenses is not supported on GHES.
 * The action will only accept one of the two parameters; an error will
