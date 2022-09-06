@@ -75,6 +75,7 @@ or by inlining this option in your workflow file.
 Configure the severity level for alerting. See "[Vulnerability Severity](https://github.com/actions/dependency-review-action#vulnerability-severity)".
 
 **Possible values**: `critical`, `high`, `moderate`, `low`.
+
 **Example**: `fail-on-severity: moderate`.
 
 #### allow-licenses
@@ -85,6 +86,7 @@ Only allow the licenses in this list. See "[Licenses](https://github.com/actions
 https://docs.github.com/en/rest/licenses.
 
 **Inline example**: `allow-licenses: BSD-3-Clause, MIT`
+
 **YAML example**:
 ```yaml
 allow-licenses:
@@ -102,6 +104,7 @@ Add a custom list of licenses you want to block. See
 https://docs.github.com/en/rest/licenses.
 
 **Inline example**: `deny-licenses: LGPL-2.0, BSD-2-Clause`
+
 **YAML example**:
 ```yaml
 deny-licenses:
@@ -117,6 +120,7 @@ the comparison. If you are using pull requests, or
 this. The values need to be specified for all other event types.
 
 **Possible values**: Any valid git ref(s) in your project.
+
 **Example**:
 ```yaml
 base-ref: 8bb8a58d6a4028b6c2e314d5caaf273f57644896
