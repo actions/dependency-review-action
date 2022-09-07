@@ -11643,8 +11643,7 @@ function wrappy (fn, cb) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getErrorMap = exports.setErrorMap = exports.defaultErrorMap = exports.ZodError = exports.quotelessJson = exports.ZodIssueCode = void 0;
-const parseUtil_1 = __nccwpck_require__(888);
+exports.ZodError = exports.quotelessJson = exports.ZodIssueCode = void 0;
 const util_1 = __nccwpck_require__(3985);
 exports.ZodIssueCode = util_1.util.arrayToEnum([
     "invalid_type",
@@ -11745,7 +11744,7 @@ class ZodError extends Error {
         return this.message;
     }
     get message() {
-        return JSON.stringify(this.issues, parseUtil_1.jsonStringifyReplacer, 2);
+        return JSON.stringify(this.issues, util_1.util.jsonStringifyReplacer, 2);
     }
     get isEmpty() {
         return this.issues.length === 0;
@@ -11773,101 +11772,23 @@ ZodError.create = (issues) => {
     const error = new ZodError(issues);
     return error;
 };
-const defaultErrorMap = (issue, _ctx) => {
-    let message;
-    switch (issue.code) {
-        case exports.ZodIssueCode.invalid_type:
-            if (issue.received === util_1.ZodParsedType.undefined) {
-                message = "Required";
-            }
-            else {
-                message = `Expected ${issue.expected}, received ${issue.received}`;
-            }
-            break;
-        case exports.ZodIssueCode.invalid_literal:
-            message = `Invalid literal value, expected ${JSON.stringify(issue.expected, parseUtil_1.jsonStringifyReplacer)}`;
-            break;
-        case exports.ZodIssueCode.unrecognized_keys:
-            message = `Unrecognized key(s) in object: ${util_1.util.joinValues(issue.keys, ", ")}`;
-            break;
-        case exports.ZodIssueCode.invalid_union:
-            message = `Invalid input`;
-            break;
-        case exports.ZodIssueCode.invalid_union_discriminator:
-            message = `Invalid discriminator value. Expected ${util_1.util.joinValues(issue.options)}`;
-            break;
-        case exports.ZodIssueCode.invalid_enum_value:
-            message = `Invalid enum value. Expected ${util_1.util.joinValues(issue.options)}, received '${issue.received}'`;
-            break;
-        case exports.ZodIssueCode.invalid_arguments:
-            message = `Invalid function arguments`;
-            break;
-        case exports.ZodIssueCode.invalid_return_type:
-            message = `Invalid function return type`;
-            break;
-        case exports.ZodIssueCode.invalid_date:
-            message = `Invalid date`;
-            break;
-        case exports.ZodIssueCode.invalid_string:
-            if (typeof issue.validation === "object") {
-                if ("startsWith" in issue.validation) {
-                    message = `Invalid input: must start with "${issue.validation.startsWith}"`;
-                }
-                else if ("endsWith" in issue.validation) {
-                    message = `Invalid input: must end with "${issue.validation.endsWith}"`;
-                }
-                else {
-                    util_1.util.assertNever(issue.validation);
-                }
-            }
-            else if (issue.validation !== "regex") {
-                message = `Invalid ${issue.validation}`;
-            }
-            else {
-                message = "Invalid";
-            }
-            break;
-        case exports.ZodIssueCode.too_small:
-            if (issue.type === "array")
-                message = `Array must contain ${issue.inclusive ? `at least` : `more than`} ${issue.minimum} element(s)`;
-            else if (issue.type === "string")
-                message = `String must contain ${issue.inclusive ? `at least` : `over`} ${issue.minimum} character(s)`;
-            else if (issue.type === "number")
-                message = `Number must be greater than ${issue.inclusive ? `or equal to ` : ``}${issue.minimum}`;
-            else if (issue.type === "date")
-                message = `Date must be greater than ${issue.inclusive ? `or equal to ` : ``}${new Date(issue.minimum)}`;
-            else
-                message = "Invalid input";
-            break;
-        case exports.ZodIssueCode.too_big:
-            if (issue.type === "array")
-                message = `Array must contain ${issue.inclusive ? `at most` : `less than`} ${issue.maximum} element(s)`;
-            else if (issue.type === "string")
-                message = `String must contain ${issue.inclusive ? `at most` : `under`} ${issue.maximum} character(s)`;
-            else if (issue.type === "number")
-                message = `Number must be less than ${issue.inclusive ? `or equal to ` : ``}${issue.maximum}`;
-            else if (issue.type === "date")
-                message = `Date must be smaller than ${issue.inclusive ? `or equal to ` : ``}${new Date(issue.maximum)}`;
-            else
-                message = "Invalid input";
-            break;
-        case exports.ZodIssueCode.custom:
-            message = `Invalid input`;
-            break;
-        case exports.ZodIssueCode.invalid_intersection_types:
-            message = `Intersection results could not be merged`;
-            break;
-        case exports.ZodIssueCode.not_multiple_of:
-            message = `Number must be a multiple of ${issue.multipleOf}`;
-            break;
-        default:
-            message = _ctx.defaultError;
-            util_1.util.assertNever(issue);
-    }
-    return { message };
+
+
+/***/ }),
+
+/***/ 9566:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-exports.defaultErrorMap = defaultErrorMap;
-let overrideErrorMap = exports.defaultErrorMap;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getErrorMap = exports.setErrorMap = exports.defaultErrorMap = void 0;
+const en_1 = __importDefault(__nccwpck_require__(468));
+exports.defaultErrorMap = en_1.default;
+let overrideErrorMap = en_1.default;
 function setErrorMap(map) {
     overrideErrorMap = map;
 }
@@ -11897,6 +11818,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ZodParsedType = exports.getParsedType = void 0;
+__exportStar(__nccwpck_require__(9566), exports);
 __exportStar(__nccwpck_require__(888), exports);
 __exportStar(__nccwpck_require__(9449), exports);
 var util_1 = __nccwpck_require__(3985);
@@ -11925,13 +11847,17 @@ var errorUtil;
 /***/ }),
 
 /***/ 888:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.jsonStringifyReplacer = exports.isAsync = exports.isValid = exports.isDirty = exports.isAborted = exports.OK = exports.DIRTY = exports.INVALID = exports.ParseStatus = exports.addIssueToContext = exports.EMPTY_PATH = exports.makeIssue = void 0;
-const ZodError_1 = __nccwpck_require__(9892);
+exports.isAsync = exports.isValid = exports.isDirty = exports.isAborted = exports.OK = exports.DIRTY = exports.INVALID = exports.ParseStatus = exports.addIssueToContext = exports.EMPTY_PATH = exports.makeIssue = void 0;
+const errors_1 = __nccwpck_require__(9566);
+const en_1 = __importDefault(__nccwpck_require__(468));
 const makeIssue = (params) => {
     const { data, path, errorMaps, issueData } = params;
     const fullPath = [...path, ...(issueData.path || [])];
@@ -11963,8 +11889,8 @@ function addIssueToContext(ctx, issueData) {
         errorMaps: [
             ctx.common.contextualErrorMap,
             ctx.schemaErrorMap,
-            ZodError_1.getErrorMap(),
-            ZodError_1.defaultErrorMap,
+            errors_1.getErrorMap(),
+            en_1.default,
         ].filter((x) => !!x),
     });
     ctx.common.issues.push(issue);
@@ -12038,13 +11964,6 @@ const isValid = (x) => x.status === "valid";
 exports.isValid = isValid;
 const isAsync = (x) => typeof Promise !== undefined && x instanceof Promise;
 exports.isAsync = isAsync;
-const jsonStringifyReplacer = (_, value) => {
-    if (typeof value === "bigint") {
-        return value.toString();
-    }
-    return value;
-};
-exports.jsonStringifyReplacer = jsonStringifyReplacer;
 
 
 /***/ }),
@@ -12122,6 +12041,12 @@ var util;
             .join(separator);
     }
     util.joinValues = joinValues;
+    util.jsonStringifyReplacer = (_, value) => {
+        if (typeof value === "bigint") {
+            return value.toString();
+        }
+        return value;
+    };
 })(util = exports.util || (exports.util = {}));
 exports.ZodParsedType = util.arrayToEnum([
     "string",
@@ -12229,6 +12154,112 @@ exports["default"] = mod;
 
 /***/ }),
 
+/***/ 468:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const util_1 = __nccwpck_require__(3985);
+const ZodError_1 = __nccwpck_require__(9892);
+const errorMap = (issue, _ctx) => {
+    let message;
+    switch (issue.code) {
+        case ZodError_1.ZodIssueCode.invalid_type:
+            if (issue.received === util_1.ZodParsedType.undefined) {
+                message = "Required";
+            }
+            else {
+                message = `Expected ${issue.expected}, received ${issue.received}`;
+            }
+            break;
+        case ZodError_1.ZodIssueCode.invalid_literal:
+            message = `Invalid literal value, expected ${JSON.stringify(issue.expected, util_1.util.jsonStringifyReplacer)}`;
+            break;
+        case ZodError_1.ZodIssueCode.unrecognized_keys:
+            message = `Unrecognized key(s) in object: ${util_1.util.joinValues(issue.keys, ", ")}`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_union:
+            message = `Invalid input`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_union_discriminator:
+            message = `Invalid discriminator value. Expected ${util_1.util.joinValues(issue.options)}`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_enum_value:
+            message = `Invalid enum value. Expected ${util_1.util.joinValues(issue.options)}, received '${issue.received}'`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_arguments:
+            message = `Invalid function arguments`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_return_type:
+            message = `Invalid function return type`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_date:
+            message = `Invalid date`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_string:
+            if (typeof issue.validation === "object") {
+                if ("startsWith" in issue.validation) {
+                    message = `Invalid input: must start with "${issue.validation.startsWith}"`;
+                }
+                else if ("endsWith" in issue.validation) {
+                    message = `Invalid input: must end with "${issue.validation.endsWith}"`;
+                }
+                else {
+                    util_1.util.assertNever(issue.validation);
+                }
+            }
+            else if (issue.validation !== "regex") {
+                message = `Invalid ${issue.validation}`;
+            }
+            else {
+                message = "Invalid";
+            }
+            break;
+        case ZodError_1.ZodIssueCode.too_small:
+            if (issue.type === "array")
+                message = `Array must contain ${issue.inclusive ? `at least` : `more than`} ${issue.minimum} element(s)`;
+            else if (issue.type === "string")
+                message = `String must contain ${issue.inclusive ? `at least` : `over`} ${issue.minimum} character(s)`;
+            else if (issue.type === "number")
+                message = `Number must be greater than ${issue.inclusive ? `or equal to ` : ``}${issue.minimum}`;
+            else if (issue.type === "date")
+                message = `Date must be greater than ${issue.inclusive ? `or equal to ` : ``}${new Date(issue.minimum)}`;
+            else
+                message = "Invalid input";
+            break;
+        case ZodError_1.ZodIssueCode.too_big:
+            if (issue.type === "array")
+                message = `Array must contain ${issue.inclusive ? `at most` : `less than`} ${issue.maximum} element(s)`;
+            else if (issue.type === "string")
+                message = `String must contain ${issue.inclusive ? `at most` : `under`} ${issue.maximum} character(s)`;
+            else if (issue.type === "number")
+                message = `Number must be less than ${issue.inclusive ? `or equal to ` : ``}${issue.maximum}`;
+            else if (issue.type === "date")
+                message = `Date must be smaller than ${issue.inclusive ? `or equal to ` : ``}${new Date(issue.maximum)}`;
+            else
+                message = "Invalid input";
+            break;
+        case ZodError_1.ZodIssueCode.custom:
+            message = `Invalid input`;
+            break;
+        case ZodError_1.ZodIssueCode.invalid_intersection_types:
+            message = `Intersection results could not be merged`;
+            break;
+        case ZodError_1.ZodIssueCode.not_multiple_of:
+            message = `Number must be a multiple of ${issue.multipleOf}`;
+            break;
+        default:
+            message = _ctx.defaultError;
+            util_1.util.assertNever(issue);
+    }
+    return { message };
+};
+exports["default"] = errorMap;
+
+
+/***/ }),
+
 /***/ 9335:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -12236,7 +12267,8 @@ exports["default"] = mod;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports["function"] = exports["enum"] = exports.effect = exports.discriminatedUnion = exports.date = exports.boolean = exports.bigint = exports.array = exports.any = exports.ZodFirstPartyTypeKind = exports.late = exports.ZodSchema = exports.Schema = exports.custom = exports.ZodBranded = exports.BRAND = exports.ZodNaN = exports.ZodDefault = exports.ZodNullable = exports.ZodOptional = exports.ZodTransformer = exports.ZodEffects = exports.ZodPromise = exports.ZodNativeEnum = exports.ZodEnum = exports.ZodLiteral = exports.ZodLazy = exports.ZodFunction = exports.ZodSet = exports.ZodMap = exports.ZodRecord = exports.ZodTuple = exports.ZodIntersection = exports.ZodDiscriminatedUnion = exports.ZodUnion = exports.ZodObject = exports.objectUtil = exports.ZodArray = exports.ZodVoid = exports.ZodNever = exports.ZodUnknown = exports.ZodAny = exports.ZodNull = exports.ZodUndefined = exports.ZodDate = exports.ZodBoolean = exports.ZodBigInt = exports.ZodNumber = exports.ZodString = exports.ZodType = void 0;
-exports["void"] = exports.unknown = exports.union = exports.undefined = exports.tuple = exports.transformer = exports.string = exports.strictObject = exports.set = exports.record = exports.promise = exports.preprocess = exports.ostring = exports.optional = exports.onumber = exports.oboolean = exports.object = exports.number = exports.nullable = exports["null"] = exports.never = exports.nativeEnum = exports.nan = exports.map = exports.literal = exports.lazy = exports.intersection = exports["instanceof"] = void 0;
+exports.NEVER = exports["void"] = exports.unknown = exports.union = exports.undefined = exports.tuple = exports.transformer = exports.string = exports.strictObject = exports.set = exports.record = exports.promise = exports.preprocess = exports.ostring = exports.optional = exports.onumber = exports.oboolean = exports.object = exports.number = exports.nullable = exports["null"] = exports.never = exports.nativeEnum = exports.nan = exports.map = exports.literal = exports.lazy = exports.intersection = exports["instanceof"] = void 0;
+const errors_1 = __nccwpck_require__(9566);
 const errorUtil_1 = __nccwpck_require__(2513);
 const parseUtil_1 = __nccwpck_require__(888);
 const util_1 = __nccwpck_require__(3985);
@@ -12269,7 +12301,7 @@ function processCreateParams(params) {
         return {};
     const { errorMap, invalid_type_error, required_error, description } = params;
     if (errorMap && (invalid_type_error || required_error)) {
-        throw new Error(`Can't use "invalid" or "required" in conjunction with custom error map.`);
+        throw new Error(`Can't use "invalid_type_error" or "required_error" in conjunction with custom error map.`);
     }
     if (errorMap)
         return { errorMap: errorMap, description };
@@ -13981,6 +14013,9 @@ class ZodTuple extends ZodType {
 }
 exports.ZodTuple = ZodTuple;
 ZodTuple.create = (schemas, params) => {
+    if (!Array.isArray(schemas)) {
+        throw new Error("You must pass an array of schemas to z.tuple([ ... ])");
+    }
     return new ZodTuple({
         items: schemas,
         typeName: ZodFirstPartyTypeKind.ZodTuple,
@@ -14211,8 +14246,8 @@ class ZodFunction extends ZodType {
                 errorMaps: [
                     ctx.common.contextualErrorMap,
                     ctx.schemaErrorMap,
-                    ZodError_1.getErrorMap(),
-                    ZodError_1.defaultErrorMap,
+                    errors_1.getErrorMap(),
+                    errors_1.defaultErrorMap,
                 ].filter((x) => !!x),
                 issueData: {
                     code: ZodError_1.ZodIssueCode.invalid_arguments,
@@ -14227,8 +14262,8 @@ class ZodFunction extends ZodType {
                 errorMaps: [
                     ctx.common.contextualErrorMap,
                     ctx.schemaErrorMap,
-                    ZodError_1.getErrorMap(),
-                    ZodError_1.defaultErrorMap,
+                    errors_1.getErrorMap(),
+                    errors_1.defaultErrorMap,
                 ].filter((x) => !!x),
                 issueData: {
                     code: ZodError_1.ZodIssueCode.invalid_return_type,
@@ -14298,18 +14333,18 @@ class ZodFunction extends ZodType {
         const validatedFunc = this.parse(func);
         return validatedFunc;
     }
+    static create(args, returns, params) {
+        return new ZodFunction({
+            args: (args
+                ? args
+                : ZodTuple.create([]).rest(ZodUnknown.create())),
+            returns: returns || ZodUnknown.create(),
+            typeName: ZodFirstPartyTypeKind.ZodFunction,
+            ...processCreateParams(params),
+        });
+    }
 }
 exports.ZodFunction = ZodFunction;
-ZodFunction.create = (args, returns, params) => {
-    return new ZodFunction({
-        args: (args
-            ? args.rest(ZodUnknown.create())
-            : ZodTuple.create([]).rest(ZodUnknown.create())),
-        returns: returns || ZodUnknown.create(),
-        typeName: ZodFirstPartyTypeKind.ZodFunction,
-        ...processCreateParams(params),
-    });
-};
 class ZodLazy extends ZodType {
     get schema() {
         return this._def.getter();
@@ -14767,6 +14802,12 @@ var ZodFirstPartyTypeKind;
     ZodFirstPartyTypeKind["ZodPromise"] = "ZodPromise";
     ZodFirstPartyTypeKind["ZodBranded"] = "ZodBranded";
 })(ZodFirstPartyTypeKind = exports.ZodFirstPartyTypeKind || (exports.ZodFirstPartyTypeKind = {}));
+// new approach that works for abstract classes
+// but required TS 4.4+
+// abstract class Class {
+//   constructor(..._: any[]) {}
+// }
+// const instanceOfType = <T extends typeof Class>(
 const instanceOfType = (cls, params = {
     message: `Input not instance of ${cls.name}`,
 }) => exports.custom((data) => data instanceof cls, params, true);
@@ -14842,6 +14883,7 @@ const onumber = () => numberType().optional();
 exports.onumber = onumber;
 const oboolean = () => booleanType().optional();
 exports.oboolean = oboolean;
+exports.NEVER = parseUtil_1.INVALID;
 
 
 /***/ }),
