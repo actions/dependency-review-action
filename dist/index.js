@@ -15215,7 +15215,7 @@ function assembleStyles() {
 			overline: [53, 55],
 			inverse: [7, 27],
 			hidden: [8, 28],
-			strikethrough: [9, 29]
+			strikethrough: [9, 29],
 		},
 		color: {
 			black: [30, 39],
@@ -15235,7 +15235,7 @@ function assembleStyles() {
 			blueBright: [94, 39],
 			magentaBright: [95, 39],
 			cyanBright: [96, 39],
-			whiteBright: [97, 39]
+			whiteBright: [97, 39],
 		},
 		bgColor: {
 			bgBlack: [40, 49],
@@ -15255,8 +15255,8 @@ function assembleStyles() {
 			bgBlueBright: [104, 49],
 			bgMagentaBright: [105, 49],
 			bgCyanBright: [106, 49],
-			bgWhiteBright: [107, 49]
-		}
+			bgWhiteBright: [107, 49],
+		},
 	};
 
 	// Alias bright black as gray (and grey)
@@ -15269,7 +15269,7 @@ function assembleStyles() {
 		for (const [styleName, style] of Object.entries(group)) {
 			styles[styleName] = {
 				open: `\u001B[${style[0]}m`,
-				close: `\u001B[${style[1]}m`
+				close: `\u001B[${style[1]}m`,
 			};
 
 			group[styleName] = styles[styleName];
@@ -15279,13 +15279,13 @@ function assembleStyles() {
 
 		Object.defineProperty(styles, groupName, {
 			value: group,
-			enumerable: false
+			enumerable: false,
 		});
 	}
 
 	Object.defineProperty(styles, 'codes', {
 		value: codes,
-		enumerable: false
+		enumerable: false,
 	});
 
 	styles.color.close = '\u001B[39m';
@@ -15316,39 +15316,41 @@ function assembleStyles() {
 					return Math.round(((red - 8) / 247) * 24) + 232;
 				}
 
-				return 16 +
-					(36 * Math.round(red / 255 * 5)) +
-					(6 * Math.round(green / 255 * 5)) +
-					Math.round(blue / 255 * 5);
+				return 16
+					+ (36 * Math.round(red / 255 * 5))
+					+ (6 * Math.round(green / 255 * 5))
+					+ Math.round(blue / 255 * 5);
 			},
-			enumerable: false
+			enumerable: false,
 		},
 		hexToRgb: {
 			value: hex => {
-				const matches = /(?<colorString>[a-f\d]{6}|[a-f\d]{3})/i.exec(hex.toString(16));
+				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
 				if (!matches) {
 					return [0, 0, 0];
 				}
 
-				let {colorString} = matches.groups;
+				let [colorString] = matches;
 
 				if (colorString.length === 3) {
-					colorString = colorString.split('').map(character => character + character).join('');
+					colorString = [...colorString].map(character => character + character).join('');
 				}
 
 				const integer = Number.parseInt(colorString, 16);
 
 				return [
+					/* eslint-disable no-bitwise */
 					(integer >> 16) & 0xFF,
 					(integer >> 8) & 0xFF,
-					integer & 0xFF
+					integer & 0xFF,
+					/* eslint-enable no-bitwise */
 				];
 			},
-			enumerable: false
+			enumerable: false,
 		},
 		hexToAnsi256: {
 			value: hex => styles.rgbToAnsi256(...styles.hexToRgb(hex)),
-			enumerable: false
+			enumerable: false,
 		},
 		ansi256ToAnsi: {
 			value: code => {
@@ -15384,6 +15386,7 @@ function assembleStyles() {
 					return 30;
 				}
 
+				// eslint-disable-next-line no-bitwise
 				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
 
 				if (value === 2) {
@@ -15392,16 +15395,16 @@ function assembleStyles() {
 
 				return result;
 			},
-			enumerable: false
+			enumerable: false,
 		},
 		rgbToAnsi: {
 			value: (red, green, blue) => styles.ansi256ToAnsi(styles.rgbToAnsi256(red, green, blue)),
-			enumerable: false
+			enumerable: false,
 		},
 		hexToAnsi: {
 			value: hex => styles.ansi256ToAnsi(styles.hexToAnsi256(hex)),
-			enumerable: false
-		}
+			enumerable: false,
+		},
 	});
 
 	return styles;
