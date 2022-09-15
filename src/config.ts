@@ -1,10 +1,18 @@
 import * as core from '@actions/core'
 import * as z from 'zod'
-import {ConfigurationOptions, SEVERITIES} from './schemas'
+import {ConfigurationOptions, SEVERITIES, SCOPES} from './schemas'
 
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
   return value.length > 0 ? value : undefined
+}
+
+function parseList(list: string | undefined): string[] | undefined {
+  if (list === undefined) {
+    return list
+  } else {
+    return list.split(',').map(x => x.trim())
+  }
 }
 
 export function readConfig(): ConfigurationOptions {
@@ -12,6 +20,10 @@ export function readConfig(): ConfigurationOptions {
     .enum(SEVERITIES)
     .default('low')
     .parse(getOptionalInput('fail-on-severity'))
+  const fail_on_scopes = z
+    .array(z.enum(SCOPES))
+    .default(['runtime'])
+    .parse(parseList(getOptionalInput('fail-on-scopes')))
   const allow_licenses = getOptionalInput('allow-licenses')
   const deny_licenses = getOptionalInput('deny-licenses')
 
@@ -24,8 +36,9 @@ export function readConfig(): ConfigurationOptions {
 
   return {
     fail_on_severity,
-    allow_licenses: allow_licenses?.split(',').map(x => x.trim()),
-    deny_licenses: deny_licenses?.split(',').map(x => x.trim()),
+    fail_on_scopes,
+    allow_licenses: parseList(allow_licenses),
+    deny_licenses: parseList(deny_licenses),
     base_ref,
     head_ref
   }

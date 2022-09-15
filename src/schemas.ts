@@ -35,6 +35,7 @@ export const PullRequestSchema = z.object({
 export const ConfigurationOptionsSchema = z
   .object({
     fail_on_severity: z.enum(SEVERITIES).default('low'),
+    fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     base_ref: z.string(),
