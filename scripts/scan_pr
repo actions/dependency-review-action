@@ -32,17 +32,23 @@ event_file = Tempfile.new
 event_file.write("{ \"pull_request\": #{pr.to_h.to_json}}")
 event_file.close
 
-dev_cmd_env = {
-  "INPUT_REPO-TOKEN" => github_token,
-  "GITHUB_REPOSITORY" => repo_nwo,
-  "GITHUB_EVENT_NAME" => "pull_request",
-  "GITHUB_EVENT_PATH" => event_file.path
+action_inputs = {
+  "repo-token" => github_token
 }
 
-dev_cmd = "./node_modules/.bin/nodemon --exec \"node -r esbuild-register\" src/main.ts"
+dev_cmd_env = {
+  "GITHUB_REPOSITORY" => repo_nwo,
+  "GITHUB_EVENT_NAME" => "pull_request",
+  "GITHUB_EVENT_PATH" => event_file.path,
+  "GITHUB_STEP_SUMMARY" => "/dev/null"
+}
+
+action_inputs_env_str = action_inputs.map { |name, value| "\"INPUT_#{name.upcase}=#{value}\"" }.join(" ")
+
+dev_cmd = "./node_modules/.bin/nodemon --exec \"env #{action_inputs_env_str} node -r esbuild-register\" src/main.ts"
 
 Open3.popen2e(dev_cmd_env, dev_cmd) do |stdin, out|
   while line = out.gets
-    puts line
+    puts line.gsub(github_token, "<REDACTED>")
   end
 end
