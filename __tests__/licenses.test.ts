@@ -11,6 +11,7 @@ let npmChange: Change = {
   package_url: 'pkg:npm/reeuhq@1.0.2',
   license: 'MIT',
   source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
   vulnerabilities: [
     {
       severity: 'critical',
@@ -30,6 +31,7 @@ let rubyChange: Change = {
   package_url: 'pkg:gem/actionsomething@3.2.0',
   license: 'BSD',
   source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
   vulnerabilities: [
     {
       severity: 'moderate',
