@@ -50,7 +50,6 @@ with the label of any of your runners (the default label
 is `self-hosted`):
 
 ```yaml
-
 # ...
 
 jobs:
@@ -86,11 +85,14 @@ jobs:
           # Possible values: "critical", "high", "moderate", "low"
           # fail-on-severity: critical
           #
+          # Possible values in comma separated list: "unknown", "runtime", or "development"
+          # fail-on-scopes: runtime, development
+          #
           # Possible values: Any available git ref
           # base-ref: ${{ github.event.pull_request.base.ref }}
           # head-ref: ${{ github.event.pull_request.head.ref }}
           #
-          # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES. 
+          # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES.
           #
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # allow-licenses: GPL-3.0, BSD-3-Clause, MIT
@@ -118,6 +120,17 @@ This example will only fail on pull requests with `critical` and `high` vulnerab
   uses: actions/dependency-review-action@v2
   with:
     fail-on-severity: high
+```
+
+### Dependency Scoping
+
+By default the action will only fail on `runtime` dependencies that have vulnerabilities or unacceptable licenses, ignoring `development` dependencies. You can override this behavior with the `fail-on-scopes` option, which will allow you to list the specific dependency scopes you care about. The possible values are: `unknown`, `runtime`, and `development`. Note: Filtering by scope will not be supported on GHES just yet, as the REST API's introduction of `scope` will be released in an upcoming version.
+
+```yaml
+- name: Dependency Review
+  uses: actions/dependency-review-action@v2
+  with:
+    fail-on-scopes: runtime, development
 ```
 
 ### Licenses
@@ -150,14 +163,14 @@ to filter. A couple of examples:
 
 **Important**
 
-* Checking for licenses is not supported on GHES.
-* The action will only accept one of the two parameters; an error will
-be raised if you provide both.
-* By default both parameters are empty (no license checking is
-performed).
-* We don't have license information for all of your dependents. If we
-can't detect the license for a dependency **we will inform you, but the
-action won't fail**.
+- Checking for licenses is not supported on GHES.
+- The action will only accept one of the two parameters; an error will
+  be raised if you provide both.
+- By default both parameters are empty (no license checking is
+  performed).
+- We don't have license information for all of your dependents. If we
+  can't detect the license for a dependency **we will inform you, but the
+  action won't fail**.
 
 ## Blocking pull requests
 
