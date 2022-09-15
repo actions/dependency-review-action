@@ -1,4 +1,4 @@
-import {Changes, Severity, SEVERITIES} from './schemas'
+import {Changes, Severity, SEVERITIES, Scope, SCOPES} from './schemas'
 
 export function filterChangesBySeverity(
   severity: Severity,
@@ -31,5 +31,18 @@ export function filterChangesBySeverity(
   filteredChanges = filteredChanges.filter(
     change => change.vulnerabilities.length > 0
   )
+  return filteredChanges
+}
+
+export function filterChangesByScopes(
+  scopes: Scope[],
+  changes: Changes
+): Changes {
+  const filteredChanges = changes.filter(change => {
+    if (scopes.indexOf(change.scope) > -1) {
+      return true
+    }
+  })
+
   return filteredChanges
 }
