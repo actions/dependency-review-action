@@ -43,8 +43,10 @@ dev_cmd_env = {
   "GITHUB_STEP_SUMMARY" => "/dev/null"
 }
 
+# bash does not like variable names with dashes like the ones Actions
+# uses (e.g. INPUT_REPO-TOKEN). Passing them through `env` instead of
+# manually setting them does the job.
 action_inputs_env_str = action_inputs.map { |name, value| "\"INPUT_#{name.upcase}=#{value}\"" }.join(" ")
-
 dev_cmd = "./node_modules/.bin/nodemon --exec \"env #{action_inputs_env_str} node -r esbuild-register\" src/main.ts"
 
 Open3.popen2e(dev_cmd_env, dev_cmd) do |stdin, out|
