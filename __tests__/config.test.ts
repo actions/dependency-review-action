@@ -1,5 +1,5 @@
 import {expect, test, beforeEach} from '@jest/globals'
-import {readConfig} from '../src/config'
+import {readConfig, readConfigFile} from '../src/config'
 import {getRefs} from '../src/git-refs'
 
 // GitHub Action inputs come in the form of environment variables
@@ -81,4 +81,16 @@ test('it raises an error when no refs are provided and the event is not a pull r
       eventName: 'workflow_dispatch'
     })
   ).toThrow()
+})
+
+test('it reads an external config file', async () => {
+  let options = readConfigFile('./__tests__/fixtures/config-allow-sample.yml')
+  expect(options.fail_on_severity).toEqual('critical')
+  expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
+})
+
+test('returns a default config when the config file was not found', async () => {
+  let options = readConfigFile('fixtures/i-dont-exist')
+  expect(options.fail_on_severity).toEqual('low')
+  expect(options.allow_licenses).toEqual([])
 })
