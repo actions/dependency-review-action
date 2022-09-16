@@ -124,7 +124,7 @@ This example will only fail on pull requests with `critical` and `high` vulnerab
 
 ### Dependency Scoping
 
-By default the action will only fail on `runtime` dependencies that have vulnerabilities or unacceptable licenses, ignoring `development` dependencies. You can override this behavior with the `fail-on-scopes` option, which will allow you to list the specific dependency scopes you care about. The possible values are: `unknown`, `runtime`, and `development`. Note: Filtering by scope will not be supported on GHES just yet, as the REST API's introduction of `scope` will be released in an upcoming version.
+By default the action will only fail on `runtime` dependencies that have vulnerabilities or unacceptable licenses, ignoring `development` dependencies. You can override this behavior with the `fail-on-scopes` option, which will allow you to list the specific dependency scopes you care about. The possible values are: `unknown`, `runtime`, and `development`. Note: Filtering by scope will not be supported on GHES just yet, as the REST API's introduction of `scope` will be released in an upcoming version. We will treat all dependencies on GHES as having a `runtime` scope and thus will not be filtered away.
 
 ```yaml
 - name: Dependency Review

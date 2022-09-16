@@ -12,7 +12,7 @@ export const ChangeSchema = z.object({
   package_url: z.string(),
   license: z.string().nullable(),
   source_repository_url: z.string().nullable(),
-  scope: z.enum(SCOPES),
+  scope: z.enum(SCOPES).optional(),
   vulnerabilities: z
     .array(
       z.object({
