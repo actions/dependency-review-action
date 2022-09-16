@@ -1,6 +1,11 @@
+import * as fs from 'fs'
+import path from 'path'
+import YAML from 'yaml'
 import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, SEVERITIES} from './schemas'
+
+export const CONFIG_FILEPATH = './.github/dependency-review.yml'
 
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
@@ -29,4 +34,18 @@ export function readConfig(): ConfigurationOptions {
     base_ref,
     head_ref
   }
+}
+
+export function readConfigFile(
+  filePath: string = CONFIG_FILEPATH
+): ConfigurationOptions {
+  let data
+
+  try {
+    data = fs.readFileSync(path.resolve(filePath), 'utf-8')
+  } catch (error: unknown) {
+    throw error
+  }
+  const values = YAML.parse(data)
+  return values
 }
