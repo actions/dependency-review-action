@@ -13,6 +13,15 @@ function getOptionalInput(name: string): string | undefined {
 }
 
 export function readConfig(): ConfigurationOptions {
+  const hasExternalConfig = getOptionalInput('config-file')
+  if (hasExternalConfig !== undefined) {
+    return readConfigFile(CONFIG_FILEPATH)
+  } else {
+    return readInlineConfig()
+  }
+}
+
+export function readInlineConfig(): ConfigurationOptions {
   const fail_on_severity = z
     .enum(SEVERITIES)
     .default('low')
