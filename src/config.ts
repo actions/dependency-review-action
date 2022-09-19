@@ -56,5 +56,13 @@ export function readConfigFile(
     throw error
   }
   const values = YAML.parse(data)
+
+  // get rid of the ugly dashes from the actions conventions
+  for (const key of Object.keys(values)) {
+    if (key.includes('-')) {
+      values[key.replace(/-/g, '_')] = values[key]
+      delete values[key]
+    }
+  }
   return values
 }
