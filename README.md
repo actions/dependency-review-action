@@ -70,6 +70,17 @@ or by inlining this option in your workflow file.
 
 ### Options
 
+#### config-file
+
+**TODO**: Change this to be a user-configured string.
+
+Defaults to `false`. Configure whether an external configuration file
+will be used.
+
+**Possible values**: `true`, `false`.
+
+**Example**: `config-file: true`.
+
 #### fail-on-severity
 
 Configure the severity level for alerting. See "[Vulnerability Severity](https://github.com/actions/dependency-review-action#vulnerability-severity)".
@@ -93,7 +104,6 @@ allow-licenses:
   - BSD-3-Clause
   - MIT
 ```
-
 
 #### deny-licenses
 
@@ -129,10 +139,24 @@ head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
 
 ### Configuration File
 
-You can create a YAML file in
-`~/.github/dependency-review-config.yaml` to configure the
-action. **All of these fields are optional**. This is what a sample
-file could look like:
+You can use an external configuration file to specify the settings for
+this Action.
+
+Start by specifying that you will be using an external configuration
+file:
+
+```yaml
+- name: Dependency Review
+  uses: actions/dependency-review-action@v2
+  with:
+    config-file: true
+```
+
+**TODO**: Users should be able to provide a string for their config paths.
+
+And then create the configuration file in
+`~/.github/dependency-review-config.yaml`. **All of these fields are
+optional**:
 
 ```yaml
 fail-on-severity: "critical"
@@ -140,8 +164,6 @@ allow-licenses:
   - "GPL-3.0"
   - "BSD-3-Clause"
   - "MIT"
-base-ref: "781a55e"
-head-ref: "435083f"
 ```
 
 ### Inline Configuration
