@@ -31,7 +31,7 @@
     "@octokit/request-error": "^3.0.1",
     "ansi-styles": "^6.1.1",
     "got": "^12.4.1",
-    "nodemon": "^2.0.19",
+    "nodemon": "^2.0.20",
     "yaml": "^2.1.1",
     "zod": "^3.19.1"
   },
@@ -46,7 +46,7 @@
     "eslint-plugin-jest": "^27.0.4",
     "jest": "^27.5.1",
     "js-yaml": "^4.1.0",
-    "nodemon": "^2.0.19",
+    "nodemon": "^2.0.20",
     "prettier": "2.7.1",
     "ts-jest": "^27.1.4",
     "typescript": "^4.8.3"
