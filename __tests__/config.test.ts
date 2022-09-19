@@ -89,8 +89,6 @@ test('it reads an external config file', async () => {
   expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
-test('returns a default config when the config file was not found', async () => {
-  let options = readConfigFile('fixtures/i-dont-exist')
-  expect(options.fail_on_severity).toEqual('low')
-  expect(options.allow_licenses).toEqual([])
+test('raises an error when the the config file was not found', async () => {
+  expect(() => readConfigFile('fixtures/i-dont-exist')).toThrow()
 })
