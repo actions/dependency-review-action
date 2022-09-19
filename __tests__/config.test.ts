@@ -105,3 +105,9 @@ test('in case of conflicts, the external file is the source of truth', async () 
   options = readConfig()
   expect(options.fail_on_severity).toEqual('low')
 })
+
+test('it accepts an external configuration filename', async () => {
+  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml') // this will set fail-on-severity to 'critical'
+  const options = readConfig()
+  expect(options.fail_on_severity).toEqual('critical')
+})
