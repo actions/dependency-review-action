@@ -39,11 +39,9 @@ export function filterChangesByScopes(
   changes: Changes
 ): Changes {
   const filteredChanges = changes.filter(change => {
-    // if there is no scope on the change (GHES API for now), we will assume it is a runtime scope
+    // if there is no scope on the change (Enterprise Server API for now), we will assume it is a runtime scope
     const scope = change.scope || 'runtime'
-    if (scopes.includes(scope)) {
-      return true
-    }
+    return scopes.includes(scope)
   })
 
   return filteredChanges
