@@ -15,6 +15,7 @@ function clearInputs() {
     'FAIL-ON-SEVERITY',
     'ALLOW-LICENSES',
     'DENY-LICENSES',
+    'CONFIG-FILE',
     'BASE-REF',
     'HEAD-REF'
   ]
@@ -91,4 +92,16 @@ test('it reads an external config file', async () => {
 
 test('raises an error when the the config file was not found', async () => {
   expect(() => readConfigFile('fixtures/i-dont-exist')).toThrow()
+})
+
+test('in case of conflicts, the external file is the source of truth', async () => {
+  setInput('config-file', 'true') // this will set fail-on-severity to 'low'
+
+  let options = readConfig()
+  expect(options.fail_on_severity).toEqual('low')
+
+  // this should not overwite the previous value
+  setInput('fail-on-severity', 'critical')
+  options = readConfig()
+  expect(options.fail_on_severity).toEqual('low')
 })
