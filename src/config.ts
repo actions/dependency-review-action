@@ -5,7 +5,7 @@ import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, SEVERITIES} from './schemas'
 
-export const CONFIG_FILEPATH = './.github/dependency-review.yml'
+export const CONFIG_FILEPATH = './.github/dependency-review-config.yml'
 
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
