@@ -14924,22 +14924,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readConfigFile = exports.readInlineConfig = exports.readConfig = exports.CONFIG_FILEPATH = void 0;
+exports.readConfigFile = exports.readInlineConfig = exports.readConfig = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
 const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
-exports.CONFIG_FILEPATH = './.github/dependency-review-config.yml';
 function getOptionalInput(name) {
     const value = core.getInput(name);
     return value.length > 0 ? value : undefined;
 }
 function readConfig() {
-    const hasExternalConfig = getOptionalInput('config-file');
-    if (hasExternalConfig !== undefined) {
-        return readConfigFile(exports.CONFIG_FILEPATH);
+    const externalConfig = getOptionalInput('config-file');
+    if (externalConfig !== undefined) {
+        return readConfigFile(externalConfig);
     }
     else {
         return readInlineConfig();
@@ -14967,7 +14966,7 @@ function readInlineConfig() {
     };
 }
 exports.readInlineConfig = readInlineConfig;
-function readConfigFile(filePath = exports.CONFIG_FILEPATH) {
+function readConfigFile(filePath) {
     let data;
     try {
         data = fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
