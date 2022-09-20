@@ -30,15 +30,15 @@
     "@octokit/plugin-retry": "^3.0.9",
     "@octokit/request-error": "^3.0.1",
     "ansi-styles": "^6.1.1",
-    "got": "^12.4.1",
+    "got": "^12.5.0",
     "nodemon": "^2.0.20",
     "yaml": "^2.1.1",
     "zod": "^3.19.1"
   },
   "devDependencies": {
     "@types/node": "^16.11.59",
-    "@typescript-eslint/eslint-plugin": "^5.37.0",
-    "@typescript-eslint/parser": "^5.37.0",
+    "@typescript-eslint/eslint-plugin": "^5.38.0",
+    "@typescript-eslint/parser": "^5.38.0",
     "@vercel/ncc": "^0.34.0",
     "esbuild-register": "^3.3.3",
     "eslint": "^8.23.1",
