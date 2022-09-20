@@ -1,4 +1,4 @@
-import {Changes, Severity, SEVERITIES} from './schemas'
+import {Changes, Severity, SEVERITIES, Scope} from './schemas'
 
 export function filterChangesBySeverity(
   severity: Severity,
@@ -31,5 +31,18 @@ export function filterChangesBySeverity(
   filteredChanges = filteredChanges.filter(
     change => change.vulnerabilities.length > 0
   )
+  return filteredChanges
+}
+
+export function filterChangesByScopes(
+  scopes: Scope[],
+  changes: Changes
+): Changes {
+  const filteredChanges = changes.filter(change => {
+    // if there is no scope on the change (Enterprise Server API for now), we will assume it is a runtime scope
+    const scope = change.scope || 'runtime'
+    return scopes.includes(scope)
+  })
+
   return filteredChanges
 }

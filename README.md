@@ -38,7 +38,7 @@ jobs:
 
 ### GitHub Enterprise Server
 
-This action is available in GHES starting with version 3.6. Make sure
+This action is available in Enterprise Server starting with version 3.6. Make sure
 [GitHub Advanced
 Security](https://docs.github.com/en/enterprise-server@3.6/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
 and [GitHub
@@ -50,7 +50,6 @@ with the label of any of your runners (the default label
 is `self-hosted`):
 
 ```yaml
-
 # ...
 
 jobs:
@@ -86,11 +85,14 @@ jobs:
           # Possible values: "critical", "high", "moderate", "low"
           # fail-on-severity: critical
           #
+          # Possible values in comma separated list: "unknown", "runtime", or "development"
+          # fail-on-scopes: runtime, development
+          #
           # Possible values: Any available git ref
           # base-ref: ${{ github.event.pull_request.base.ref }}
           # head-ref: ${{ github.event.pull_request.head.ref }}
           #
-          # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on GHES. 
+          # You can only include one of these two options: `allow-licenses` and `deny-licenses`. These options are not supported on Enterprise Server.
           #
           # Possible values: Any `spdx_id` value(s) from https://docs.github.com/en/rest/licenses
           # allow-licenses: GPL-3.0, BSD-3-Clause, MIT
@@ -120,12 +122,23 @@ This example will only fail on pull requests with `critical` and `high` vulnerab
     fail-on-severity: high
 ```
 
+### Dependency Scoping
+
+By default the action will only fail on `runtime` dependencies that have vulnerabilities or unacceptable licenses, ignoring `development` dependencies. You can override this behavior with the `fail-on-scopes` option, which will allow you to list the specific dependency scopes you care about. The possible values are: `unknown`, `runtime`, and `development`. Note: Filtering by scope will not be supported on Enterprise Server just yet, as the REST API's introduction of `scope` will be released in an upcoming Enterprise Server version. We will treat all dependencies on Enterprise Server as having a `runtime` scope and thus will not be filtered away.
+
+```yaml
+- name: Dependency Review
+  uses: actions/dependency-review-action@v2
+  with:
+    fail-on-scopes: runtime, development
+```
+
 ### Licenses
 
 You can set the action to fail on pull requests based on the licenses of the dependencies
 they introduce. With `allow-licenses` you can define the list of licenses
 your repository will accept. Alternatively, you can use `deny-licenses` to only
-forbid a subset of licenses. These options are not supported on GHES.
+forbid a subset of licenses. These options are not supported on Enterprise Server.
 
 You can use the [Licenses
 API](https://docs.github.com/en/rest/licenses) to see the full list of
@@ -150,14 +163,14 @@ to filter. A couple of examples:
 
 **Important**
 
-* Checking for licenses is not supported on GHES.
-* The action will only accept one of the two parameters; an error will
-be raised if you provide both.
-* By default both parameters are empty (no license checking is
-performed).
-* We don't have license information for all of your dependents. If we
-can't detect the license for a dependency **we will inform you, but the
-action won't fail**.
+- Checking for licenses is not supported on Enterprise Server.
+- The action will only accept one of the two parameters; an error will
+  be raised if you provide both.
+- By default both parameters are empty (no license checking is
+  performed).
+- We don't have license information for all of your dependents. If we
+  can't detect the license for a dependency **we will inform you, but the
+  action won't fail**.
 
 ## Blocking pull requests
 

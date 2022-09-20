@@ -13,6 +13,7 @@ function setInput(input: string, value: string) {
 function clearInputs() {
   const allowedOptions = [
     'FAIL-ON-SEVERITY',
+    'FAIL-ON-SCOPES',
     'ALLOW-LICENSES',
     'DENY-LICENSES',
     'BASE-REF',
@@ -81,4 +82,23 @@ test('it raises an error when no refs are provided and the event is not a pull r
       eventName: 'workflow_dispatch'
     })
   ).toThrow()
+})
+
+test('it defaults to runtime scope', async () => {
+  const options = readConfig()
+  expect(options.fail_on_scopes).toEqual(['runtime'])
+})
+test('it parses custom scopes preference', async () => {
+  setInput('fail-on-scopes', 'runtime, development')
+  let options = readConfig()
+  expect(options.fail_on_scopes).toEqual(['runtime', 'development'])
+
+  clearInputs()
+  setInput('fail-on-scopes', 'development')
+  options = readConfig()
+  expect(options.fail_on_scopes).toEqual(['development'])
+})
+test('it raises an error when given invalid scope', async () => {
+  setInput('fail-on-scopes', 'runtime, zombies')
+  expect(() => readConfig()).toThrow()
 })

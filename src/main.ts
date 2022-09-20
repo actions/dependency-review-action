@@ -3,9 +3,9 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity} from './schemas'
+import {Change, Severity, Scope} from './schemas'
 import {readConfig} from '../src/config'
-import {filterChangesBySeverity} from '../src/filter'
+import {filterChangesBySeverity, filterChangesByScopes} from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
@@ -30,9 +30,13 @@ async function run(): Promise<void> {
       deny: config.deny_licenses
     }
 
+    const scopes = config.fail_on_scopes
+
+    const scopedChanges = filterChangesByScopes(scopes as Scope[], changes)
+
     const addedChanges = filterChangesBySeverity(
       minSeverity as Severity,
-      changes
+      scopedChanges
     ).filter(
       change =>
         change.change_type === 'added' &&
@@ -41,7 +45,7 @@ async function run(): Promise<void> {
     )
 
     const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
-      changes,
+      scopedChanges,
       licenses
     )
 
