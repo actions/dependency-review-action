@@ -95,15 +95,15 @@ test('raises an error when the the config file was not found', async () => {
 })
 
 test('in case of conflicts, the external file is the source of truth', async () => {
-  setInput('config-file', 'true') // this will set fail-on-severity to 'low'
+  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml') // this will set fail-on-severity to 'critical'
 
   let options = readConfig()
-  expect(options.fail_on_severity).toEqual('low')
+  expect(options.fail_on_severity).toEqual('critical')
 
   // this should not overwite the previous value
-  setInput('fail-on-severity', 'critical')
+  setInput('fail-on-severity', 'lowl')
   options = readConfig()
-  expect(options.fail_on_severity).toEqual('low')
+  expect(options.fail_on_severity).toEqual('critical')
 })
 
 test('it accepts an external configuration filename', async () => {

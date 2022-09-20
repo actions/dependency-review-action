@@ -5,17 +5,15 @@ import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, SEVERITIES} from './schemas'
 
-export const CONFIG_FILEPATH = './.github/dependency-review-config.yml'
-
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
   return value.length > 0 ? value : undefined
 }
 
 export function readConfig(): ConfigurationOptions {
-  const hasExternalConfig = getOptionalInput('config-file')
-  if (hasExternalConfig !== undefined) {
-    return readConfigFile(CONFIG_FILEPATH)
+  const externalConfig = getOptionalInput('config-file')
+  if (externalConfig !== undefined) {
+    return readConfigFile(externalConfig)
   } else {
     return readInlineConfig()
   }
@@ -45,9 +43,7 @@ export function readInlineConfig(): ConfigurationOptions {
   }
 }
 
-export function readConfigFile(
-  filePath: string = CONFIG_FILEPATH
-): ConfigurationOptions {
+export function readConfigFile(filePath: string): ConfigurationOptions {
   let data
 
   try {

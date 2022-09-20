@@ -72,14 +72,13 @@ or by inlining this option in your workflow file.
 
 #### config-file
 
-**TODO**: Change this to be a user-configured string.
+A string representing the path to an external configuraton file. By
+default external configuration files are not used.
 
-Defaults to `false`. Configure whether an external configuration file
-will be used.
+**Possible values**: A string representing the absolute path to the
+  configuration file.
 
-**Possible values**: `true`, `false`.
-
-**Example**: `config-file: true`.
+**Example**: `config-file: ./.github/dependency-review-config.yml`.
 
 #### fail-on-severity
 
@@ -149,13 +148,10 @@ file:
 - name: Dependency Review
   uses: actions/dependency-review-action@v2
   with:
-    config-file: true
+    config-file: "./.github/dependency-review-config.yml"
 ```
 
-**TODO**: Users should be able to provide a string for their config paths.
-
-And then create the configuration file in
-`~/.github/dependency-review-config.yaml`. **All of these fields are
+And then create the file in the path you just specified. **All of these fields are
 optional**:
 
 ```yaml
