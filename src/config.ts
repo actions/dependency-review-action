@@ -13,7 +13,9 @@ function getOptionalInput(name: string): string | undefined {
 export function readConfig(): ConfigurationOptions {
   const externalConfig = getOptionalInput('config-file')
   if (externalConfig !== undefined) {
-    return readConfigFile(externalConfig)
+    const config = readConfigFile(externalConfig)
+    const inlineConfig = readInlineConfig()
+    return Object.assign({}, inlineConfig, config)
   } else {
     return readInlineConfig()
   }

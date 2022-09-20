@@ -94,20 +94,42 @@ test('raises an error when the the config file was not found', async () => {
   expect(() => readConfigFile('fixtures/i-dont-exist')).toThrow()
 })
 
-test('in case of conflicts, the external file is the source of truth', async () => {
+test('it parses options from both sources', async () => {
+  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml')
+
+  let options = readConfig()
+  expect(options.fail_on_severity).toEqual('critical')
+
+  setInput('base-ref', 'a-custom-base-ref')
+  options = readConfig()
+  expect(options.base_ref).toEqual('a-custom-base-ref')
+})
+
+test('in case of conflicts, the external config is the source of truth', async () => {
   setInput('config-file', './__tests__/fixtures/config-allow-sample.yml') // this will set fail-on-severity to 'critical'
 
   let options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
 
   // this should not overwite the previous value
-  setInput('fail-on-severity', 'lowl')
+  setInput('fail-on-severity', 'low')
   options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
 })
 
+test('it uses the default values when loading external files', async () => {
+  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
+  let options = readConfig()
+  expect(options.allow_licenses).toEqual(undefined)
+  expect(options.deny_licenses).toEqual(undefined)
+
+  setInput('config-file', './__tests__/fixtures/license-config-sample.yml')
+  options = readConfig()
+  expect(options.fail_on_severity).toEqual('low')
+})
+
 test('it accepts an external configuration filename', async () => {
-  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml') // this will set fail-on-severity to 'critical'
+  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
   const options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
 })
