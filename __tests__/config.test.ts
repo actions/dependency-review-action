@@ -13,6 +13,7 @@ function setInput(input: string, value: string) {
 function clearInputs() {
   const allowedOptions = [
     'FAIL-ON-SEVERITY',
+    'FAIL-ON-SCOPES',
     'ALLOW-LICENSES',
     'DENY-LICENSES',
     'CONFIG-FILE',
@@ -136,5 +137,26 @@ test('it accepts an external configuration filename', async () => {
 
 test('it raises an error when given an unknown severity in an external config file', async () => {
   setInput('config-file', './__tests__/fixtures/invalid-severity-config.yml')
+  expect(() => readConfig()).toThrow()
+})
+
+test('it defaults to runtime scope', async () => {
+  const options = readConfig()
+  expect(options.fail_on_scopes).toEqual(['runtime'])
+})
+
+test('it parses custom scopes preference', async () => {
+  setInput('fail-on-scopes', 'runtime, development')
+  let options = readConfig()
+  expect(options.fail_on_scopes).toEqual(['runtime', 'development'])
+
+  clearInputs()
+  setInput('fail-on-scopes', 'development')
+  options = readConfig()
+  expect(options.fail_on_scopes).toEqual(['development'])
+})
+
+test('it raises an error when given invalid scope', async () => {
+  setInput('fail-on-scopes', 'runtime, zombies')
   expect(() => readConfig()).toThrow()
 })

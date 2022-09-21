@@ -1,6 +1,8 @@
 import * as z from 'zod'
 
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
+export const SCOPES = ['unknown', 'runtime', 'development'] as const
+
 export const SeveritySchema = z.enum(SEVERITIES).default('low')
 
 export const ChangeSchema = z.object({
@@ -12,6 +14,7 @@ export const ChangeSchema = z.object({
   package_url: z.string(),
   license: z.string().nullable(),
   source_repository_url: z.string().nullable(),
+  scope: z.enum(SCOPES).optional(),
   vulnerabilities: z
     .array(
       z.object({
@@ -34,6 +37,7 @@ export const PullRequestSchema = z.object({
 export const ConfigurationOptionsSchema = z
   .object({
     fail_on_severity: SeveritySchema,
+    fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     config_file: z.string().optional().default('false'),
@@ -51,4 +55,5 @@ export const ChangesSchema = z.array(ChangeSchema)
 export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
-export type Severity = typeof SEVERITIES[number]
+export type Severity = z.infer<typeof SeveritySchema>
+export type Scope = typeof SCOPES[number]

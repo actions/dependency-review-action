@@ -220,10 +220,12 @@ function run() {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             };
-            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes).filter(change => change.change_type === 'added' &&
+            const scopes = config.fail_on_scopes;
+            const scopedChanges = (0, filter_1.filterChangesByScopes)(scopes, changes);
+            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, scopedChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
-            const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
+            const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(scopedChanges, licenses);
             summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses);
             if (addedChanges.length > 0) {
                 for (const change of addedChanges) {
@@ -333,9 +335,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SEVERITIES = void 0;
+exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
+exports.SCOPES = ['unknown', 'runtime', 'development'];
+exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -345,9 +349,10 @@ exports.ChangeSchema = z.object({
     package_url: z.string(),
     license: z.string().nullable(),
     source_repository_url: z.string().nullable(),
+    scope: z.enum(exports.SCOPES).optional(),
     vulnerabilities: z
         .array(z.object({
-        severity: z.enum(['critical', 'high', 'moderate', 'low']),
+        severity: exports.SeveritySchema,
         advisory_ghsa_id: z.string(),
         advisory_summary: z.string(),
         advisory_url: z.string()
@@ -362,7 +367,8 @@ exports.PullRequestSchema = z.object({
 });
 exports.ConfigurationOptionsSchema = z
     .object({
-    fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
+    fail_on_severity: exports.SeveritySchema,
+    fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     config_file: z.string().optional().default('false'),
@@ -14935,6 +14941,14 @@ function getOptionalInput(name) {
     const value = core.getInput(name);
     return value.length > 0 ? value : undefined;
 }
+function parseList(list) {
+    if (list === undefined) {
+        return list;
+    }
+    else {
+        return list.split(',').map(x => x.trim());
+    }
+}
 function readConfig() {
     const externalConfig = getOptionalInput('config-file');
     if (externalConfig !== undefined) {
@@ -14948,10 +14962,11 @@ function readConfig() {
 }
 exports.readConfig = readConfig;
 function readInlineConfig() {
-    const fail_on_severity = z
-        .enum(schemas_1.SEVERITIES)
-        .default('low')
-        .parse(getOptionalInput('fail-on-severity'));
+    const fail_on_severity = schemas_1.SeveritySchema.parse(getOptionalInput('fail-on-severity'));
+    const fail_on_scopes = z
+        .array(z.enum(schemas_1.SCOPES))
+        .default(['runtime'])
+        .parse(parseList(getOptionalInput('fail-on-scopes')));
     const allow_licenses = getOptionalInput('allow-licenses');
     const deny_licenses = getOptionalInput('deny-licenses');
     if (allow_licenses !== undefined && deny_licenses !== undefined) {
@@ -14961,8 +14976,9 @@ function readInlineConfig() {
     const head_ref = getOptionalInput('head-ref');
     return {
         fail_on_severity,
-        allow_licenses: allow_licenses === null || allow_licenses === void 0 ? void 0 : allow_licenses.split(',').map(x => x.trim()),
-        deny_licenses: deny_licenses === null || deny_licenses === void 0 ? void 0 : deny_licenses.split(',').map(x => x.trim()),
+        fail_on_scopes,
+        allow_licenses: parseList(allow_licenses),
+        deny_licenses: parseList(deny_licenses),
         base_ref,
         head_ref
     };
@@ -14976,14 +14992,15 @@ function readConfigFile(filePath) {
     catch (error) {
         throw error;
     }
-    const values = yaml_1.default.parse(data);
+    data = yaml_1.default.parse(data);
     // get rid of the ugly dashes from the actions conventions
-    for (const key of Object.keys(values)) {
+    for (const key of Object.keys(data)) {
         if (key.includes('-')) {
-            values[key.replace(/-/g, '_')] = values[key];
-            delete values[key];
+            data[key.replace(/-/g, '_')] = data[key];
+            delete data[key];
         }
     }
+    const values = schemas_1.ConfigurationOptionsSchema.parse(data);
     return values;
 }
 exports.readConfigFile = readConfigFile;
@@ -14997,7 +15014,7 @@ exports.readConfigFile = readConfigFile;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.filterChangesBySeverity = void 0;
+exports.filterChangesByScopes = exports.filterChangesBySeverity = void 0;
 const schemas_1 = __nccwpck_require__(1129);
 function filterChangesBySeverity(severity, changes) {
     const severityIdx = schemas_1.SEVERITIES.indexOf(severity);
@@ -15021,6 +15038,15 @@ function filterChangesBySeverity(severity, changes) {
     return filteredChanges;
 }
 exports.filterChangesBySeverity = filterChangesBySeverity;
+function filterChangesByScopes(scopes, changes) {
+    const filteredChanges = changes.filter(change => {
+        // if there is no scope on the change (Enterprise Server API for now), we will assume it is a runtime scope
+        const scope = change.scope || 'runtime';
+        return scopes.includes(scope);
+    });
+    return filteredChanges;
+}
+exports.filterChangesByScopes = filterChangesByScopes;
 
 
 /***/ }),
@@ -15054,9 +15080,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SEVERITIES = void 0;
+exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
+exports.SCOPES = ['unknown', 'runtime', 'development'];
+exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -15066,9 +15094,10 @@ exports.ChangeSchema = z.object({
     package_url: z.string(),
     license: z.string().nullable(),
     source_repository_url: z.string().nullable(),
+    scope: z.enum(exports.SCOPES).optional(),
     vulnerabilities: z
         .array(z.object({
-        severity: z.enum(['critical', 'high', 'moderate', 'low']),
+        severity: exports.SeveritySchema,
         advisory_ghsa_id: z.string(),
         advisory_summary: z.string(),
         advisory_url: z.string()
@@ -15083,7 +15112,8 @@ exports.PullRequestSchema = z.object({
 });
 exports.ConfigurationOptionsSchema = z
     .object({
-    fail_on_severity: z.enum(exports.SEVERITIES).default('low'),
+    fail_on_severity: exports.SeveritySchema,
+    fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     config_file: z.string().optional().default('false'),

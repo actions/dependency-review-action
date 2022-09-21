@@ -1,6 +1,6 @@
 import {expect, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {filterChangesBySeverity} from '../src/filter'
+import {filterChangesBySeverity, filterChangesByScopes} from '../src/filter'
 
 let npmChange: Change = {
   manifest: 'package.json',
@@ -11,6 +11,7 @@ let npmChange: Change = {
   package_url: 'pkg:npm/reeuhq@1.0.2',
   license: 'MIT',
   source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
   vulnerabilities: [
     {
       severity: 'critical',
@@ -30,6 +31,7 @@ let rubyChange: Change = {
   package_url: 'pkg:gem/actionsomething@3.2.0',
   license: 'BSD',
   source_repository_url: 'github.com/some-repo',
+  scope: 'development',
   vulnerabilities: [
     {
       severity: 'moderate',
@@ -56,4 +58,17 @@ test('it properly filters changes by severity', async () => {
 
   result = filterChangesBySeverity('critical', changes)
   expect(changes).toEqual([npmChange, rubyChange])
+})
+
+test('it properly filters changes by scope', async () => {
+  const changes = [npmChange, rubyChange]
+
+  let result = filterChangesByScopes(['runtime'], changes)
+  expect(result).toEqual([npmChange])
+
+  result = filterChangesByScopes(['development'], changes)
+  expect(result).toEqual([rubyChange])
+
+  result = filterChangesByScopes(['runtime', 'development'], changes)
+  expect(result).toEqual([npmChange, rubyChange])
 })
