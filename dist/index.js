@@ -14953,7 +14953,11 @@ function readConfig() {
     const externalConfig = getOptionalInput('config-file');
     if (externalConfig !== undefined) {
         const config = readConfigFile(externalConfig);
+        // the reasoning behind reading the inline config when an external
+        // config file is provided is that we still want to allow users to
+        // pass inline options in the presence of an external config file.
         const inlineConfig = readInlineConfig();
+        // the external config takes precedence
         return Object.assign({}, inlineConfig, config);
     }
     else {
