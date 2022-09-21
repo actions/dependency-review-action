@@ -1,6 +1,7 @@
 import * as z from 'zod'
 
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
+export const SeveritySchema = z.enum(SEVERITIES).default('low')
 
 export const ChangeSchema = z.object({
   change_type: z.enum(['added', 'removed']),
@@ -14,7 +15,7 @@ export const ChangeSchema = z.object({
   vulnerabilities: z
     .array(
       z.object({
-        severity: z.enum(['critical', 'high', 'moderate', 'low']),
+        severity: SeveritySchema,
         advisory_ghsa_id: z.string(),
         advisory_summary: z.string(),
         advisory_url: z.string()
@@ -32,7 +33,7 @@ export const PullRequestSchema = z.object({
 
 export const ConfigurationOptionsSchema = z
   .object({
-    fail_on_severity: z.enum(SEVERITIES).default('low'),
+    fail_on_severity: SeveritySchema,
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     config_file: z.string().optional().default('false'),

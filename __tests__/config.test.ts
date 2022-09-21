@@ -133,3 +133,8 @@ test('it accepts an external configuration filename', async () => {
   const options = readConfig()
   expect(options.fail_on_severity).toEqual('critical')
 })
+
+test('it raises an error when given an unknown severity in an external config file', async () => {
+  setInput('config-file', './__tests__/fixtures/invalid-severity-config.yml')
+  expect(() => readConfig()).toThrow()
+})

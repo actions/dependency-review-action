@@ -3,7 +3,11 @@ import path from 'path'
 import YAML from 'yaml'
 import * as core from '@actions/core'
 import * as z from 'zod'
-import {ConfigurationOptions, SEVERITIES} from './schemas'
+import {
+  ConfigurationOptions,
+  ConfigurationOptionsSchema,
+  SeveritySchema
+} from './schemas'
 
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
@@ -22,10 +26,9 @@ export function readConfig(): ConfigurationOptions {
 }
 
 export function readInlineConfig(): ConfigurationOptions {
-  const fail_on_severity = z
-    .enum(SEVERITIES)
-    .default('low')
-    .parse(getOptionalInput('fail-on-severity'))
+  const fail_on_severity = SeveritySchema.parse(
+    getOptionalInput('fail-on-severity')
+  )
   const allow_licenses = getOptionalInput('allow-licenses')
   const deny_licenses = getOptionalInput('deny-licenses')
 
@@ -53,14 +56,15 @@ export function readConfigFile(filePath: string): ConfigurationOptions {
   } catch (error: unknown) {
     throw error
   }
-  const values = YAML.parse(data)
+  data = YAML.parse(data)
 
   // get rid of the ugly dashes from the actions conventions
-  for (const key of Object.keys(values)) {
+  for (const key of Object.keys(data)) {
     if (key.includes('-')) {
-      values[key.replace(/-/g, '_')] = values[key]
-      delete values[key]
+      data[key.replace(/-/g, '_')] = data[key]
+      delete data[key]
     }
   }
+  const values = ConfigurationOptionsSchema.parse(data)
   return values
 }
