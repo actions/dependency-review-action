@@ -27,7 +27,11 @@ export function readConfig(): ConfigurationOptions {
   const externalConfig = getOptionalInput('config-file')
   if (externalConfig !== undefined) {
     const config = readConfigFile(externalConfig)
+    // the reasoning behind reading the inline config when an external
+    // config file is provided is that we still want to allow users to
+    // pass inline options in the presence of an external config file.
     const inlineConfig = readInlineConfig()
+    // the external config takes precedence
     return Object.assign({}, inlineConfig, config)
   } else {
     return readInlineConfig()
@@ -38,7 +42,6 @@ export function readInlineConfig(): ConfigurationOptions {
   const fail_on_severity = SeveritySchema.parse(
     getOptionalInput('fail-on-severity')
   )
-
   const fail_on_scopes = z
     .array(z.enum(SCOPES))
     .default(['runtime'])
