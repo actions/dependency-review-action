@@ -94,7 +94,14 @@ support. The default value is `development, runtime`.
 
 **Possible values**: `development`, `runtime`, `unknown`
 
-**Example**: `fail-on-scopes: runtime   # this excludes development dependency scanning`
+**Inline example**: `fail-on-scopes: development, runtime`
+
+**YAML example**:
+```yaml
+# this prevents scanning development dependencies
+fail-on-scopes:
+  - runtime
+```
 
 #### allow-licenses
 
