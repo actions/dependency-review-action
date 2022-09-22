@@ -5,7 +5,11 @@ import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
 import {Change, Severity, Scope} from './schemas'
 import {readConfig} from '../src/config'
-import {filterChangesBySeverity, filterChangesByScopes} from '../src/filter'
+import {
+  filterChangesBySeverity,
+  filterChangesByScopes,
+  filterOutAllowedAdvisories
+} from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
@@ -34,9 +38,16 @@ async function run(): Promise<void> {
 
     const scopedChanges = filterChangesByScopes(scopes as Scope[], changes)
 
+    const allowedGhsas: string[] = config.allow_ghsas || []
+
+    const filteredChanges = filterOutAllowedAdvisories(
+      allowedGhsas,
+      scopedChanges
+    )
+
     const addedChanges = filterChangesBySeverity(
       minSeverity as Severity,
-      scopedChanges
+      filteredChanges
     ).filter(
       change =>
         change.change_type === 'added' &&
@@ -45,7 +56,7 @@ async function run(): Promise<void> {
     )
 
     const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
-      scopedChanges,
+      filteredChanges,
       licenses
     )
 
