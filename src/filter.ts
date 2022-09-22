@@ -46,3 +46,32 @@ export function filterChangesByScopes(
 
   return filteredChanges
 }
+
+export function filterOutAllowedAdvisories(
+  ghsas: string[],
+  changes: Changes
+): Changes {
+  let filteredChanges = []
+  for (const change of changes) {
+    if (
+      change.vulnerabilities === undefined ||
+      change.vulnerabilities.length === 0
+    ) {
+      filteredChanges.push(change)
+      continue
+    }
+
+    let allVulnsAllowed = true
+    for (const vulnerability of change.vulnerabilities) {
+      if (!ghsas.includes(vulnerability.advisory_ghsa_id)) {
+        allVulnsAllowed = false
+      }
+    }
+
+    if (allVulnsAllowed === false) {
+      filteredChanges.push(change)
+    }
+  }
+
+  return filteredChanges
+}
