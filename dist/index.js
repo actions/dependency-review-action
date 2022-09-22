@@ -206,6 +206,7 @@ const git_refs_1 = __nccwpck_require__(1086);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            let failed = false;
             const config = (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
             const changes = yield dependencyGraph.compare({
@@ -215,7 +216,6 @@ function run() {
                 headRef: refs.head
             });
             const minSeverity = config.fail_on_severity;
-            let failed = false;
             const licenses = {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
@@ -240,6 +240,7 @@ function run() {
             }
             printNullLicenses(unknownLicenses);
             summary.addLicensesToSummary(licenseErrors, unknownLicenses, config);
+            printScannedDependencies(changes);
             if (failed) {
                 core.setFailed('Dependency review detected vulnerable packages.');
             }
@@ -300,6 +301,25 @@ function printNullLicenses(changes) {
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
     }
+}
+function printScannedDependencies(changes) {
+    core.group('Dependency changes', () => __awaiter(this, void 0, void 0, function* () {
+        // group changes by manifest
+        const dependencies = {};
+        for (const change of changes) {
+            if (dependencies[change.manifest] === undefined) {
+                dependencies[change.manifest] = [];
+            }
+            dependencies[change.manifest].push(change);
+        }
+        for (const [manifestName, manifestChanges] of Object.entries(dependencies)) {
+            core.group(manifestName, () => __awaiter(this, void 0, void 0, function* () {
+                for (const change of manifestChanges) {
+                    core.info(`${change.change_type} ${change.name}@${change.version}`);
+                }
+            }));
+        }
+    }));
 }
 run();
 
