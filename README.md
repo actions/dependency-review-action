@@ -67,9 +67,9 @@ jobs:
 Configure this action by either using an external configuration file,
 or by inlining these options in your workflow file.
 
-### Options
+## Configuration Options
 
-#### config-file
+### config-file
 
 A string representing the path to an external configuraton file. By
 default external configuration files are not used.
@@ -79,7 +79,7 @@ default external configuration files are not used.
 
 **Example**: `config-file: ./.github/dependency-review-config.yml`.
 
-#### fail-on-severity
+### fail-on-severity
 
 Configure the severity level for alerting. See "[Vulnerability Severity](https://github.com/actions/dependency-review-action#vulnerability-severity)".
 
@@ -87,7 +87,7 @@ Configure the severity level for alerting. See "[Vulnerability Severity](https:/
 
 **Example**: `fail-on-severity: moderate`.
 
-#### fail-on-scopes
+### fail-on-scopes
 
 A list of strings representing the build environments you want to
 support. The default value is `development, runtime`.
@@ -103,7 +103,7 @@ fail-on-scopes:
   - runtime
 ```
 
-#### allow-licenses
+### allow-licenses
 
 Only allow the licenses in this list. See "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
 
@@ -119,7 +119,7 @@ allow-licenses:
   - MIT
 ```
 
-#### deny-licenses
+### deny-licenses
 
 Add a custom list of licenses you want to block. See
 "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
@@ -136,7 +136,7 @@ deny-licenses:
   - BSD-2-Clause
 ```
 
-#### base-ref/head-ref
+### base-ref/head-ref
 
 Provide custom git references for the git base/head when performing
 the comparison. If you are using pull requests, or
