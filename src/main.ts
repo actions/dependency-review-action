@@ -12,6 +12,7 @@ import {getRefs} from './git-refs'
 
 async function run(): Promise<void> {
   try {
+    let failed = false
     const config = readConfig()
     const refs = getRefs(config, github.context)
 
@@ -23,7 +24,6 @@ async function run(): Promise<void> {
     })
 
     const minSeverity = config.fail_on_severity
-    let failed = false
 
     const licenses = {
       allow: config.allow_licenses,
@@ -68,6 +68,8 @@ async function run(): Promise<void> {
     printNullLicenses(unknownLicenses)
 
     summary.addLicensesToSummary(licenseErrors, unknownLicenses, config)
+
+    printScannedDependencies(changes)
 
     if (failed) {
       core.setFailed('Dependency review detected vulnerable packages.')
@@ -148,6 +150,29 @@ function printNullLicenses(changes: Change[]): void {
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`
     )
   }
+}
+
+function printScannedDependencies(changes: Change[]): void {
+  core.group('Dependency changes', async () => {
+    // group changes by manifest
+    const dependencies: Record<string, Change[]> = {}
+    for (const change of changes) {
+      if (dependencies[change.manifest] === undefined) {
+        dependencies[change.manifest] = []
+      }
+      dependencies[change.manifest].push(change)
+    }
+
+    for (const [manifestName, manifestChanges] of Object.entries(
+      dependencies
+    )) {
+      core.group(manifestName, async () => {
+        for (const change of manifestChanges) {
+          core.info(`${change.change_type} ${change.name}@${change.version}`)
+        }
+      })
+    }
+  })
 }
 
 run()
