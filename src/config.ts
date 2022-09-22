@@ -60,13 +60,13 @@ export function readInlineConfig(): ConfigurationOptions {
   const head_ref = getOptionalInput('head-ref')
 
   return {
-    fail_on_severity: fail_on_severity,
-    fail_on_scopes: fail_on_scopes,
-    allow_licenses: allow_licenses,
-    deny_licenses: deny_licenses,
-    allow_ghsas: allow_ghsas,
-    base_ref: base_ref,
-    head_ref: head_ref
+    fail_on_severity,
+    fail_on_scopes,
+    allow_licenses,
+    deny_licenses,
+    allow_ghsas,
+    base_ref,
+    head_ref
   }
 }
 
