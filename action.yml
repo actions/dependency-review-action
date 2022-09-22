@@ -20,6 +20,9 @@ inputs:
   head-ref:
     description: The head git ref to be used for this check. Has a default value when the workflow event is `pull_request` or `pull_request_target`. Must be provided otherwise.
     required: false
+  config-file:
+    description: A filepath to the configuration file for the action.
+    required: false
   allow-licenses:
     description: Comma-separated list of allowed licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false

@@ -1,5 +1,5 @@
 import {expect, test, beforeEach} from '@jest/globals'
-import {readConfig} from '../src/config'
+import {readConfig, readConfigFile} from '../src/config'
 import {getRefs} from '../src/git-refs'
 
 // GitHub Action inputs come in the form of environment variables
@@ -16,6 +16,7 @@ function clearInputs() {
     'FAIL-ON-SCOPES',
     'ALLOW-LICENSES',
     'DENY-LICENSES',
+    'CONFIG-FILE',
     'BASE-REF',
     'HEAD-REF'
   ]
@@ -84,10 +85,66 @@ test('it raises an error when no refs are provided and the event is not a pull r
   ).toThrow()
 })
 
+test('it reads an external config file', async () => {
+  let options = readConfigFile('./__tests__/fixtures/config-allow-sample.yml')
+  expect(options.fail_on_severity).toEqual('critical')
+  expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
+})
+
+test('raises an error when the the config file was not found', async () => {
+  expect(() => readConfigFile('fixtures/i-dont-exist')).toThrow()
+})
+
+test('it parses options from both sources', async () => {
+  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml')
+
+  let options = readConfig()
+  expect(options.fail_on_severity).toEqual('critical')
+
+  setInput('base-ref', 'a-custom-base-ref')
+  options = readConfig()
+  expect(options.base_ref).toEqual('a-custom-base-ref')
+})
+
+test('in case of conflicts, the external config is the source of truth', async () => {
+  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml') // this will set fail-on-severity to 'critical'
+
+  let options = readConfig()
+  expect(options.fail_on_severity).toEqual('critical')
+
+  // this should not overwite the previous value
+  setInput('fail-on-severity', 'low')
+  options = readConfig()
+  expect(options.fail_on_severity).toEqual('critical')
+})
+
+test('it uses the default values when loading external files', async () => {
+  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
+  let options = readConfig()
+  expect(options.allow_licenses).toEqual(undefined)
+  expect(options.deny_licenses).toEqual(undefined)
+
+  setInput('config-file', './__tests__/fixtures/license-config-sample.yml')
+  options = readConfig()
+  expect(options.fail_on_severity).toEqual('low')
+})
+
+test('it accepts an external configuration filename', async () => {
+  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
+  const options = readConfig()
+  expect(options.fail_on_severity).toEqual('critical')
+})
+
+test('it raises an error when given an unknown severity in an external config file', async () => {
+  setInput('config-file', './__tests__/fixtures/invalid-severity-config.yml')
+  expect(() => readConfig()).toThrow()
+})
+
 test('it defaults to runtime scope', async () => {
   const options = readConfig()
   expect(options.fail_on_scopes).toEqual(['runtime'])
 })
+
 test('it parses custom scopes preference', async () => {
   setInput('fail-on-scopes', 'runtime, development')
   let options = readConfig()
@@ -98,6 +155,7 @@ test('it parses custom scopes preference', async () => {
   options = readConfig()
   expect(options.fail_on_scopes).toEqual(['development'])
 })
+
 test('it raises an error when given invalid scope', async () => {
   setInput('fail-on-scopes', 'runtime, zombies')
   expect(() => readConfig()).toThrow()
