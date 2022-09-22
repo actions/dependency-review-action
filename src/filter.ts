@@ -51,27 +51,26 @@ export function filterOutAllowedAdvisories(
   ghsas: string[],
   changes: Changes
 ): Changes {
-  let filteredChanges = []
-  for (const change of changes) {
-    if (
+  const filteredChanges = changes.filter(change => {
+    const noAdvisories =
       change.vulnerabilities === undefined ||
       change.vulnerabilities.length === 0
-    ) {
-      filteredChanges.push(change)
-      continue
+
+    if (noAdvisories) {
+      return true
     }
 
-    let allVulnsAllowed = true
+    let allAllowedAdvisories = true
+    // if there's at least one advisory that is not allowlisted, we will keep the change
     for (const vulnerability of change.vulnerabilities) {
       if (!ghsas.includes(vulnerability.advisory_ghsa_id)) {
-        allVulnsAllowed = false
+        allAllowedAdvisories = false
+      }
+      if (!allAllowedAdvisories) {
+        return true
       }
     }
-
-    if (allVulnsAllowed === false) {
-      filteredChanges.push(change)
-    }
-  }
+  })
 
   return filteredChanges
 }
