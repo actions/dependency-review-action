@@ -65,7 +65,7 @@ jobs:
 ## Configuration
 
 Configure this action by either using an external configuration file,
-or by inlining this option in your workflow file.
+or by inlining these options in your workflow file.
 
 ### Options
 
