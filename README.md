@@ -141,7 +141,7 @@ deny-licenses:
 
 ### allow-ghsas
 
-Add a custom list of GHSA ids you do not want the action to block on.
+Add a custom list of GitHub Advisory IDs that can be skipped during detection. 
 
 **Possible values**: Any valid advisory GHSA ids.
 
