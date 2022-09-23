@@ -222,10 +222,12 @@ function run() {
             };
             const scopes = config.fail_on_scopes;
             const scopedChanges = (0, filter_1.filterChangesByScopes)(scopes, changes);
-            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, scopedChanges).filter(change => change.change_type === 'added' &&
+            const allowedGhsas = config.allow_ghsas || [];
+            const filteredChanges = (0, filter_1.filterOutAllowedAdvisories)(allowedGhsas, scopedChanges);
+            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
-            const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(scopedChanges, licenses);
+            const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(filteredChanges, licenses);
             summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses);
             if (addedChanges.length > 0) {
                 for (const change of addedChanges) {
@@ -371,6 +373,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
+    allow_ghsas: z.array(z.string()).default([]),
     config_file: z.string().optional().default('false'),
     base_ref: z.string(),
     head_ref: z.string()
@@ -14971,18 +14974,20 @@ function readInlineConfig() {
         .array(z.enum(schemas_1.SCOPES))
         .default(['runtime'])
         .parse(parseList(getOptionalInput('fail-on-scopes')));
-    const allow_licenses = getOptionalInput('allow-licenses');
-    const deny_licenses = getOptionalInput('deny-licenses');
+    const allow_licenses = parseList(getOptionalInput('allow-licenses'));
+    const deny_licenses = parseList(getOptionalInput('deny-licenses'));
     if (allow_licenses !== undefined && deny_licenses !== undefined) {
         throw new Error("Can't specify both allow_licenses and deny_licenses");
     }
+    const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
     return {
         fail_on_severity,
         fail_on_scopes,
-        allow_licenses: parseList(allow_licenses),
-        deny_licenses: parseList(deny_licenses),
+        allow_licenses,
+        deny_licenses,
+        allow_ghsas,
         base_ref,
         head_ref
     };
@@ -15018,7 +15023,7 @@ exports.readConfigFile = readConfigFile;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.filterChangesByScopes = exports.filterChangesBySeverity = void 0;
+exports.filterOutAllowedAdvisories = exports.filterChangesByScopes = exports.filterChangesBySeverity = void 0;
 const schemas_1 = __nccwpck_require__(1129);
 function filterChangesBySeverity(severity, changes) {
     const severityIdx = schemas_1.SEVERITIES.indexOf(severity);
@@ -15051,6 +15056,27 @@ function filterChangesByScopes(scopes, changes) {
     return filteredChanges;
 }
 exports.filterChangesByScopes = filterChangesByScopes;
+function filterOutAllowedAdvisories(ghsas, changes) {
+    const filteredChanges = changes.filter(change => {
+        const noAdvisories = change.vulnerabilities === undefined ||
+            change.vulnerabilities.length === 0;
+        if (noAdvisories) {
+            return true;
+        }
+        let allAllowedAdvisories = true;
+        // if there's at least one advisory that is not allowlisted, we will keep the change
+        for (const vulnerability of change.vulnerabilities) {
+            if (!ghsas.includes(vulnerability.advisory_ghsa_id)) {
+                allAllowedAdvisories = false;
+            }
+            if (!allAllowedAdvisories) {
+                return true;
+            }
+        }
+    });
+    return filteredChanges;
+}
+exports.filterOutAllowedAdvisories = filterOutAllowedAdvisories;
 
 
 /***/ }),
@@ -15120,6 +15146,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
+    allow_ghsas: z.array(z.string()).default([]),
     config_file: z.string().optional().default('false'),
     base_ref: z.string(),
     head_ref: z.string()

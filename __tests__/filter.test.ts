@@ -1,6 +1,10 @@
 import {expect, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {filterChangesBySeverity, filterChangesByScopes} from '../src/filter'
+import {
+  filterChangesBySeverity,
+  filterChangesByScopes,
+  filterOutAllowedAdvisories
+} from '../src/filter'
 
 let npmChange: Change = {
   manifest: 'package.json',
@@ -48,6 +52,19 @@ let rubyChange: Change = {
   ]
 }
 
+let noVulnNpmChange: Change = {
+  manifest: 'package.json',
+  change_type: 'added',
+  ecosystem: 'npm',
+  name: 'helpful',
+  version: '1.0.0',
+  package_url: 'pkg:npm/helpful@1.0.0',
+  license: 'MIT',
+  source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
+  vulnerabilities: []
+}
+
 test('it properly filters changes by severity', async () => {
   const changes = [npmChange, rubyChange]
   let result = filterChangesBySeverity('high', changes)
@@ -71,4 +88,30 @@ test('it properly filters changes by scope', async () => {
 
   result = filterChangesByScopes(['runtime', 'development'], changes)
   expect(result).toEqual([npmChange, rubyChange])
+})
+
+test('it properly filters changes with allowed vulnerabilities', async () => {
+  const changes = [npmChange, rubyChange, noVulnNpmChange]
+
+  let result = filterOutAllowedAdvisories(['notrealGHSAID'], changes)
+  expect(result).toEqual([npmChange, rubyChange, noVulnNpmChange])
+
+  result = filterOutAllowedAdvisories(['first-random_string'], changes)
+  expect(result).toEqual([rubyChange, noVulnNpmChange])
+
+  result = filterOutAllowedAdvisories(
+    ['second-random_string', 'third-random_string'],
+    changes
+  )
+  expect(result).toEqual([npmChange, noVulnNpmChange])
+
+  result = filterOutAllowedAdvisories(
+    ['first-random_string', 'second-random_string', 'third-random_string'],
+    changes
+  )
+  expect(result).toEqual([noVulnNpmChange])
+
+  // if we have a change with multiple vulnerabilities but only one is allowed, we still should not filter out that change
+  result = filterOutAllowedAdvisories(['second-random_string'], changes)
+  expect(result).toEqual([npmChange, rubyChange, noVulnNpmChange])
 })

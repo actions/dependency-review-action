@@ -75,7 +75,7 @@ A string representing the path to an external configuraton file. By
 default external configuration files are not used.
 
 **Possible values**: A string representing the absolute path to the
-  configuration file.
+configuration file.
 
 **Example**: `config-file: ./.github/dependency-review-config.yml`.
 
@@ -97,6 +97,7 @@ support. The default value is `development, runtime`.
 **Inline example**: `fail-on-scopes: development, runtime`
 
 **YAML example**:
+
 ```yaml
 # this prevents scanning development dependencies
 fail-on-scopes:
@@ -113,6 +114,7 @@ https://docs.github.com/en/rest/licenses.
 **Inline example**: `allow-licenses: BSD-3-Clause, MIT`
 
 **YAML example**:
+
 ```yaml
 allow-licenses:
   - BSD-3-Clause
@@ -130,10 +132,27 @@ https://docs.github.com/en/rest/licenses.
 **Inline example**: `deny-licenses: LGPL-2.0, BSD-2-Clause`
 
 **YAML example**:
+
 ```yaml
 deny-licenses:
   - LGPL-2.0
   - BSD-2-Clause
+```
+
+### allow-ghsas
+
+Add a custom list of GitHub Advisory IDs that can be skipped during detection. 
+
+**Possible values**: Any valid advisory GHSA ids.
+
+**Inline example**: `allow-ghsas: GHSA-abcd-1234-5679, GHSA-efgh-1234-5679`
+
+**YAML example**:
+
+```yaml
+allow-ghsas:
+  - GHSA-abcd-1234-5679
+  - GHSA-efgh-1234-5679
 ```
 
 ### base-ref/head-ref
@@ -146,6 +165,7 @@ this. The values need to be specified for all other event types.
 **Possible values**: Any valid git ref(s) in your project.
 
 **Example**:
+
 ```yaml
 base-ref: 8bb8a58d6a4028b6c2e314d5caaf273f57644896
 head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
@@ -163,18 +183,18 @@ file:
 - name: Dependency Review
   uses: actions/dependency-review-action@v2
   with:
-    config-file: "./.github/dependency-review-config.yml"
+    config-file: './.github/dependency-review-config.yml'
 ```
 
 And then create the file in the path you just specified. **All of these fields are
 optional**:
 
 ```yaml
-fail-on-severity: "critical"
+fail-on-severity: 'critical'
 allow-licenses:
-  - "GPL-3.0"
-  - "BSD-3-Clause"
-  - "MIT"
+  - 'GPL-3.0'
+  - 'BSD-3-Clause'
+  - 'MIT'
 ```
 
 ### Inline Configuration
