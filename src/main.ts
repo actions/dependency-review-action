@@ -137,17 +137,28 @@ function renderSeverity(
   return `${styles.color[color].open}(${severity} severity)${styles.color[color].close}`
 }
 
-function renderChangeType(
-  change_type: 'added' | 'modified' | 'removed'
-): string {
+function renderScannedDependency(change: Change): string {
+  const changeType: string = change.change_type
+
+  if (changeType !== 'added' && changeType !== 'removed') {
+    throw new Error(`Unexpected change type: ${changeType}`)
+  }
+
   const color = (
     {
       added: 'green',
-      modified: 'yellow',
       removed: 'red'
     } as const
-  )[change_type]
-  return `${styles.color[color].open}${change_type}${styles.color[color].close}`
+  )[changeType]
+
+  const icon = (
+    {
+      added: '+',
+      removed: '-'
+    } as const
+  )[changeType]
+
+  return `${styles.color[color].open}${icon} ${change.manifest}@${change.version}${styles.color[color].close}`
 }
 
 function printLicensesError(changes: Change[]): void {
@@ -190,13 +201,9 @@ function printScannedDependencies(changes: Change[]): void {
     for (const [manifestName, manifestChanges] of Object.entries(
       dependencies
     )) {
-      core.info(`${styles.bold.open}${manifestName}`)
+      core.info(`File: ${styles.bold.open}${manifestName}${styles.bold.close}`)
       for (const change of manifestChanges) {
-        core.info(
-          `${renderChangeType(change.change_type)}\t ${change.name}@${
-            change.version
-          }`
-        )
+        core.info(`${renderScannedDependency(change)}`)
       }
     }
   })
