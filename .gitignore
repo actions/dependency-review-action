@@ -1,4 +1,5 @@
 event.json
+.ruby-version
 
 # Dependency directory
 node_modules
