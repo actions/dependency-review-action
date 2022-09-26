@@ -303,16 +303,19 @@ function renderScannedDependency(change) {
     return `${ansi_styles_1.default.color[color].open}${icon} ${change.manifest}@${change.version}${ansi_styles_1.default.color[color].close}`;
 }
 function printScannedDependencies(changes) {
-    core.group('Dependency changes', () => __awaiter(this, void 0, void 0, function* () {
+    core.group('Dependency Changes', () => __awaiter(this, void 0, void 0, function* () {
+        var _a;
         // group changes by manifest
-        const dependencies = {};
+        const dependencies = new Map();
         for (const change of changes) {
-            if (dependencies[change.manifest] === undefined) {
-                dependencies[change.manifest] = [];
+            const manifestName = change.manifest;
+            if (dependencies.get(manifestName) === undefined) {
+                dependencies.set(manifestName, []);
             }
-            dependencies[change.manifest].push(change);
+            (_a = dependencies.get(manifestName)) === null || _a === void 0 ? void 0 : _a.push(change);
         }
-        for (const [manifestName, manifestChanges] of Object.entries(dependencies)) {
+        for (const manifestName of dependencies.keys()) {
+            const manifestChanges = dependencies.get(manifestName) || [];
             core.info(`File: ${ansi_styles_1.default.bold.open}${manifestName}${ansi_styles_1.default.bold.close}`);
             for (const change of manifestChanges) {
                 core.info(`${renderScannedDependency(change)}`);

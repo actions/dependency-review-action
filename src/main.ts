@@ -65,7 +65,6 @@ async function run(): Promise<void> {
 
     printVulnerabilitiesBlock(addedChanges, minSeverity || 'low')
     printLicensesBlock(licenseErrors, unknownLicenses)
-
     printScannedDependencies(changes)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
@@ -163,19 +162,21 @@ function renderScannedDependency(change: Change): string {
 }
 
 function printScannedDependencies(changes: Change[]): void {
-  core.group('Dependency changes', async () => {
+  core.group('Dependency Changes', async () => {
     // group changes by manifest
-    const dependencies: Record<string, Change[]> = {}
+    const dependencies: Map<string, Change[]> = new Map()
     for (const change of changes) {
-      if (dependencies[change.manifest] === undefined) {
-        dependencies[change.manifest] = []
+      const manifestName = change.manifest
+
+      if (dependencies.get(manifestName) === undefined) {
+        dependencies.set(manifestName, [])
       }
-      dependencies[change.manifest].push(change)
+
+      dependencies.get(manifestName)?.push(change)
     }
 
-    for (const [manifestName, manifestChanges] of Object.entries(
-      dependencies
-    )) {
+    for (const manifestName of dependencies.keys()) {
+      const manifestChanges = dependencies.get(manifestName) || []
       core.info(`File: ${styles.bold.open}${manifestName}${styles.bold.close}`)
       for (const change of manifestChanges) {
         core.info(`${renderScannedDependency(change)}`)
