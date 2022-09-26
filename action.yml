@@ -29,6 +29,9 @@ inputs:
   deny-licenses:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
+  allow-ghsas:
+    description: Comma-separated list of allowed Github Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
+    required: false
 runs:
   using: 'node16'
   main: 'dist/index.js'

@@ -1,6 +1,6 @@
 {
   "name": "dependency-review-action",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
   "description": "A GitHub Action for Dependency Review",
   "main": "lib/main.js",
@@ -26,7 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.9.1",
-    "@actions/github": "^5.0.3",
+    "@actions/github": "^5.1.0",
     "@octokit/plugin-retry": "^3.0.9",
     "@octokit/request-error": "^3.0.1",
     "ansi-styles": "^6.1.1",
@@ -36,12 +36,12 @@
     "zod": "^3.19.1"
   },
   "devDependencies": {
-    "@types/node": "^16.11.59",
+    "@types/node": "^16.11.60",
     "@typescript-eslint/eslint-plugin": "^5.38.0",
     "@typescript-eslint/parser": "^5.38.0",
     "@vercel/ncc": "^0.34.0",
     "esbuild-register": "^3.3.3",
-    "eslint": "^8.23.1",
+    "eslint": "^8.24.0",
     "eslint-plugin-github": "^4.3.7",
     "eslint-plugin-jest": "^27.0.4",
     "jest": "^27.5.1",

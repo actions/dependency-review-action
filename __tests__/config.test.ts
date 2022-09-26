@@ -16,6 +16,7 @@ function clearInputs() {
     'FAIL-ON-SCOPES',
     'ALLOW-LICENSES',
     'DENY-LICENSES',
+    'ALLOW-GHSAS',
     'CONFIG-FILE',
     'BASE-REF',
     'HEAD-REF'
@@ -159,4 +160,18 @@ test('it parses custom scopes preference', async () => {
 test('it raises an error when given invalid scope', async () => {
   setInput('fail-on-scopes', 'runtime, zombies')
   expect(() => readConfig()).toThrow()
+})
+
+test('it defaults to an empty GHSA allowlist', async () => {
+  const options = readConfig()
+  expect(options.allow_ghsas).toEqual(undefined)
+})
+
+test('it successfully parses GHSA allowlist', async () => {
+  setInput('allow-ghsas', 'GHSA-abcd-1234-5679, GHSA-efgh-1234-5679')
+  const options = readConfig()
+  expect(options.allow_ghsas).toEqual([
+    'GHSA-abcd-1234-5679',
+    'GHSA-efgh-1234-5679'
+  ])
 })

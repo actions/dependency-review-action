@@ -47,12 +47,14 @@ export function readInlineConfig(): ConfigurationOptions {
     .default(['runtime'])
     .parse(parseList(getOptionalInput('fail-on-scopes')))
 
-  const allow_licenses = getOptionalInput('allow-licenses')
-  const deny_licenses = getOptionalInput('deny-licenses')
+  const allow_licenses = parseList(getOptionalInput('allow-licenses'))
+  const deny_licenses = parseList(getOptionalInput('deny-licenses'))
 
   if (allow_licenses !== undefined && deny_licenses !== undefined) {
     throw new Error("Can't specify both allow_licenses and deny_licenses")
   }
+
+  const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
 
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
@@ -60,8 +62,9 @@ export function readInlineConfig(): ConfigurationOptions {
   return {
     fail_on_severity,
     fail_on_scopes,
-    allow_licenses: parseList(allow_licenses),
-    deny_licenses: parseList(deny_licenses),
+    allow_licenses,
+    deny_licenses,
+    allow_ghsas,
     base_ref,
     head_ref
   }

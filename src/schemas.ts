@@ -40,6 +40,7 @@ export const ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
+    allow_ghsas: z.array(z.string()).default([]),
     config_file: z.string().optional().default('false'),
     base_ref: z.string(),
     head_ref: z.string()
