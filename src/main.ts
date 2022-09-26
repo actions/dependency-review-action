@@ -3,7 +3,7 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Scope} from './schemas'
+import {Change, Severity, Changes} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -27,18 +27,15 @@ async function run(): Promise<void> {
     })
 
     const minSeverity = config.fail_on_severity
+    const allowedGhsas = config.allow_ghsas || []
+    const scopes = config.fail_on_scopes || []
 
     const licenses = {
       allow: config.allow_licenses,
       deny: config.deny_licenses
     }
 
-    const scopes = config.fail_on_scopes
-
-    const scopedChanges = filterChangesByScopes(scopes as Scope[], changes)
-
-    const allowedGhsas: string[] = config.allow_ghsas || []
-
+    const scopedChanges = filterChangesByScopes(scopes, changes)
     const filteredChanges = filterOutAllowedAdvisories(
       allowedGhsas,
       scopedChanges
@@ -62,6 +59,7 @@ async function run(): Promise<void> {
     summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses)
     summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity || '')
     summary.addLicensesToSummary(licenseErrors, unknownLicenses, config)
+    summary.addScannedDependencies(changes)
 
     printVulnerabilitiesBlock(addedChanges, minSeverity || 'low')
     printLicensesBlock(licenseErrors, unknownLicenses)
