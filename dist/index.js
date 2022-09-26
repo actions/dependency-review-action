@@ -286,13 +286,20 @@ function renderSeverity(severity) {
     }[severity];
     return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
 }
-function renderChangeType(change_type) {
+function renderScannedDependency(change) {
+    const changeType = change.change_type;
+    if (changeType !== 'added' && changeType !== 'removed') {
+        throw new Error(`Unexpected change type: ${changeType}`);
+    }
     const color = {
         added: 'green',
-        modified: 'yellow',
         removed: 'red'
-    }[change_type];
-    return `${ansi_styles_1.default.color[color].open}${change_type}${ansi_styles_1.default.color[color].close}`;
+    }[changeType];
+    const icon = {
+        added: '+',
+        removed: '-'
+    }[changeType];
+    return `${ansi_styles_1.default.color[color].open}${icon} ${change.manifest}@${change.version}${ansi_styles_1.default.color[color].close}`;
 }
 function printLicensesError(changes) {
     if (changes.length === 0) {
@@ -323,9 +330,9 @@ function printScannedDependencies(changes) {
             dependencies[change.manifest].push(change);
         }
         for (const [manifestName, manifestChanges] of Object.entries(dependencies)) {
-            core.info(`${ansi_styles_1.default.bold.open}${manifestName}`);
+            core.info(`File: ${ansi_styles_1.default.bold.open}${manifestName}${ansi_styles_1.default.bold.close}`);
             for (const change of manifestChanges) {
-                core.info(`${renderChangeType(change.change_type)}\t ${change.name}@${change.version}`);
+                core.info(`${renderScannedDependency(change)}`);
             }
         }
     }));
