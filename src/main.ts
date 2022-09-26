@@ -16,7 +16,6 @@ import {getRefs} from './git-refs'
 
 async function run(): Promise<void> {
   try {
-    let failed = false
     const config = readConfig()
     const refs = getRefs(config, github.context)
 
@@ -61,34 +60,13 @@ async function run(): Promise<void> {
     )
 
     summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses)
-
-    if (addedChanges.length > 0) {
-      for (const change of addedChanges) {
-        printChangeVulnerabilities(change)
-      }
-      failed = true
-    }
-
     summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity || '')
-
-    if (licenseErrors.length > 0) {
-      printLicensesError(licenseErrors)
-      core.setFailed('Dependency review detected incompatible licenses.')
-    }
-
-    printNullLicenses(unknownLicenses)
-
     summary.addLicensesToSummary(licenseErrors, unknownLicenses, config)
 
-    printScannedDependencies(changes)
+    printVulnerabilitiesBlock(addedChanges, minSeverity || 'low')
+    printLicensesBlock(licenseErrors, unknownLicenses)
 
-    if (failed) {
-      core.setFailed('Dependency review detected vulnerable packages.')
-    } else {
-      core.info(
-        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
-      )
-    }
+    printScannedDependencies(changes)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       core.setFailed(
@@ -108,6 +86,29 @@ async function run(): Promise<void> {
   } finally {
     await core.summary.write()
   }
+}
+
+function printVulnerabilitiesBlock(
+  addedChanges: Change[],
+  minSeverity: Severity
+): void {
+  let failed = false
+  core.group('Vulnerabilities', async () => {
+    if (addedChanges.length > 0) {
+      for (const change of addedChanges) {
+        printChangeVulnerabilities(change)
+      }
+      failed = true
+    }
+
+    if (failed) {
+      core.setFailed('Dependency review detected vulnerable packages.')
+    } else {
+      core.info(
+        `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
+      )
+    }
+  })
 }
 
 function printChangeVulnerabilities(change: Change): void {
@@ -161,6 +162,41 @@ function renderScannedDependency(change: Change): string {
   return `${styles.color[color].open}${icon} ${change.manifest}@${change.version}${styles.color[color].close}`
 }
 
+function printScannedDependencies(changes: Change[]): void {
+  core.group('Dependency changes', async () => {
+    // group changes by manifest
+    const dependencies: Record<string, Change[]> = {}
+    for (const change of changes) {
+      if (dependencies[change.manifest] === undefined) {
+        dependencies[change.manifest] = []
+      }
+      dependencies[change.manifest].push(change)
+    }
+
+    for (const [manifestName, manifestChanges] of Object.entries(
+      dependencies
+    )) {
+      core.info(`File: ${styles.bold.open}${manifestName}${styles.bold.close}`)
+      for (const change of manifestChanges) {
+        core.info(`${renderScannedDependency(change)}`)
+      }
+    }
+  })
+}
+
+function printLicensesBlock(
+  licenseErrors: Change[],
+  unknownLicenses: Change[]
+): void {
+  core.group('Licenses', async () => {
+    if (licenseErrors.length > 0) {
+      printLicensesError(licenseErrors)
+      core.setFailed('Dependency review detected incompatible licenses.')
+    }
+    printNullLicenses(unknownLicenses)
+  })
+}
+
 function printLicensesError(changes: Change[]): void {
   if (changes.length === 0) {
     return
@@ -185,28 +221,6 @@ function printNullLicenses(changes: Change[]): void {
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`
     )
   }
-}
-
-function printScannedDependencies(changes: Change[]): void {
-  core.group('Dependency changes', async () => {
-    // group changes by manifest
-    const dependencies: Record<string, Change[]> = {}
-    for (const change of changes) {
-      if (dependencies[change.manifest] === undefined) {
-        dependencies[change.manifest] = []
-      }
-      dependencies[change.manifest].push(change)
-    }
-
-    for (const [manifestName, manifestChanges] of Object.entries(
-      dependencies
-    )) {
-      core.info(`File: ${styles.bold.open}${manifestName}${styles.bold.close}`)
-      for (const change of manifestChanges) {
-        core.info(`${renderScannedDependency(change)}`)
-      }
-    }
-  })
 }
 
 run()

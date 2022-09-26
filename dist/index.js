@@ -206,7 +206,6 @@ const git_refs_1 = __nccwpck_require__(1086);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            let failed = false;
             const config = (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
             const changes = yield dependencyGraph.compare({
@@ -229,26 +228,11 @@ function run() {
                 change.vulnerabilities.length > 0);
             const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(filteredChanges, licenses);
             summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses);
-            if (addedChanges.length > 0) {
-                for (const change of addedChanges) {
-                    printChangeVulnerabilities(change);
-                }
-                failed = true;
-            }
             summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity || '');
-            if (licenseErrors.length > 0) {
-                printLicensesError(licenseErrors);
-                core.setFailed('Dependency review detected incompatible licenses.');
-            }
-            printNullLicenses(unknownLicenses);
             summary.addLicensesToSummary(licenseErrors, unknownLicenses, config);
+            printVulnerabilitiesBlock(addedChanges, minSeverity || 'low');
+            printLicensesBlock(licenseErrors, unknownLicenses);
             printScannedDependencies(changes);
-            if (failed) {
-                core.setFailed('Dependency review detected vulnerable packages.');
-            }
-            else {
-                core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
-            }
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError && error.status === 404) {
@@ -270,6 +254,23 @@ function run() {
             yield core.summary.write();
         }
     });
+}
+function printVulnerabilitiesBlock(addedChanges, minSeverity) {
+    let failed = false;
+    core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
+        if (addedChanges.length > 0) {
+            for (const change of addedChanges) {
+                printChangeVulnerabilities(change);
+            }
+            failed = true;
+        }
+        if (failed) {
+            core.setFailed('Dependency review detected vulnerable packages.');
+        }
+        else {
+            core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
+        }
+    }));
 }
 function printChangeVulnerabilities(change) {
     for (const vuln of change.vulnerabilities) {
@@ -301,24 +302,6 @@ function renderScannedDependency(change) {
     }[changeType];
     return `${ansi_styles_1.default.color[color].open}${icon} ${change.manifest}@${change.version}${ansi_styles_1.default.color[color].close}`;
 }
-function printLicensesError(changes) {
-    if (changes.length === 0) {
-        return;
-    }
-    core.info('\nThe following dependencies have incompatible licenses:\n');
-    for (const change of changes) {
-        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
-    }
-}
-function printNullLicenses(changes) {
-    if (changes.length === 0) {
-        return;
-    }
-    core.info('\nWe could not detect a license for the following dependencies:\n');
-    for (const change of changes) {
-        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
-    }
-}
 function printScannedDependencies(changes) {
     core.group('Dependency changes', () => __awaiter(this, void 0, void 0, function* () {
         // group changes by manifest
@@ -336,6 +319,33 @@ function printScannedDependencies(changes) {
             }
         }
     }));
+}
+function printLicensesBlock(licenseErrors, unknownLicenses) {
+    core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
+        if (licenseErrors.length > 0) {
+            printLicensesError(licenseErrors);
+            core.setFailed('Dependency review detected incompatible licenses.');
+        }
+        printNullLicenses(unknownLicenses);
+    }));
+}
+function printLicensesError(changes) {
+    if (changes.length === 0) {
+        return;
+    }
+    core.info('\nThe following dependencies have incompatible licenses:\n');
+    for (const change of changes) {
+        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
+    }
+}
+function printNullLicenses(changes) {
+    if (changes.length === 0) {
+        return;
+    }
+    core.info('\nWe could not detect a license for the following dependencies:\n');
+    for (const change of changes) {
+        core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
+    }
 }
 run();
 
