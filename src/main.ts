@@ -161,19 +161,9 @@ function renderScannedDependency(change: Change): string {
   return `${styles.color[color].open}${icon} ${change.manifest}@${change.version}${styles.color[color].close}`
 }
 
-function printScannedDependencies(changes: Change[]): void {
+function printScannedDependencies(changes: Changes): void {
   core.group('Dependency Changes', async () => {
-    // group changes by manifest
-    const dependencies: Map<string, Change[]> = new Map()
-    for (const change of changes) {
-      const manifestName = change.manifest
-
-      if (dependencies.get(manifestName) === undefined) {
-        dependencies.set(manifestName, [])
-      }
-
-      dependencies.get(manifestName)?.push(change)
-    }
+    const dependencies = dependencyGraph.groupDependenciesByManifest(changes)
 
     for (const manifestName of dependencies.keys()) {
       const manifestChanges = dependencies.get(manifestName) || []

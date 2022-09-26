@@ -29,3 +29,20 @@ export async function compare({
   )
   return ChangesSchema.parse(changes)
 }
+
+export function groupDependenciesByManifest(
+  changes: Changes
+): Map<string, Changes> {
+  const dependencies: Map<string, Changes> = new Map()
+  for (const change of changes) {
+    const manifestName = change.manifest
+
+    if (dependencies.get(manifestName) === undefined) {
+      dependencies.set(manifestName, [])
+    }
+
+    dependencies.get(manifestName)?.push(change)
+  }
+
+  return dependencies
+}
