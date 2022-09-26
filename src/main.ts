@@ -190,15 +190,14 @@ function printScannedDependencies(changes: Change[]): void {
     for (const [manifestName, manifestChanges] of Object.entries(
       dependencies
     )) {
-      core.group(manifestName, async () => {
-        for (const change of manifestChanges) {
-          core.info(
-            `${renderChangeType(change.change_type)} ${change.name}@${
-              change.version
-            }`
-          )
-        }
-      })
+      core.info(`${styles.bold.open}${manifestName}`)
+      for (const change of manifestChanges) {
+        core.info(
+          `${renderChangeType(change.change_type)}\t ${change.name}@${
+            change.version
+          }`
+        )
+      }
     }
   })
 }
