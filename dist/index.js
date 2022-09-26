@@ -323,11 +323,10 @@ function printScannedDependencies(changes) {
             dependencies[change.manifest].push(change);
         }
         for (const [manifestName, manifestChanges] of Object.entries(dependencies)) {
-            core.group(manifestName, () => __awaiter(this, void 0, void 0, function* () {
-                for (const change of manifestChanges) {
-                    core.info(`${renderChangeType(change.change_type)} ${change.name}@${change.version}`);
-                }
-            }));
+            core.info(`${ansi_styles_1.default.bold.open}${manifestName}`);
+            for (const change of manifestChanges) {
+                core.info(`${renderChangeType(change.change_type)}\t ${change.name}@${change.version}`);
+            }
         }
     }));
 }
