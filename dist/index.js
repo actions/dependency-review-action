@@ -286,6 +286,14 @@ function renderSeverity(severity) {
     }[severity];
     return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
 }
+function renderChangeType(change_type) {
+    const color = {
+        added: 'green',
+        modified: 'yellow',
+        removed: 'red'
+    }[change_type];
+    return `${ansi_styles_1.default.color[color].open}${change_type}${ansi_styles_1.default.color[color].close}`;
+}
 function printLicensesError(changes) {
     if (changes.length === 0) {
         return;
@@ -317,7 +325,7 @@ function printScannedDependencies(changes) {
         for (const [manifestName, manifestChanges] of Object.entries(dependencies)) {
             core.group(manifestName, () => __awaiter(this, void 0, void 0, function* () {
                 for (const change of manifestChanges) {
-                    core.info(`${change.change_type} ${change.name}@${change.version}`);
+                    core.info(`${renderChangeType(change.change_type)} ${change.name}@${change.version}`);
                 }
             }));
         }

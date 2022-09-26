@@ -137,6 +137,19 @@ function renderSeverity(
   return `${styles.color[color].open}(${severity} severity)${styles.color[color].close}`
 }
 
+function renderChangeType(
+  change_type: 'added' | 'modified' | 'removed'
+): string {
+  const color = (
+    {
+      added: 'green',
+      modified: 'yellow',
+      removed: 'red'
+    } as const
+  )[change_type]
+  return `${styles.color[color].open}${change_type}${styles.color[color].close}`
+}
+
 function printLicensesError(changes: Change[]): void {
   if (changes.length === 0) {
     return
@@ -179,7 +192,11 @@ function printScannedDependencies(changes: Change[]): void {
     )) {
       core.group(manifestName, async () => {
         for (const change of manifestChanges) {
-          core.info(`${change.change_type} ${change.name}@${change.version}`)
+          core.info(
+            `${renderChangeType(change.change_type)} ${change.name}@${
+              change.version
+            }`
+          )
         }
       })
     }
