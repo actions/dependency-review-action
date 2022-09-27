@@ -39,7 +39,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.groupDependenciesByManifest = exports.compare = void 0;
+exports.compare = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const githubUtils = __importStar(__nccwpck_require__(3030));
 const retry = __importStar(__nccwpck_require__(6298));
@@ -57,19 +57,6 @@ function compare({ owner, repo, baseRef, headRef }) {
     });
 }
 exports.compare = compare;
-function groupDependenciesByManifest(changes) {
-    var _a;
-    const dependencies = new Map();
-    for (const change of changes) {
-        const manifestName = change.manifest;
-        if (dependencies.get(manifestName) === undefined) {
-            dependencies.set(manifestName, []);
-        }
-        (_a = dependencies.get(manifestName)) === null || _a === void 0 ? void 0 : _a.push(change);
-    }
-    return dependencies;
-}
-exports.groupDependenciesByManifest = groupDependenciesByManifest;
 
 
 /***/ }),
@@ -216,6 +203,7 @@ const filter_1 = __nccwpck_require__(8752);
 const licenses_1 = __nccwpck_require__(3247);
 const summary = __importStar(__nccwpck_require__(8608));
 const git_refs_1 = __nccwpck_require__(1086);
+const utils_1 = __nccwpck_require__(918);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -228,23 +216,20 @@ function run() {
                 headRef: refs.head
             });
             const minSeverity = config.fail_on_severity;
-            const allowedGhsas = config.allow_ghsas || [];
-            const scopes = config.fail_on_scopes || [];
-            const licenses = {
-                allow: config.allow_licenses,
-                deny: config.deny_licenses
-            };
-            const scopedChanges = (0, filter_1.filterChangesByScopes)(scopes, changes);
-            const filteredChanges = (0, filter_1.filterOutAllowedAdvisories)(allowedGhsas, scopedChanges);
+            const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
+            const filteredChanges = (0, filter_1.filterOutAllowedAdvisories)(config.allow_ghsas, scopedChanges);
             const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
-            const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(filteredChanges, licenses);
+            const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(filteredChanges, {
+                allow: config.allow_licenses,
+                deny: config.deny_licenses
+            });
             summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses);
-            summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity || '');
+            summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity);
             summary.addLicensesToSummary(licenseErrors, unknownLicenses, config);
             summary.addScannedDependencies(changes);
-            printVulnerabilitiesBlock(addedChanges, minSeverity || 'low');
+            printVulnerabilitiesBlock(addedChanges, minSeverity);
             printLicensesBlock(licenseErrors, unknownLicenses);
             printScannedDependencies(changes);
         }
@@ -292,42 +277,6 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
-function renderSeverity(severity) {
-    const color = {
-        critical: 'red',
-        high: 'red',
-        moderate: 'yellow',
-        low: 'grey'
-    }[severity];
-    return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
-}
-function renderScannedDependency(change) {
-    const changeType = change.change_type;
-    if (changeType !== 'added' && changeType !== 'removed') {
-        throw new Error(`Unexpected change type: ${changeType}`);
-    }
-    const color = {
-        added: 'green',
-        removed: 'red'
-    }[changeType];
-    const icon = {
-        added: '+',
-        removed: '-'
-    }[changeType];
-    return `${ansi_styles_1.default.color[color].open}${icon} ${change.manifest}@${change.version}${ansi_styles_1.default.color[color].close}`;
-}
-function printScannedDependencies(changes) {
-    core.group('Dependency Changes', () => __awaiter(this, void 0, void 0, function* () {
-        const dependencies = dependencyGraph.groupDependenciesByManifest(changes);
-        for (const manifestName of dependencies.keys()) {
-            const manifestChanges = dependencies.get(manifestName) || [];
-            core.info(`File: ${ansi_styles_1.default.bold.open}${manifestName}${ansi_styles_1.default.bold.close}`);
-            for (const change of manifestChanges) {
-                core.info(`${renderScannedDependency(change)}`);
-            }
-        }
-    }));
-}
 function printLicensesBlock(licenseErrors, unknownLicenses) {
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
         if (licenseErrors.length > 0) {
@@ -354,6 +303,42 @@ function printNullLicenses(changes) {
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
     }
+}
+function renderSeverity(severity) {
+    const color = {
+        critical: 'red',
+        high: 'red',
+        moderate: 'yellow',
+        low: 'grey'
+    }[severity];
+    return `${ansi_styles_1.default.color[color].open}(${severity} severity)${ansi_styles_1.default.color[color].close}`;
+}
+function renderScannedDependency(change) {
+    const changeType = change.change_type;
+    if (changeType !== 'added' && changeType !== 'removed') {
+        throw new Error(`Unexpected change type: ${changeType}`);
+    }
+    const color = {
+        added: 'green',
+        removed: 'red'
+    }[changeType];
+    const icon = {
+        added: '+',
+        removed: '-'
+    }[changeType];
+    return `${ansi_styles_1.default.color[color].open}${icon} ${change.manifest}@${change.version}${ansi_styles_1.default.color[color].close}`;
+}
+function printScannedDependencies(changes) {
+    core.group('Dependency Changes', () => __awaiter(this, void 0, void 0, function* () {
+        const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
+        for (const manifestName of dependencies.keys()) {
+            const manifestChanges = dependencies.get(manifestName) || [];
+            core.info(`File: ${ansi_styles_1.default.bold.open}${manifestName}${ansi_styles_1.default.bold.close}`);
+            for (const change of manifestChanges) {
+                core.info(`${renderScannedDependency(change)}`);
+            }
+        }
+    }));
 }
 run();
 
@@ -468,7 +453,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const dependency_graph_1 = __nccwpck_require__(4966);
+const utils_1 = __nccwpck_require__(918);
 function addSummaryToSummary(addedPackages, licenseErrors, unknownLicenses) {
     core.summary
         .addHeading('Dependency Review')
@@ -477,7 +462,7 @@ function addSummaryToSummary(addedPackages, licenseErrors, unknownLicenses) {
 exports.addSummaryToSummary = addSummaryToSummary;
 function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
     const rows = [];
-    const manifests = getManifests(addedPackages);
+    const manifests = (0, utils_1.getManifestsSet)(addedPackages);
     core.summary
         .addHeading('Vulnerabilities')
         .addQuote(`Vulnerabilites were filtered by mininum severity <strong>${severity}</strong>.`);
@@ -494,16 +479,16 @@ function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
                     previous_version === change.version;
                 if (!sameAsPrevious) {
                     rows.push([
-                        renderUrl(change.source_repository_url, change.name),
+                        (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                         change.version,
-                        renderUrl(vuln.advisory_url, vuln.advisory_summary),
+                        (0, utils_1.renderUrl)(vuln.advisory_url, vuln.advisory_summary),
                         vuln.severity
                     ]);
                 }
                 else {
                     rows.push([
                         { data: '', colspan: '2' },
-                        renderUrl(vuln.advisory_url, vuln.advisory_summary),
+                        (0, utils_1.renderUrl)(vuln.advisory_url, vuln.advisory_summary),
                         vuln.severity
                     ]);
                 }
@@ -537,13 +522,13 @@ function addLicensesToSummary(licenseErrors, unknownLicenses, config) {
     }
     if (licenseErrors.length > 0) {
         const rows = [];
-        const manifests = getManifests(licenseErrors);
+        const manifests = (0, utils_1.getManifestsSet)(licenseErrors);
         core.summary.addHeading('Incompatible Licenses', 3).addSeparator();
         for (const manifest of manifests) {
             core.summary.addHeading(`<em>${manifest}</em>`, 4);
             for (const change of licenseErrors.filter(pkg => pkg.manifest === manifest)) {
                 rows.push([
-                    renderUrl(change.source_repository_url, change.name),
+                    (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                     change.version,
                     change.license || ''
                 ]);
@@ -557,14 +542,14 @@ function addLicensesToSummary(licenseErrors, unknownLicenses, config) {
     core.debug(`found ${unknownLicenses.length} unknown licenses`);
     if (unknownLicenses.length > 0) {
         const rows = [];
-        const manifests = getManifests(unknownLicenses);
+        const manifests = (0, utils_1.getManifestsSet)(unknownLicenses);
         core.debug(`found ${manifests.entries.length} manifests for unknown licenses`);
         core.summary.addHeading('Unknown Licenses', 3).addSeparator();
         for (const manifest of manifests) {
             core.summary.addHeading(`<em>${manifest}</em>`, 4);
             for (const change of unknownLicenses.filter(pkg => pkg.manifest === manifest)) {
                 rows.push([
-                    renderUrl(change.source_repository_url, change.name),
+                    (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                     change.version
                 ]);
             }
@@ -574,7 +559,7 @@ function addLicensesToSummary(licenseErrors, unknownLicenses, config) {
 }
 exports.addLicensesToSummary = addLicensesToSummary;
 function addScannedDependencies(changes) {
-    const dependencies = (0, dependency_graph_1.groupDependenciesByManifest)(changes);
+    const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
     const manifests = dependencies.keys();
     const summary = core.summary
         .addHeading('Scanned Dependencies')
@@ -588,9 +573,34 @@ function addScannedDependencies(changes) {
     }
 }
 exports.addScannedDependencies = addScannedDependencies;
-function getManifests(changes) {
+
+
+/***/ }),
+
+/***/ 918:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+function groupDependenciesByManifest(changes) {
+    var _a;
+    const dependencies = new Map();
+    for (const change of changes) {
+        const manifestName = change.manifest;
+        if (dependencies.get(manifestName) === undefined) {
+            dependencies.set(manifestName, []);
+        }
+        (_a = dependencies.get(manifestName)) === null || _a === void 0 ? void 0 : _a.push(change);
+    }
+    return dependencies;
+}
+exports.groupDependenciesByManifest = groupDependenciesByManifest;
+function getManifestsSet(changes) {
     return new Set(changes.flatMap(c => c.manifest));
 }
+exports.getManifestsSet = getManifestsSet;
 function renderUrl(url, text) {
     if (url) {
         return `<a href="${url}">${text}</a>`;
@@ -599,6 +609,7 @@ function renderUrl(url, text) {
         return text;
     }
 }
+exports.renderUrl = renderUrl;
 
 
 /***/ }),
@@ -15117,6 +15128,9 @@ function filterChangesBySeverity(severity, changes) {
 }
 exports.filterChangesBySeverity = filterChangesBySeverity;
 function filterChangesByScopes(scopes, changes) {
+    if (scopes === undefined) {
+        return [];
+    }
     const filteredChanges = changes.filter(change => {
         // if there is no scope on the change (Enterprise Server API for now), we will assume it is a runtime scope
         const scope = change.scope || 'runtime';
@@ -15126,6 +15140,9 @@ function filterChangesByScopes(scopes, changes) {
 }
 exports.filterChangesByScopes = filterChangesByScopes;
 function filterOutAllowedAdvisories(ghsas, changes) {
+    if (ghsas === undefined) {
+        return [];
+    }
     const filteredChanges = changes.filter(change => {
         const noAdvisories = change.vulnerabilities === undefined ||
             change.vulnerabilities.length === 0;

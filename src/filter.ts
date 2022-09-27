@@ -35,9 +35,13 @@ export function filterChangesBySeverity(
 }
 
 export function filterChangesByScopes(
-  scopes: Scope[],
+  scopes: Scope[] | undefined,
   changes: Changes
 ): Changes {
+  if (scopes === undefined) {
+    return []
+  }
+
   const filteredChanges = changes.filter(change => {
     // if there is no scope on the change (Enterprise Server API for now), we will assume it is a runtime scope
     const scope = change.scope || 'runtime'
@@ -48,9 +52,13 @@ export function filterChangesByScopes(
 }
 
 export function filterOutAllowedAdvisories(
-  ghsas: string[],
+  ghsas: string[] | undefined,
   changes: Changes
 ): Changes {
+  if (ghsas === undefined) {
+    return []
+  }
+
   const filteredChanges = changes.filter(change => {
     const noAdvisories =
       change.vulnerabilities === undefined ||

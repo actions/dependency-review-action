@@ -14,6 +14,8 @@ import {getDeniedLicenseChanges} from './licenses'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
 
+import {groupDependenciesByManifest} from './utils'
+
 async function run(): Promise<void> {
   try {
     const config = readConfig()
@@ -26,23 +28,15 @@ async function run(): Promise<void> {
       headRef: refs.head
     })
 
-    const minSeverity = config.fail_on_severity
-    const allowedGhsas = config.allow_ghsas || []
-    const scopes = config.fail_on_scopes || []
-
-    const licenses = {
-      allow: config.allow_licenses,
-      deny: config.deny_licenses
-    }
-
-    const scopedChanges = filterChangesByScopes(scopes, changes)
+    const minSeverity = config.fail_on_severity as Severity
+    const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
     const filteredChanges = filterOutAllowedAdvisories(
-      allowedGhsas,
+      config.allow_ghsas,
       scopedChanges
     )
 
     const addedChanges = filterChangesBySeverity(
-      minSeverity as Severity,
+      minSeverity,
       filteredChanges
     ).filter(
       change =>
@@ -53,15 +47,18 @@ async function run(): Promise<void> {
 
     const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
       filteredChanges,
-      licenses
+      {
+        allow: config.allow_licenses,
+        deny: config.deny_licenses
+      }
     )
 
     summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses)
-    summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity || '')
+    summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)
     summary.addLicensesToSummary(licenseErrors, unknownLicenses, config)
     summary.addScannedDependencies(changes)
 
-    printVulnerabilitiesBlock(addedChanges, minSeverity || 'low')
+    printVulnerabilitiesBlock(addedChanges, minSeverity)
     printLicensesBlock(licenseErrors, unknownLicenses)
     printScannedDependencies(changes)
   } catch (error) {
@@ -121,6 +118,45 @@ function printChangeVulnerabilities(change: Change): void {
   }
 }
 
+function printLicensesBlock(
+  licenseErrors: Change[],
+  unknownLicenses: Change[]
+): void {
+  core.group('Licenses', async () => {
+    if (licenseErrors.length > 0) {
+      printLicensesError(licenseErrors)
+      core.setFailed('Dependency review detected incompatible licenses.')
+    }
+    printNullLicenses(unknownLicenses)
+  })
+}
+
+function printLicensesError(changes: Change[]): void {
+  if (changes.length === 0) {
+    return
+  }
+
+  core.info('\nThe following dependencies have incompatible licenses:\n')
+  for (const change of changes) {
+    core.info(
+      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – License: ${styles.color.red.open}${change.license}${styles.color.red.close}`
+    )
+  }
+}
+
+function printNullLicenses(changes: Change[]): void {
+  if (changes.length === 0) {
+    return
+  }
+
+  core.info('\nWe could not detect a license for the following dependencies:\n')
+  for (const change of changes) {
+    core.info(
+      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`
+    )
+  }
+}
+
 function renderSeverity(
   severity: 'critical' | 'high' | 'moderate' | 'low'
 ): string {
@@ -161,7 +197,7 @@ function renderScannedDependency(change: Change): string {
 
 function printScannedDependencies(changes: Changes): void {
   core.group('Dependency Changes', async () => {
-    const dependencies = dependencyGraph.groupDependenciesByManifest(changes)
+    const dependencies = groupDependenciesByManifest(changes)
 
     for (const manifestName of dependencies.keys()) {
       const manifestChanges = dependencies.get(manifestName) || []
@@ -171,45 +207,6 @@ function printScannedDependencies(changes: Changes): void {
       }
     }
   })
-}
-
-function printLicensesBlock(
-  licenseErrors: Change[],
-  unknownLicenses: Change[]
-): void {
-  core.group('Licenses', async () => {
-    if (licenseErrors.length > 0) {
-      printLicensesError(licenseErrors)
-      core.setFailed('Dependency review detected incompatible licenses.')
-    }
-    printNullLicenses(unknownLicenses)
-  })
-}
-
-function printLicensesError(changes: Change[]): void {
-  if (changes.length === 0) {
-    return
-  }
-
-  core.info('\nThe following dependencies have incompatible licenses:\n')
-  for (const change of changes) {
-    core.info(
-      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – License: ${styles.color.red.open}${change.license}${styles.color.red.close}`
-    )
-  }
-}
-
-function printNullLicenses(changes: Change[]): void {
-  if (changes.length === 0) {
-    return
-  }
-
-  core.info('\nWe could not detect a license for the following dependencies:\n')
-  for (const change of changes) {
-    core.info(
-      `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`
-    )
-  }
 }
 
 run()

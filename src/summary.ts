@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {ConfigurationOptions, Change, Changes} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
-import {groupDependenciesByManifest} from './dependency-graph'
+import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
 export function addSummaryToSummary(
   addedPackages: Changes,
@@ -21,7 +21,7 @@ export function addChangeVulnerabilitiesToSummary(
 ): void {
   const rows: SummaryTableRow[] = []
 
-  const manifests = getManifests(addedPackages)
+  const manifests = getManifestsSet(addedPackages)
 
   core.summary
     .addHeading('Vulnerabilities')
@@ -100,7 +100,7 @@ export function addLicensesToSummary(
 
   if (licenseErrors.length > 0) {
     const rows: SummaryTableRow[] = []
-    const manifests = getManifests(licenseErrors)
+    const manifests = getManifestsSet(licenseErrors)
 
     core.summary.addHeading('Incompatible Licenses', 3).addSeparator()
 
@@ -126,7 +126,7 @@ export function addLicensesToSummary(
 
   if (unknownLicenses.length > 0) {
     const rows: SummaryTableRow[] = []
-    const manifests = getManifests(unknownLicenses)
+    const manifests = getManifestsSet(unknownLicenses)
 
     core.debug(
       `found ${manifests.entries.length} manifests for unknown licenses`
@@ -167,17 +167,5 @@ export function addScannedDependencies(changes: Changes): void {
       )
       summary.addRaw(`<h3>${manifest}</h3><ul>${dependencyNames.join('')}</ul>`)
     }
-  }
-}
-
-function getManifests(changes: Changes): Set<string> {
-  return new Set(changes.flatMap(c => c.manifest))
-}
-
-function renderUrl(url: string | null, text: string): string {
-  if (url) {
-    return `<a href="${url}">${text}</a>`
-  } else {
-    return text
   }
 }
