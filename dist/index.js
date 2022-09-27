@@ -582,7 +582,7 @@ function addScannedDependencies(changes) {
     for (const manifest of manifests) {
         const deps = dependencies.get(manifest);
         if (deps) {
-            const dependencyNames = deps.map(dependency => `<li>${dependency.name}</li>`);
+            const dependencyNames = deps.map(dependency => `<li>${dependency.name}@${dependency.version}</li>`);
             summary.addRaw(`<h3>${manifest}</h3><ul>${dependencyNames.join('')}</ul>`);
         }
     }
