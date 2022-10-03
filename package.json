@@ -26,7 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.10.0",
-    "@actions/github": "^5.1.0",
+    "@actions/github": "^5.1.1",
     "@octokit/plugin-retry": "^3.0.9",
     "@octokit/request-error": "^3.0.1",
     "ansi-styles": "^6.1.1",
@@ -36,7 +36,7 @@
     "zod": "^3.19.1"
   },
   "devDependencies": {
-    "@types/node": "^16.11.62",
+    "@types/node": "^16.11.63",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
     "@vercel/ncc": "^0.34.0",
