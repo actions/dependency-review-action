@@ -326,7 +326,7 @@ function renderScannedDependency(change) {
         added: '+',
         removed: '-'
     }[changeType];
-    return `${ansi_styles_1.default.color[color].open}${icon} ${change.manifest}@${change.version}${ansi_styles_1.default.color[color].close}`;
+    return `${ansi_styles_1.default.color[color].open}${icon} ${change.name}@${change.version}${ansi_styles_1.default.color[color].close}`;
 }
 function printScannedDependencies(changes) {
     core.group('Dependency Changes', () => __awaiter(this, void 0, void 0, function* () {
