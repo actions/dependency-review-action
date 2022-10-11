@@ -64,37 +64,53 @@ const fetchGHLicense = async (
     auth: core.getInput('repo-token', {required: true})
   })
 
-  let response
   try {
-    response = await octokit.request('GET /repos/{owner}/{repo}/license', {
-      owner,
-      repo
-    })
+    const response = await octokit.request(
+      'GET /repos/{owner}/{repo}/license',
+      {
+        owner,
+        repo
+      }
+    )
+    return response.data.license?.spdx_id ?? null
   } catch (_) {
     return null
   }
+}
 
-  return response?.data?.license?.spdx_id ?? null
+const parseGitHubURL = (url: string): {owner: string; repo: string} | null => {
+  try {
+    const parsed = new URL(url)
+    if (parsed.host !== 'github.com') {
+      return null
+    }
+    const components = parsed.pathname.split('/')
+    if (components.length < 3) {
+      return null
+    }
+    return {owner: components[1], repo: components[2]}
+  } catch (_) {
+    return null
+  }
 }
 
 const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
   const updatedChanges = changes.map(async change => {
-    const {source_repository_url, license} = change
-
-    if (license || source_repository_url === null) {
+    if (change.license !== null || change.source_repository_url === null) {
       return change
     }
 
-    const repoNwo = source_repository_url.split('github.com/')[1]
-    const [owner, repo] = repoNwo.split('/')
+    const githubUrl = parseGitHubURL(change.source_repository_url)
 
-    const retrievedLicense = await fetchGHLicense(owner, repo)
+    if (githubUrl === null) {
+      return change
+    }
 
     return {
       ...change,
-      license: retrievedLicense
+      license: await fetchGHLicense(githubUrl.owner, githubUrl.repo)
     }
   })
 
-  return await Promise.all(updatedChanges)
+  return Promise.all(updatedChanges)
 }
