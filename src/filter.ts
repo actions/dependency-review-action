@@ -51,7 +51,12 @@ export function filterChangesByScopes(
   return filteredChanges
 }
 
-export function filterOutAllowedAdvisories(
+/**
+ * @param ghsas - list of GHSA IDs to allow
+ * @param changes - list of changes to filter
+ * @returns a list of changes with the allowed GHSAs removed
+ */
+export function removeAllowedAdvisories(
   ghsas: string[] | undefined,
   changes: Changes
 ): Changes {
