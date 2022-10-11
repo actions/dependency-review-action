@@ -52,16 +52,19 @@ export function filterChangesByScopes(
 }
 
 /**
+ * Filter out changes that are allowed by the allow_ghsas config
+ * option. We want to remove these changes before we do any
+ * processing.
  * @param ghsas - list of GHSA IDs to allow
  * @param changes - list of changes to filter
  * @returns a list of changes with the allowed GHSAs removed
  */
-export function removeAllowedAdvisories(
+export function filterAllowedAdvisories(
   ghsas: string[] | undefined,
   changes: Changes
 ): Changes {
   if (ghsas === undefined) {
-    return []
+    return changes
   }
 
   const filteredChanges = changes.filter(change => {

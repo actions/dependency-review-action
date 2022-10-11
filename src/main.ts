@@ -8,7 +8,7 @@ import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
   filterChangesByScopes,
-  removeAllowedAdvisories
+  filterAllowedAdvisories
 } from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
 import * as summary from './summary'
@@ -30,7 +30,7 @@ async function run(): Promise<void> {
 
     const minSeverity = config.fail_on_severity as Severity
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
-    const filteredChanges = removeAllowedAdvisories(
+    const filteredChanges = filterAllowedAdvisories(
       config.allow_ghsas,
       scopedChanges
     )
