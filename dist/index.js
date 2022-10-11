@@ -217,7 +217,7 @@ function run() {
             });
             const minSeverity = config.fail_on_severity;
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
-            const filteredChanges = (0, filter_1.filterOutAllowedAdvisories)(config.allow_ghsas, scopedChanges);
+            const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
             const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
@@ -326,7 +326,7 @@ function renderScannedDependency(change) {
         added: '+',
         removed: '-'
     }[changeType];
-    return `${ansi_styles_1.default.color[color].open}${icon} ${change.manifest}@${change.version}${ansi_styles_1.default.color[color].close}`;
+    return `${ansi_styles_1.default.color[color].open}${icon} ${change.name}@${change.version}${ansi_styles_1.default.color[color].close}`;
 }
 function printScannedDependencies(changes) {
     core.group('Dependency Changes', () => __awaiter(this, void 0, void 0, function* () {
@@ -15118,7 +15118,7 @@ exports.readConfigFile = readConfigFile;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.filterOutAllowedAdvisories = exports.filterChangesByScopes = exports.filterChangesBySeverity = void 0;
+exports.filterAllowedAdvisories = exports.filterChangesByScopes = exports.filterChangesBySeverity = void 0;
 const schemas_1 = __nccwpck_require__(1129);
 function filterChangesBySeverity(severity, changes) {
     const severityIdx = schemas_1.SEVERITIES.indexOf(severity);
@@ -15154,9 +15154,17 @@ function filterChangesByScopes(scopes, changes) {
     return filteredChanges;
 }
 exports.filterChangesByScopes = filterChangesByScopes;
-function filterOutAllowedAdvisories(ghsas, changes) {
+/**
+ * Filter out changes that are allowed by the allow_ghsas config
+ * option. We want to remove these changes before we do any
+ * processing.
+ * @param ghsas - list of GHSA IDs to allow
+ * @param changes - list of changes to filter
+ * @returns a list of changes with the allowed GHSAs removed
+ */
+function filterAllowedAdvisories(ghsas, changes) {
     if (ghsas === undefined) {
-        return [];
+        return changes;
     }
     const filteredChanges = changes.filter(change => {
         const noAdvisories = change.vulnerabilities === undefined ||
@@ -15177,7 +15185,7 @@ function filterOutAllowedAdvisories(ghsas, changes) {
     });
     return filteredChanges;
 }
-exports.filterOutAllowedAdvisories = filterOutAllowedAdvisories;
+exports.filterAllowedAdvisories = filterAllowedAdvisories;
 
 
 /***/ }),

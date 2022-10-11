@@ -3,7 +3,7 @@ import {Change, Changes} from '../src/schemas'
 import {
   filterChangesBySeverity,
   filterChangesByScopes,
-  filterOutAllowedAdvisories
+  filterAllowedAdvisories
 } from '../src/filter'
 
 let npmChange: Change = {
@@ -90,28 +90,34 @@ test('it properly filters changes by scope', async () => {
   expect(result).toEqual([npmChange, rubyChange])
 })
 
+test('it properly handles undefined advisory IDs', async () => {
+  const changes = [npmChange, rubyChange, noVulnNpmChange]
+  let result = filterAllowedAdvisories(undefined, changes)
+  expect(result).toEqual([npmChange, rubyChange, noVulnNpmChange])
+})
+
 test('it properly filters changes with allowed vulnerabilities', async () => {
   const changes = [npmChange, rubyChange, noVulnNpmChange]
 
-  let result = filterOutAllowedAdvisories(['notrealGHSAID'], changes)
+  let result = filterAllowedAdvisories(['notrealGHSAID'], changes)
   expect(result).toEqual([npmChange, rubyChange, noVulnNpmChange])
 
-  result = filterOutAllowedAdvisories(['first-random_string'], changes)
+  result = filterAllowedAdvisories(['first-random_string'], changes)
   expect(result).toEqual([rubyChange, noVulnNpmChange])
 
-  result = filterOutAllowedAdvisories(
+  result = filterAllowedAdvisories(
     ['second-random_string', 'third-random_string'],
     changes
   )
   expect(result).toEqual([npmChange, noVulnNpmChange])
 
-  result = filterOutAllowedAdvisories(
+  result = filterAllowedAdvisories(
     ['first-random_string', 'second-random_string', 'third-random_string'],
     changes
   )
   expect(result).toEqual([noVulnNpmChange])
 
   // if we have a change with multiple vulnerabilities but only one is allowed, we still should not filter out that change
-  result = filterOutAllowedAdvisories(['second-random_string'], changes)
+  result = filterAllowedAdvisories(['second-random_string'], changes)
   expect(result).toEqual([npmChange, rubyChange, noVulnNpmChange])
 })
