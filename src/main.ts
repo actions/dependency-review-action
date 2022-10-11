@@ -192,7 +192,7 @@ function renderScannedDependency(change: Change): string {
     } as const
   )[changeType]
 
-  return `${styles.color[color].open}${icon} ${change.manifest}@${change.version}${styles.color[color].close}`
+  return `${styles.color[color].open}${icon} ${change.name}@${change.version}${styles.color[color].close}`
 }
 
 function printScannedDependencies(changes: Changes): void {
