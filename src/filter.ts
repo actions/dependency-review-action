@@ -56,7 +56,7 @@ export function filterOutAllowedAdvisories(
   changes: Changes
 ): Changes {
   if (ghsas === undefined) {
-    return []
+    return changes
   }
 
   const filteredChanges = changes.filter(change => {
