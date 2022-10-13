@@ -29,7 +29,7 @@
     "@actions/github": "^5.1.1",
     "@octokit/plugin-retry": "^3.0.9",
     "@octokit/request-error": "^3.0.1",
-    "ansi-styles": "^6.2.0",
+    "ansi-styles": "^6.2.1",
     "got": "^12.5.2",
     "nodemon": "^2.0.20",
     "yaml": "^2.1.3",
