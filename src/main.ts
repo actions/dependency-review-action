@@ -45,7 +45,7 @@ async function run(): Promise<void> {
         change.vulnerabilities.length > 0
     )
 
-    const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
+    const [licenseErrors, unknownLicenses] = await getDeniedLicenseChanges(
       filteredChanges,
       {
         allow: config.allow_licenses,

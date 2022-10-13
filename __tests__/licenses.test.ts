@@ -50,13 +50,17 @@ let rubyChange: Change = {
 
 test('it fails if a license outside the allow list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    allow: ['BSD']
+  })
   expect(invalidChanges[0]).toBe(npmChange)
 })
 
 test('it fails if a license inside the deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  const [invalidChanges] = await getDeniedLicenseChanges(changes, {
+    deny: ['BSD']
+  })
   expect(invalidChanges[0]).toBe(rubyChange)
 })
 
@@ -64,7 +68,7 @@ test('it fails if a license inside the deny list is found', async () => {
 // thing we want in the system. Please remove this test after refactoring.
 test('it fails all license checks when allow is provided an empty array', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  let [invalidChanges, _] = getDeniedLicenseChanges(changes, {
+  let [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
     allow: [],
     deny: ['BSD']
   })
@@ -76,7 +80,9 @@ test('it does not fail if a license outside the allow list is found in removed c
     {...npmChange, change_type: 'removed'},
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    allow: ['BSD']
+  })
   expect(invalidChanges).toStrictEqual([])
 })
 
@@ -85,7 +91,9 @@ test('it does not fail if a license inside the deny list is found in removed cha
     {...npmChange, change_type: 'removed'},
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    deny: ['BSD']
+  })
   expect(invalidChanges).toStrictEqual([])
 })
 
@@ -95,6 +103,8 @@ test('it fails if a license outside the allow list is found in both of added and
     npmChange,
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    allow: ['BSD']
+  })
   expect(invalidChanges).toStrictEqual([npmChange])
 })
