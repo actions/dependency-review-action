@@ -32,10 +32,12 @@
     "ansi-styles": "^6.2.1",
     "got": "^12.5.2",
     "nodemon": "^2.0.20",
+    "octokit": "^2.0.7",
     "yaml": "^2.1.3",
     "zod": "^3.19.1"
   },
   "devDependencies": {
+    "@types/jest": "^27.5.2",
     "@types/node": "^16.11.65",
     "@typescript-eslint/eslint-plugin": "^5.40.0",
     "@typescript-eslint/parser": "^5.40.0",

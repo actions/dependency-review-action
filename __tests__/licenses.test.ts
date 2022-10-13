@@ -1,4 +1,4 @@
-import {expect, test} from '@jest/globals'
+import {expect, jest, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
 import {getDeniedLicenseChanges} from '../src/licenses'
 
@@ -48,15 +48,41 @@ let rubyChange: Change = {
   ]
 }
 
+jest.mock('@actions/core')
+
+const mockOctokit = {
+  rest: {
+    licenses: {
+      getForRepo: jest
+        .fn()
+        .mockReturnValue({data: {license: {spdx_id: 'AGPL'}}})
+    }
+  }
+}
+
+jest.mock('octokit', () => {
+  return {
+    Octokit: class {
+      constructor() {
+        return mockOctokit
+      }
+    }
+  }
+})
+
 test('it fails if a license outside the allow list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    allow: ['BSD']
+  })
   expect(invalidChanges[0]).toBe(npmChange)
 })
 
 test('it fails if a license inside the deny list is found', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  const [invalidChanges] = await getDeniedLicenseChanges(changes, {
+    deny: ['BSD']
+  })
   expect(invalidChanges[0]).toBe(rubyChange)
 })
 
@@ -64,7 +90,7 @@ test('it fails if a license inside the deny list is found', async () => {
 // thing we want in the system. Please remove this test after refactoring.
 test('it fails all license checks when allow is provided an empty array', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  let [invalidChanges, _] = getDeniedLicenseChanges(changes, {
+  let [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
     allow: [],
     deny: ['BSD']
   })
@@ -76,7 +102,9 @@ test('it does not fail if a license outside the allow list is found in removed c
     {...npmChange, change_type: 'removed'},
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    allow: ['BSD']
+  })
   expect(invalidChanges).toStrictEqual([])
 })
 
@@ -85,7 +113,9 @@ test('it does not fail if a license inside the deny list is found in removed cha
     {...npmChange, change_type: 'removed'},
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {deny: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    deny: ['BSD']
+  })
   expect(invalidChanges).toStrictEqual([])
 })
 
@@ -95,6 +125,47 @@ test('it fails if a license outside the allow list is found in both of added and
     npmChange,
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = getDeniedLicenseChanges(changes, {allow: ['BSD']})
+  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+    allow: ['BSD']
+  })
   expect(invalidChanges).toStrictEqual([npmChange])
+})
+
+describe('GH License API fallback', () => {
+  test('it calls licenses endpoint if atleast one of the changes has null license and valid source_repository_url', async () => {
+    const nullLicenseChange = {
+      ...npmChange,
+      license: null,
+      source_repository_url: 'http://github.com/some-owner/some-repo'
+    }
+    const [_, unknownChanges] = await getDeniedLicenseChanges(
+      [nullLicenseChange, rubyChange],
+      {}
+    )
+
+    expect(mockOctokit.rest.licenses.getForRepo).toHaveBeenNthCalledWith(1, {
+      owner: 'some-owner',
+      repo: 'some-repo'
+    })
+    expect(unknownChanges.length).toEqual(0)
+  })
+
+  test('it does not call licenses API endpoint for change with null license and invalid source_repository_url ', async () => {
+    const [_, unknownChanges] = await getDeniedLicenseChanges(
+      [{...npmChange, license: null}],
+      {}
+    )
+    expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
+    expect(unknownChanges.length).toEqual(1)
+  })
+
+  test('it does not call licenses API endpoint if licenses for all changes are present', async () => {
+    const [_, unknownChanges] = await getDeniedLicenseChanges(
+      [npmChange, rubyChange],
+      {}
+    )
+
+    expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
+    expect(unknownChanges.length).toEqual(0)
+  })
 })
