@@ -23699,11 +23699,11 @@ exports.visitAsync = visitAsync;
 "use strict";
 __nccwpck_require__.r(__webpack_exports__);
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   "modifierNames": () => (/* binding */ modifierNames),
 /* harmony export */   "foregroundColorNames": () => (/* binding */ foregroundColorNames),
 /* harmony export */   "backgroundColorNames": () => (/* binding */ backgroundColorNames),
-/* harmony export */   "colorNames": () => (/* binding */ colorNames)
+/* harmony export */   "colorNames": () => (/* binding */ colorNames),
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 const ANSI_BACKGROUND_OFFSET = 10;
 
@@ -23771,6 +23771,11 @@ const styles = {
 		bgWhiteBright: [107, 49],
 	},
 };
+
+const modifierNames = Object.keys(styles.modifier);
+const foregroundColorNames = Object.keys(styles.color);
+const backgroundColorNames = Object.keys(styles.bgColor);
+const colorNames = [...foregroundColorNames, ...backgroundColorNames];
 
 function assembleStyles() {
 	const codes = new Map();
@@ -23923,11 +23928,6 @@ function assembleStyles() {
 const ansiStyles = assembleStyles();
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (ansiStyles);
-
-const modifierNames = Object.keys(styles.modifier);
-const foregroundColorNames = Object.keys(styles.color);
-const backgroundColorNames = Object.keys(styles.bgColor);
-const colorNames = [...foregroundColorNames, ...backgroundColorNames];
 
 
 /***/ }),
