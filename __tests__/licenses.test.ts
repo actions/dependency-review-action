@@ -132,10 +132,6 @@ test('it fails if a license outside the allow list is found in both of added and
 })
 
 describe('GH License API fallback', () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
   test('it calls licenses endpoint if atleast one of the changes has null license and valid source_repository_url', async () => {
     const nullLicenseChange = {
       ...npmChange,
