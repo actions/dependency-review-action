@@ -65,13 +65,7 @@ const fetchGHLicense = async (
   })
 
   try {
-    const response = await octokit.request(
-      'GET /repos/{owner}/{repo}/license',
-      {
-        owner,
-        repo
-      }
-    )
+    const response = await octokit.rest.licenses.getForRepo({owner, repo})
     return response.data.license?.spdx_id ?? null
   } catch (_) {
     return null

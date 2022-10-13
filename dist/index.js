@@ -193,10 +193,7 @@ const fetchGHLicense = (owner, repo) => __awaiter(void 0, void 0, void 0, functi
         auth: core.getInput('repo-token', { required: true })
     });
     try {
-        const response = yield octokit.request('GET /repos/{owner}/{repo}/license', {
-            owner,
-            repo
-        });
+        const response = yield octokit.rest.licenses.getForRepo({ owner, repo });
         return (_b = (_a = response.data.license) === null || _a === void 0 ? void 0 : _a.spdx_id) !== null && _b !== void 0 ? _b : null;
     }
     catch (_) {
@@ -40229,11 +40226,11 @@ exports.visitAsync = visitAsync;
 "use strict";
 __nccwpck_require__.r(__webpack_exports__);
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   "modifierNames": () => (/* binding */ modifierNames),
 /* harmony export */   "foregroundColorNames": () => (/* binding */ foregroundColorNames),
 /* harmony export */   "backgroundColorNames": () => (/* binding */ backgroundColorNames),
-/* harmony export */   "colorNames": () => (/* binding */ colorNames)
+/* harmony export */   "colorNames": () => (/* binding */ colorNames),
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 const ANSI_BACKGROUND_OFFSET = 10;
 
@@ -40301,6 +40298,11 @@ const styles = {
 		bgWhiteBright: [107, 49],
 	},
 };
+
+const modifierNames = Object.keys(styles.modifier);
+const foregroundColorNames = Object.keys(styles.color);
+const backgroundColorNames = Object.keys(styles.bgColor);
+const colorNames = [...foregroundColorNames, ...backgroundColorNames];
 
 function assembleStyles() {
 	const codes = new Map();
@@ -40453,11 +40455,6 @@ function assembleStyles() {
 const ansiStyles = assembleStyles();
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (ansiStyles);
-
-const modifierNames = Object.keys(styles.modifier);
-const foregroundColorNames = Object.keys(styles.color);
-const backgroundColorNames = Object.keys(styles.bgColor);
-const colorNames = [...foregroundColorNames, ...backgroundColorNames];
 
 
 /***/ }),
