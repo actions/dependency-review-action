@@ -100,3 +100,6 @@ Thumbs.db
 # Ignore built ts files
 __tests__/runner/*
 lib/**/*
+
+# Dev Config file
+.github/dev-config.yml
