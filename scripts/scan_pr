@@ -3,6 +3,7 @@ require 'json'
 require 'tempfile'
 require 'open3'
 require 'bundler/inline'
+require 'optparse'
 
 gemfile do
   source 'https://rubygems.org'
@@ -32,8 +33,16 @@ event_file = Tempfile.new
 event_file.write("{ \"pull_request\": #{pr.to_h.to_json}}")
 event_file.close
 
+config_file = nil
+OptionParser.new do |opts|
+  opts.on('--file', '-f', 'Use external config') do 
+    config_file =  ".github/dependency-review-config.yml"
+  end
+end.parse!
+
 action_inputs = {
-  "repo-token" => github_token
+  "repo-token": github_token,
+  "config-file": config_file
 }
 
 dev_cmd_env = {
