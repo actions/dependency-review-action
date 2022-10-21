@@ -55,14 +55,12 @@ end
 repo_nwo = arg[:repo_nwo]
 pr_number = arg[:pr_number]
 
-
 octo = Octokit::Client.new(access_token: github_token)
 pr = octo.pull_request(repo_nwo, pr_number)
 
 event_file = Tempfile.new
 event_file.write("{ \"pull_request\": #{pr.to_h.to_json}}")
 event_file.close
-
 
 action_inputs = {
   "repo-token": github_token,
