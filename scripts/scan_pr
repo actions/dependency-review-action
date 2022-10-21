@@ -26,7 +26,7 @@ Run Dependency Review on a repository.
   script/scan_pr [options] <pr_url>
 
 \e[1mExample:\e[22m
-  script/scan_pr -c config/my-action-config.yml https://github.com/actions/dependency-review-action/pull/100
+  script/scan_pr https://github.com/actions/dependency-review-action/pull/294
 
 EOF
 
