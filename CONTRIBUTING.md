@@ -55,10 +55,12 @@ Like this:
 $ GITHUB_TOKEN=my-secret-token ./scripts/scan_pr https://github.com/actions/dependency-review-action/pull/3
 ```
 
-[Configuration options](README.md#configuration-options) can be set via the [external config file](README.md#configuration-file) at [.github/dev-config](.github/dev-config.yml) and the script run the with a `--file` or `-f` flag
+[Configuration options](README.md#configuration-options) can be set by
+passing an external YAML  [configuration file](README.md#configuration-file) to the
+`scan_pr` script with the `-c`/`--config-file` option:
 
 ```sh
-$ GITHUB_TOKEN=<token> ./scripts/scan_pr <pr_url> --file
+$ GITHUB_TOKEN=<token> ./scripts/scan_pr --config-file my_custom_config.yml <pr_url> 
 ```
 
 ## Submitting a pull request
