@@ -71,13 +71,22 @@ or by inlining these options in your workflow file.
 
 ### config-file
 
-A string representing the path to an external configuraton file. By
-default external configuration files are not used.
+A string representing the path to a configuraton file. The
+configuration file can be local to the repo, or can be a file in an
+external repo. If you are referencing a configuration file located in an
+external repository, you can use the
+`OWNER/REPOSITORY/FILENAME@BRANCH` syntax.
 
-**Possible values**: A string representing the absolute path to the
-configuration file.
+If the configuration file is located in an external private
+repository, use the [external-repository-token](#external-repository-token) parameter of the
+action to specify a token that has read access to the repository.
 
-**Example**: `config-file: ./.github/dependency-review-config.yml`.
+**Possible values**: A string representing an absolute path to a file,
+  or a file located in another repository:
+
+**Example**: `config-file: ./.github/dependency-review-config.yml  # local file`.
+**Example**: `config-file: github/octorepo/dependency-review-config.yml@main  # external repo`
+
 
 ### fail-on-severity
 
@@ -170,6 +179,18 @@ this. The values need to be specified for all other event types.
 base-ref: 8bb8a58d6a4028b6c2e314d5caaf273f57644896
 head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
 ```
+
+### external-repository-token
+
+A token for fetching external configuration files if they live in
+another repository.
+
+# TODO Add a guide on how to get the token
+
+**Possible values**: Any GitHub token with read access to the external repository.
+
+**Example**: `external-repository-token: ghp_123456789abcdef...`
+
 
 ### Configuration File
 

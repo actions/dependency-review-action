@@ -32,6 +32,9 @@ inputs:
   allow-ghsas:
     description: Comma-separated list of allowed Github Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
     required: false
+  external-repository-token:
+    description: A token for fetching external configuration files if they live in another repository.
+    required: false
 runs:
   using: 'node16'
   main: 'dist/index.js'
