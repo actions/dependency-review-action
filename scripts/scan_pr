@@ -10,21 +10,51 @@ gemfile do
   gem 'octokit'
 end
 
+config_file = nil
 github_token = ENV["GITHUB_TOKEN"]
+
 if !github_token || github_token.empty?
   puts "Please set the GITHUB_TOKEN environment variable"
   exit -1
 end
 
-arg = /(?<repo_nwo>[\w\-]+\/[\w\-]+)\/pull\/(?<pr_number>\d+)/.match(ARGV[0])
+op = OptionParser.new do |opts|
+  usage = <<EOF
+Run Dependency Review on a repository.
+
+\e[1mUsage:\e[22m
+  script/scan_pr [options] <pr_url>
+
+\e[1mExample:\e[22m
+  script/scan_pr -c config/my-action-config.yml https://github.com/actions/dependency-review-action/pull/100
+
+EOF
+
+  opts.banner = usage
+
+  opts.on('-c', '--config-file <FILE>', 'Use an external configuration file') do |cf|
+    config_file = cf
+  end
+
+  opts.on("-h", "--help", "Prints this help") do
+    puts opts
+    exit
+  end
+end
+
+op.parse!
+
+# make sure we have a NWO somewhere in the parameters
+arg = /(?<repo_nwo>[\w\-]+\/[\w\-]+)\/pull\/(?<pr_number>\d+)/.match(ARGV.join(" "))
 
 if arg.nil?
-  puts "Usage: script/scan_pr <pr_url>"
+  puts op
   exit -1
 end
 
 repo_nwo = arg[:repo_nwo]
 pr_number = arg[:pr_number]
+
 
 octo = Octokit::Client.new(access_token: github_token)
 pr = octo.pull_request(repo_nwo, pr_number)
@@ -33,12 +63,6 @@ event_file = Tempfile.new
 event_file.write("{ \"pull_request\": #{pr.to_h.to_json}}")
 event_file.close
 
-config_file = nil
-OptionParser.new do |opts|
-  opts.on('--file', '-f', 'Use external config') do
-    config_file = '.github/dev-config.yml'
-  end
-end.parse!
 
 action_inputs = {
   "repo-token": github_token,
