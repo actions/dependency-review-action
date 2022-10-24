@@ -3,22 +3,52 @@ require 'json'
 require 'tempfile'
 require 'open3'
 require 'bundler/inline'
+require 'optparse'
 
 gemfile do
   source 'https://rubygems.org'
   gem 'octokit'
 end
 
+config_file = nil
 github_token = ENV["GITHUB_TOKEN"]
+
 if !github_token || github_token.empty?
   puts "Please set the GITHUB_TOKEN environment variable"
   exit -1
 end
 
-arg = /(?<repo_nwo>[\w\-]+\/[\w\-]+)\/pull\/(?<pr_number>\d+)/.match(ARGV[0])
+op = OptionParser.new do |opts|
+  usage = <<EOF
+Run Dependency Review on a repository.
+
+\e[1mUsage:\e[22m
+  scripts/scan_pr [options] <pr_url>
+
+\e[1mExample:\e[22m
+  scripts/scan_pr https://github.com/actions/dependency-review-action/pull/294
+
+EOF
+
+  opts.banner = usage
+
+  opts.on('-c', '--config-file <FILE>', 'Use an external configuration file') do |cf|
+    config_file = cf
+  end
+
+  opts.on("-h", "--help", "Prints this help") do
+    puts opts
+    exit
+  end
+end
+
+op.parse!
+
+# make sure we have a NWO somewhere in the parameters
+arg = /(?<repo_nwo>[\w\-]+\/[\w\-]+)\/pull\/(?<pr_number>\d+)/.match(ARGV.join(" "))
 
 if arg.nil?
-  puts "Usage: script/scan_pr <pr_url>"
+  puts op
   exit -1
 end
 
@@ -33,7 +63,8 @@ event_file.write("{ \"pull_request\": #{pr.to_h.to_json}}")
 event_file.close
 
 action_inputs = {
-  "repo-token" => github_token
+  "repo-token": github_token,
+  "config-file": config_file
 }
 
 dev_cmd_env = {
