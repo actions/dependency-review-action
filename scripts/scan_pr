@@ -23,7 +23,7 @@ op = OptionParser.new do |opts|
 Run Dependency Review on a repository.
 
 \e[1mUsage:\e[22m
-  script/scan_pr [options] <pr_url>
+  scripts/scan_pr [options] <pr_url>
 
 \e[1mExample:\e[22m
   scripts/scan_pr https://github.com/actions/dependency-review-action/pull/294
