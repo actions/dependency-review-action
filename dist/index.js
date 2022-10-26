@@ -24154,12 +24154,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 var core = __nccwpck_require__(8267);
 var pluginPaginateRest = __nccwpck_require__(3932);
 var pluginRestEndpointMethods = __nccwpck_require__(3779);
-var pluginRetry = __nccwpck_require__(8519);
+var pluginRetry = __nccwpck_require__(6298);
 var pluginThrottling = __nccwpck_require__(2506);
 var app = __nccwpck_require__(4389);
 var oauthApp = __nccwpck_require__(3493);
 
-const VERSION = "2.0.9";
+const VERSION = "2.0.10";
 
 const Octokit = core.Octokit.plugin(pluginRestEndpointMethods.restEndpointMethods, pluginPaginateRest.paginateRest, pluginRetry.retry, pluginThrottling.throttling).defaults({
   userAgent: `octokit.js/${VERSION}`,
@@ -24167,22 +24167,19 @@ const Octokit = core.Octokit.plugin(pluginRestEndpointMethods.restEndpointMethod
     onRateLimit,
     onSecondaryRateLimit
   }
-}); // istanbul ignore next no need to test internals of the throttle plugin
-
+});
+// istanbul ignore next no need to test internals of the throttle plugin
 function onRateLimit(retryAfter, options, octokit) {
   octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
-
   if (options.request.retryCount === 0) {
     // only retries once
     octokit.log.info(`Retrying after ${retryAfter} seconds!`);
     return true;
   }
-} // istanbul ignore next no need to test internals of the throttle plugin
-
-
+}
+// istanbul ignore next no need to test internals of the throttle plugin
 function onSecondaryRateLimit(retryAfter, options, octokit) {
   octokit.log.warn(`SecondaryRateLimit detected for request ${options.method} ${options.url}`);
-
   if (options.request.retryCount === 0) {
     // only retries once
     octokit.log.info(`Retrying after ${retryAfter} seconds!`);
@@ -26179,90 +26176,6 @@ legacyRestEndpointMethods.VERSION = VERSION;
 
 exports.legacyRestEndpointMethods = legacyRestEndpointMethods;
 exports.restEndpointMethods = restEndpointMethods;
-//# sourceMappingURL=index.js.map
-
-
-/***/ }),
-
-/***/ 8519:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var Bottleneck = _interopDefault(__nccwpck_require__(1174));
-
-// @ts-ignore
-async function errorRequest(octokit, state, error, options) {
-  if (!error.request || !error.request.request) {
-    // address https://github.com/octokit/plugin-retry.js/issues/8
-    throw error;
-  } // retry all >= 400 && not doNotRetry
-
-
-  if (error.status >= 400 && !state.doNotRetry.includes(error.status)) {
-    const retries = options.request.retries != null ? options.request.retries : state.retries;
-    const retryAfter = Math.pow((options.request.retryCount || 0) + 1, 2);
-    throw octokit.retry.retryRequest(error, retries, retryAfter);
-  } // Maybe eventually there will be more cases here
-
-
-  throw error;
-}
-
-// @ts-ignore
-
-async function wrapRequest(state, request, options) {
-  const limiter = new Bottleneck(); // @ts-ignore
-
-  limiter.on("failed", function (error, info) {
-    const maxRetries = ~~error.request.request.retries;
-    const after = ~~error.request.request.retryAfter;
-    options.request.retryCount = info.retryCount + 1;
-
-    if (maxRetries > info.retryCount) {
-      // Returning a number instructs the limiter to retry
-      // the request after that number of milliseconds have passed
-      return after * state.retryAfterBaseValue;
-    }
-  });
-  return limiter.schedule(request, options);
-}
-
-const VERSION = "3.0.9";
-function retry(octokit, octokitOptions) {
-  const state = Object.assign({
-    enabled: true,
-    retryAfterBaseValue: 1000,
-    doNotRetry: [400, 401, 403, 404, 422],
-    retries: 3
-  }, octokitOptions.retry);
-
-  if (state.enabled) {
-    octokit.hook.error("request", errorRequest.bind(null, octokit, state));
-    octokit.hook.wrap("request", wrapRequest.bind(null, state));
-  }
-
-  return {
-    retry: {
-      retryRequest: (error, retries, retryAfter) => {
-        error.request.request = Object.assign({}, error.request.request, {
-          retries: retries,
-          retryAfter: retryAfter
-        });
-        return error;
-      }
-    }
-  };
-}
-retry.VERSION = VERSION;
-
-exports.VERSION = VERSION;
-exports.retry = retry;
 //# sourceMappingURL=index.js.map
 
 
