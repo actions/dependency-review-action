@@ -1,6 +1,9 @@
 import * as core from '@actions/core'
+import spdxSatisfies from 'spdx-satisfies'
 import {Octokit} from 'octokit'
-import {Change} from './schemas'
+
+import {Change, Changes} from './schemas'
+import {isSPDXValid} from './utils'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -23,37 +26,44 @@ export async function getDeniedLicenseChanges(
 ): Promise<[Change[], Change[]]> {
   const {allow, deny} = licenses
 
-  const disallowed: Change[] = []
-  const unknown: Change[] = []
+  const groupedChanges = await groupChanges(changes)
+  const unlicensedChanges: Changes = groupedChanges.unlicensed
+  const licensedChanges: Changes = groupedChanges.licensed
 
-  const consolidatedChanges = changes.some(
-    ({source_repository_url, license}) => !license && source_repository_url
-  )
-    ? await setGHLicenses(changes)
-    : changes
+  const forbiddenLicenseChanges: Changes = []
+  const validityCache = new Map<string, boolean>()
 
-  for (const change of consolidatedChanges) {
-    if (change.change_type === 'removed') {
-      continue
-    }
-
+  for (const change of licensedChanges) {
+    // should never happen since licensedChanges have licenses. Look into Intersection Types
     const license = change.license
     if (license === null) {
-      unknown.push(change)
       continue
     }
-    if (allow !== undefined) {
-      if (!allow.includes(license)) {
-        disallowed.push(change)
+
+    if (validityCache.get(license) === undefined) {
+      if (allow !== undefined) {
+        const found = allow.find(spdxExpression =>
+          spdxSatisfies(license, spdxExpression)
+        )
+        validityCache.set(license, found !== undefined)
+      } else if (deny !== undefined) {
+        const found = deny.find(spdxExpression =>
+          spdxSatisfies(license, spdxExpression)
+        )
+        validityCache.set(license, found === undefined)
       }
-    } else if (deny !== undefined) {
-      if (deny.includes(license)) {
-        disallowed.push(change)
-      }
+    }
+
+    // TODO: Verify spdxSatisfies is working as expected as currently:
+    // spdxSatisfies("MIT", "MIT AND (GPL-2.0 OR ISC)") => true
+    // spdxSatisfies("MIT AND (GPL-2.0 OR ISC)", "MIT") => false
+
+    if (validityCache.get(license) === false) {
+      forbiddenLicenseChanges.push(change)
     }
   }
 
-  return [disallowed, unknown]
+  return [forbiddenLicenseChanges, unlicensedChanges]
 }
 
 const fetchGHLicense = async (
@@ -107,4 +117,55 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
   })
 
   return Promise.all(updatedChanges)
+}
+// Currently Dependency Graph licenses are truncated to 255 characters
+// This possibly makes them invalid spdx ids
+const truncatedDGLicense = (license: string): boolean =>
+  license.length === 255 && !isSPDXValid(license)
+
+async function groupChanges(
+  changes: Changes
+): Promise<Record<string, Changes>> {
+  const result: Record<string, Changes> = {
+    licensed: [],
+    unlicensed: []
+  }
+
+  const ghChanges = []
+
+  for (const change of changes) {
+    if (change.change_type === 'removed') {
+      continue
+    }
+
+    if (change.license === null) {
+      if (change.source_repository_url !== null) {
+        ghChanges.push(change)
+      } else {
+        result.unlicensed.push(change)
+      }
+    } else {
+      if (
+        truncatedDGLicense(change.license) &&
+        change.source_repository_url !== null
+      ) {
+        ghChanges.push(change)
+      } else {
+        result.licensed.push(change)
+      }
+    }
+  }
+
+  if (ghChanges.length > 0) {
+    const ghLicenses = await setGHLicenses(ghChanges)
+    for (const change of ghLicenses) {
+      if (change.license === null) {
+        result.unlicensed.push(change)
+      } else {
+        result.licensed.push(change)
+      }
+    }
+  }
+
+  return result
 }
