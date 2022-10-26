@@ -175,13 +175,19 @@ function getDeniedLicenseChanges(changes, licenses) {
                 continue;
             }
             if (validityCache.get(license) === undefined) {
-                if (allow !== undefined) {
-                    const found = allow.find(spdxExpression => (0, spdx_satisfies_1.default)(license, spdxExpression));
-                    validityCache.set(license, found !== undefined);
+                try {
+                    if (allow !== undefined) {
+                        const found = allow.find(spdxExpression => (0, spdx_satisfies_1.default)(license, spdxExpression));
+                        validityCache.set(license, found !== undefined);
+                    }
+                    else if (deny !== undefined) {
+                        const found = deny.find(spdxExpression => (0, spdx_satisfies_1.default)(license, spdxExpression));
+                        validityCache.set(license, found === undefined);
+                    }
                 }
-                else if (deny !== undefined) {
-                    const found = deny.find(spdxExpression => (0, spdx_satisfies_1.default)(license, spdxExpression));
-                    validityCache.set(license, found === undefined);
+                catch (_) {
+                    // eslint-disable-next-line no-console
+                    console.log(`Invalid spdx license ${license} for ${change.name}`);
                 }
             }
             // TODO: Verify spdxSatisfies is working as expected as currently:

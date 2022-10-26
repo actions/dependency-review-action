@@ -49,6 +49,15 @@ let rubyChange: Change = {
 }
 
 jest.mock('@actions/core')
+jest.mock('spdx-satisfies', () => {
+  return {
+    __esModule: true,
+    // hack to coerce / mock spdx-satisfies to return value
+    // true for BSD, false for all others
+    // affects only deny_licenses and allow_licenses checks
+    default: (license: string, _: string): boolean => license === 'BSD'
+  }
+})
 
 const mockOctokit = {
   rest: {
