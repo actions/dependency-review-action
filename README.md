@@ -106,19 +106,18 @@ fail-on-scopes:
 
 ### allow-licenses
 
-Only allow the licenses in this list. See "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
+Only allow the licenses that comply with the expressions in this list. See "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
 
-**Possible values**: Any `spdx_id` value(s) from
-https://docs.github.com/en/rest/licenses.
+**Possible values**: Any valid [spdx license expression](https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60).
 
-**Inline example**: `allow-licenses: BSD-3-Clause, MIT`
+**Inline example**: `allow-licenses: BSD-3-Clause, LGPL-2.1 OR MIT OR BSD-3-Clause`
 
 **YAML example**:
 
 ```yaml
 allow-licenses:
   - BSD-3-Clause
-  - MIT
+  - LGPL-2.1 OR MIT OR BSD-3-Clause
 ```
 
 ### deny-licenses
@@ -126,17 +125,16 @@ allow-licenses:
 Add a custom list of licenses you want to block. See
 "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
 
-**Possible values**: Any `spdx_id` value(s) from
-https://docs.github.com/en/rest/licenses.
+**Possible values**: Any valid [sodx license expression](https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60).
 
-**Inline example**: `deny-licenses: LGPL-2.0, BSD-2-Clause`
+**Inline example**: `deny-licenses: LGPL-2.0, GPL-2.0+ WITH Bison-exception-2.2`
 
 **YAML example**:
 
 ```yaml
 deny-licenses:
   - LGPL-2.0
-  - BSD-2-Clause
+  - GPL-2.0+ WITH Bison-exception-2.2
 ```
 
 ### allow-ghsas
@@ -259,8 +257,8 @@ forbid a subset of licenses. These options are not supported on Enterprise Serve
 
 You can use the [Licenses
 API](https://docs.github.com/en/rest/licenses) to see the full list of
-supported licenses. Use the `spdx_id` field for every license you want
-to filter. A couple of examples:
+supported licenses. Use [spdx license expressions](https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60)
+to filter the licenses. A couple of examples:
 
 ```yaml
 # only allow MIT-licensed dependents
@@ -275,7 +273,7 @@ to filter. A couple of examples:
 - name: Dependency Review
   uses: actions/dependency-review-action@v2
   with:
-    deny-licenses: Apache-1.1, Apache-2.0
+    deny-licenses: Apache-1.1+
 ```
 
 ### Considerations
