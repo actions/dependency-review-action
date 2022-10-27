@@ -123,13 +123,13 @@ function printLicensesBlock(
 ): void {
   core.group('Licenses', async () => {
     if (invalidLicenseChanges.forbidden.length > 0) {
-      core.info('\nThe following dependencies have incompatible licenses:\n')
+      core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
       core.setFailed('Dependency review detected incompatible licenses.')
     }
     if (invalidLicenseChanges.unresolved.length > 0) {
       core.warning(
-        '\nThe validity of the licenses of the dependecies below could not be determine. Ensure that they are valid spdx licenses:\n'
+        '\nThe validity of the licenses of the dependecies below could not be determine. Ensure that they are valid spdx licenses:'
       )
       printLicensesError(invalidLicenseChanges.unresolved)
       core.setFailed(
@@ -153,7 +153,7 @@ function printNullLicenses(changes: Changes): void {
     return
   }
 
-  core.info('\nWe could not detect a license for the following dependencies:\n')
+  core.info('\nWe could not detect a license for the following dependencies:')
   for (const change of changes) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`

@@ -423,12 +423,12 @@ function printChangeVulnerabilities(change) {
 function printLicensesBlock(invalidLicenseChanges) {
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
         if (invalidLicenseChanges.forbidden.length > 0) {
-            core.info('\nThe following dependencies have incompatible licenses:\n');
+            core.info('\nThe following dependencies have incompatible licenses:');
             printLicensesError(invalidLicenseChanges.forbidden);
             core.setFailed('Dependency review detected incompatible licenses.');
         }
         if (invalidLicenseChanges.unresolved.length > 0) {
-            core.warning('\nThe validity of the licenses of the dependecies below could not be determine. Ensure that they are valid spdx licenses:\n');
+            core.warning('\nThe validity of the licenses of the dependecies below could not be determine. Ensure that they are valid spdx licenses:');
             printLicensesError(invalidLicenseChanges.unresolved);
             core.setFailed('Dependency review could not detect the validity of all licenses.');
         }
@@ -444,7 +444,7 @@ function printNullLicenses(changes) {
     if (changes.length === 0) {
         return;
     }
-    core.info('\nWe could not detect a license for the following dependencies:\n');
+    core.info('\nWe could not detect a license for the following dependencies:');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
     }
@@ -606,7 +606,7 @@ function addSummaryToSummary(addedPackages, invalidLicenseChanges) {
         .addList([
         `${addedPackages.length} vulnerable package(s)`,
         `${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses`,
-        `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses and`,
+        `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
         `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
     ]);
 }
@@ -667,55 +667,45 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
     if (config.deny_licenses && config.deny_licenses.length > 0) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
-    if (invalidLicenseChanges.forbidden.length === 0 &&
-        invalidLicenseChanges.unlicensed.length === 0) {
+    if (Object.values(invalidLicenseChanges).every(item => item.length === 0)) {
         core.summary.addQuote('No license violations detected.');
         return;
     }
-    if (invalidLicenseChanges.forbidden.length > 0) {
+    core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
+    core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
+    printLicenseViolation('Incompatible Licenses', invalidLicenseChanges.forbidden);
+    printLicenseViolation('Unknown Licenses', invalidLicenseChanges.unlicensed);
+    printLicenseViolation('Unvalidated Licenses', invalidLicenseChanges.unresolved);
+}
+exports.addLicensesToSummary = addLicensesToSummary;
+function printLicenseViolation(heading, changes) {
+    var _a;
+    if (changes.length > 0) {
         const rows = [];
-        const manifests = (0, utils_1.getManifestsSet)(invalidLicenseChanges.forbidden);
-        core.summary.addHeading('Incompatible Licenses', 3).addSeparator();
+        const manifests = (0, utils_1.getManifestsSet)(changes);
+        core.summary.addHeading(heading, 5).addSeparator();
         for (const manifest of manifests) {
             core.summary.addHeading(`<em>${manifest}</em>`, 4);
-            for (const change of invalidLicenseChanges.forbidden.filter(pkg => pkg.manifest === manifest)) {
+            for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
                 rows.push([
                     (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                     change.version,
-                    change.license || ''
+                    (_a = change.license) !== null && _a !== void 0 ? _a : 'Null'
                 ]);
             }
             core.summary.addTable([['Package', 'Version', 'License'], ...rows]);
         }
     }
     else {
-        core.summary.addQuote('No incompatible license detected.');
-    }
-    core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
-    if (invalidLicenseChanges.unlicensed.length > 0) {
-        const rows = [];
-        const manifests = (0, utils_1.getManifestsSet)(invalidLicenseChanges.unlicensed);
-        core.debug(`found ${manifests.entries.length} manifests for unknown licenses`);
-        core.summary.addHeading('Unknown Licenses', 3).addSeparator();
-        for (const manifest of manifests) {
-            core.summary.addHeading(`<em>${manifest}</em>`, 4);
-            for (const change of invalidLicenseChanges.unlicensed.filter(pkg => pkg.manifest === manifest)) {
-                rows.push([
-                    (0, utils_1.renderUrl)(change.source_repository_url, change.name),
-                    change.version
-                ]);
-            }
-            core.summary.addTable([['Package', 'Version'], ...rows]);
-        }
+        core.summary.addQuote(`No ${heading} detected.`);
     }
 }
-exports.addLicensesToSummary = addLicensesToSummary;
 function addScannedDependencies(changes) {
     const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
     const manifests = dependencies.keys();
     const summary = core.summary
         .addHeading('Scanned Dependencies')
-        .addHeading(`We scanned ${dependencies.size} manifest files:`, 'title');
+        .addHeading(`We scanned ${dependencies.size} manifest files:`, 5);
     for (const manifest of manifests) {
         const deps = dependencies.get(manifest);
         if (deps) {
