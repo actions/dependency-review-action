@@ -679,26 +679,31 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
 }
 exports.addLicensesToSummary = addLicensesToSummary;
 function printLicenseViolation(heading, changes) {
-    var _a;
+    core.summary.addHeading(heading, 5).addSeparator();
     if (changes.length > 0) {
         const rows = [];
         const manifests = (0, utils_1.getManifestsSet)(changes);
-        core.summary.addHeading(heading, 5).addSeparator();
         for (const manifest of manifests) {
             core.summary.addHeading(`<em>${manifest}</em>`, 4);
             for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
                 rows.push([
                     (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                     change.version,
-                    (_a = change.license) !== null && _a !== void 0 ? _a : 'Null'
+                    formatLicense(change.license)
                 ]);
             }
             core.summary.addTable([['Package', 'Version', 'License'], ...rows]);
         }
     }
     else {
-        core.summary.addQuote(`No ${heading} detected.`);
+        core.summary.addQuote(`No ${heading.toLowerCase()} detected.`);
     }
+}
+function formatLicense(license) {
+    if (license === null || license === 'NOASSERTION') {
+        return 'Null';
+    }
+    return license;
 }
 function addScannedDependencies(changes) {
     const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);

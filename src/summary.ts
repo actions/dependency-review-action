@@ -119,11 +119,11 @@ export function addLicensesToSummary(
   )
 }
 function printLicenseViolation(heading: string, changes: Changes): void {
+  core.summary.addHeading(heading, 5).addSeparator()
+
   if (changes.length > 0) {
     const rows: SummaryTableRow[] = []
     const manifests = getManifestsSet(changes)
-
-    core.summary.addHeading(heading, 5).addSeparator()
 
     for (const manifest of manifests) {
       core.summary.addHeading(`<em>${manifest}</em>`, 4)
@@ -132,15 +132,22 @@ function printLicenseViolation(heading: string, changes: Changes): void {
         rows.push([
           renderUrl(change.source_repository_url, change.name),
           change.version,
-          change.license ?? 'Null'
+          formatLicense(change.license)
         ])
       }
 
       core.summary.addTable([['Package', 'Version', 'License'], ...rows])
     }
   } else {
-    core.summary.addQuote(`No ${heading} detected.`)
+    core.summary.addQuote(`No ${heading.toLowerCase()} detected.`)
   }
+}
+
+function formatLicense(license: string | null): string {
+  if (license === null || license === 'NOASSERTION') {
+    return 'Null'
+  }
+  return license
 }
 
 export function addScannedDependencies(changes: Changes): void {
