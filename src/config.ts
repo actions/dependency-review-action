@@ -26,10 +26,6 @@ function parseList(list: string | undefined): string[] | undefined {
   }
 }
 
-function getInvalidLicenses(licenses: string[]): string[] {
-  return licenses.filter(license => !isSPDXValid(license))
-}
-
 function validateLicenses(
   key: licenseKey,
   licenses: string[] | undefined
@@ -37,7 +33,7 @@ function validateLicenses(
   if (licenses === undefined) {
     return
   }
-  const invalid_licenses = getInvalidLicenses(licenses)
+  const invalid_licenses = licenses.filter(license => !isSPDXValid(license))
 
   if (invalid_licenses.length > 0) {
     throw new Error(

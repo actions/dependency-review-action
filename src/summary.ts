@@ -1,18 +1,19 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Change, Changes} from './schemas'
+import {ConfigurationOptions, Changes} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
 export function addSummaryToSummary(
   addedPackages: Changes,
-  licenseErrors: Change[],
-  unknownLicenses: Change[]
+  invalidLicenseChanges: Record<string, Changes>
 ): void {
-  core.summary
-    .addHeading('Dependency Review')
-    .addRaw(
-      `We found ${addedPackages.length} vulnerable package(s), ${licenseErrors.length} package(s) with incompatible licenses, and ${unknownLicenses.length} package(s) with unknown licenses.`
-    )
+  core.summary.addHeading('Dependency Review').addRaw(
+    `We found:
+      - ${addedPackages.length} vulnerable package(s), 
+      - ${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses, 
+      - ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses, and
+      - ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+  )
 }
 
 export function addChangeVulnerabilitiesToSummary(
@@ -76,8 +77,7 @@ export function addChangeVulnerabilitiesToSummary(
 }
 
 export function addLicensesToSummary(
-  licenseErrors: Change[],
-  unknownLicenses: Change[],
+  invalidLicenseChanges: Record<string, Changes>,
   config: ConfigurationOptions
 ): void {
   core.summary.addHeading('Licenses')
@@ -93,21 +93,24 @@ export function addLicensesToSummary(
     )
   }
 
-  if (licenseErrors.length === 0 && unknownLicenses.length === 0) {
+  if (
+    invalidLicenseChanges.forbidden.length === 0 &&
+    invalidLicenseChanges.unlicensed.length === 0
+  ) {
     core.summary.addQuote('No license violations detected.')
     return
   }
 
-  if (licenseErrors.length > 0) {
+  if (invalidLicenseChanges.forbidden.length > 0) {
     const rows: SummaryTableRow[] = []
-    const manifests = getManifestsSet(licenseErrors)
+    const manifests = getManifestsSet(invalidLicenseChanges.forbidden)
 
     core.summary.addHeading('Incompatible Licenses', 3).addSeparator()
 
     for (const manifest of manifests) {
       core.summary.addHeading(`<em>${manifest}</em>`, 4)
 
-      for (const change of licenseErrors.filter(
+      for (const change of invalidLicenseChanges.forbidden.filter(
         pkg => pkg.manifest === manifest
       )) {
         rows.push([
@@ -122,11 +125,13 @@ export function addLicensesToSummary(
     core.summary.addQuote('No license violations detected.')
   }
 
-  core.debug(`found ${unknownLicenses.length} unknown licenses`)
+  core.debug(
+    `found ${invalidLicenseChanges.unlicensed.length} unknown licenses`
+  )
 
-  if (unknownLicenses.length > 0) {
+  if (invalidLicenseChanges.unlicensed.length > 0) {
     const rows: SummaryTableRow[] = []
-    const manifests = getManifestsSet(unknownLicenses)
+    const manifests = getManifestsSet(invalidLicenseChanges.unlicensed)
 
     core.debug(
       `found ${manifests.entries.length} manifests for unknown licenses`
@@ -137,7 +142,7 @@ export function addLicensesToSummary(
     for (const manifest of manifests) {
       core.summary.addHeading(`<em>${manifest}</em>`, 4)
 
-      for (const change of unknownLicenses.filter(
+      for (const change of invalidLicenseChanges.unlicensed.filter(
         pkg => pkg.manifest === manifest
       )) {
         rows.push([
