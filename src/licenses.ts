@@ -15,32 +15,39 @@ import {isSPDXValid} from './utils'
  * we will ignore the deny list.
  * @param {Change[]} changes The list of changes to filter.
  * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
- * @returns {Promise<[Array.<Change>, Array.<Change>]>} A promise to a 2 element tuple. The first element is the list of denied changes and the second one is the list of changes with unknown licenses
+ * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
  */
-export async function getDeniedLicenseChanges(
+export async function getInvalidLicenseChanges(
   changes: Change[],
   licenses: {
     allow?: string[]
     deny?: string[]
   }
-): Promise<[Change[], Change[]]> {
+): Promise<Record<string, Changes>> {
   const {allow, deny} = licenses
 
   const groupedChanges = await groupChanges(changes)
-  const unlicensedChanges: Changes = groupedChanges.unlicensed
   const licensedChanges: Changes = groupedChanges.licensed
 
-  const forbiddenLicenseChanges: Changes = []
+  const invalidLicenseChanges: Record<string, Changes> = {
+    unlicensed: groupedChanges.unlicensed,
+    unresolved: [],
+    forbidden: []
+  }
+
   const validityCache = new Map<string, boolean>()
 
   for (const change of licensedChanges) {
-    // should never happen since licensedChanges have licenses. Look into Intersection Types
     const license = change.license
+
+    // should never happen since licensedChanges always have licenses but license is nullable in changes schema
     if (license === null) {
       continue
     }
 
-    if (validityCache.get(license) === undefined) {
+    if (license === 'NOASSERTION') {
+      invalidLicenseChanges.unlicensed.push(change)
+    } else if (validityCache.get(license) === undefined) {
       try {
         if (allow !== undefined) {
           const found = allow.find(spdxExpression =>
@@ -53,22 +60,17 @@ export async function getDeniedLicenseChanges(
           )
           validityCache.set(license, found === undefined)
         }
-      } catch (_) {
-        // eslint-disable-next-line no-console
-        console.log(`Invalid spdx license ${license} for ${change.name}`)
+      } catch (err) {
+        invalidLicenseChanges.unresolved.push(change)
       }
     }
 
-    // TODO: Verify spdxSatisfies is working as expected as currently:
-    // spdxSatisfies("MIT", "MIT AND (GPL-2.0 OR ISC)") => true
-    // spdxSatisfies("MIT AND (GPL-2.0 OR ISC)", "MIT") => false
-
     if (validityCache.get(license) === false) {
-      forbiddenLicenseChanges.push(change)
+      invalidLicenseChanges.forbidden.push(change)
     }
   }
 
-  return [forbiddenLicenseChanges, unlicensedChanges]
+  return invalidLicenseChanges
 }
 
 const fetchGHLicense = async (

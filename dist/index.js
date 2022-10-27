@@ -143,7 +143,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getDeniedLicenseChanges = void 0;
+exports.getInvalidLicenseChanges = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const octokit_1 = __nccwpck_require__(7467);
@@ -158,23 +158,29 @@ const utils_1 = __nccwpck_require__(918);
  * we will ignore the deny list.
  * @param {Change[]} changes The list of changes to filter.
  * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
- * @returns {Promise<[Array.<Change>, Array.<Change>]>} A promise to a 2 element tuple. The first element is the list of denied changes and the second one is the list of changes with unknown licenses
+ * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
  */
-function getDeniedLicenseChanges(changes, licenses) {
+function getInvalidLicenseChanges(changes, licenses) {
     return __awaiter(this, void 0, void 0, function* () {
         const { allow, deny } = licenses;
         const groupedChanges = yield groupChanges(changes);
-        const unlicensedChanges = groupedChanges.unlicensed;
         const licensedChanges = groupedChanges.licensed;
-        const forbiddenLicenseChanges = [];
+        const invalidLicenseChanges = {
+            unlicensed: groupedChanges.unlicensed,
+            unresolved: [],
+            forbidden: []
+        };
         const validityCache = new Map();
         for (const change of licensedChanges) {
-            // should never happen since licensedChanges have licenses. Look into Intersection Types
             const license = change.license;
+            // should never happen since licensedChanges always have licenses but license is nullable in changes schema
             if (license === null) {
                 continue;
             }
-            if (validityCache.get(license) === undefined) {
+            if (license === 'NOASSERTION') {
+                invalidLicenseChanges.unlicensed.push(change);
+            }
+            else if (validityCache.get(license) === undefined) {
                 try {
                     if (allow !== undefined) {
                         const found = allow.find(spdxExpression => (0, spdx_satisfies_1.default)(license, spdxExpression));
@@ -185,22 +191,18 @@ function getDeniedLicenseChanges(changes, licenses) {
                         validityCache.set(license, found === undefined);
                     }
                 }
-                catch (_) {
-                    // eslint-disable-next-line no-console
-                    console.log(`Invalid spdx license ${license} for ${change.name}`);
+                catch (err) {
+                    invalidLicenseChanges.unresolved.push(change);
                 }
             }
-            // TODO: Verify spdxSatisfies is working as expected as currently:
-            // spdxSatisfies("MIT", "MIT AND (GPL-2.0 OR ISC)") => true
-            // spdxSatisfies("MIT AND (GPL-2.0 OR ISC)", "MIT") => false
             if (validityCache.get(license) === false) {
-                forbiddenLicenseChanges.push(change);
+                invalidLicenseChanges.forbidden.push(change);
             }
         }
-        return [forbiddenLicenseChanges, unlicensedChanges];
+        return invalidLicenseChanges;
     });
 }
-exports.getDeniedLicenseChanges = getDeniedLicenseChanges;
+exports.getInvalidLicenseChanges = getInvalidLicenseChanges;
 const fetchGHLicense = (owner, repo) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     const octokit = new octokit_1.Octokit({
@@ -362,16 +364,16 @@ function run() {
             const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
-            const [licenseErrors, unknownLicenses] = yield (0, licenses_1.getDeniedLicenseChanges)(filteredChanges, {
+            const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             });
-            summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses);
+            summary.addSummaryToSummary(addedChanges, invalidLicenseChanges);
             summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity);
-            summary.addLicensesToSummary(licenseErrors, unknownLicenses, config);
+            summary.addLicensesToSummary(invalidLicenseChanges, config);
             summary.addScannedDependencies(changes);
             printVulnerabilitiesBlock(addedChanges, minSeverity);
-            printLicensesBlock(licenseErrors, unknownLicenses);
+            printLicensesBlock(invalidLicenseChanges);
             printScannedDependencies(changes);
         }
         catch (error) {
@@ -418,20 +420,22 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
-function printLicensesBlock(licenseErrors, unknownLicenses) {
+function printLicensesBlock(invalidLicenseChanges) {
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
-        if (licenseErrors.length > 0) {
-            printLicensesError(licenseErrors);
+        if (invalidLicenseChanges.forbidden.length > 0) {
+            core.info('\nThe following dependencies have incompatible licenses:\n');
+            printLicensesError(invalidLicenseChanges.forbidden);
             core.setFailed('Dependency review detected incompatible licenses.');
         }
-        printNullLicenses(unknownLicenses);
+        if (invalidLicenseChanges.unresolved.length > 0) {
+            core.warning('\nThe validity of the licenses of the dependecies below could not be determine. Ensure that they are valid spdx licenses:\n');
+            printLicensesError(invalidLicenseChanges.unresolved);
+            core.setFailed('Dependency review could not detect the validity of all licenses.');
+        }
+        printNullLicenses(invalidLicenseChanges.unlicensed);
     }));
 }
 function printLicensesError(changes) {
-    if (changes.length === 0) {
-        return;
-    }
-    core.info('\nThe following dependencies have incompatible licenses:\n');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – License: ${ansi_styles_1.default.color.red.open}${change.license}${ansi_styles_1.default.color.red.close}`);
     }
@@ -595,10 +599,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
-function addSummaryToSummary(addedPackages, licenseErrors, unknownLicenses) {
-    core.summary
-        .addHeading('Dependency Review')
-        .addRaw(`We found ${addedPackages.length} vulnerable package(s), ${licenseErrors.length} package(s) with incompatible licenses, and ${unknownLicenses.length} package(s) with unknown licenses.`);
+function addSummaryToSummary(addedPackages, invalidLicenseChanges) {
+    core.summary.addHeading('Dependency Review').addRaw(`We found:
+      - ${addedPackages.length} vulnerable package(s), 
+      - ${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses, 
+      - ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses, and
+      - ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`);
 }
 exports.addSummaryToSummary = addSummaryToSummary;
 function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
@@ -649,7 +655,7 @@ function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
     }
 }
 exports.addChangeVulnerabilitiesToSummary = addChangeVulnerabilitiesToSummary;
-function addLicensesToSummary(licenseErrors, unknownLicenses, config) {
+function addLicensesToSummary(invalidLicenseChanges, config) {
     core.summary.addHeading('Licenses');
     if (config.allow_licenses && config.allow_licenses.length > 0) {
         core.summary.addQuote(`<strong>Allowed Licenses</strong>: ${config.allow_licenses.join(', ')}`);
@@ -657,17 +663,18 @@ function addLicensesToSummary(licenseErrors, unknownLicenses, config) {
     if (config.deny_licenses && config.deny_licenses.length > 0) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
-    if (licenseErrors.length === 0 && unknownLicenses.length === 0) {
+    if (invalidLicenseChanges.forbidden.length === 0 &&
+        invalidLicenseChanges.unlicensed.length === 0) {
         core.summary.addQuote('No license violations detected.');
         return;
     }
-    if (licenseErrors.length > 0) {
+    if (invalidLicenseChanges.forbidden.length > 0) {
         const rows = [];
-        const manifests = (0, utils_1.getManifestsSet)(licenseErrors);
+        const manifests = (0, utils_1.getManifestsSet)(invalidLicenseChanges.forbidden);
         core.summary.addHeading('Incompatible Licenses', 3).addSeparator();
         for (const manifest of manifests) {
             core.summary.addHeading(`<em>${manifest}</em>`, 4);
-            for (const change of licenseErrors.filter(pkg => pkg.manifest === manifest)) {
+            for (const change of invalidLicenseChanges.forbidden.filter(pkg => pkg.manifest === manifest)) {
                 rows.push([
                     (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                     change.version,
@@ -680,15 +687,15 @@ function addLicensesToSummary(licenseErrors, unknownLicenses, config) {
     else {
         core.summary.addQuote('No license violations detected.');
     }
-    core.debug(`found ${unknownLicenses.length} unknown licenses`);
-    if (unknownLicenses.length > 0) {
+    core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
+    if (invalidLicenseChanges.unlicensed.length > 0) {
         const rows = [];
-        const manifests = (0, utils_1.getManifestsSet)(unknownLicenses);
+        const manifests = (0, utils_1.getManifestsSet)(invalidLicenseChanges.unlicensed);
         core.debug(`found ${manifests.entries.length} manifests for unknown licenses`);
         core.summary.addHeading('Unknown Licenses', 3).addSeparator();
         for (const manifest of manifests) {
             core.summary.addHeading(`<em>${manifest}</em>`, 4);
-            for (const change of unknownLicenses.filter(pkg => pkg.manifest === manifest)) {
+            for (const change of invalidLicenseChanges.unlicensed.filter(pkg => pkg.manifest === manifest)) {
                 rows.push([
                     (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                     change.version
@@ -27403,14 +27410,11 @@ function parseList(list) {
         return list.split(',').map(x => x.trim());
     }
 }
-function getInvalidLicenses(licenses) {
-    return licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
-}
 function validateLicenses(key, licenses) {
     if (licenses === undefined) {
         return;
     }
-    const invalid_licenses = getInvalidLicenses(licenses);
+    const invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
     if (invalid_licenses.length > 0) {
         throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`);
     }
