@@ -7,13 +7,15 @@ export function addSummaryToSummary(
   addedPackages: Changes,
   invalidLicenseChanges: Record<string, Changes>
 ): void {
-  core.summary.addHeading('Dependency Review').addRaw(
-    `We found:
-      - ${addedPackages.length} vulnerable package(s),\n
-      - ${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses,\n 
-      - ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses, and\n
-      - ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
-  )
+  core.summary
+    .addHeading('Dependency Review')
+    .addRaw('We found:')
+    .addList([
+      `${addedPackages.length} vulnerable package(s)`,
+      `${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses`,
+      `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses and`,
+      `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+    ])
 }
 
 export function addChangeVulnerabilitiesToSummary(
@@ -122,7 +124,7 @@ export function addLicensesToSummary(
       core.summary.addTable([['Package', 'Version', 'License'], ...rows])
     }
   } else {
-    core.summary.addQuote('No license violations detected.')
+    core.summary.addQuote('No incompatible license detected.')
   }
 
   core.debug(
@@ -162,7 +164,7 @@ export function addScannedDependencies(changes: Changes): void {
 
   const summary = core.summary
     .addHeading('Scanned Dependencies')
-    .addRaw(`We scanned ${dependencies.size} manifest files:`)
+    .addHeading(`We scanned ${dependencies.size} manifest files:`, 'title')
 
   for (const manifest of manifests) {
     const deps = dependencies.get(manifest)
