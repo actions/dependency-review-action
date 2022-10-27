@@ -9,9 +9,9 @@ export function addSummaryToSummary(
 ): void {
   core.summary.addHeading('Dependency Review').addRaw(
     `We found:
-      - ${addedPackages.length} vulnerable package(s), 
-      - ${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses, 
-      - ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses, and
+      - ${addedPackages.length} vulnerable package(s),\n
+      - ${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses,\n 
+      - ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses, and\n
       - ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
   )
 }
@@ -170,7 +170,7 @@ export function addScannedDependencies(changes: Changes): void {
       const dependencyNames = deps.map(
         dependency => `<li>${dependency.name}@${dependency.version}</li>`
       )
-      summary.addRaw(`<h3>${manifest}</h3><ul>${dependencyNames.join('')}</ul>`)
+      summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`)
     }
   }
 }
