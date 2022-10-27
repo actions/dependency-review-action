@@ -601,9 +601,9 @@ const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 function addSummaryToSummary(addedPackages, invalidLicenseChanges) {
     core.summary.addHeading('Dependency Review').addRaw(`We found:
-      - ${addedPackages.length} vulnerable package(s), 
-      - ${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses, 
-      - ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses, and
+      - ${addedPackages.length} vulnerable package(s),\n
+      - ${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses,\n 
+      - ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses, and\n
       - ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`);
 }
 exports.addSummaryToSummary = addSummaryToSummary;
@@ -716,7 +716,7 @@ function addScannedDependencies(changes) {
         const deps = dependencies.get(manifest);
         if (deps) {
             const dependencyNames = deps.map(dependency => `<li>${dependency.name}@${dependency.version}</li>`);
-            summary.addRaw(`<h3>${manifest}</h3><ul>${dependencyNames.join('')}</ul>`);
+            summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`);
         }
     }
 }
