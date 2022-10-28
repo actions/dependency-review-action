@@ -90,6 +90,9 @@ export function readInlineConfig(): ConfigurationOptions {
     .boolean()
     .default(true)
     .parse(getOptionalBoolean('vulnerability-check'))
+  if (license_check === false && vulnerability_check === false) {
+    throw new Error("Can't disable both license-check and vulnerability-check")
+  }
 
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')

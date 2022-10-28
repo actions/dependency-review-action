@@ -215,6 +215,14 @@ test('it parses the vulnerability-check input', async () => {
   expect(options.vulnerability_check).toEqual(true)
 })
 
+test('it is not impossible to disable both checks', async () => {
+  setInput('license-check', 'false')
+  setInput('vulnerability-check', 'false')
+  expect(() => {
+    readConfig()
+  }).toThrow("Can't disable both license-check and vulnerability-check")
+})
+
 describe('licenses that are not valid SPDX licenses', () => {
   beforeAll(() => {
     jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(false)
