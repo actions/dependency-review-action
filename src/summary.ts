@@ -1,18 +1,21 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Change, Changes} from './schemas'
+import {ConfigurationOptions, Changes} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
 export function addSummaryToSummary(
   addedPackages: Changes,
-  licenseErrors: Change[],
-  unknownLicenses: Change[]
+  invalidLicenseChanges: Record<string, Changes>
 ): void {
   core.summary
     .addHeading('Dependency Review')
-    .addRaw(
-      `We found ${addedPackages.length} vulnerable package(s), ${licenseErrors.length} package(s) with incompatible licenses, and ${unknownLicenses.length} package(s) with unknown licenses.`
-    )
+    .addRaw('We found:')
+    .addList([
+      `${addedPackages.length} vulnerable package(s)`,
+      `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
+      `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
+      `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+    ])
 }
 
 export function addChangeVulnerabilitiesToSummary(
@@ -76,8 +79,7 @@ export function addChangeVulnerabilitiesToSummary(
 }
 
 export function addLicensesToSummary(
-  licenseErrors: Change[],
-  unknownLicenses: Change[],
+  invalidLicenseChanges: Record<string, Changes>,
   config: ConfigurationOptions
 ): void {
   core.summary.addHeading('Licenses')
@@ -93,62 +95,59 @@ export function addLicensesToSummary(
     )
   }
 
-  if (licenseErrors.length === 0 && unknownLicenses.length === 0) {
+  if (Object.values(invalidLicenseChanges).every(item => item.length === 0)) {
     core.summary.addQuote('No license violations detected.')
     return
   }
 
-  if (licenseErrors.length > 0) {
-    const rows: SummaryTableRow[] = []
-    const manifests = getManifestsSet(licenseErrors)
+  core.debug(
+    `found ${invalidLicenseChanges.unlicensed.length} unknown licenses`
+  )
 
-    core.summary.addHeading('Incompatible Licenses', 3).addSeparator()
+  core.debug(
+    `${invalidLicenseChanges.unresolved.length} licenses could not be validated`
+  )
+
+  printLicenseViolation(
+    'Incompatible Licenses',
+    invalidLicenseChanges.forbidden
+  )
+  printLicenseViolation('Unknown Licenses', invalidLicenseChanges.unlicensed)
+  printLicenseViolation(
+    'Invalid SPDX License Definitions',
+    invalidLicenseChanges.unresolved
+  )
+}
+function printLicenseViolation(heading: string, changes: Changes): void {
+  core.summary.addHeading(heading, 5).addSeparator()
+
+  if (changes.length > 0) {
+    const rows: SummaryTableRow[] = []
+    const manifests = getManifestsSet(changes)
 
     for (const manifest of manifests) {
       core.summary.addHeading(`<em>${manifest}</em>`, 4)
 
-      for (const change of licenseErrors.filter(
-        pkg => pkg.manifest === manifest
-      )) {
+      for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
         rows.push([
           renderUrl(change.source_repository_url, change.name),
           change.version,
-          change.license || ''
+          formatLicense(change.license)
         ])
       }
+
       core.summary.addTable([['Package', 'Version', 'License'], ...rows])
     }
   } else {
-    core.summary.addQuote('No license violations detected.')
+    core.summary.addQuote(`No ${heading.toLowerCase()} detected.`)
   }
+}
 
-  core.debug(`found ${unknownLicenses.length} unknown licenses`)
-
-  if (unknownLicenses.length > 0) {
-    const rows: SummaryTableRow[] = []
-    const manifests = getManifestsSet(unknownLicenses)
-
-    core.debug(
-      `found ${manifests.entries.length} manifests for unknown licenses`
-    )
-
-    core.summary.addHeading('Unknown Licenses', 3).addSeparator()
-
-    for (const manifest of manifests) {
-      core.summary.addHeading(`<em>${manifest}</em>`, 4)
-
-      for (const change of unknownLicenses.filter(
-        pkg => pkg.manifest === manifest
-      )) {
-        rows.push([
-          renderUrl(change.source_repository_url, change.name),
-          change.version
-        ])
-      }
-
-      core.summary.addTable([['Package', 'Version'], ...rows])
-    }
+function formatLicense(license: string | null): string {
+  if (license === null || license === 'NOASSERTION') {
+    return 'Null'
   }
+  return license
 }
 
 export function addScannedDependencies(changes: Changes): void {
@@ -157,7 +156,7 @@ export function addScannedDependencies(changes: Changes): void {
 
   const summary = core.summary
     .addHeading('Scanned Dependencies')
-    .addRaw(`We scanned ${dependencies.size} manifest files:`)
+    .addHeading(`We scanned ${dependencies.size} manifest files:`, 5)
 
   for (const manifest of manifests) {
     const deps = dependencies.get(manifest)
@@ -165,7 +164,7 @@ export function addScannedDependencies(changes: Changes): void {
       const dependencyNames = deps.map(
         dependency => `<li>${dependency.name}@${dependency.version}</li>`
       )
-      summary.addRaw(`<h3>${manifest}</h3><ul>${dependencyNames.join('')}</ul>`)
+      summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`)
     }
   }
 }

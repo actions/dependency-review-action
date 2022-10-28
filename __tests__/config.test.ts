@@ -1,6 +1,7 @@
 import {expect, test, beforeEach} from '@jest/globals'
 import {readConfig, readConfigFile} from '../src/config'
 import {getRefs} from '../src/git-refs'
+import * as Utils from '../src/utils'
 
 // GitHub Action inputs come in the form of environment variables
 // with an INPUT prefix (e.g. INPUT_FAIL-ON-SEVERITY)
@@ -26,6 +27,10 @@ function clearInputs() {
     delete process.env[`INPUT_${option.toUpperCase()}`]
   })
 }
+
+beforeAll(() => {
+  jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(true)
+})
 
 beforeEach(() => {
   clearInputs()
@@ -174,4 +179,24 @@ test('it successfully parses GHSA allowlist', async () => {
     'GHSA-abcd-1234-5679',
     'GHSA-efgh-1234-5679'
   ])
+})
+
+describe('licenses that are not valid SPDX licenses', () => {
+  beforeAll(() => {
+    jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(false)
+  })
+
+  test('it raises an error for invalid licenses in allow-licenses', async () => {
+    setInput('allow-licenses', ' BSD, GPL 2')
+    expect(() => {
+      readConfig()
+    }).toThrow('Invalid license(s) in allow-licenses: BSD, GPL 2')
+  })
+
+  test('it raises an error for invalid licenses in deny-licenses', async () => {
+    setInput('deny-licenses', ' BSD, GPL 2')
+    expect(() => {
+      readConfig()
+    }).toThrow('Invalid license(s) in deny-licenses: BSD, GPL 2')
+  })
 })

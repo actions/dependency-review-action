@@ -33,6 +33,8 @@
     "got": "^12.5.2",
     "nodemon": "^2.0.20",
     "octokit": "^2.0.10",
+    "spdx-expression-parse": "^3.0.1",
+    "spdx-satisfies": "^5.0.1",
     "yaml": "^2.1.3",
     "zod": "^3.19.1"
   },
@@ -41,6 +43,8 @@
     "@types/node": "^16.18.2",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",
+    "@types/spdx-expression-parse": "^3.0.2",
+    "@types/spdx-satisfies": "^0.1.0",
     "@vercel/ncc": "^0.34.0",
     "esbuild-register": "^3.3.3",
     "eslint": "^8.26.0",
