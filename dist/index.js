@@ -428,7 +428,7 @@ function printLicensesBlock(invalidLicenseChanges) {
             core.setFailed('Dependency review detected incompatible licenses.');
         }
         if (invalidLicenseChanges.unresolved.length > 0) {
-            core.warning('\nThe validity of the licenses of the dependecies below could not be determine. Ensure that they are valid spdx licenses:');
+            core.warning('\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:');
             printLicensesError(invalidLicenseChanges.unresolved);
             core.setFailed('Dependency review could not detect the validity of all licenses.');
         }
@@ -605,7 +605,7 @@ function addSummaryToSummary(addedPackages, invalidLicenseChanges) {
         .addRaw('We found:')
         .addList([
         `${addedPackages.length} vulnerable package(s)`,
-        `${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses`,
+        `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
         `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
         `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
     ]);
@@ -675,7 +675,7 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
     printLicenseViolation('Incompatible Licenses', invalidLicenseChanges.forbidden);
     printLicenseViolation('Unknown Licenses', invalidLicenseChanges.unlicensed);
-    printLicenseViolation('Unvalidated Licenses', invalidLicenseChanges.unresolved);
+    printLicenseViolation('Invalid SPDX License Definitions', invalidLicenseChanges.unresolved);
 }
 exports.addLicensesToSummary = addLicensesToSummary;
 function printLicenseViolation(heading, changes) {
