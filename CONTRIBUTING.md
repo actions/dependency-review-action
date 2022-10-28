@@ -38,6 +38,7 @@ _Note_: We don't have any useful tests yet, contributions are welcome!
 
 ## Local Development
 
+It is recommended to have atleast [Node 18](https://nodejs.org/en/) installed.
 We have a script to scan a given PR for vulnerabilities, this will
 help you test your local changes. Make sure to [grab a Personal Access Token (PAT)](https://github.com/settings/tokens) before proceeding (you'll need `repo` permissions for private repos):
 
@@ -56,11 +57,11 @@ $ GITHUB_TOKEN=my-secret-token ./scripts/scan_pr https://github.com/actions/depe
 ```
 
 [Configuration options](README.md#configuration-options) can be set by
-passing an external YAML  [configuration file](README.md#configuration-file) to the
+passing an external YAML [configuration file](README.md#configuration-file) to the
 `scan_pr` script with the `-c`/`--config-file` option:
 
 ```sh
-$ GITHUB_TOKEN=<token> ./scripts/scan_pr --config-file my_custom_config.yml <pr_url> 
+$ GITHUB_TOKEN=<token> ./scripts/scan_pr --config-file my_custom_config.yml <pr_url>
 ```
 
 ## Submitting a pull request
