@@ -41,6 +41,8 @@ export const ConfigurationOptionsSchema = z
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     allow_ghsas: z.array(z.string()).default([]),
+    license_check: z.boolean().default(true),
+    vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional().default('false'),
     base_ref: z.string(),
     head_ref: z.string()

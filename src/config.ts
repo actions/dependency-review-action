@@ -13,6 +13,11 @@ import {isSPDXValid} from './utils'
 
 type licenseKey = 'allow-licenses' | 'deny-licenses'
 
+function getOptionalBoolean(name: string): boolean | undefined {
+  const value = core.getInput(name)
+  return value.length > 0 ? core.getBooleanInput(name) : undefined
+}
+
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
   return value.length > 0 ? value : undefined
@@ -77,6 +82,15 @@ export function readInlineConfig(): ConfigurationOptions {
 
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
 
+  const license_check = z
+    .boolean()
+    .default(true)
+    .parse(getOptionalBoolean('license-check'))
+  const vulnerability_check = z
+    .boolean()
+    .default(true)
+    .parse(getOptionalBoolean('vulnerability-check'))
+
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
 
@@ -86,6 +100,8 @@ export function readInlineConfig(): ConfigurationOptions {
     allow_licenses,
     deny_licenses,
     allow_ghsas,
+    license_check,
+    vulnerability_check,
     base_ref,
     head_ref
   }

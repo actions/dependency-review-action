@@ -54,12 +54,16 @@ async function run(): Promise<void> {
     )
 
     summary.addSummaryToSummary(addedChanges, invalidLicenseChanges)
-    summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)
-    summary.addLicensesToSummary(invalidLicenseChanges, config)
-    summary.addScannedDependencies(changes)
+    if (config.vulnerability_check) {
+      summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)
+      printVulnerabilitiesBlock(addedChanges, minSeverity)
+    }
+    if (config.license_check) {
+      summary.addLicensesToSummary(invalidLicenseChanges, config)
+      printLicensesBlock(invalidLicenseChanges)
+    }
 
-    printVulnerabilitiesBlock(addedChanges, minSeverity)
-    printLicensesBlock(invalidLicenseChanges)
+    summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
