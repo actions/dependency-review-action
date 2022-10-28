@@ -108,7 +108,7 @@ fail-on-scopes:
 
 Only allow the licenses that comply with the expressions in this list. See "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
 
-**Possible values**: Any valid [spdx license expression](https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60).
+**Possible values**: A list of of [SPDX-compliant license identifiers](https://spdx.org/licenses/).
 
 **Inline example**: `allow-licenses: BSD-3-Clause, LGPL-2.1 OR MIT OR BSD-3-Clause`
 
@@ -117,7 +117,9 @@ Only allow the licenses that comply with the expressions in this list. See "[Lic
 ```yaml
 allow-licenses:
   - BSD-3-Clause
-  - LGPL-2.1 OR MIT OR BSD-3-Clause
+  - LGPL-2.1
+  - MIT
+  - BSD-3-Clause
 ```
 
 ### deny-licenses
@@ -125,7 +127,7 @@ allow-licenses:
 Add a custom list of licenses you want to block. See
 "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
 
-**Possible values**: Any valid [sodx license expression](https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60).
+**Possible values**: Any valid set of [SPDX licenses](https://spdx.org/licenses/).
 
 **Inline example**: `deny-licenses: LGPL-2.0, GPL-2.0+ WITH Bison-exception-2.2`
 
@@ -257,7 +259,7 @@ forbid a subset of licenses. These options are not supported on Enterprise Serve
 
 You can use the [Licenses
 API](https://docs.github.com/en/rest/licenses) to see the full list of
-supported licenses. Use [spdx license expressions](https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60)
+supported licenses. Use [SPDX licenses](https://spdx.org/licenses/)
 to filter the licenses. A couple of examples:
 
 ```yaml

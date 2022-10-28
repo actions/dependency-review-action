@@ -12,7 +12,7 @@ export function addSummaryToSummary(
     .addRaw('We found:')
     .addList([
       `${addedPackages.length} vulnerable package(s)`,
-      `${invalidLicenseChanges.unresolved.length} package(s) with unprocessable licenses`,
+      `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
       `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
       `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
     ])
@@ -114,7 +114,7 @@ export function addLicensesToSummary(
   )
   printLicenseViolation('Unknown Licenses', invalidLicenseChanges.unlicensed)
   printLicenseViolation(
-    'Unvalidated Licenses',
+    'Invalid SPDX License Definitions',
     invalidLicenseChanges.unresolved
   )
 }

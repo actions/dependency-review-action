@@ -129,7 +129,7 @@ function printLicensesBlock(
     }
     if (invalidLicenseChanges.unresolved.length > 0) {
       core.warning(
-        '\nThe validity of the licenses of the dependecies below could not be determine. Ensure that they are valid spdx licenses:'
+        '\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:'
       )
       printLicensesError(invalidLicenseChanges.unresolved)
       core.setFailed(

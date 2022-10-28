@@ -1,7 +1,6 @@
 import * as core from '@actions/core'
 import spdxSatisfies from 'spdx-satisfies'
 import {Octokit} from 'octokit'
-
 import {Change, Changes} from './schemas'
 import {isSPDXValid} from './utils'
 
