@@ -215,7 +215,7 @@ test('it parses the vulnerability-check input', async () => {
   expect(options.vulnerability_check).toEqual(true)
 })
 
-test('it is not impossible to disable both checks', async () => {
+test('it is not possible to disable both checks', async () => {
   setInput('license-check', 'false')
   setInput('vulnerability-check', 'false')
   expect(() => {
