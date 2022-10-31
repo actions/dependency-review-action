@@ -368,12 +368,16 @@ function run() {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             });
-            summary.addSummaryToSummary(addedChanges, invalidLicenseChanges);
-            summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity);
-            summary.addLicensesToSummary(invalidLicenseChanges, config);
+            summary.addSummaryToSummary(config.vulnerability_check ? addedChanges : null, config.license_check ? invalidLicenseChanges : null);
+            if (config.vulnerability_check) {
+                summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity);
+                printVulnerabilitiesBlock(addedChanges, minSeverity);
+            }
+            if (config.license_check) {
+                summary.addLicensesToSummary(invalidLicenseChanges, config);
+                printLicensesBlock(invalidLicenseChanges);
+            }
             summary.addScannedDependencies(changes);
-            printVulnerabilitiesBlock(addedChanges, minSeverity);
-            printLicensesBlock(invalidLicenseChanges);
             printScannedDependencies(changes);
         }
         catch (error) {
@@ -556,6 +560,8 @@ exports.ConfigurationOptionsSchema = z
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     allow_ghsas: z.array(z.string()).default([]),
+    license_check: z.boolean().default(true),
+    vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional().default('false'),
     base_ref: z.string(),
     head_ref: z.string()
@@ -604,10 +610,16 @@ function addSummaryToSummary(addedPackages, invalidLicenseChanges) {
         .addHeading('Dependency Review')
         .addRaw('We found:')
         .addList([
-        `${addedPackages.length} vulnerable package(s)`,
-        `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
-        `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
-        `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+        ...(addedPackages
+            ? [`${addedPackages.length} vulnerable package(s)`]
+            : []),
+        ...(invalidLicenseChanges
+            ? [
+                `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
+                `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
+                `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+            ]
+            : [])
     ]);
 }
 exports.addSummaryToSummary = addSummaryToSummary;
@@ -27397,6 +27409,10 @@ const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
+function getOptionalBoolean(name) {
+    const value = core.getInput(name);
+    return value.length > 0 ? core.getBooleanInput(name) : undefined;
+}
 function getOptionalInput(name) {
     const value = core.getInput(name);
     return value.length > 0 ? value : undefined;
@@ -27448,6 +27464,17 @@ function readInlineConfig() {
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
+    const license_check = z
+        .boolean()
+        .default(true)
+        .parse(getOptionalBoolean('license-check'));
+    const vulnerability_check = z
+        .boolean()
+        .default(true)
+        .parse(getOptionalBoolean('vulnerability-check'));
+    if (license_check === false && vulnerability_check === false) {
+        throw new Error("Can't disable both license-check and vulnerability-check");
+    }
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
     return {
@@ -27456,6 +27483,8 @@ function readInlineConfig() {
         allow_licenses,
         deny_licenses,
         allow_ghsas,
+        license_check,
+        vulnerability_check,
         base_ref,
         head_ref
     };
@@ -27632,6 +27661,8 @@ exports.ConfigurationOptionsSchema = z
     allow_licenses: z.array(z.string()).default([]),
     deny_licenses: z.array(z.string()).default([]),
     allow_ghsas: z.array(z.string()).default([]),
+    license_check: z.boolean().default(true),
+    vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional().default('false'),
     base_ref: z.string(),
     head_ref: z.string()

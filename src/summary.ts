@@ -4,17 +4,23 @@ import {SummaryTableRow} from '@actions/core/lib/summary'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
 export function addSummaryToSummary(
-  addedPackages: Changes,
-  invalidLicenseChanges: Record<string, Changes>
+  addedPackages: Changes | null,
+  invalidLicenseChanges: Record<string, Changes> | null
 ): void {
   core.summary
     .addHeading('Dependency Review')
     .addRaw('We found:')
     .addList([
-      `${addedPackages.length} vulnerable package(s)`,
-      `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
-      `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
-      `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+      ...(addedPackages
+        ? [`${addedPackages.length} vulnerable package(s)`]
+        : []),
+      ...(invalidLicenseChanges
+        ? [
+            `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
+            `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
+            `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+          ]
+        : [])
     ])
 }
 

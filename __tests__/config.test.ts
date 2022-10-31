@@ -18,6 +18,8 @@ function clearInputs() {
     'ALLOW-LICENSES',
     'DENY-LICENSES',
     'ALLOW-GHSAS',
+    'LICENSE-CHECK',
+    'VULNERABILITY-CHECK',
     'CONFIG-FILE',
     'BASE-REF',
     'HEAD-REF'
@@ -179,6 +181,46 @@ test('it successfully parses GHSA allowlist', async () => {
     'GHSA-abcd-1234-5679',
     'GHSA-efgh-1234-5679'
   ])
+})
+
+test('it defaults to checking licenses', async () => {
+  const options = readConfig()
+  expect(options.license_check).toBe(true)
+})
+
+test('it parses the license-check input', async () => {
+  setInput('license-check', 'false')
+  let options = readConfig()
+  expect(options.license_check).toEqual(false)
+
+  clearInputs()
+  setInput('license-check', 'true')
+  options = readConfig()
+  expect(options.license_check).toEqual(true)
+})
+
+test('it defaults to checking vulnerabilities', async () => {
+  const options = readConfig()
+  expect(options.vulnerability_check).toBe(true)
+})
+
+test('it parses the vulnerability-check input', async () => {
+  setInput('vulnerability-check', 'false')
+  let options = readConfig()
+  expect(options.vulnerability_check).toEqual(false)
+
+  clearInputs()
+  setInput('vulnerability-check', 'true')
+  options = readConfig()
+  expect(options.vulnerability_check).toEqual(true)
+})
+
+test('it is not possible to disable both checks', async () => {
+  setInput('license-check', 'false')
+  setInput('vulnerability-check', 'false')
+  expect(() => {
+    readConfig()
+  }).toThrow("Can't disable both license-check and vulnerability-check")
 })
 
 describe('licenses that are not valid SPDX licenses', () => {
