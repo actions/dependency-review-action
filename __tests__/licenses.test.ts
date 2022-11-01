@@ -1,6 +1,7 @@
 import {expect, jest, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {getDeniedLicenseChanges} from '../src/licenses'
+
+let getInvalidLicenseChanges: Function
 
 let npmChange: Change = {
   manifest: 'package.json',
@@ -70,65 +71,94 @@ jest.mock('octokit', () => {
   }
 })
 
-test('it fails if a license outside the allow list is found', async () => {
-  const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
-    allow: ['BSD']
+beforeEach(async () => {
+  jest.resetModules()
+  jest.doMock('spdx-satisfies', () => {
+    // mock spdx-satisfies return value
+    // true for BSD, false for all others
+    return jest.fn((license: string, _: string): boolean => license === 'BSD')
   })
-  expect(invalidChanges[0]).toBe(npmChange)
+  ;({getInvalidLicenseChanges} = require('../src/licenses'))
 })
 
-test('it fails if a license inside the deny list is found', async () => {
+test('it adds license outside the allow list to forbidden changes', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const [invalidChanges] = await getDeniedLicenseChanges(changes, {
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    allow: ['BSD']
+  })
+  expect(forbidden[0]).toBe(npmChange)
+  expect(forbidden.length).toEqual(1)
+})
+
+test('it adds license inside the deny list to forbidden changes', async () => {
+  const changes: Changes = [npmChange, rubyChange]
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
     deny: ['BSD']
   })
-  expect(invalidChanges[0]).toBe(rubyChange)
+  expect(forbidden[0]).toBe(rubyChange)
+  expect(forbidden.length).toEqual(1)
 })
 
 // This is more of a "here's a behavior that might be surprising" than an actual
 // thing we want in the system. Please remove this test after refactoring.
-test('it fails all license checks when allow is provided an empty array', async () => {
+test('it adds all licenses to forbidden changes when allow is provided an empty array', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  let [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+  let {forbidden} = await getInvalidLicenseChanges(changes, {
     allow: [],
     deny: ['BSD']
   })
-  expect(invalidChanges.length).toBe(2)
+  expect(forbidden.length).toBe(2)
 })
 
-test('it does not fail if a license outside the allow list is found in removed changes', async () => {
+test('it does not add license outside the allow list to forbidden changes if it is in removed changes', async () => {
   const changes: Changes = [
     {...npmChange, change_type: 'removed'},
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
     allow: ['BSD']
   })
-  expect(invalidChanges).toStrictEqual([])
+  expect(forbidden).toStrictEqual([])
 })
 
-test('it does not fail if a license inside the deny list is found in removed changes', async () => {
+test('it does not add license inside the deny list to forbidden changes if it is in removed changes', async () => {
   const changes: Changes = [
     {...npmChange, change_type: 'removed'},
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
     deny: ['BSD']
   })
-  expect(invalidChanges).toStrictEqual([])
+  expect(forbidden).toStrictEqual([])
 })
 
-test('it fails if a license outside the allow list is found in both of added and removed changes', async () => {
+test('it adds license outside the allow list to forbidden changes if it is in both added and removed changes', async () => {
   const changes: Changes = [
     {...npmChange, change_type: 'removed'},
     npmChange,
     {...rubyChange, change_type: 'removed'}
   ]
-  const [invalidChanges, _] = await getDeniedLicenseChanges(changes, {
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
     allow: ['BSD']
   })
-  expect(invalidChanges).toStrictEqual([npmChange])
+  expect(forbidden).toStrictEqual([npmChange])
+})
+
+test('it adds all licenses to unresolved if it is unable to determine the validity', async () => {
+  jest.resetModules() // reset module set in before
+  jest.doMock('spdx-satisfies', () => {
+    return jest.fn((_first: string, _second: string) => {
+      throw new Error('Some Error')
+    })
+  })
+  ;({getInvalidLicenseChanges} = require('../src/licenses'))
+  const changes: Changes = [npmChange, rubyChange]
+  const invalidLicenses = await getInvalidLicenseChanges(changes, {
+    allow: ['BSD']
+  })
+  expect(invalidLicenses.forbidden.length).toEqual(0)
+  expect(invalidLicenses.unlicensed.length).toEqual(0)
+  expect(invalidLicenses.unresolved.length).toEqual(2)
 })
 
 describe('GH License API fallback', () => {
@@ -138,7 +168,7 @@ describe('GH License API fallback', () => {
       license: null,
       source_repository_url: 'http://github.com/some-owner/some-repo'
     }
-    const [_, unknownChanges] = await getDeniedLicenseChanges(
+    const {unlicensed} = await getInvalidLicenseChanges(
       [nullLicenseChange, rubyChange],
       {}
     )
@@ -147,25 +177,25 @@ describe('GH License API fallback', () => {
       owner: 'some-owner',
       repo: 'some-repo'
     })
-    expect(unknownChanges.length).toEqual(0)
+    expect(unlicensed.length).toEqual(0)
   })
 
   test('it does not call licenses API endpoint for change with null license and invalid source_repository_url ', async () => {
-    const [_, unknownChanges] = await getDeniedLicenseChanges(
+    const {unlicensed} = await getInvalidLicenseChanges(
       [{...npmChange, license: null}],
       {}
     )
     expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
-    expect(unknownChanges.length).toEqual(1)
+    expect(unlicensed.length).toEqual(1)
   })
 
   test('it does not call licenses API endpoint if licenses for all changes are present', async () => {
-    const [_, unknownChanges] = await getDeniedLicenseChanges(
+    const {unlicensed} = await getInvalidLicenseChanges(
       [npmChange, rubyChange],
       {}
     )
 
     expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
-    expect(unknownChanges.length).toEqual(0)
+    expect(unlicensed.length).toEqual(0)
   })
 })

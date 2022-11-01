@@ -1,6 +1,8 @@
 import * as core from '@actions/core'
+import spdxSatisfies from 'spdx-satisfies'
 import {Octokit} from 'octokit'
-import {Change} from './schemas'
+import {Change, Changes} from './schemas'
+import {isSPDXValid} from './utils'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -12,48 +14,62 @@ import {Change} from './schemas'
  * we will ignore the deny list.
  * @param {Change[]} changes The list of changes to filter.
  * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
- * @returns {Promise<[Array.<Change>, Array.<Change>]>} A promise to a 2 element tuple. The first element is the list of denied changes and the second one is the list of changes with unknown licenses
+ * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
  */
-export async function getDeniedLicenseChanges(
+export async function getInvalidLicenseChanges(
   changes: Change[],
   licenses: {
     allow?: string[]
     deny?: string[]
   }
-): Promise<[Change[], Change[]]> {
+): Promise<Record<string, Changes>> {
   const {allow, deny} = licenses
 
-  const disallowed: Change[] = []
-  const unknown: Change[] = []
+  const groupedChanges = await groupChanges(changes)
+  const licensedChanges: Changes = groupedChanges.licensed
 
-  const consolidatedChanges = changes.some(
-    ({source_repository_url, license}) => !license && source_repository_url
-  )
-    ? await setGHLicenses(changes)
-    : changes
+  const invalidLicenseChanges: Record<string, Changes> = {
+    unlicensed: groupedChanges.unlicensed,
+    unresolved: [],
+    forbidden: []
+  }
 
-  for (const change of consolidatedChanges) {
-    if (change.change_type === 'removed') {
-      continue
-    }
+  const validityCache = new Map<string, boolean>()
 
+  for (const change of licensedChanges) {
     const license = change.license
+
+    // should never happen since licensedChanges always have licenses but license is nullable in changes schema
     if (license === null) {
-      unknown.push(change)
       continue
     }
-    if (allow !== undefined) {
-      if (!allow.includes(license)) {
-        disallowed.push(change)
+
+    if (license === 'NOASSERTION') {
+      invalidLicenseChanges.unlicensed.push(change)
+    } else if (validityCache.get(license) === undefined) {
+      try {
+        if (allow !== undefined) {
+          const found = allow.find(spdxExpression =>
+            spdxSatisfies(license, spdxExpression)
+          )
+          validityCache.set(license, found !== undefined)
+        } else if (deny !== undefined) {
+          const found = deny.find(spdxExpression =>
+            spdxSatisfies(license, spdxExpression)
+          )
+          validityCache.set(license, found === undefined)
+        }
+      } catch (err) {
+        invalidLicenseChanges.unresolved.push(change)
       }
-    } else if (deny !== undefined) {
-      if (deny.includes(license)) {
-        disallowed.push(change)
-      }
+    }
+
+    if (validityCache.get(license) === false) {
+      invalidLicenseChanges.forbidden.push(change)
     }
   }
 
-  return [disallowed, unknown]
+  return invalidLicenseChanges
 }
 
 const fetchGHLicense = async (
@@ -107,4 +123,55 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
   })
 
   return Promise.all(updatedChanges)
+}
+// Currently Dependency Graph licenses are truncated to 255 characters
+// This possibly makes them invalid spdx ids
+const truncatedDGLicense = (license: string): boolean =>
+  license.length === 255 && !isSPDXValid(license)
+
+async function groupChanges(
+  changes: Changes
+): Promise<Record<string, Changes>> {
+  const result: Record<string, Changes> = {
+    licensed: [],
+    unlicensed: []
+  }
+
+  const ghChanges = []
+
+  for (const change of changes) {
+    if (change.change_type === 'removed') {
+      continue
+    }
+
+    if (change.license === null) {
+      if (change.source_repository_url !== null) {
+        ghChanges.push(change)
+      } else {
+        result.unlicensed.push(change)
+      }
+    } else {
+      if (
+        truncatedDGLicense(change.license) &&
+        change.source_repository_url !== null
+      ) {
+        ghChanges.push(change)
+      } else {
+        result.licensed.push(change)
+      }
+    }
+  }
+
+  if (ghChanges.length > 0) {
+    const ghLicenses = await setGHLicenses(ghChanges)
+    for (const change of ghLicenses) {
+      if (change.license === null) {
+        result.unlicensed.push(change)
+      } else {
+        result.licensed.push(change)
+      }
+    }
+  }
+
+  return result
 }

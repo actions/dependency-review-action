@@ -1,6 +1,7 @@
 import {expect, test, beforeEach} from '@jest/globals'
 import {readConfig, readConfigFile} from '../src/config'
 import {getRefs} from '../src/git-refs'
+import * as Utils from '../src/utils'
 
 // GitHub Action inputs come in the form of environment variables
 // with an INPUT prefix (e.g. INPUT_FAIL-ON-SEVERITY)
@@ -17,6 +18,8 @@ function clearInputs() {
     'ALLOW-LICENSES',
     'DENY-LICENSES',
     'ALLOW-GHSAS',
+    'LICENSE-CHECK',
+    'VULNERABILITY-CHECK',
     'CONFIG-FILE',
     'BASE-REF',
     'HEAD-REF'
@@ -26,6 +29,10 @@ function clearInputs() {
     delete process.env[`INPUT_${option.toUpperCase()}`]
   })
 }
+
+beforeAll(() => {
+  jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(true)
+})
 
 beforeEach(() => {
   clearInputs()
@@ -174,4 +181,64 @@ test('it successfully parses GHSA allowlist', async () => {
     'GHSA-abcd-1234-5679',
     'GHSA-efgh-1234-5679'
   ])
+})
+
+test('it defaults to checking licenses', async () => {
+  const options = readConfig()
+  expect(options.license_check).toBe(true)
+})
+
+test('it parses the license-check input', async () => {
+  setInput('license-check', 'false')
+  let options = readConfig()
+  expect(options.license_check).toEqual(false)
+
+  clearInputs()
+  setInput('license-check', 'true')
+  options = readConfig()
+  expect(options.license_check).toEqual(true)
+})
+
+test('it defaults to checking vulnerabilities', async () => {
+  const options = readConfig()
+  expect(options.vulnerability_check).toBe(true)
+})
+
+test('it parses the vulnerability-check input', async () => {
+  setInput('vulnerability-check', 'false')
+  let options = readConfig()
+  expect(options.vulnerability_check).toEqual(false)
+
+  clearInputs()
+  setInput('vulnerability-check', 'true')
+  options = readConfig()
+  expect(options.vulnerability_check).toEqual(true)
+})
+
+test('it is not possible to disable both checks', async () => {
+  setInput('license-check', 'false')
+  setInput('vulnerability-check', 'false')
+  expect(() => {
+    readConfig()
+  }).toThrow("Can't disable both license-check and vulnerability-check")
+})
+
+describe('licenses that are not valid SPDX licenses', () => {
+  beforeAll(() => {
+    jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(false)
+  })
+
+  test('it raises an error for invalid licenses in allow-licenses', async () => {
+    setInput('allow-licenses', ' BSD, GPL 2')
+    expect(() => {
+      readConfig()
+    }).toThrow('Invalid license(s) in allow-licenses: BSD, GPL 2')
+  })
+
+  test('it raises an error for invalid licenses in deny-licenses', async () => {
+    setInput('deny-licenses', ' BSD, GPL 2')
+    expect(() => {
+      readConfig()
+    }).toThrow('Invalid license(s) in deny-licenses: BSD, GPL 2')
+  })
 })

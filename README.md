@@ -115,19 +115,20 @@ fail-on-scopes:
 
 ### allow-licenses
 
-Only allow the licenses in this list. See "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
+Only allow the licenses that comply with the expressions in this list. See "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
 
-**Possible values**: Any `spdx_id` value(s) from
-https://docs.github.com/en/rest/licenses.
+**Possible values**: A list of of [SPDX-compliant license identifiers](https://spdx.org/licenses/).
 
-**Inline example**: `allow-licenses: BSD-3-Clause, MIT`
+**Inline example**: `allow-licenses: BSD-3-Clause, LGPL-2.1 OR MIT OR BSD-3-Clause`
 
 **YAML example**:
 
 ```yaml
 allow-licenses:
   - BSD-3-Clause
+  - LGPL-2.1
   - MIT
+  - BSD-3-Clause
 ```
 
 ### deny-licenses
@@ -135,17 +136,16 @@ allow-licenses:
 Add a custom list of licenses you want to block. See
 "[Licenses](https://github.com/actions/dependency-review-action#licenses)".
 
-**Possible values**: Any `spdx_id` value(s) from
-https://docs.github.com/en/rest/licenses.
+**Possible values**: Any valid set of [SPDX licenses](https://spdx.org/licenses/).
 
-**Inline example**: `deny-licenses: LGPL-2.0, BSD-2-Clause`
+**Inline example**: `deny-licenses: LGPL-2.0, GPL-2.0+ WITH Bison-exception-2.2`
 
 **YAML example**:
 
 ```yaml
 deny-licenses:
   - LGPL-2.0
-  - BSD-2-Clause
+  - GPL-2.0+ WITH Bison-exception-2.2
 ```
 
 ### allow-ghsas
@@ -162,6 +162,20 @@ Add a custom list of GitHub Advisory IDs that can be skipped during detection.
 allow-ghsas:
   - GHSA-abcd-1234-5679
   - GHSA-efgh-1234-5679
+```
+
+### license-check/vulnerability-check
+
+Disable the license checks or vulnerability checks performed by this Action.
+You can't disable both checks.
+
+**Possible values**: `true` or `false`
+
+**Example**:
+
+```yaml
+license-check: true
+vulnerability-check: false
 ```
 
 ### base-ref/head-ref
@@ -280,8 +294,8 @@ forbid a subset of licenses. These options are not supported on Enterprise Serve
 
 You can use the [Licenses
 API](https://docs.github.com/en/rest/licenses) to see the full list of
-supported licenses. Use the `spdx_id` field for every license you want
-to filter. A couple of examples:
+supported licenses. Use [SPDX licenses](https://spdx.org/licenses/)
+to filter the licenses. A couple of examples:
 
 ```yaml
 # only allow MIT-licensed dependents
@@ -296,7 +310,7 @@ to filter. A couple of examples:
 - name: Dependency Review
   uses: actions/dependency-review-action@v2
   with:
-    deny-licenses: Apache-1.1, Apache-2.0
+    deny-licenses: Apache-1.1+
 ```
 
 ### Considerations

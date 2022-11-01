@@ -10,7 +10,7 @@ import {
   filterChangesByScopes,
   filterAllowedAdvisories
 } from '../src/filter'
-import {getDeniedLicenseChanges} from './licenses'
+import {getInvalidLicenseChanges} from './licenses'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
 
@@ -45,7 +45,7 @@ async function run(): Promise<void> {
         change.vulnerabilities.length > 0
     )
 
-    const [licenseErrors, unknownLicenses] = await getDeniedLicenseChanges(
+    const invalidLicenseChanges = await getInvalidLicenseChanges(
       filteredChanges,
       {
         allow: config.allow_licenses,
@@ -53,13 +53,21 @@ async function run(): Promise<void> {
       }
     )
 
-    summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses)
-    summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)
-    summary.addLicensesToSummary(licenseErrors, unknownLicenses, config)
-    summary.addScannedDependencies(changes)
+    summary.addSummaryToSummary(
+      config.vulnerability_check ? addedChanges : null,
+      config.license_check ? invalidLicenseChanges : null
+    )
 
-    printVulnerabilitiesBlock(addedChanges, minSeverity)
-    printLicensesBlock(licenseErrors, unknownLicenses)
+    if (config.vulnerability_check) {
+      summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)
+      printVulnerabilitiesBlock(addedChanges, minSeverity)
+    }
+    if (config.license_check) {
+      summary.addLicensesToSummary(invalidLicenseChanges, config)
+      printLicensesBlock(invalidLicenseChanges)
+    }
+
+    summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
@@ -83,7 +91,7 @@ async function run(): Promise<void> {
 }
 
 function printVulnerabilitiesBlock(
-  addedChanges: Change[],
+  addedChanges: Changes,
   minSeverity: Severity
 ): void {
   let failed = false
@@ -119,24 +127,28 @@ function printChangeVulnerabilities(change: Change): void {
 }
 
 function printLicensesBlock(
-  licenseErrors: Change[],
-  unknownLicenses: Change[]
+  invalidLicenseChanges: Record<string, Changes>
 ): void {
   core.group('Licenses', async () => {
-    if (licenseErrors.length > 0) {
-      printLicensesError(licenseErrors)
+    if (invalidLicenseChanges.forbidden.length > 0) {
+      core.info('\nThe following dependencies have incompatible licenses:')
+      printLicensesError(invalidLicenseChanges.forbidden)
       core.setFailed('Dependency review detected incompatible licenses.')
     }
-    printNullLicenses(unknownLicenses)
+    if (invalidLicenseChanges.unresolved.length > 0) {
+      core.warning(
+        '\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:'
+      )
+      printLicensesError(invalidLicenseChanges.unresolved)
+      core.setFailed(
+        'Dependency review could not detect the validity of all licenses.'
+      )
+    }
+    printNullLicenses(invalidLicenseChanges.unlicensed)
   })
 }
 
-function printLicensesError(changes: Change[]): void {
-  if (changes.length === 0) {
-    return
-  }
-
-  core.info('\nThe following dependencies have incompatible licenses:\n')
+function printLicensesError(changes: Changes): void {
   for (const change of changes) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close} – License: ${styles.color.red.open}${change.license}${styles.color.red.close}`
@@ -144,12 +156,12 @@ function printLicensesError(changes: Change[]): void {
   }
 }
 
-function printNullLicenses(changes: Change[]): void {
+function printNullLicenses(changes: Changes): void {
   if (changes.length === 0) {
     return
   }
 
-  core.info('\nWe could not detect a license for the following dependencies:\n')
+  core.info('\nWe could not detect a license for the following dependencies:')
   for (const change of changes) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`

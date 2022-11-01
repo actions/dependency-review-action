@@ -9,6 +9,14 @@ import {
   SeveritySchema,
   SCOPES
 } from './schemas'
+import {isSPDXValid} from './utils'
+
+type licenseKey = 'allow-licenses' | 'deny-licenses'
+
+function getOptionalBoolean(name: string): boolean | undefined {
+  const value = core.getInput(name)
+  return value.length > 0 ? core.getBooleanInput(name) : undefined
+}
 
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
@@ -20,6 +28,22 @@ function parseList(list: string | undefined): string[] | undefined {
     return list
   } else {
     return list.split(',').map(x => x.trim())
+  }
+}
+
+function validateLicenses(
+  key: licenseKey,
+  licenses: string[] | undefined
+): void {
+  if (licenses === undefined) {
+    return
+  }
+  const invalid_licenses = licenses.filter(license => !isSPDXValid(license))
+
+  if (invalid_licenses.length > 0) {
+    throw new Error(
+      `Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`
+    )
   }
 }
 
@@ -53,8 +77,22 @@ export function readInlineConfig(): ConfigurationOptions {
   if (allow_licenses !== undefined && deny_licenses !== undefined) {
     throw new Error("Can't specify both allow_licenses and deny_licenses")
   }
+  validateLicenses('allow-licenses', allow_licenses)
+  validateLicenses('deny-licenses', deny_licenses)
 
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
+
+  const license_check = z
+    .boolean()
+    .default(true)
+    .parse(getOptionalBoolean('license-check'))
+  const vulnerability_check = z
+    .boolean()
+    .default(true)
+    .parse(getOptionalBoolean('vulnerability-check'))
+  if (license_check === false && vulnerability_check === false) {
+    throw new Error("Can't disable both license-check and vulnerability-check")
+  }
 
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
@@ -65,6 +103,8 @@ export function readInlineConfig(): ConfigurationOptions {
     allow_licenses,
     deny_licenses,
     allow_ghsas,
+    license_check,
+    vulnerability_check,
     base_ref,
     head_ref
   }
@@ -80,8 +120,11 @@ export function readConfigFile(filePath: string): ConfigurationOptions {
   }
   data = YAML.parse(data)
 
-  // get rid of the ugly dashes from the actions conventions
   for (const key of Object.keys(data)) {
+    if (key === 'allow-licenses' || key === 'deny-licenses') {
+      validateLicenses(key, data[key])
+    }
+    // get rid of the ugly dashes from the actions conventions
     if (key.includes('-')) {
       data[key.replace(/-/g, '_')] = data[key]
       delete data[key]
