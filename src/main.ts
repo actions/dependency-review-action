@@ -18,7 +18,7 @@ import {groupDependenciesByManifest} from './utils'
 
 async function run(): Promise<void> {
   try {
-    const config = readConfig()
+    const config = await readConfig()
     const refs = getRefs(config, github.context)
 
     const changes = await dependencyGraph.compare({

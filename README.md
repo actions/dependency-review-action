@@ -71,22 +71,22 @@ or by inlining these options in your workflow file.
 
 ### config-file
 
-A string representing the path to a configuraton file. The
-configuration file can be local to the repo, or can be a file in an
-external repo. If you are referencing a configuration file located in an
-external repository, you can use the
+A string representing the path to a configuraton file local to the repo.
+
+**Possible values**: A string representing an absolute path to a file.
+
+**Example**: `config-file: ./.github/dependency-review-config.yml`.
+
+### remote-config-file
+
+A string representing the path to a configuraton file in an external repo. It follows the
 `OWNER/REPOSITORY/FILENAME@BRANCH` syntax.
 
-If the configuration file is located in an external private
-repository, use the [external-repository-token](#external-repository-token) parameter of the
-action to specify a token that has read access to the repository.
+If the file is located in a private repository, use the [remote-config-repo-token](#remote-config-repo-token) parameter of the action to specify a token that has read access to the repository.
 
-**Possible values**: A string representing an absolute path to a file,
-  or a file located in another repository:
+**Possible values**: A string representing a path to a file located in another repository:
 
-**Example**: `config-file: ./.github/dependency-review-config.yml  # local file`.
-**Example**: `config-file: github/octorepo/dependency-review-config.yml@main  # external repo`
-
+**Example**: `config-file: github/octorepo/dependency-review-config.yml@main`
 
 ### fail-on-severity
 
@@ -150,7 +150,7 @@ deny-licenses:
 
 ### allow-ghsas
 
-Add a custom list of GitHub Advisory IDs that can be skipped during detection. 
+Add a custom list of GitHub Advisory IDs that can be skipped during detection.
 
 **Possible values**: Any valid advisory GHSA ids.
 
@@ -194,17 +194,16 @@ base-ref: 8bb8a58d6a4028b6c2e314d5caaf273f57644896
 head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
 ```
 
-### external-repository-token
+### remote-config-repo-token
 
 A token for fetching external configuration files if they live in
-another repository.
+a private repository.
 
 # TODO Add a guide on how to get the token
 
 **Possible values**: Any GitHub token with read access to the external repository.
 
-**Example**: `external-repository-token: ghp_123456789abcdef...`
-
+**Example**: `remote-config-repo-token: ghp_123456789abcdef...`
 
 ### Configuration File
 

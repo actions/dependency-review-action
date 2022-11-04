@@ -64,9 +64,7 @@ event_file.close
 
 action_inputs = {
   "repo-token": github_token,
-  "config-file": config_file, 
-  "remote-config-file": "actions/dependency-review-action/.github/dependency-review-config.yml@external-config", 
-  "config-repository-token": github_token
+  "config-file": config_file
 }
 
 dev_cmd_env = {

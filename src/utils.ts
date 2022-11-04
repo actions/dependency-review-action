@@ -41,8 +41,15 @@ export function isSPDXValid(license: string): boolean {
   }
 }
 
-export function octokitClient(token = 'repo-token'): Octokit {
-  return new Octokit({
-    auth: core.getInput(token, {required: true})
-  })
+export function octokitClient(token = 'repo-token', required = true): Octokit {
+  const opts: Record<string, unknown> = {}
+
+  // auth is only added if token is present.
+  // For remote-config-files in public repos, the token is optional so it could be undefined
+  const auth = core.getInput(token, {required})
+  if (auth !== undefined) {
+    opts['auth'] = auth
+  }
+
+  return new Octokit(opts)
 }

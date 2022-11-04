@@ -48,7 +48,6 @@ function validateLicenses(
 }
 
 export async function readConfig(): Promise<ConfigurationOptions> {
-  const externalToken = getOptionalInput('config-repository-token')
   const remoteConfigFile = getOptionalInput('remote-config-file')
   const repoConfigFile = getOptionalInput('config-file')
 
@@ -56,14 +55,14 @@ export async function readConfig(): Promise<ConfigurationOptions> {
   let remoteConfig: ConfigurationOptions = {}
   let repoConfig: ConfigurationOptions = {}
 
-  if (externalToken !== undefined) {
-    if (remoteConfigFile === undefined) {
-      throw new Error('Missing required parameter: remote-config-file.')
-    }
-    remoteConfig = readConfigFile(await getRemoteConfig(remoteConfigFile))
+  if (remoteConfigFile !== undefined) {
+    const fileContents = readConfigFile(await getRemoteConfig(remoteConfigFile))
+    remoteConfig = {...remoteConfig, ...fileContents}
   }
+
   if (repoConfigFile !== undefined) {
-    repoConfig = readConfigFile(getRepoConfig(repoConfigFile))
+    const fileContents = readConfigFile(getRepoConfig(repoConfigFile))
+    repoConfig = {...repoConfig, ...fileContents}
   }
   // the reasoning behind reading the inline config when an external
   // config file is provided is that we still want to allow users to
@@ -121,22 +120,26 @@ export function readInlineConfig(): ConfigurationOptions {
 }
 
 export function readConfigFile(configData: string): ConfigurationOptions {
-  const data = YAML.parse(configData)
-  for (const key of Object.keys(data)) {
-    if (key === 'allow-licenses' || key === 'deny-licenses') {
-      validateLicenses(key, data[key])
+  try {
+    const data = YAML.parse(configData)
+    for (const key of Object.keys(data)) {
+      if (key === 'allow-licenses' || key === 'deny-licenses') {
+        validateLicenses(key, data[key])
+      }
+      // get rid of the ugly dashes from the actions conventions
+      if (key.includes('-')) {
+        data[key.replace(/-/g, '_')] = data[key]
+        delete data[key]
+      }
     }
-    // get rid of the ugly dashes from the actions conventions
-    if (key.includes('-')) {
-      data[key.replace(/-/g, '_')] = data[key]
-      delete data[key]
-    }
+    const values = ConfigurationOptionsSchema.parse(data)
+    return values
+  } catch (error) {
+    throw error
   }
-  const values = ConfigurationOptionsSchema.parse(data)
-  return values
 }
 
-function getRepoConfig(filePath: string): string {
+export function getRepoConfig(filePath: string): string {
   try {
     return fs.readFileSync(path.resolve(filePath), 'utf-8')
   } catch (error) {
@@ -151,11 +154,14 @@ async function getRemoteConfig(configFile: string): Promise<string> {
 
   const pieces = format.exec(configFile)
   if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
-    throw new Error('Invalid remote config file format.')
+    throw new Error(
+      'Invalid remote-config-file value. Expected format: OWNER/REPOSITORY/FILENAME@BRANCH '
+    )
   }
   try {
     const {data} = await octokitClient(
-      'config-repository-token'
+      'remote-config-repo-token',
+      false
     ).rest.repos.getContent({
       mediaType: {
         format: 'raw'
@@ -165,13 +171,12 @@ async function getRemoteConfig(configFile: string): Promise<string> {
       path: pieces.groups.path,
       ref: pieces.groups.ref
     })
-    if (data === undefined) {
-      throw new Error('Invalid content')
-    }
+
     // When using mediaType.format = 'raw', the response.data is a string but this is not reflected
     // in the return type of getContent. So we're casting the return value to a string.
     return z.string().parse(data as unknown)
   } catch (error) {
-    throw error
+    core.debug(error as string)
+    throw new Error('Error fetching remote config file')
   }
 }

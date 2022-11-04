@@ -1,6 +1,6 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient as octokitClient} from './utils'
+import {isSPDXValid, octokitClient} from './utils'
 
 /**
  * Loops through a list of changes, filtering and returning the

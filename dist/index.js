@@ -107,29 +107,6 @@ exports.getRefs = getRefs;
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -144,9 +121,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
-const core = __importStar(__nccwpck_require__(2186));
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
-const octokit_1 = __nccwpck_require__(7467);
 const utils_1 = __nccwpck_require__(918);
 /**
  * Loops through a list of changes, filtering and returning the
@@ -205,11 +180,11 @@ function getInvalidLicenseChanges(changes, licenses) {
 exports.getInvalidLicenseChanges = getInvalidLicenseChanges;
 const fetchGHLicense = (owner, repo) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
-    const octokit = new octokit_1.Octokit({
-        auth: core.getInput('repo-token', { required: true })
-    });
     try {
-        const response = yield octokit.rest.licenses.getForRepo({ owner, repo });
+        const response = yield (0, utils_1.octokitClient)().rest.licenses.getForRepo({
+            owner,
+            repo
+        });
         return (_b = (_a = response.data.license) === null || _a === void 0 ? void 0 : _a.spdx_id) !== null && _b !== void 0 ? _b : null;
     }
     catch (_) {
@@ -350,7 +325,7 @@ const utils_1 = __nccwpck_require__(918);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const config = (0, config_1.readConfig)();
+            const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
             const changes = yield dependencyGraph.compare({
                 owner: github.context.repo.owner,
@@ -741,11 +716,36 @@ exports.addScannedDependencies = addScannedDependencies;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
 function groupDependenciesByManifest(changes) {
     var _a;
@@ -783,6 +783,17 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+function octokitClient(token = 'repo-token', required = true) {
+    const opts = {};
+    // auth is only added if token is present.
+    // For remote-config-files in public repos, the token is optional so it could be undefined
+    const auth = core.getInput(token, { required });
+    if (auth !== undefined) {
+        opts['auth'] = auth;
+    }
+    return new octokit_1.Octokit(opts);
+}
+exports.octokitClient = octokitClient;
 
 
 /***/ }),
@@ -27397,11 +27408,20 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readConfigFile = exports.readInlineConfig = exports.readConfig = void 0;
+exports.getRepoConfig = exports.readConfigFile = exports.readInlineConfig = exports.readConfig = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
@@ -27435,19 +27455,26 @@ function validateLicenses(key, licenses) {
     }
 }
 function readConfig() {
-    const externalConfig = getOptionalInput('config-file');
-    if (externalConfig !== undefined) {
-        const config = readConfigFile(externalConfig);
+    return __awaiter(this, void 0, void 0, function* () {
+        const remoteConfigFile = getOptionalInput('remote-config-file');
+        const repoConfigFile = getOptionalInput('config-file');
+        const inlineConfig = readInlineConfig();
+        let remoteConfig = {};
+        let repoConfig = {};
+        if (remoteConfigFile !== undefined) {
+            const fileContents = readConfigFile(yield getRemoteConfig(remoteConfigFile));
+            remoteConfig = Object.assign(Object.assign({}, remoteConfig), fileContents);
+        }
+        if (repoConfigFile !== undefined) {
+            const fileContents = readConfigFile(getRepoConfig(repoConfigFile));
+            repoConfig = Object.assign(Object.assign({}, repoConfig), fileContents);
+        }
         // the reasoning behind reading the inline config when an external
         // config file is provided is that we still want to allow users to
         // pass inline options in the presence of an external config file.
-        const inlineConfig = readInlineConfig();
-        // the external config takes precedence
-        return Object.assign({}, inlineConfig, config);
-    }
-    else {
-        return readInlineConfig();
-    }
+        // TO DO check order of precedence
+        return Object.assign(Object.assign(Object.assign({}, inlineConfig), remoteConfig), repoConfig);
+    });
 }
 exports.readConfig = readConfig;
 function readInlineConfig() {
@@ -27490,29 +27517,63 @@ function readInlineConfig() {
     };
 }
 exports.readInlineConfig = readInlineConfig;
-function readConfigFile(filePath) {
-    let data;
+function readConfigFile(configData) {
     try {
-        data = fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
+        const data = yaml_1.default.parse(configData);
+        for (const key of Object.keys(data)) {
+            if (key === 'allow-licenses' || key === 'deny-licenses') {
+                validateLicenses(key, data[key]);
+            }
+            // get rid of the ugly dashes from the actions conventions
+            if (key.includes('-')) {
+                data[key.replace(/-/g, '_')] = data[key];
+                delete data[key];
+            }
+        }
+        const values = schemas_1.ConfigurationOptionsSchema.parse(data);
+        return values;
     }
     catch (error) {
         throw error;
     }
-    data = yaml_1.default.parse(data);
-    for (const key of Object.keys(data)) {
-        if (key === 'allow-licenses' || key === 'deny-licenses') {
-            validateLicenses(key, data[key]);
-        }
-        // get rid of the ugly dashes from the actions conventions
-        if (key.includes('-')) {
-            data[key.replace(/-/g, '_')] = data[key];
-            delete data[key];
-        }
-    }
-    const values = schemas_1.ConfigurationOptionsSchema.parse(data);
-    return values;
 }
 exports.readConfigFile = readConfigFile;
+function getRepoConfig(filePath) {
+    try {
+        return fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
+    }
+    catch (error) {
+        throw error;
+    }
+}
+exports.getRepoConfig = getRepoConfig;
+function getRemoteConfig(configFile) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
+        const pieces = format.exec(configFile);
+        if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
+            throw new Error('Invalid remote-config-file value. Expected format: OWNER/REPOSITORY/FILENAME@BRANCH ');
+        }
+        try {
+            const { data } = yield (0, utils_1.octokitClient)('remote-config-repo-token', false).rest.repos.getContent({
+                mediaType: {
+                    format: 'raw'
+                },
+                owner: pieces.groups.owner,
+                repo: pieces.groups.repo,
+                path: pieces.groups.path,
+                ref: pieces.groups.ref
+            });
+            // When using mediaType.format = 'raw', the response.data is a string but this is not reflected
+            // in the return type of getContent. So we're casting the return value to a string.
+            return z.string().parse(data);
+        }
+        catch (error) {
+            core.debug(error);
+            throw new Error('Error fetching remote config file');
+        }
+    });
+}
 
 
 /***/ }),
@@ -27679,11 +27740,36 @@ exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
 function groupDependenciesByManifest(changes) {
     var _a;
@@ -27721,6 +27807,17 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+function octokitClient(token = 'repo-token', required = true) {
+    const opts = {};
+    // auth is only added if token is present.
+    // For remote-config-files in public repos, the token is optional so it could be undefined
+    const auth = core.getInput(token, { required });
+    if (auth !== undefined) {
+        opts['auth'] = auth;
+    }
+    return new octokit_1.Octokit(opts);
+}
+exports.octokitClient = octokitClient;
 
 
 /***/ }),
