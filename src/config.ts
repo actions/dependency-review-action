@@ -168,8 +168,9 @@ async function getRemoteConfig(configFile: string): Promise<string> {
     if (data === undefined) {
       throw new Error('Invalid content')
     }
-    console.log('Checking data value', data, data === 'fail-on-severity: low\n')
-    return data as unknown as string
+    // When using mediaType.format = 'raw', the response.data is a string but this is not reflected
+    // in the return type of getContent. So we're casting the return value to a string.
+    return z.string().parse(data as unknown)
   } catch (error) {
     throw error
   }
