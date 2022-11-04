@@ -9,7 +9,7 @@ import {
   SeveritySchema,
   SCOPES
 } from './schemas'
-import {isSPDXValid} from './utils'
+import {isSPDXValid, octokitClient} from './utils'
 
 type licenseKey = 'allow-licenses' | 'deny-licenses'
 
@@ -47,19 +47,29 @@ function validateLicenses(
   }
 }
 
-export function readConfig(): ConfigurationOptions {
-  const externalConfig = getOptionalInput('config-file')
-  if (externalConfig !== undefined) {
-    const config = readConfigFile(externalConfig)
-    // the reasoning behind reading the inline config when an external
-    // config file is provided is that we still want to allow users to
-    // pass inline options in the presence of an external config file.
-    const inlineConfig = readInlineConfig()
-    // the external config takes precedence
-    return Object.assign({}, inlineConfig, config)
-  } else {
-    return readInlineConfig()
+export async function readConfig(): Promise<ConfigurationOptions> {
+  const externalToken = getOptionalInput('config-repository-token')
+  const remoteConfigFile = getOptionalInput('remote-config-file')
+  const repoConfigFile = getOptionalInput('config-file')
+
+  const inlineConfig = readInlineConfig()
+  let remoteConfig: ConfigurationOptions = {}
+  let repoConfig: ConfigurationOptions = {}
+
+  if (externalToken !== undefined) {
+    if (remoteConfigFile === undefined) {
+      throw new Error('Missing required parameter: remote-config-file.')
+    }
+    remoteConfig = readConfigFile(await getRemoteConfig(remoteConfigFile))
   }
+  if (repoConfigFile !== undefined) {
+    repoConfig = readConfigFile(getRepoConfig(repoConfigFile))
+  }
+  // the reasoning behind reading the inline config when an external
+  // config file is provided is that we still want to allow users to
+  // pass inline options in the presence of an external config file.
+  // TO DO check order of precedence
+  return {...inlineConfig, ...remoteConfig, ...repoConfig}
 }
 
 export function readInlineConfig(): ConfigurationOptions {
@@ -110,16 +120,8 @@ export function readInlineConfig(): ConfigurationOptions {
   }
 }
 
-export function readConfigFile(filePath: string): ConfigurationOptions {
-  let data
-
-  try {
-    data = fs.readFileSync(path.resolve(filePath), 'utf-8')
-  } catch (error: unknown) {
-    throw error
-  }
-  data = YAML.parse(data)
-
+export function readConfigFile(configData: string): ConfigurationOptions {
+  const data = YAML.parse(configData)
   for (const key of Object.keys(data)) {
     if (key === 'allow-licenses' || key === 'deny-licenses') {
       validateLicenses(key, data[key])
@@ -132,4 +134,43 @@ export function readConfigFile(filePath: string): ConfigurationOptions {
   }
   const values = ConfigurationOptionsSchema.parse(data)
   return values
+}
+
+function getRepoConfig(filePath: string): string {
+  try {
+    return fs.readFileSync(path.resolve(filePath), 'utf-8')
+  } catch (error) {
+    throw error
+  }
+}
+
+async function getRemoteConfig(configFile: string): Promise<string> {
+  const format = new RegExp(
+    '(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)'
+  )
+
+  const pieces = format.exec(configFile)
+  if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
+    throw new Error('Invalid remote config file format.')
+  }
+  try {
+    const {data} = await octokitClient(
+      'config-repository-token'
+    ).rest.repos.getContent({
+      mediaType: {
+        format: 'raw'
+      },
+      owner: pieces.groups.owner,
+      repo: pieces.groups.repo,
+      path: pieces.groups.path,
+      ref: pieces.groups.ref
+    })
+    if (data === undefined) {
+      throw new Error('Invalid content')
+    }
+    console.log('Checking data value', data, data === 'fail-on-severity: low\n')
+    return data as unknown as string
+  } catch (error) {
+    throw error
+  }
 }

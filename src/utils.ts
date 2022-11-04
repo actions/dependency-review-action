@@ -1,3 +1,5 @@
+import * as core from '@actions/core'
+import {Octokit} from 'octokit'
 import spdxParse from 'spdx-expression-parse'
 import {Changes} from './schemas'
 
@@ -37,4 +39,10 @@ export function isSPDXValid(license: string): boolean {
   } catch (_) {
     return false
   }
+}
+
+export function octokitClient(token = 'repo-token'): Octokit {
+  return new Octokit({
+    auth: core.getInput(token, {required: true})
+  })
 }
