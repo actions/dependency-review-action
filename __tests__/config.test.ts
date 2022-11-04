@@ -106,7 +106,7 @@ test.skip('raises an error when the the config file was not found', () => {
   expect(() => readConfigFile('fixtures/i-dont-exist')).toThrow()
 })
 
-test.skip('it parses options from both sources', async () => {
+test('it parses options from both sources', async () => {
   setInput('config-file', './__tests__/fixtures/config-allow-sample.yml')
 
   let options = await readConfig()
@@ -117,7 +117,7 @@ test.skip('it parses options from both sources', async () => {
   expect(options.base_ref).toEqual('a-custom-base-ref')
 })
 
-test.skip('in case of conflicts, the external config is the source of truth', async () => {
+test('in case of conflicts, the external config is the source of truth', async () => {
   setInput('config-file', './__tests__/fixtures/config-allow-sample.yml') // this will set fail-on-severity to 'critical'
 
   let options = await readConfig()
@@ -129,7 +129,7 @@ test.skip('in case of conflicts, the external config is the source of truth', as
   expect(options.fail_on_severity).toEqual('critical')
 })
 
-test.skip('it uses the default values when loading external files', async () => {
+test('it uses the default values when loading external files', async () => {
   setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
   let options = await readConfig()
   expect(options.allow_licenses).toEqual(undefined)
