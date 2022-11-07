@@ -53,11 +53,9 @@ export async function readConfig(): Promise<ConfigurationOptions> {
   const configFile = getOptionalInput('config-file')
   if (configFile !== undefined) {
     const externalConfig = await readConfigFile(configFile)
-    // the reasoning behind reading the inline config when an external
-    // config file is provided is that we still want to allow users to
-    // pass inline options in the presence of an external config file.
+    console.log('externalConfig====', externalConfig)
     // TO DO check order of precedence
-    return {...inlineConfig, ...externalConfig}
+    return mergeConfigs(inlineConfig, externalConfig)
   }
   return inlineConfig
 }
@@ -181,4 +179,23 @@ async function getRemoteConfig(configOpts: {
     core.debug(error as string)
     throw new Error('Error fetching remote config file')
   }
+}
+
+function mergeConfigs(
+  ...configs: ConfigurationOptions[]
+): ConfigurationOptions {
+  return configs.reduce(
+    (mergedConfig: ConfigurationOptions, config: ConfigurationOptions) => {
+      for (const [key, value] of Object.entries(config)) {
+        if (Array.isArray(value)) {
+          const currentValue: string[] = mergedConfig[key] || []
+          mergedConfig[key] = [...currentValue, ...value]
+        } else {
+          mergedConfig[key] = value
+        }
+      }
+      return mergedConfig
+    },
+    {}
+  )
 }
