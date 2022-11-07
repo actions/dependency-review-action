@@ -28,7 +28,7 @@ async function run(): Promise<void> {
       headRef: refs.head
     })
 
-    const minSeverity = config.fail_on_severity as Severity
+    const minSeverity = config.fail_on_severity
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
     const filteredChanges = filterAllowedAdvisories(
       config.allow_ghsas,

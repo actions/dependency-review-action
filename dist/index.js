@@ -532,17 +532,36 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: exports.SeveritySchema,
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
-    allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([]),
+    allow_licenses: z.array(z.string()).optional(),
+    deny_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
-    config_file: z.string().optional().default('false'),
-    base_ref: z.string(),
-    head_ref: z.string()
+    config_file: z.string().optional(),
+    base_ref: z.string().optional(),
+    head_ref: z.string().optional()
 })
-    .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
+    .superRefine((config, context) => {
+    if (config.allow_licenses && config.deny_licenses) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You cannot specify both allow-licenses and deny-licenses'
+        });
+    }
+    if (config.allow_licenses && config.allow_licenses.length < 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You should provide at least one license in allow-licenses'
+        });
+    }
+    if (config.license_check === false &&
+        config.vulnerability_check === false) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Can't disable both license-check and vulnerability-check"
+        });
+    }
+});
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 
@@ -27460,44 +27479,26 @@ function readConfig() {
         const configFile = getOptionalInput('config-file');
         if (configFile !== undefined) {
             const externalConfig = yield readConfigFile(configFile);
-            // the reasoning behind reading the inline config when an external
-            // config file is provided is that we still want to allow users to
-            // pass inline options in the presence of an external config file.
             // TO DO check order of precedence
-            return Object.assign(Object.assign({}, inlineConfig), externalConfig);
+            return schemas_1.ConfigurationOptionsSchema.parse(Object.assign(Object.assign({}, externalConfig), inlineConfig));
         }
-        return inlineConfig;
+        return schemas_1.ConfigurationOptionsSchema.parse(inlineConfig);
     });
 }
 exports.readConfig = readConfig;
 function readInlineConfig() {
-    const fail_on_severity = schemas_1.SeveritySchema.parse(getOptionalInput('fail-on-severity'));
-    const fail_on_scopes = z
-        .array(z.enum(schemas_1.SCOPES))
-        .default(['runtime'])
-        .parse(parseList(getOptionalInput('fail-on-scopes')));
+    const fail_on_severity = getOptionalInput('fail-on-severity');
+    const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'));
     const allow_licenses = parseList(getOptionalInput('allow-licenses'));
     const deny_licenses = parseList(getOptionalInput('deny-licenses'));
-    if (allow_licenses !== undefined && deny_licenses !== undefined) {
-        throw new Error("Can't specify both allow_licenses and deny_licenses");
-    }
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
-    const license_check = z
-        .boolean()
-        .default(true)
-        .parse(getOptionalBoolean('license-check'));
-    const vulnerability_check = z
-        .boolean()
-        .default(true)
-        .parse(getOptionalBoolean('vulnerability-check'));
-    if (license_check === false && vulnerability_check === false) {
-        throw new Error("Can't disable both license-check and vulnerability-check");
-    }
+    const license_check = getOptionalBoolean('license-check');
+    const vulnerability_check = getOptionalBoolean('vulnerability-check');
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
-    return {
+    const data = {
         fail_on_severity,
         fail_on_scopes,
         allow_licenses,
@@ -27508,6 +27509,7 @@ function readInlineConfig() {
         base_ref,
         head_ref
     };
+    return Object.fromEntries(Object.entries(data).filter(([_, value]) => value !== undefined));
 }
 exports.readInlineConfig = readInlineConfig;
 function readConfigFile(filePath) {
@@ -27549,8 +27551,7 @@ function parseConfigFile(configData) {
                 delete data[key];
             }
         }
-        const values = schemas_1.ConfigurationOptionsSchema.parse(data);
-        return values;
+        return data;
     }
     catch (error) {
         throw error;
@@ -27724,17 +27725,36 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: exports.SeveritySchema,
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
-    allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([]),
+    allow_licenses: z.array(z.string()).optional(),
+    deny_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
-    config_file: z.string().optional().default('false'),
-    base_ref: z.string(),
-    head_ref: z.string()
+    config_file: z.string().optional(),
+    base_ref: z.string().optional(),
+    head_ref: z.string().optional()
 })
-    .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
+    .superRefine((config, context) => {
+    if (config.allow_licenses && config.deny_licenses) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You cannot specify both allow-licenses and deny-licenses'
+        });
+    }
+    if (config.allow_licenses && config.allow_licenses.length < 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You should provide at least one license in allow-licenses'
+        });
+    }
+    if (config.license_check === false &&
+        config.vulnerability_check === false) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Can't disable both license-check and vulnerability-check"
+        });
+    }
+});
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 

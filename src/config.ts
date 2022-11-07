@@ -3,15 +3,10 @@ import path from 'path'
 import YAML from 'yaml'
 import * as core from '@actions/core'
 import * as z from 'zod'
-import {
-  ConfigurationOptions,
-  ConfigurationOptionsSchema,
-  SeveritySchema,
-  SCOPES
-} from './schemas'
+import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
 
-type licenseKey = 'allow-licenses' | 'deny-licenses'
+type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
 
 function getOptionalBoolean(name: string): boolean | undefined {
   const value = core.getInput(name)
@@ -32,7 +27,7 @@ function parseList(list: string | undefined): string[] | undefined {
 }
 
 function validateLicenses(
-  key: licenseKey,
+  key: 'allow-licenses' | 'deny-licenses',
   licenses: string[] | undefined
 ): void {
   if (licenses === undefined) {
@@ -53,49 +48,36 @@ export async function readConfig(): Promise<ConfigurationOptions> {
   const configFile = getOptionalInput('config-file')
   if (configFile !== undefined) {
     const externalConfig = await readConfigFile(configFile)
-    console.log('externalConfig====', externalConfig)
     // TO DO check order of precedence
-    return mergeConfigs(inlineConfig, externalConfig)
+    return ConfigurationOptionsSchema.parse({
+      ...externalConfig,
+      ...inlineConfig
+    })
   }
-  return inlineConfig
+
+  return ConfigurationOptionsSchema.parse(inlineConfig)
 }
 
-export function readInlineConfig(): ConfigurationOptions {
-  const fail_on_severity = SeveritySchema.parse(
-    getOptionalInput('fail-on-severity')
-  )
-  const fail_on_scopes = z
-    .array(z.enum(SCOPES))
-    .default(['runtime'])
-    .parse(parseList(getOptionalInput('fail-on-scopes')))
+export function readInlineConfig(): ConfigurationOptionsPartial {
+  const fail_on_severity = getOptionalInput('fail-on-severity')
+
+  const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'))
 
   const allow_licenses = parseList(getOptionalInput('allow-licenses'))
   const deny_licenses = parseList(getOptionalInput('deny-licenses'))
 
-  if (allow_licenses !== undefined && deny_licenses !== undefined) {
-    throw new Error("Can't specify both allow_licenses and deny_licenses")
-  }
   validateLicenses('allow-licenses', allow_licenses)
   validateLicenses('deny-licenses', deny_licenses)
 
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
 
-  const license_check = z
-    .boolean()
-    .default(true)
-    .parse(getOptionalBoolean('license-check'))
-  const vulnerability_check = z
-    .boolean()
-    .default(true)
-    .parse(getOptionalBoolean('vulnerability-check'))
-  if (license_check === false && vulnerability_check === false) {
-    throw new Error("Can't disable both license-check and vulnerability-check")
-  }
+  const license_check = getOptionalBoolean('license-check')
+  const vulnerability_check = getOptionalBoolean('vulnerability-check')
 
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
 
-  return {
+  const data = {
     fail_on_severity,
     fail_on_scopes,
     allow_licenses,
@@ -106,11 +88,15 @@ export function readInlineConfig(): ConfigurationOptions {
     base_ref,
     head_ref
   }
+
+  return Object.fromEntries(
+    Object.entries(data).filter(([_, value]) => value !== undefined)
+  )
 }
 
 export async function readConfigFile(
   filePath: string
-): Promise<ConfigurationOptions> {
+): Promise<ConfigurationOptionsPartial> {
   const format = new RegExp(
     '(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)'
   )
@@ -135,7 +121,9 @@ export async function readConfigFile(
   }
 }
 
-export function parseConfigFile(configData: string): ConfigurationOptions {
+export function parseConfigFile(
+  configData: string
+): ConfigurationOptionsPartial {
   try {
     const data = YAML.parse(configData)
     for (const key of Object.keys(data)) {
@@ -148,8 +136,7 @@ export function parseConfigFile(configData: string): ConfigurationOptions {
         delete data[key]
       }
     }
-    const values = ConfigurationOptionsSchema.parse(data)
-    return values
+    return data
   } catch (error) {
     throw error
   }
@@ -179,23 +166,4 @@ async function getRemoteConfig(configOpts: {
     core.debug(error as string)
     throw new Error('Error fetching remote config file')
   }
-}
-
-function mergeConfigs(
-  ...configs: ConfigurationOptions[]
-): ConfigurationOptions {
-  return configs.reduce(
-    (mergedConfig: ConfigurationOptions, config: ConfigurationOptions) => {
-      for (const [key, value] of Object.entries(config)) {
-        if (Array.isArray(value)) {
-          const currentValue: string[] = mergedConfig[key] || []
-          mergedConfig[key] = [...currentValue, ...value]
-        } else {
-          mergedConfig[key] = value
-        }
-      }
-      return mergedConfig
-    },
-    {}
-  )
 }
