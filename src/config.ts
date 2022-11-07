@@ -49,10 +49,7 @@ export async function readConfig(): Promise<ConfigurationOptions> {
   if (configFile !== undefined) {
     const externalConfig = await readConfigFile(configFile)
     // TO DO check order of precedence
-    return ConfigurationOptionsSchema.parse({
-      ...externalConfig,
-      ...inlineConfig
-    })
+    return mergeConfigs(externalConfig, inlineConfig)
   }
 
   return ConfigurationOptionsSchema.parse(inlineConfig)
@@ -166,4 +163,27 @@ async function getRemoteConfig(configOpts: {
     core.debug(error as string)
     throw new Error('Error fetching remote config file')
   }
+}
+
+function mergeConfigs(
+  baseConfig: ConfigurationOptionsPartial,
+  prioConfig: ConfigurationOptionsPartial
+): ConfigurationOptions {
+  const mergedConfig: {[key: string]: unknown} = {...baseConfig}
+
+  for (const key of Object.keys(prioConfig) as (keyof typeof prioConfig)[]) {
+    // based on the assumption that ConfigurationOptions values are either arrays or primitive types
+    // former are merged, latter are overwritten
+    if (key in mergedConfig && Array.isArray(mergedConfig[key])) {
+      // casting to unknown[] needed. TS unable to auto infer
+      mergedConfig[key] = [
+        ...(mergedConfig[key] as unknown[]),
+        ...(prioConfig[key] as unknown[])
+      ]
+    } else {
+      mergedConfig[key] = prioConfig[key]
+    }
+  }
+
+  return ConfigurationOptionsSchema.parse(mergedConfig)
 }

@@ -27480,7 +27480,7 @@ function readConfig() {
         if (configFile !== undefined) {
             const externalConfig = yield readConfigFile(configFile);
             // TO DO check order of precedence
-            return schemas_1.ConfigurationOptionsSchema.parse(Object.assign(Object.assign({}, externalConfig), inlineConfig));
+            return mergeConfigs(externalConfig, inlineConfig);
         }
         return schemas_1.ConfigurationOptionsSchema.parse(inlineConfig);
     });
@@ -27579,6 +27579,24 @@ function getRemoteConfig(configOpts) {
             throw new Error('Error fetching remote config file');
         }
     });
+}
+function mergeConfigs(baseConfig, prioConfig) {
+    const mergedConfig = Object.assign({}, baseConfig);
+    for (const key of Object.keys(prioConfig)) {
+        // based on the assumption that ConfigurationOptions values are either arrays or primitive types
+        // former are merged, latter are overwritten
+        if (key in mergedConfig && Array.isArray(mergedConfig[key])) {
+            // casting to unknown[] needed. TS unable to auto infer
+            mergedConfig[key] = [
+                ...mergedConfig[key],
+                ...prioConfig[key]
+            ];
+        }
+        else {
+            mergedConfig[key] = prioConfig[key];
+        }
+    }
+    return schemas_1.ConfigurationOptionsSchema.parse(mergedConfig);
 }
 
 
