@@ -48,27 +48,18 @@ function validateLicenses(
 }
 
 export async function readConfig(): Promise<ConfigurationOptions> {
-  const remoteConfigFile = getOptionalInput('remote-config-file')
-  const repoConfigFile = getOptionalInput('config-file')
-
   const inlineConfig = readInlineConfig()
-  let remoteConfig: ConfigurationOptions = {}
-  let repoConfig: ConfigurationOptions = {}
 
-  if (remoteConfigFile !== undefined) {
-    const fileContents = readConfigFile(await getRemoteConfig(remoteConfigFile))
-    remoteConfig = {...remoteConfig, ...fileContents}
+  const configFile = getOptionalInput('config-file')
+  if (configFile !== undefined) {
+    const externalConfig = await readConfigFile(configFile)
+    // the reasoning behind reading the inline config when an external
+    // config file is provided is that we still want to allow users to
+    // pass inline options in the presence of an external config file.
+    // TO DO check order of precedence
+    return {...inlineConfig, ...externalConfig}
   }
-
-  if (repoConfigFile !== undefined) {
-    const fileContents = readConfigFile(getRepoConfig(repoConfigFile))
-    repoConfig = {...repoConfig, ...fileContents}
-  }
-  // the reasoning behind reading the inline config when an external
-  // config file is provided is that we still want to allow users to
-  // pass inline options in the presence of an external config file.
-  // TO DO check order of precedence
-  return {...inlineConfig, ...remoteConfig, ...repoConfig}
+  return inlineConfig
 }
 
 export function readInlineConfig(): ConfigurationOptions {
@@ -119,7 +110,34 @@ export function readInlineConfig(): ConfigurationOptions {
   }
 }
 
-export function readConfigFile(configData: string): ConfigurationOptions {
+export async function readConfigFile(
+  filePath: string
+): Promise<ConfigurationOptions> {
+  const format = new RegExp(
+    '(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)'
+  )
+  let data: string
+
+  const pieces = format.exec(filePath)
+  try {
+    if (pieces?.groups && pieces.length === 5) {
+      data = await getRemoteConfig({
+        owner: pieces.groups.owner,
+        repo: pieces.groups.repo,
+        path: pieces.groups.path,
+        ref: pieces.groups.ref
+      })
+    } else {
+      data = fs.readFileSync(path.resolve(filePath), 'utf-8')
+    }
+    return parseConfigFile(data)
+  } catch (error) {
+    core.debug(error as string)
+    throw new Error('Unable to fetch config file')
+  }
+}
+
+export function parseConfigFile(configData: string): ConfigurationOptions {
   try {
     const data = YAML.parse(configData)
     for (const key of Object.keys(data)) {
@@ -139,25 +157,9 @@ export function readConfigFile(configData: string): ConfigurationOptions {
   }
 }
 
-export function getRepoConfig(filePath: string): string {
-  try {
-    return fs.readFileSync(path.resolve(filePath), 'utf-8')
-  } catch (error) {
-    throw error
-  }
-}
-
-async function getRemoteConfig(configFile: string): Promise<string> {
-  const format = new RegExp(
-    '(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)'
-  )
-
-  const pieces = format.exec(configFile)
-  if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
-    throw new Error(
-      'Invalid remote-config-file value. Expected format: OWNER/REPOSITORY/FILENAME@BRANCH '
-    )
-  }
+async function getRemoteConfig(configOpts: {
+  [key: string]: string
+}): Promise<string> {
   try {
     const {data} = await octokitClient(
       'remote-config-repo-token',
@@ -166,10 +168,10 @@ async function getRemoteConfig(configFile: string): Promise<string> {
       mediaType: {
         format: 'raw'
       },
-      owner: pieces.groups.owner,
-      repo: pieces.groups.repo,
-      path: pieces.groups.path,
-      ref: pieces.groups.ref
+      owner: configOpts.owner,
+      repo: configOpts.repo,
+      path: configOpts.path,
+      ref: configOpts.ref
     })
 
     // When using mediaType.format = 'raw', the response.data is a string but this is not reflected

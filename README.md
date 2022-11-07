@@ -71,22 +71,21 @@ or by inlining these options in your workflow file.
 
 ### config-file
 
-A string representing the path to a configuraton file local to the repo.
-
-**Possible values**: A string representing an absolute path to a file.
-
-**Example**: `config-file: ./.github/dependency-review-config.yml`.
-
-### remote-config-file
-
-A string representing the path to a configuraton file in an external repo. It follows the
+A string representing the path to a configuraton file. The
+configuration file can be local to the repo, or can be a file in an
+external repo. If you are referencing a configuration file located in an
+external repository, you can use the
 `OWNER/REPOSITORY/FILENAME@BRANCH` syntax.
 
-If the file is located in a private repository, use the [remote-config-repo-token](#remote-config-repo-token) parameter of the action to specify a token that has read access to the repository.
+If the configuration file is located in an external private
+repository, use the [external-repository-token](#external-repository-token) parameter of the action to specify a token that has read access to the repository.
 
-**Possible values**: A string representing a path to a file located in another repository:
+**Possible values**: A string representing an absolute path to a file,
+or a file located in another repository:
 
-**Example**: `config-file: github/octorepo/dependency-review-config.yml@main`
+**Example**: `config-file: ./.github/dependency-review-config.yml # local file`.
+
+**Example**: `config-file: github/octorepo/dependency-review-config.yml@main # external repo`
 
 ### fail-on-severity
 

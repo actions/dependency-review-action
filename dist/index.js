@@ -27421,7 +27421,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getRepoConfig = exports.readConfigFile = exports.readInlineConfig = exports.readConfig = void 0;
+exports.parseConfigFile = exports.readConfigFile = exports.readInlineConfig = exports.readConfig = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
@@ -27456,24 +27456,17 @@ function validateLicenses(key, licenses) {
 }
 function readConfig() {
     return __awaiter(this, void 0, void 0, function* () {
-        const remoteConfigFile = getOptionalInput('remote-config-file');
-        const repoConfigFile = getOptionalInput('config-file');
         const inlineConfig = readInlineConfig();
-        let remoteConfig = {};
-        let repoConfig = {};
-        if (remoteConfigFile !== undefined) {
-            const fileContents = readConfigFile(yield getRemoteConfig(remoteConfigFile));
-            remoteConfig = Object.assign(Object.assign({}, remoteConfig), fileContents);
+        const configFile = getOptionalInput('config-file');
+        if (configFile !== undefined) {
+            const externalConfig = yield readConfigFile(configFile);
+            // the reasoning behind reading the inline config when an external
+            // config file is provided is that we still want to allow users to
+            // pass inline options in the presence of an external config file.
+            // TO DO check order of precedence
+            return Object.assign(Object.assign({}, inlineConfig), externalConfig);
         }
-        if (repoConfigFile !== undefined) {
-            const fileContents = readConfigFile(getRepoConfig(repoConfigFile));
-            repoConfig = Object.assign(Object.assign({}, repoConfig), fileContents);
-        }
-        // the reasoning behind reading the inline config when an external
-        // config file is provided is that we still want to allow users to
-        // pass inline options in the presence of an external config file.
-        // TO DO check order of precedence
-        return Object.assign(Object.assign(Object.assign({}, inlineConfig), remoteConfig), repoConfig);
+        return inlineConfig;
     });
 }
 exports.readConfig = readConfig;
@@ -27517,7 +27510,33 @@ function readInlineConfig() {
     };
 }
 exports.readInlineConfig = readInlineConfig;
-function readConfigFile(configData) {
+function readConfigFile(filePath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
+        let data;
+        const pieces = format.exec(filePath);
+        try {
+            if ((pieces === null || pieces === void 0 ? void 0 : pieces.groups) && pieces.length === 5) {
+                data = yield getRemoteConfig({
+                    owner: pieces.groups.owner,
+                    repo: pieces.groups.repo,
+                    path: pieces.groups.path,
+                    ref: pieces.groups.ref
+                });
+            }
+            else {
+                data = fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
+            }
+            return parseConfigFile(data);
+        }
+        catch (error) {
+            core.debug(error);
+            throw new Error('Unable to fetch config file');
+        }
+    });
+}
+exports.readConfigFile = readConfigFile;
+function parseConfigFile(configData) {
     try {
         const data = yaml_1.default.parse(configData);
         for (const key of Object.keys(data)) {
@@ -27537,32 +27556,18 @@ function readConfigFile(configData) {
         throw error;
     }
 }
-exports.readConfigFile = readConfigFile;
-function getRepoConfig(filePath) {
-    try {
-        return fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
-    }
-    catch (error) {
-        throw error;
-    }
-}
-exports.getRepoConfig = getRepoConfig;
-function getRemoteConfig(configFile) {
+exports.parseConfigFile = parseConfigFile;
+function getRemoteConfig(configOpts) {
     return __awaiter(this, void 0, void 0, function* () {
-        const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
-        const pieces = format.exec(configFile);
-        if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
-            throw new Error('Invalid remote-config-file value. Expected format: OWNER/REPOSITORY/FILENAME@BRANCH ');
-        }
         try {
             const { data } = yield (0, utils_1.octokitClient)('remote-config-repo-token', false).rest.repos.getContent({
                 mediaType: {
                     format: 'raw'
                 },
-                owner: pieces.groups.owner,
-                repo: pieces.groups.repo,
-                path: pieces.groups.path,
-                ref: pieces.groups.ref
+                owner: configOpts.owner,
+                repo: configOpts.repo,
+                path: configOpts.path,
+                ref: configOpts.ref
             });
             // When using mediaType.format = 'raw', the response.data is a string but this is not reflected
             // in the return type of getContent. So we're casting the return value to a string.
