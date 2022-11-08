@@ -67,6 +67,13 @@ test('it raises an error if both an allow and denylist are specified', async () 
     'You cannot specify both allow-licenses and deny-licenses'
   )
 })
+test('it raises an error if an empty allow list is specified', async () => {
+  setInput('config-file', './__tests__/fixtures/config-empty-allow-sample.yml')
+
+  await expect(readConfig()).rejects.toThrow(
+    'You should provide at least one license in allow-licenses'
+  )
+})
 
 test('it raises an error when given an unknown severity', async () => {
   setInput('fail-on-severity', 'zombies')
