@@ -71,14 +71,13 @@ or by inlining these options in your workflow file.
 
 ### config-file
 
-A string representing the path to a configuraton file. The
-configuration file can be local to the repo, or can be a file in an
-external repo. If you are referencing a configuration file located in an
-external repository, you can use the
-`OWNER/REPOSITORY/FILENAME@BRANCH` syntax.
+A string representing the path to a configuraton file. It can be a
+local file, or a file located in an external repository. You can use
+this syntax for external repositories: `OWNER/REPOSITORY/FILENAME@BRANCH`.
 
-If the configuration file is located in an external private
-repository, use the [external-repo-token](#external-repo-token) parameter of the action to specify a token that has read access to the repository.
+If the configuration file is located in an external private repository,
+use the [external-repo-token](#external-repo-token) parameter of the
+Action to specify a token that has read access to the repository.
 
 **Possible values**: A string representing an absolute path to a file,
 or a file located in another repository:
