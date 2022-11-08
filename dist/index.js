@@ -27440,7 +27440,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parseConfigFile = exports.readConfigFile = exports.readInlineConfig = exports.readConfig = void 0;
+exports.readConfig = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
@@ -27448,31 +27448,6 @@ const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
-function getOptionalBoolean(name) {
-    const value = core.getInput(name);
-    return value.length > 0 ? core.getBooleanInput(name) : undefined;
-}
-function getOptionalInput(name) {
-    const value = core.getInput(name);
-    return value.length > 0 ? value : undefined;
-}
-function parseList(list) {
-    if (list === undefined) {
-        return list;
-    }
-    else {
-        return list.split(',').map(x => x.trim());
-    }
-}
-function validateLicenses(key, licenses) {
-    if (licenses === undefined) {
-        return;
-    }
-    const invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
-    if (invalid_licenses.length > 0) {
-        throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`);
-    }
-}
 function readConfig() {
     return __awaiter(this, void 0, void 0, function* () {
         const inlineConfig = readInlineConfig();
@@ -27511,7 +27486,31 @@ function readInlineConfig() {
     };
     return Object.fromEntries(Object.entries(data).filter(([_, value]) => value !== undefined));
 }
-exports.readInlineConfig = readInlineConfig;
+function getOptionalBoolean(name) {
+    const value = core.getInput(name);
+    return value.length > 0 ? core.getBooleanInput(name) : undefined;
+}
+function getOptionalInput(name) {
+    const value = core.getInput(name);
+    return value.length > 0 ? value : undefined;
+}
+function parseList(list) {
+    if (list === undefined) {
+        return list;
+    }
+    else {
+        return list.split(',').map(x => x.trim());
+    }
+}
+function validateLicenses(key, licenses) {
+    if (licenses === undefined) {
+        return;
+    }
+    const invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
+    if (invalid_licenses.length > 0) {
+        throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`);
+    }
+}
 function readConfigFile(filePath) {
     return __awaiter(this, void 0, void 0, function* () {
         const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
@@ -27537,7 +27536,6 @@ function readConfigFile(filePath) {
         }
     });
 }
-exports.readConfigFile = readConfigFile;
 function parseConfigFile(configData) {
     try {
         const data = yaml_1.default.parse(configData);
@@ -27557,7 +27555,6 @@ function parseConfigFile(configData) {
         throw error;
     }
 }
-exports.parseConfigFile = parseConfigFile;
 function getRemoteConfig(configOpts) {
     return __awaiter(this, void 0, void 0, function* () {
         try {

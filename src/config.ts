@@ -8,40 +8,6 @@ import {isSPDXValid, octokitClient} from './utils'
 
 type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
 
-function getOptionalBoolean(name: string): boolean | undefined {
-  const value = core.getInput(name)
-  return value.length > 0 ? core.getBooleanInput(name) : undefined
-}
-
-function getOptionalInput(name: string): string | undefined {
-  const value = core.getInput(name)
-  return value.length > 0 ? value : undefined
-}
-
-function parseList(list: string | undefined): string[] | undefined {
-  if (list === undefined) {
-    return list
-  } else {
-    return list.split(',').map(x => x.trim())
-  }
-}
-
-function validateLicenses(
-  key: 'allow-licenses' | 'deny-licenses',
-  licenses: string[] | undefined
-): void {
-  if (licenses === undefined) {
-    return
-  }
-  const invalid_licenses = licenses.filter(license => !isSPDXValid(license))
-
-  if (invalid_licenses.length > 0) {
-    throw new Error(
-      `Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`
-    )
-  }
-}
-
 export async function readConfig(): Promise<ConfigurationOptions> {
   const inlineConfig = readInlineConfig()
 
@@ -55,7 +21,7 @@ export async function readConfig(): Promise<ConfigurationOptions> {
   return ConfigurationOptionsSchema.parse(inlineConfig)
 }
 
-export function readInlineConfig(): ConfigurationOptionsPartial {
+function readInlineConfig(): ConfigurationOptionsPartial {
   const fail_on_severity = getOptionalInput('fail-on-severity')
 
   const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'))
@@ -91,7 +57,41 @@ export function readInlineConfig(): ConfigurationOptionsPartial {
   )
 }
 
-export async function readConfigFile(
+function getOptionalBoolean(name: string): boolean | undefined {
+  const value = core.getInput(name)
+  return value.length > 0 ? core.getBooleanInput(name) : undefined
+}
+
+function getOptionalInput(name: string): string | undefined {
+  const value = core.getInput(name)
+  return value.length > 0 ? value : undefined
+}
+
+function parseList(list: string | undefined): string[] | undefined {
+  if (list === undefined) {
+    return list
+  } else {
+    return list.split(',').map(x => x.trim())
+  }
+}
+
+function validateLicenses(
+  key: 'allow-licenses' | 'deny-licenses',
+  licenses: string[] | undefined
+): void {
+  if (licenses === undefined) {
+    return
+  }
+  const invalid_licenses = licenses.filter(license => !isSPDXValid(license))
+
+  if (invalid_licenses.length > 0) {
+    throw new Error(
+      `Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`
+    )
+  }
+}
+
+async function readConfigFile(
   filePath: string
 ): Promise<ConfigurationOptionsPartial> {
   const format = new RegExp(
@@ -118,9 +118,7 @@ export async function readConfigFile(
   }
 }
 
-export function parseConfigFile(
-  configData: string
-): ConfigurationOptionsPartial {
+function parseConfigFile(configData: string): ConfigurationOptionsPartial {
   try {
     const data = YAML.parse(configData)
     for (const key of Object.keys(data)) {

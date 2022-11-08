@@ -1,5 +1,5 @@
 import {expect, test, beforeEach} from '@jest/globals'
-import {readConfig, parseConfigFile} from '../src/config'
+import {readConfig} from '../src/config'
 import {getRefs} from '../src/git-refs'
 import * as Utils from '../src/utils'
 
@@ -96,14 +96,17 @@ test('it raises an error when no refs are provided and the event is not a pull r
   ).toThrow()
 })
 
-test.skip('it reads an external config file', async () => {
-  let options = parseConfigFile('./__tests__/fixtures/config-allow-sample.yml')
-  expect(options.fail_on_severity).toEqual('critical')
-  expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
+test('it reads an external config file', async () => {
+  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml')
+
+  const config = await readConfig()
+  expect(config.fail_on_severity).toEqual('critical')
+  expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
-test.skip('raises an error when the the config file was not found', () => {
-  expect(() => parseConfigFile('fixtures/i-dont-exist')).toThrow()
+test('raises an error when the the config file was not found', async () => {
+  setInput('config-file', 'fixtures/i-dont-exist')
+  await expect(readConfig()).rejects.toThrow(/Unable to fetch config file/)
 })
 
 test('it parses options from both sources', async () => {
