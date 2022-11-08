@@ -195,9 +195,11 @@ head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
 ### external-repo-token
 
 A token for fetching external configuration files if they live in
-a private repository.
+an external private repository.
 
-# TODO Add a guide on how to get the token
+Visit the [developer settings](https://github.com/settings/tokens) to
+create a new personal access token with `read` permissions` for the
+repository that hosts the config file.
 
 **Possible values**: Any GitHub token with read access to the external repository.
 
