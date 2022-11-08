@@ -39,24 +39,24 @@ beforeEach(() => {
 })
 
 test('it defaults to low severity', async () => {
-  const options = await readConfig()
-  expect(options.fail_on_severity).toEqual('low')
+  const config = await readConfig()
+  expect(config.fail_on_severity).toEqual('low')
 })
 
 test('it reads custom configs', async () => {
   setInput('fail-on-severity', 'critical')
   setInput('allow-licenses', ' BSD, GPL 2')
 
-  const options = await readConfig()
-  expect(options.fail_on_severity).toEqual('critical')
-  expect(options.allow_licenses).toEqual(['BSD', 'GPL 2'])
+  const config = await readConfig()
+  expect(config.fail_on_severity).toEqual('critical')
+  expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
 test('it defaults to empty allow/deny lists ', async () => {
-  const options = await readConfig()
+  const config = await readConfig()
 
-  expect(options.allow_licenses).toEqual(undefined)
-  expect(options.deny_licenses).toEqual(undefined)
+  expect(config.allow_licenses).toEqual(undefined)
+  expect(config.deny_licenses).toEqual(undefined)
 })
 
 test('it raises an error if both an allow and denylist are specified', async () => {
@@ -87,9 +87,9 @@ test('it uses the given refs when the event is not a pull request', async () => 
 })
 
 test('it raises an error when no refs are provided and the event is not a pull request', async () => {
-  const options = await readConfig()
+  const config = await readConfig()
   expect(() =>
-    getRefs(options, {
+    getRefs(config, {
       payload: {},
       eventName: 'workflow_dispatch'
     })
@@ -112,42 +112,37 @@ test('raises an error when the the config file was not found', async () => {
 test('it parses options from both sources', async () => {
   setInput('config-file', './__tests__/fixtures/config-allow-sample.yml')
 
-  let options = await readConfig()
-  expect(options.fail_on_severity).toEqual('critical')
+  let config = await readConfig()
+  expect(config.fail_on_severity).toEqual('critical')
 
   setInput('base-ref', 'a-custom-base-ref')
-  options = await readConfig()
-  expect(options.base_ref).toEqual('a-custom-base-ref')
+  config = await readConfig()
+  expect(config.base_ref).toEqual('a-custom-base-ref')
 })
 
-//TO DO: Pending confirmation of order of precedence
-test.skip('in case of conflicts, the external config is the source of truth', async () => {
+test('in case of conflicts, the inline config is the source of truth', async () => {
+  setInput('fail-on-severity', 'low')
   setInput('config-file', './__tests__/fixtures/config-allow-sample.yml') // this will set fail-on-severity to 'critical'
 
-  let options = await readConfig()
-  expect(options.fail_on_severity).toEqual('critical')
-
-  // this should not overwite the previous value
-  setInput('fail-on-severity', 'low')
-  options = await readConfig()
-  expect(options.fail_on_severity).toEqual('critical')
+  const config = await readConfig()
+  expect(config.fail_on_severity).toEqual('low')
 })
 
 test('it uses the default values when loading external files', async () => {
   setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
-  let options = await readConfig()
-  expect(options.allow_licenses).toEqual(undefined)
-  expect(options.deny_licenses).toEqual(undefined)
+  let config = await readConfig()
+  expect(config.allow_licenses).toEqual(undefined)
+  expect(config.deny_licenses).toEqual(undefined)
 
   setInput('config-file', './__tests__/fixtures/license-config-sample.yml')
-  options = await readConfig()
-  expect(options.fail_on_severity).toEqual('low')
+  config = await readConfig()
+  expect(config.fail_on_severity).toEqual('low')
 })
 
 test('it accepts an external configuration filename', async () => {
   setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
-  const options = await readConfig()
-  expect(options.fail_on_severity).toEqual('critical')
+  const config = await readConfig()
+  expect(config.fail_on_severity).toEqual('critical')
 })
 
 test('it raises an error when given an unknown severity in an external config file', async () => {
@@ -156,70 +151,70 @@ test('it raises an error when given an unknown severity in an external config fi
 })
 
 test('it defaults to runtime scope', async () => {
-  const options = await readConfig()
-  expect(options.fail_on_scopes).toEqual(['runtime'])
+  const config = await readConfig()
+  expect(config.fail_on_scopes).toEqual(['runtime'])
 })
 
 test('it parses custom scopes preference', async () => {
   setInput('fail-on-scopes', 'runtime, development')
-  let options = await readConfig()
-  expect(options.fail_on_scopes).toEqual(['runtime', 'development'])
+  let config = await readConfig()
+  expect(config.fail_on_scopes).toEqual(['runtime', 'development'])
 
   clearInputs()
   setInput('fail-on-scopes', 'development')
-  options = await readConfig()
-  expect(options.fail_on_scopes).toEqual(['development'])
+  config = await readConfig()
+  expect(config.fail_on_scopes).toEqual(['development'])
 })
 
 test('it raises an error when given invalid scope', async () => {
   setInput('fail-on-scopes', 'runtime, zombies')
   await expect(readConfig()).rejects.toThrow(/received 'zombies'/)
 })
-//TO DO: Undefined !== []. Clarify test intent
-test.skip('it defaults to an empty GHSA allowlist', async () => {
-  const options = await readConfig()
-  expect(options.allow_ghsas).toEqual(undefined)
+
+test('it defaults to an empty GHSA allowlist', async () => {
+  const config = await readConfig()
+  expect(config.allow_ghsas).toEqual([])
 })
 
 test('it successfully parses GHSA allowlist', async () => {
   setInput('allow-ghsas', 'GHSA-abcd-1234-5679, GHSA-efgh-1234-5679')
-  const options = await readConfig()
-  expect(options.allow_ghsas).toEqual([
+  const config = await readConfig()
+  expect(config.allow_ghsas).toEqual([
     'GHSA-abcd-1234-5679',
     'GHSA-efgh-1234-5679'
   ])
 })
 
 test('it defaults to checking licenses', async () => {
-  const options = await readConfig()
-  expect(options.license_check).toBe(true)
+  const config = await readConfig()
+  expect(config.license_check).toBe(true)
 })
 
 test('it parses the license-check input', async () => {
   setInput('license-check', 'false')
-  let options = await readConfig()
-  expect(options.license_check).toEqual(false)
+  let config = await readConfig()
+  expect(config.license_check).toEqual(false)
 
   clearInputs()
   setInput('license-check', 'true')
-  options = await readConfig()
-  expect(options.license_check).toEqual(true)
+  config = await readConfig()
+  expect(config.license_check).toEqual(true)
 })
 
 test('it defaults to checking vulnerabilities', async () => {
-  const options = await readConfig()
-  expect(options.vulnerability_check).toBe(true)
+  const config = await readConfig()
+  expect(config.vulnerability_check).toBe(true)
 })
 
 test('it parses the vulnerability-check input', async () => {
   setInput('vulnerability-check', 'false')
-  let options = await readConfig()
-  expect(options.vulnerability_check).toEqual(false)
+  let config = await readConfig()
+  expect(config.vulnerability_check).toEqual(false)
 
   clearInputs()
   setInput('vulnerability-check', 'true')
-  options = await readConfig()
-  expect(options.vulnerability_check).toEqual(true)
+  config = await readConfig()
+  expect(config.vulnerability_check).toEqual(true)
 })
 
 test('it is not possible to disable both checks', async () => {
