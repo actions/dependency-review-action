@@ -27454,8 +27454,7 @@ function readConfig() {
         const configFile = getOptionalInput('config-file');
         if (configFile !== undefined) {
             const externalConfig = yield readConfigFile(configFile);
-            // TO DO check order of precedence
-            return mergeConfigs(externalConfig, inlineConfig);
+            return schemas_1.ConfigurationOptionsSchema.parse(Object.assign(Object.assign({}, externalConfig), inlineConfig));
         }
         return schemas_1.ConfigurationOptionsSchema.parse(inlineConfig);
     });
@@ -27558,7 +27557,9 @@ function parseConfigFile(configData) {
 function getRemoteConfig(configOpts) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const { data } = yield (0, utils_1.octokitClient)('remote-config-repo-token', false).rest.repos.getContent({
+            // https://github.com/github/codeql-action/blob/main/init/action.yml#L59
+            // external-repo-token
+            const { data } = yield (0, utils_1.octokitClient)('external-repo-token', false).rest.repos.getContent({
                 mediaType: {
                     format: 'raw'
                 },
@@ -27576,24 +27577,6 @@ function getRemoteConfig(configOpts) {
             throw new Error('Error fetching remote config file');
         }
     });
-}
-function mergeConfigs(baseConfig, prioConfig) {
-    const mergedConfig = Object.assign({}, baseConfig);
-    for (const key of Object.keys(prioConfig)) {
-        // based on the assumption that ConfigurationOptions values are either arrays or primitive types
-        // former are merged, latter are overwritten
-        if (key in mergedConfig && Array.isArray(mergedConfig[key])) {
-            // casting to unknown[] needed. TS unable to auto infer
-            mergedConfig[key] = [
-                ...mergedConfig[key],
-                ...prioConfig[key]
-            ];
-        }
-        else {
-            mergedConfig[key] = prioConfig[key];
-        }
-    }
-    return schemas_1.ConfigurationOptionsSchema.parse(mergedConfig);
 }
 
 
