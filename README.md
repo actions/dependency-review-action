@@ -193,7 +193,7 @@ base-ref: 8bb8a58d6a4028b6c2e314d5caaf273f57644896
 head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
 ```
 
-### remote-config-repo-token
+### external-repo-token
 
 A token for fetching external configuration files if they live in
 a private repository.
@@ -202,7 +202,7 @@ a private repository.
 
 **Possible values**: Any GitHub token with read access to the external repository.
 
-**Example**: `remote-config-repo-token: ghp_123456789abcdef...`
+**Example**: `external-repo-token: ghp_123456789abcdef...`
 
 ### Configuration File
 

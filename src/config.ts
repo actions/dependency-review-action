@@ -147,7 +147,7 @@ async function getRemoteConfig(configOpts: {
     // https://github.com/github/codeql-action/blob/main/init/action.yml#L59
     // external-repo-token
     const {data} = await octokitClient(
-      'remote-config-repo-token',
+      'external-repo-token',
       false
     ).rest.repos.getContent({
       mediaType: {
