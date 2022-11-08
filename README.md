@@ -78,7 +78,7 @@ external repository, you can use the
 `OWNER/REPOSITORY/FILENAME@BRANCH` syntax.
 
 If the configuration file is located in an external private
-repository, use the [external-repository-token](#external-repository-token) parameter of the action to specify a token that has read access to the repository.
+repository, use the [external-repo-token](#external-repo-token) parameter of the action to specify a token that has read access to the repository.
 
 **Possible values**: A string representing an absolute path to a file,
 or a file located in another repository:
