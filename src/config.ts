@@ -92,12 +92,14 @@ function validateLicenses(
 async function readConfigFile(
   filePath: string
 ): Promise<ConfigurationOptionsPartial> {
+  // match a remote config (e.g. 'owner/repo/filepath@someref')
   const format = new RegExp(
     '(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)'
   )
-  let data: string
 
+  let data: string
   const pieces = format.exec(filePath)
+
   try {
     if (pieces?.groups && pieces.length === 5) {
       data = await getRemoteConfig({
@@ -139,8 +141,6 @@ async function getRemoteConfig(configOpts: {
   [key: string]: string
 }): Promise<string> {
   try {
-    // https://github.com/github/codeql-action/blob/main/init/action.yml#L59
-    // external-repo-token
     const {data} = await octokitClient(
       'external-repo-token',
       false
@@ -154,8 +154,9 @@ async function getRemoteConfig(configOpts: {
       ref: configOpts.ref
     })
 
-    // When using mediaType.format = 'raw', the response.data is a string but this is not reflected
-    // in the return type of getContent. So we're casting the return value to a string.
+    // When using mediaType.format = 'raw', the response.data is a string
+    // but this is not reflected in the return type of getContent, so we're
+    // casting the return value to a string.
     return z.string().parse(data as unknown)
   } catch (error) {
     core.debug(error as string)
