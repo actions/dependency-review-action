@@ -804,8 +804,8 @@ function isSPDXValid(license) {
 exports.isSPDXValid = isSPDXValid;
 function octokitClient(token = 'repo-token', required = true) {
     const opts = {};
-    // auth is only added if token is present.
-    // For remote-config-files in public repos, the token is optional so it could be undefined
+    // auth is only added if token is present. For remote config files in public
+    // repos the token is optional, so it could be undefined.
     const auth = core.getInput(token, { required });
     if (auth !== undefined) {
         opts['auth'] = auth;
@@ -27465,14 +27465,14 @@ function readInlineConfig() {
     const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'));
     const allow_licenses = parseList(getOptionalInput('allow-licenses'));
     const deny_licenses = parseList(getOptionalInput('deny-licenses'));
-    validateLicenses('allow-licenses', allow_licenses);
-    validateLicenses('deny-licenses', deny_licenses);
     const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
     const license_check = getOptionalBoolean('license-check');
     const vulnerability_check = getOptionalBoolean('vulnerability-check');
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
-    const data = {
+    validateLicenses('allow-licenses', allow_licenses);
+    validateLicenses('deny-licenses', deny_licenses);
+    const keys = {
         fail_on_severity,
         fail_on_scopes,
         allow_licenses,
@@ -27483,7 +27483,7 @@ function readInlineConfig() {
         base_ref,
         head_ref
     };
-    return Object.fromEntries(Object.entries(data).filter(([_, value]) => value !== undefined));
+    return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
 }
 function getOptionalBoolean(name) {
     const value = core.getInput(name);
@@ -27512,6 +27512,7 @@ function validateLicenses(key, licenses) {
 }
 function readConfigFile(filePath) {
     return __awaiter(this, void 0, void 0, function* () {
+        // match a remote config (e.g. 'owner/repo/filepath@someref')
         const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
         let data;
         const pieces = format.exec(filePath);
@@ -27557,8 +27558,6 @@ function parseConfigFile(configData) {
 function getRemoteConfig(configOpts) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // https://github.com/github/codeql-action/blob/main/init/action.yml#L59
-            // external-repo-token
             const { data } = yield (0, utils_1.octokitClient)('external-repo-token', false).rest.repos.getContent({
                 mediaType: {
                     format: 'raw'
@@ -27568,8 +27567,9 @@ function getRemoteConfig(configOpts) {
                 path: configOpts.path,
                 ref: configOpts.ref
             });
-            // When using mediaType.format = 'raw', the response.data is a string but this is not reflected
-            // in the return type of getContent. So we're casting the return value to a string.
+            // When using mediaType.format = 'raw', the response.data is a string
+            // but this is not reflected in the return type of getContent, so we're
+            // casting the return value to a string.
             return z.string().parse(data);
         }
         catch (error) {
@@ -27832,8 +27832,8 @@ function isSPDXValid(license) {
 exports.isSPDXValid = isSPDXValid;
 function octokitClient(token = 'repo-token', required = true) {
     const opts = {};
-    // auth is only added if token is present.
-    // For remote-config-files in public repos, the token is optional so it could be undefined
+    // auth is only added if token is present. For remote config files in public
+    // repos the token is optional, so it could be undefined.
     const auth = core.getInput(token, { required });
     if (auth !== undefined) {
         opts['auth'] = auth;
