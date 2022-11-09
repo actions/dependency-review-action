@@ -26,24 +26,19 @@ export async function readConfig(): Promise<ConfigurationOptions> {
 
 function readInlineConfig(): ConfigurationOptionsPartial {
   const fail_on_severity = getOptionalInput('fail-on-severity')
-
   const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'))
-
   const allow_licenses = parseList(getOptionalInput('allow-licenses'))
   const deny_licenses = parseList(getOptionalInput('deny-licenses'))
+  const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
+  const license_check = getOptionalBoolean('license-check')
+  const vulnerability_check = getOptionalBoolean('vulnerability-check')
+  const base_ref = getOptionalInput('base-ref')
+  const head_ref = getOptionalInput('head-ref')
 
   validateLicenses('allow-licenses', allow_licenses)
   validateLicenses('deny-licenses', deny_licenses)
 
-  const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
-
-  const license_check = getOptionalBoolean('license-check')
-  const vulnerability_check = getOptionalBoolean('vulnerability-check')
-
-  const base_ref = getOptionalInput('base-ref')
-  const head_ref = getOptionalInput('head-ref')
-
-  const data = {
+  const keys = {
     fail_on_severity,
     fail_on_scopes,
     allow_licenses,
@@ -56,7 +51,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   }
 
   return Object.fromEntries(
-    Object.entries(data).filter(([_, value]) => value !== undefined)
+    Object.entries(keys).filter(([_, value]) => value !== undefined)
   )
 }
 
