@@ -198,7 +198,7 @@ A token for fetching external configuration files if they live in
 an external private repository.
 
 Visit the [developer settings](https://github.com/settings/tokens) to
-create a new personal access token with `read` permissions` for the
+create a new personal access token with `read` permissions for the
 repository that hosts the config file.
 
 **Possible values**: Any GitHub token with read access to the external repository.
