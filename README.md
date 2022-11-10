@@ -79,8 +79,8 @@ If the configuration file is located in an external private repository,
 use the [external-repo-token](#external-repo-token) parameter of the
 action to specify a token that has read access to the repository.
 
-**Possible values**: A string representing an absolute path to a file,
-or a file located in another repository:
+**Possible values**: A string representing a path to a file located
+in the current repository, or in an external one.
 
 **Example**: `config-file: ./.github/dependency-review-config.yml # local file`.
 
