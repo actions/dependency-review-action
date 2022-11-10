@@ -150,7 +150,7 @@ deny-licenses:
 
 Add a custom list of GitHub Advisory IDs that can be skipped during detection.
 
-**Possible values**: Any valid advisory GHSA ids.
+**Possible values**: Any valid GHSAs from the [GitHub Advisory Database](https://github.com/advisories).
 
 **Inline example**: `allow-ghsas: GHSA-abcd-1234-5679, GHSA-efgh-1234-5679`
 
