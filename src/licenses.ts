@@ -1,8 +1,6 @@
-import * as core from '@actions/core'
 import spdxSatisfies from 'spdx-satisfies'
-import {Octokit} from 'octokit'
 import {Change, Changes} from './schemas'
-import {isSPDXValid} from './utils'
+import {isSPDXValid, octokitClient} from './utils'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -76,12 +74,11 @@ const fetchGHLicense = async (
   owner: string,
   repo: string
 ): Promise<string | null> => {
-  const octokit = new Octokit({
-    auth: core.getInput('repo-token', {required: true})
-  })
-
   try {
-    const response = await octokit.rest.licenses.getForRepo({owner, repo})
+    const response = await octokitClient().rest.licenses.getForRepo({
+      owner,
+      repo
+    })
     return response.data.license?.spdx_id ?? null
   } catch (_) {
     return null

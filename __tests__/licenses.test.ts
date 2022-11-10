@@ -99,17 +99,6 @@ test('it adds license inside the deny list to forbidden changes', async () => {
   expect(forbidden.length).toEqual(1)
 })
 
-// This is more of a "here's a behavior that might be surprising" than an actual
-// thing we want in the system. Please remove this test after refactoring.
-test('it adds all licenses to forbidden changes when allow is provided an empty array', async () => {
-  const changes: Changes = [npmChange, rubyChange]
-  let {forbidden} = await getInvalidLicenseChanges(changes, {
-    allow: [],
-    deny: ['BSD']
-  })
-  expect(forbidden.length).toBe(2)
-})
-
 test('it does not add license outside the allow list to forbidden changes if it is in removed changes', async () => {
   const changes: Changes = [
     {...npmChange, change_type: 'removed'},

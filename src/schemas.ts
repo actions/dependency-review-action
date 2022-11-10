@@ -38,20 +38,38 @@ export const ConfigurationOptionsSchema = z
   .object({
     fail_on_severity: SeveritySchema,
     fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
-    allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([]),
+    allow_licenses: z.array(z.string()).optional(),
+    deny_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
-    config_file: z.string().optional().default('false'),
-    base_ref: z.string(),
-    head_ref: z.string()
+    config_file: z.string().optional(),
+    base_ref: z.string().optional(),
+    head_ref: z.string().optional()
   })
-  .partial()
-  .refine(
-    obj => !(obj.allow_licenses && obj.deny_licenses),
-    'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.'
-  )
+  .superRefine((config, context) => {
+    if (config.allow_licenses && config.deny_licenses) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'You cannot specify both allow-licenses and deny-licenses'
+      })
+    }
+    if (config.allow_licenses && config.allow_licenses.length < 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'You should provide at least one license in allow-licenses'
+      })
+    }
+    if (
+      config.license_check === false &&
+      config.vulnerability_check === false
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Can't disable both license-check and vulnerability-check"
+      })
+    }
+  })
 
 export const ChangesSchema = z.array(ChangeSchema)
 

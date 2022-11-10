@@ -107,29 +107,6 @@ exports.getRefs = getRefs;
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -144,9 +121,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
-const core = __importStar(__nccwpck_require__(2186));
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
-const octokit_1 = __nccwpck_require__(7467);
 const utils_1 = __nccwpck_require__(918);
 /**
  * Loops through a list of changes, filtering and returning the
@@ -205,11 +180,11 @@ function getInvalidLicenseChanges(changes, licenses) {
 exports.getInvalidLicenseChanges = getInvalidLicenseChanges;
 const fetchGHLicense = (owner, repo) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
-    const octokit = new octokit_1.Octokit({
-        auth: core.getInput('repo-token', { required: true })
-    });
     try {
-        const response = yield octokit.rest.licenses.getForRepo({ owner, repo });
+        const response = yield (0, utils_1.octokitClient)().rest.licenses.getForRepo({
+            owner,
+            repo
+        });
         return (_b = (_a = response.data.license) === null || _a === void 0 ? void 0 : _a.spdx_id) !== null && _b !== void 0 ? _b : null;
     }
     catch (_) {
@@ -350,7 +325,7 @@ const utils_1 = __nccwpck_require__(918);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const config = (0, config_1.readConfig)();
+            const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
             const changes = yield dependencyGraph.compare({
                 owner: github.context.repo.owner,
@@ -557,17 +532,36 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: exports.SeveritySchema,
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
-    allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([]),
+    allow_licenses: z.array(z.string()).optional(),
+    deny_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
-    config_file: z.string().optional().default('false'),
-    base_ref: z.string(),
-    head_ref: z.string()
+    config_file: z.string().optional(),
+    base_ref: z.string().optional(),
+    head_ref: z.string().optional()
 })
-    .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
+    .superRefine((config, context) => {
+    if (config.allow_licenses && config.deny_licenses) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You cannot specify both allow-licenses and deny-licenses'
+        });
+    }
+    if (config.allow_licenses && config.allow_licenses.length < 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You should provide at least one license in allow-licenses'
+        });
+    }
+    if (config.license_check === false &&
+        config.vulnerability_check === false) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Can't disable both license-check and vulnerability-check"
+        });
+    }
+});
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 
@@ -741,11 +735,36 @@ exports.addScannedDependencies = addScannedDependencies;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
 function groupDependenciesByManifest(changes) {
     var _a;
@@ -783,6 +802,17 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+function octokitClient(token = 'repo-token', required = true) {
+    const opts = {};
+    // auth is only added if token is present. For remote config files in public
+    // repos the token is optional, so it could be undefined.
+    const auth = core.getInput(token, { required });
+    if (auth !== undefined) {
+        opts['auth'] = auth;
+    }
+    return new octokit_1.Octokit(opts);
+}
+exports.octokitClient = octokitClient;
 
 
 /***/ }),
@@ -27397,11 +27427,20 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readConfigFile = exports.readInlineConfig = exports.readConfig = void 0;
+exports.readConfig = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
@@ -27409,6 +27448,43 @@ const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
+function readConfig() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const inlineConfig = readInlineConfig();
+        const configFile = getOptionalInput('config-file');
+        if (configFile !== undefined) {
+            const externalConfig = yield readConfigFile(configFile);
+            return schemas_1.ConfigurationOptionsSchema.parse(Object.assign(Object.assign({}, externalConfig), inlineConfig));
+        }
+        return schemas_1.ConfigurationOptionsSchema.parse(inlineConfig);
+    });
+}
+exports.readConfig = readConfig;
+function readInlineConfig() {
+    const fail_on_severity = getOptionalInput('fail-on-severity');
+    const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'));
+    const allow_licenses = parseList(getOptionalInput('allow-licenses'));
+    const deny_licenses = parseList(getOptionalInput('deny-licenses'));
+    const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
+    const license_check = getOptionalBoolean('license-check');
+    const vulnerability_check = getOptionalBoolean('vulnerability-check');
+    const base_ref = getOptionalInput('base-ref');
+    const head_ref = getOptionalInput('head-ref');
+    validateLicenses('allow-licenses', allow_licenses);
+    validateLicenses('deny-licenses', deny_licenses);
+    const keys = {
+        fail_on_severity,
+        fail_on_scopes,
+        allow_licenses,
+        deny_licenses,
+        allow_ghsas,
+        license_check,
+        vulnerability_check,
+        base_ref,
+        head_ref
+    };
+    return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
+}
 function getOptionalBoolean(name) {
     const value = core.getInput(name);
     return value.length > 0 ? core.getBooleanInput(name) : undefined;
@@ -27434,85 +27510,74 @@ function validateLicenses(key, licenses) {
         throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`);
     }
 }
-function readConfig() {
-    const externalConfig = getOptionalInput('config-file');
-    if (externalConfig !== undefined) {
-        const config = readConfigFile(externalConfig);
-        // the reasoning behind reading the inline config when an external
-        // config file is provided is that we still want to allow users to
-        // pass inline options in the presence of an external config file.
-        const inlineConfig = readInlineConfig();
-        // the external config takes precedence
-        return Object.assign({}, inlineConfig, config);
-    }
-    else {
-        return readInlineConfig();
-    }
-}
-exports.readConfig = readConfig;
-function readInlineConfig() {
-    const fail_on_severity = schemas_1.SeveritySchema.parse(getOptionalInput('fail-on-severity'));
-    const fail_on_scopes = z
-        .array(z.enum(schemas_1.SCOPES))
-        .default(['runtime'])
-        .parse(parseList(getOptionalInput('fail-on-scopes')));
-    const allow_licenses = parseList(getOptionalInput('allow-licenses'));
-    const deny_licenses = parseList(getOptionalInput('deny-licenses'));
-    if (allow_licenses !== undefined && deny_licenses !== undefined) {
-        throw new Error("Can't specify both allow_licenses and deny_licenses");
-    }
-    validateLicenses('allow-licenses', allow_licenses);
-    validateLicenses('deny-licenses', deny_licenses);
-    const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
-    const license_check = z
-        .boolean()
-        .default(true)
-        .parse(getOptionalBoolean('license-check'));
-    const vulnerability_check = z
-        .boolean()
-        .default(true)
-        .parse(getOptionalBoolean('vulnerability-check'));
-    if (license_check === false && vulnerability_check === false) {
-        throw new Error("Can't disable both license-check and vulnerability-check");
-    }
-    const base_ref = getOptionalInput('base-ref');
-    const head_ref = getOptionalInput('head-ref');
-    return {
-        fail_on_severity,
-        fail_on_scopes,
-        allow_licenses,
-        deny_licenses,
-        allow_ghsas,
-        license_check,
-        vulnerability_check,
-        base_ref,
-        head_ref
-    };
-}
-exports.readInlineConfig = readInlineConfig;
 function readConfigFile(filePath) {
-    let data;
+    return __awaiter(this, void 0, void 0, function* () {
+        // match a remote config (e.g. 'owner/repo/filepath@someref')
+        const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
+        let data;
+        const pieces = format.exec(filePath);
+        try {
+            if ((pieces === null || pieces === void 0 ? void 0 : pieces.groups) && pieces.length === 5) {
+                data = yield getRemoteConfig({
+                    owner: pieces.groups.owner,
+                    repo: pieces.groups.repo,
+                    path: pieces.groups.path,
+                    ref: pieces.groups.ref
+                });
+            }
+            else {
+                data = fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
+            }
+            return parseConfigFile(data);
+        }
+        catch (error) {
+            core.debug(error);
+            throw new Error('Unable to fetch config file');
+        }
+    });
+}
+function parseConfigFile(configData) {
     try {
-        data = fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
+        const data = yaml_1.default.parse(configData);
+        for (const key of Object.keys(data)) {
+            if (key === 'allow-licenses' || key === 'deny-licenses') {
+                validateLicenses(key, data[key]);
+            }
+            // get rid of the ugly dashes from the actions conventions
+            if (key.includes('-')) {
+                data[key.replace(/-/g, '_')] = data[key];
+                delete data[key];
+            }
+        }
+        return data;
     }
     catch (error) {
         throw error;
     }
-    data = yaml_1.default.parse(data);
-    for (const key of Object.keys(data)) {
-        if (key === 'allow-licenses' || key === 'deny-licenses') {
-            validateLicenses(key, data[key]);
-        }
-        // get rid of the ugly dashes from the actions conventions
-        if (key.includes('-')) {
-            data[key.replace(/-/g, '_')] = data[key];
-            delete data[key];
-        }
-    }
-    const values = schemas_1.ConfigurationOptionsSchema.parse(data);
-    return values;
 }
-exports.readConfigFile = readConfigFile;
+function getRemoteConfig(configOpts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { data } = yield (0, utils_1.octokitClient)('external-repo-token', false).rest.repos.getContent({
+                mediaType: {
+                    format: 'raw'
+                },
+                owner: configOpts.owner,
+                repo: configOpts.repo,
+                path: configOpts.path,
+                ref: configOpts.ref
+            });
+            // When using mediaType.format = 'raw', the response.data is a string
+            // but this is not reflected in the return type of getContent, so we're
+            // casting the return value to a string.
+            return z.string().parse(data);
+        }
+        catch (error) {
+            core.debug(error);
+            throw new Error('Error fetching remote config file');
+        }
+    });
+}
 
 
 /***/ }),
@@ -27658,17 +27723,36 @@ exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: exports.SeveritySchema,
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
-    allow_licenses: z.array(z.string()).default([]),
-    deny_licenses: z.array(z.string()).default([]),
+    allow_licenses: z.array(z.string()).optional(),
+    deny_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
-    config_file: z.string().optional().default('false'),
-    base_ref: z.string(),
-    head_ref: z.string()
+    config_file: z.string().optional(),
+    base_ref: z.string().optional(),
+    head_ref: z.string().optional()
 })
-    .partial()
-    .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
+    .superRefine((config, context) => {
+    if (config.allow_licenses && config.deny_licenses) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You cannot specify both allow-licenses and deny-licenses'
+        });
+    }
+    if (config.allow_licenses && config.allow_licenses.length < 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'You should provide at least one license in allow-licenses'
+        });
+    }
+    if (config.license_check === false &&
+        config.vulnerability_check === false) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Can't disable both license-check and vulnerability-check"
+        });
+    }
+});
 exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 
@@ -27679,11 +27763,36 @@ exports.ChangesSchema = z.array(exports.ChangeSchema);
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
 function groupDependenciesByManifest(changes) {
     var _a;
@@ -27721,6 +27830,17 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+function octokitClient(token = 'repo-token', required = true) {
+    const opts = {};
+    // auth is only added if token is present. For remote config files in public
+    // repos the token is optional, so it could be undefined.
+    const auth = core.getInput(token, { required });
+    if (auth !== undefined) {
+        opts['auth'] = auth;
+    }
+    return new octokit_1.Octokit(opts);
+}
+exports.octokitClient = octokitClient;
 
 
 /***/ }),

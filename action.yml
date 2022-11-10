@@ -21,7 +21,7 @@ inputs:
     description: The head git ref to be used for this check. Has a default value when the workflow event is `pull_request` or `pull_request_target`. Must be provided otherwise.
     required: false
   config-file:
-    description: A filepath to the configuration file for the action.
+    description: A path to the configuration file for the action.
     required: false
   allow-licenses:
     description: Comma-separated list of allowed licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
@@ -32,6 +32,10 @@ inputs:
   allow-ghsas:
     description: Comma-separated list of allowed Github Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
     required: false
+  external-repo-token:
+    description: A token for fetching external configuration file if it lives in another repository. It is required if the repository is private
+    required: false
+
 runs:
   using: 'node16'
   main: 'dist/index.js'

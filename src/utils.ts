@@ -1,3 +1,5 @@
+import * as core from '@actions/core'
+import {Octokit} from 'octokit'
 import spdxParse from 'spdx-expression-parse'
 import {Changes} from './schemas'
 
@@ -37,4 +39,17 @@ export function isSPDXValid(license: string): boolean {
   } catch (_) {
     return false
   }
+}
+
+export function octokitClient(token = 'repo-token', required = true): Octokit {
+  const opts: Record<string, unknown> = {}
+
+  // auth is only added if token is present. For remote config files in public
+  // repos the token is optional, so it could be undefined.
+  const auth = core.getInput(token, {required})
+  if (auth !== undefined) {
+    opts['auth'] = auth
+  }
+
+  return new Octokit(opts)
 }

@@ -71,13 +71,20 @@ or by inlining these options in your workflow file.
 
 ### config-file
 
-A string representing the path to an external configuration file. By
-default external configuration files are not used.
+A string representing the path to a configuraton file. It can be a
+local file, or a file located in an external repository. You can use
+this syntax for external repositories: `OWNER/REPOSITORY/FILENAME@BRANCH`.
 
-**Possible values**: A string representing the absolute path to the
-configuration file.
+If the configuration file is located in an external private repository,
+use the [external-repo-token](#external-repo-token) parameter of the
+action to specify a token that has read access to the repository.
 
-**Example**: `config-file: ./.github/dependency-review-config.yml`.
+**Possible values**: A string representing a path to a file located
+in the current repository, or in an external one.
+
+**Example**: `config-file: ./.github/dependency-review-config.yml # local file`.
+
+**Example**: `config-file: github/octorepo/dependency-review-config.yml@main # external repo`
 
 ### fail-on-severity
 
@@ -141,9 +148,9 @@ deny-licenses:
 
 ### allow-ghsas
 
-Add a custom list of GitHub Advisory IDs that can be skipped during detection. 
+A list of GitHub Security Advisory IDs that can be skipped during detection.
 
-**Possible values**: Any valid advisory GHSA ids.
+**Possible values**: Any valid GHSAs from the [GitHub Advisory Database](https://github.com/advisories).
 
 **Inline example**: `allow-ghsas: GHSA-abcd-1234-5679, GHSA-efgh-1234-5679`
 
@@ -184,6 +191,19 @@ this. The values need to be specified for all other event types.
 base-ref: 8bb8a58d6a4028b6c2e314d5caaf273f57644896
 head-ref: 69af5638bf660cf218aad5709a4c100e42a2f37b
 ```
+
+### external-repo-token
+
+A token for fetching external configuration files if they live in
+an external private repository.
+
+Visit the [developer settings](https://github.com/settings/tokens) to
+create a new personal access token with `read` permissions for the
+repository that hosts the config file.
+
+**Possible values**: Any GitHub token with read access to the external repository.
+
+**Example**: `external-repo-token: ghp_123456789abcdef...`
 
 ### Configuration File
 
