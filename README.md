@@ -148,7 +148,7 @@ deny-licenses:
 
 ### allow-ghsas
 
-Add a custom list of GitHub Advisory IDs that can be skipped during detection.
+A list of GitHub Security Advisory IDs that can be skipped during detection.
 
 **Possible values**: Any valid GHSAs from the [GitHub Advisory Database](https://github.com/advisories).
 
