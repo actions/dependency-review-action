@@ -38,12 +38,9 @@ inputs:
   license-check:
     description: A boolean to determine if license checks should be performed
     required: false
-    default: true
   vulnerability-check:
     description: A boolean to determine if vulnerability checks should be performed
     required: false
-    default: true
-
 runs:
   using: 'node16'
   main: 'dist/index.js'
