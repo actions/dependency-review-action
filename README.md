@@ -64,11 +64,11 @@ jobs:
 
 ## Configuration options
 
-Configure this action by either inlining these options in your workflow file or by using an external configuration file. All configuration options are optional. 
+Configure this action by either inlining these options in your workflow file, or by using an external configuration file. All configuration options are optional.
 
 | Option                | Usage                                                                                                                                                                             | Possible values                                                                          | Default value |
 |-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|---------------|
-| `fail-on-severity`    | Defines the threshold for level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.                  | `low`, `moderate`, `high`, `critical`                                                    | `low`         |
+| `fail-on-severity`    | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                                    | `low`         |
 | `allow-licenses`*     | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/) | none          |
 | `deny-licenses`*      | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/) | none          |
 | `fail-on-scopes`†      | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. |`runtime`, `development`, `unknown`                                                      | `runtime`     |
@@ -110,12 +110,12 @@ jobs:
 
 ### Configuration File
 
-You can use an external configuration file to specify the settings for this action. It can be a local file or a file in an external repository. Refer to the following options for specification. 
+You can use an external configuration file to specify the settings for this action. It can be a local file or a file in an external repository. Refer to the following options for the specification.
 
 | Option                | Usage                                                                                                                                                                                    | Possible values                                                                                                                |
 |-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| `config-file`         | A path to a file in the current repository or an external repository. Use this syntax for external files: `OWNER/REPOSITORY/FILENAME@BRANCH`                                             | local file: `./.github/dependency-review-config.yml`, <br> external repo: `github/octorepo/dependency-review-config.yml@main` |
-| `external-repo-token` | Specifies a token for fetching the configuration file, if the file resides in a private external repository. Create a token in [developer settings](https://github.com/settings/tokens). | Any token with `read` permissions to the repository hosting the config file.                                                   |
+| `config-file`         | A path to a file in the current repository or an external repository. Use this syntax for external files: `OWNER/REPOSITORY/FILENAME@BRANCH`                                             | **Local file**: `./.github/dependency-review-config.yml` <br> **External repo**: `github/octorepo/dependency-review-config.yml@main` |
+| `external-repo-token` | Specifies a token for fetching the configuration file if the file resides in a private external repository. Create a token in [developer settings](https://github.com/settings/tokens). | Any token with `read` permissions to the repository hosting the config file.                                                   |
 
 #### Example
 
