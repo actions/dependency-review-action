@@ -113,7 +113,7 @@ test('it reads an external config file', async () => {
 
 test('raises an error when the the config file was not found', async () => {
   setInput('config-file', 'fixtures/i-dont-exist')
-  await expect(readConfig()).rejects.toThrow(/Unable to fetch config file/)
+  await expect(readConfig()).rejects.toThrow(/Unable to fetch/)
 })
 
 test('it parses options from both sources', async () => {
