@@ -27505,7 +27505,13 @@ function validateLicenses(key, licenses) {
     if (licenses === undefined) {
         return;
     }
-    const invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
+    let invalid_licenses;
+    try {
+        invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
+    }
+    catch (error) {
+        throw new Error(`Error validating license(s): ${error.message}`);
+    }
     if (invalid_licenses.length > 0) {
         throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`);
     }
@@ -27531,8 +27537,8 @@ function readConfigFile(filePath) {
             return parseConfigFile(data);
         }
         catch (error) {
-            core.debug(error);
-            throw new Error('Unable to fetch config file');
+            core.debug(error.message);
+            throw new Error('Unable to fetch or parse config file');
         }
     });
 }
@@ -27541,7 +27547,15 @@ function parseConfigFile(configData) {
         const data = yaml_1.default.parse(configData);
         for (const key of Object.keys(data)) {
             if (key === 'allow-licenses' || key === 'deny-licenses') {
-                validateLicenses(key, data[key]);
+                const licenses = data[key];
+                // handle the case where the user has a singe or invalid license
+                // in the config file
+                if (typeof licenses === 'string') {
+                    validateLicenses(key, [licenses]);
+                }
+                else {
+                    validateLicenses(key, data[key]);
+                }
             }
             // get rid of the ugly dashes from the actions conventions
             if (key.includes('-')) {
