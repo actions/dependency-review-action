@@ -240,14 +240,14 @@ describe('licenses that are not valid SPDX licenses', () => {
   test('it raises an error for invalid licenses in allow-licenses', async () => {
     setInput('allow-licenses', ' BSD, GPL 2')
     await expect(readConfig()).rejects.toThrow(
-      'Invalid license(s) in allow-licenses: BSD, GPL 2'
+      'Invalid license(s) in allow-licenses: BSD,GPL 2'
     )
   })
 
   test('it raises an error for invalid licenses in deny-licenses', async () => {
     setInput('deny-licenses', ' BSD, GPL 2')
     await expect(readConfig()).rejects.toThrow(
-      'Invalid license(s) in deny-licenses: BSD, GPL 2'
+      'Invalid license(s) in deny-licenses: BSD,GPL 2'
     )
   })
 
