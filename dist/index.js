@@ -27505,15 +27505,9 @@ function validateLicenses(key, licenses) {
     if (licenses === undefined) {
         return;
     }
-    let invalid_licenses;
-    try {
-        invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
-    }
-    catch (error) {
-        throw new Error(`Error validating license(s): ${error.message}`);
-    }
+    const invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
     if (invalid_licenses.length > 0) {
-        throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`);
+        throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses}`);
     }
 }
 function readConfigFile(filePath) {
@@ -27537,25 +27531,33 @@ function readConfigFile(filePath) {
             return parseConfigFile(data);
         }
         catch (error) {
-            core.debug(error.message);
-            throw new Error('Unable to fetch or parse config file');
+            throw new Error(`Unable to fetch or parse config file: ${error.message}`);
         }
     });
 }
 function parseConfigFile(configData) {
     try {
         const data = yaml_1.default.parse(configData);
+        // These are the options that we support where the user can provide
+        // either a YAML list or a comma-separated string.
+        const listKeys = [
+            'allow-licenses',
+            'deny-licenses',
+            'fail-on-scopes',
+            'allow-ghsas'
+        ];
         for (const key of Object.keys(data)) {
+            // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
+            // case we need to parse that into a list (e.g. ['MIT', 'Apache-2.0']).
+            if (listKeys.includes(key)) {
+                const val = data[key];
+                if (typeof val === 'string') {
+                    data[key] = val.split(',').map(x => x.trim());
+                }
+            }
+            // perform SPDX validation
             if (key === 'allow-licenses' || key === 'deny-licenses') {
-                const licenses = data[key];
-                // handle the case where the user has a singe or invalid license
-                // in the config file
-                if (typeof licenses === 'string') {
-                    validateLicenses(key, [licenses]);
-                }
-                else {
-                    validateLicenses(key, data[key]);
-                }
+                validateLicenses(key, data[key]);
             }
             // get rid of the ugly dashes from the actions conventions
             if (key.includes('-')) {
