@@ -85,7 +85,7 @@ function validateLicenses(
   try {
     invalid_licenses = licenses.filter(license => !isSPDXValid(license))
   } catch (error) {
-    throw new Error(`Error validating license(s): ${error.message}`)
+    throw new Error(`Error validating license(s): ${(error as Error).message}`)
   }
 
   if (invalid_licenses.length > 0) {
