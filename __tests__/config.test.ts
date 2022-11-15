@@ -250,4 +250,14 @@ describe('licenses that are not valid SPDX licenses', () => {
       'Invalid license(s) in deny-licenses: BSD, GPL 2'
     )
   })
+
+  test('it supports comma-separated license lists', async () => {
+    setInput(
+      'config-file',
+      './__tests__/fixtures/inline-license-config-sample.yml'
+    )
+    let config = await readConfig()
+
+    expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
+  })
 })
