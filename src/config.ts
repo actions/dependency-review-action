@@ -81,17 +81,10 @@ function validateLicenses(
     return
   }
 
-  let invalid_licenses
-  try {
-    invalid_licenses = licenses.filter(license => !isSPDXValid(license))
-  } catch (error) {
-    throw new Error(`Error validating license(s): ${(error as Error).message}`)
-  }
+  const invalid_licenses = licenses.filter(license => !isSPDXValid(license))
 
   if (invalid_licenses.length > 0) {
-    throw new Error(
-      `Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`
-    )
+    throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses}`)
   }
 }
 
@@ -119,25 +112,41 @@ async function readConfigFile(
     }
     return parseConfigFile(data)
   } catch (error) {
-    core.debug((error as Error).message)
-    throw new Error('Unable to fetch or parse config file')
+    throw new Error(
+      `Unable to fetch or parse config file: ${(error as Error).message}`
+    )
   }
 }
 
 function parseConfigFile(configData: string): ConfigurationOptionsPartial {
   try {
     const data = YAML.parse(configData)
+
+    // These are the options that we support where the user can provide
+    // either a YAML list or a comma-separated string.
+    const listKeys = [
+      'allow-licenses',
+      'deny-licenses',
+      'fail-on-scopes',
+      'allow-ghsas'
+    ]
+
     for (const key of Object.keys(data)) {
-      if (key === 'allow-licenses' || key === 'deny-licenses') {
-        const licenses = data[key]
-        // handle the case where the user has a singe or invalid license
-        // in the config file
-        if (typeof licenses === 'string') {
-          validateLicenses(key, [licenses])
-        } else {
-          validateLicenses(key, data[key])
+      // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
+      // case we need to parse that into a list (e.g. ['MIT', 'Apache-2.0']).
+      if (listKeys.includes(key)) {
+        const val = data[key]
+
+        if (typeof val === 'string') {
+          data[key] = val.split(',').map(x => x.trim())
         }
       }
+
+      // perform SPDX validation
+      if (key === 'allow-licenses' || key === 'deny-licenses') {
+        validateLicenses(key, data[key])
+      }
+
       // get rid of the ugly dashes from the actions conventions
       if (key.includes('-')) {
         data[key.replace(/-/g, '_')] = data[key]
