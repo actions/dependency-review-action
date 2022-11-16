@@ -113,7 +113,7 @@ test('it reads an external config file', async () => {
 
 test('raises an error when the the config file was not found', async () => {
   setInput('config-file', 'fixtures/i-dont-exist')
-  await expect(readConfig()).rejects.toThrow(/Unable to fetch config file/)
+  await expect(readConfig()).rejects.toThrow(/Unable to fetch/)
 })
 
 test('it parses options from both sources', async () => {
@@ -232,6 +232,16 @@ test('it is not possible to disable both checks', async () => {
   )
 })
 
+test('it supports comma-separated lists', async () => {
+  setInput(
+    'config-file',
+    './__tests__/fixtures/inline-license-config-sample.yml'
+  )
+  let config = await readConfig()
+
+  expect(config.allow_licenses).toEqual(['MIT', 'GPL-2.0-only'])
+})
+
 describe('licenses that are not valid SPDX licenses', () => {
   beforeAll(() => {
     jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(false)
@@ -240,14 +250,14 @@ describe('licenses that are not valid SPDX licenses', () => {
   test('it raises an error for invalid licenses in allow-licenses', async () => {
     setInput('allow-licenses', ' BSD, GPL 2')
     await expect(readConfig()).rejects.toThrow(
-      'Invalid license(s) in allow-licenses: BSD, GPL 2'
+      'Invalid license(s) in allow-licenses: BSD,GPL 2'
     )
   })
 
   test('it raises an error for invalid licenses in deny-licenses', async () => {
     setInput('deny-licenses', ' BSD, GPL 2')
     await expect(readConfig()).rejects.toThrow(
-      'Invalid license(s) in deny-licenses: BSD, GPL 2'
+      'Invalid license(s) in deny-licenses: BSD,GPL 2'
     )
   })
 })
