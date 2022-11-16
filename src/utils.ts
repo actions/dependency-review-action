@@ -41,6 +41,13 @@ export function isSPDXValid(license: string): boolean {
   }
 }
 
+function isEnterprise(): boolean {
+  const serverUrl = new URL(
+    process.env['GITHUB_SERVER_URL'] ?? 'https://github.com'
+  )
+  return serverUrl.hostname.toLowerCase() !== 'github.com'
+}
+
 export function octokitClient(token = 'repo-token', required = true): Octokit {
   const opts: Record<string, unknown> = {}
 
@@ -49,6 +56,12 @@ export function octokitClient(token = 'repo-token', required = true): Octokit {
   const auth = core.getInput(token, {required})
   if (auth !== undefined) {
     opts['auth'] = auth
+  }
+
+  //baseUrl is required for GitHub Enterprise Server
+  //https://github.com/octokit/octokit.js/blob/9c8fa89d5b0bc4ddbd6dec638db00a2f6c94c298/README.md?plain=1#L196
+  if (isEnterprise()) {
+    opts['baseUrl'] = new URL('api/v3', process.env['GITHUB_SERVER_URL'])
   }
 
   return new Octokit(opts)
