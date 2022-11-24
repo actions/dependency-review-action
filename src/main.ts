@@ -7,6 +7,7 @@ import {Change, Severity} from './schemas'
 import {readConfig} from '../src/config'
 import {filterChangesBySeverity} from '../src/filter'
 import {getDeniedLicenseChanges} from './licenses'
+import * as summary from './summary'
 import {getRefs} from './git-refs'
 
 async function run(): Promise<void> {
@@ -29,26 +30,31 @@ async function run(): Promise<void> {
       deny: config.deny_licenses
     }
 
-    const filteredChanges = filterChangesBySeverity(
+    const addedChanges = filterChangesBySeverity(
       minSeverity as Severity,
       changes
-    )
-
-    for (const change of filteredChanges) {
-      if (
+    ).filter(
+      change =>
         change.change_type === 'added' &&
         change.vulnerabilities !== undefined &&
         change.vulnerabilities.length > 0
-      ) {
-        printChangeVulnerabilities(change)
-        failed = true
-      }
-    }
+    )
 
     const [licenseErrors, unknownLicenses] = getDeniedLicenseChanges(
       changes,
       licenses
     )
+
+    summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses)
+
+    if (addedChanges.length > 0) {
+      for (const change of addedChanges) {
+        printChangeVulnerabilities(change)
+      }
+      failed = true
+    }
+
+    summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity || '')
 
     if (licenseErrors.length > 0) {
       printLicensesError(licenseErrors)
@@ -56,6 +62,8 @@ async function run(): Promise<void> {
     }
 
     printNullLicenses(unknownLicenses)
+
+    summary.addLicensesToSummary(licenseErrors, unknownLicenses, config)
 
     if (failed) {
       core.setFailed('Dependency review detected vulnerable packages.')
@@ -80,6 +88,8 @@ async function run(): Promise<void> {
         core.setFailed('Unexpected fatal error')
       }
     }
+  } finally {
+    await core.summary.write()
   }
 }
 

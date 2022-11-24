@@ -201,6 +201,7 @@ const request_error_1 = __nccwpck_require__(537);
 const config_1 = __nccwpck_require__(6373);
 const filter_1 = __nccwpck_require__(8752);
 const licenses_1 = __nccwpck_require__(3247);
+const summary = __importStar(__nccwpck_require__(8608));
 const git_refs_1 = __nccwpck_require__(1086);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -219,21 +220,24 @@ function run() {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             };
-            const filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes);
-            for (const change of filteredChanges) {
-                if (change.change_type === 'added' &&
-                    change.vulnerabilities !== undefined &&
-                    change.vulnerabilities.length > 0) {
-                    printChangeVulnerabilities(change);
-                    failed = true;
-                }
-            }
+            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, changes).filter(change => change.change_type === 'added' &&
+                change.vulnerabilities !== undefined &&
+                change.vulnerabilities.length > 0);
             const [licenseErrors, unknownLicenses] = (0, licenses_1.getDeniedLicenseChanges)(changes, licenses);
+            summary.addSummaryToSummary(addedChanges, licenseErrors, unknownLicenses);
+            if (addedChanges.length > 0) {
+                for (const change of addedChanges) {
+                    printChangeVulnerabilities(change);
+                }
+                failed = true;
+            }
+            summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity || '');
             if (licenseErrors.length > 0) {
                 printLicensesError(licenseErrors);
                 core.setFailed('Dependency review detected incompatible licenses.');
             }
             printNullLicenses(unknownLicenses);
+            summary.addLicensesToSummary(licenseErrors, unknownLicenses, config);
             if (failed) {
                 core.setFailed('Dependency review detected vulnerable packages.');
             }
@@ -256,6 +260,9 @@ function run() {
                     core.setFailed('Unexpected fatal error');
                 }
             }
+        }
+        finally {
+            yield core.summary.write();
         }
     });
 }
@@ -364,6 +371,156 @@ exports.ConfigurationOptionsSchema = z
     .partial()
     .refine(obj => !(obj.allow_licenses && obj.deny_licenses), 'Your workflow file has both an allow_licenses list and deny_licenses list, but you can only set one or the other.');
 exports.ChangesSchema = z.array(exports.ChangeSchema);
+
+
+/***/ }),
+
+/***/ 8608:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+function addSummaryToSummary(addedPackages, licenseErrors, unknownLicenses) {
+    core.summary
+        .addHeading('Dependency Review')
+        .addRaw(`We found ${addedPackages.length} vulnerable package(s), ${licenseErrors.length} package(s) with incompatible licenses, and ${unknownLicenses.length} package(s) with unknown licenses.`);
+}
+exports.addSummaryToSummary = addSummaryToSummary;
+function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
+    const rows = [];
+    const manifests = getManifests(addedPackages);
+    core.summary
+        .addHeading('Vulnerabilities')
+        .addQuote(`Vulnerabilites were filtered by mininum severity <strong>${severity}</strong>.`);
+    if (addedPackages.length === 0) {
+        core.summary.addQuote('No vulnerabilities found in added packages.');
+        return;
+    }
+    for (const manifest of manifests) {
+        for (const change of addedPackages.filter(pkg => pkg.manifest === manifest)) {
+            let previous_package = '';
+            let previous_version = '';
+            for (const vuln of change.vulnerabilities) {
+                const sameAsPrevious = previous_package === change.name &&
+                    previous_version === change.version;
+                if (!sameAsPrevious) {
+                    rows.push([
+                        renderUrl(change.source_repository_url, change.name),
+                        change.version,
+                        renderUrl(vuln.advisory_url, vuln.advisory_summary),
+                        vuln.severity
+                    ]);
+                }
+                else {
+                    rows.push([
+                        { data: '', colspan: '2' },
+                        renderUrl(vuln.advisory_url, vuln.advisory_summary),
+                        vuln.severity
+                    ]);
+                }
+                previous_package = change.name;
+                previous_version = change.version;
+            }
+        }
+        core.summary.addHeading(`<em>${manifest}</em>`, 3).addTable([
+            [
+                { data: 'Name', header: true },
+                { data: 'Version', header: true },
+                { data: 'Vulnerability', header: true },
+                { data: 'Severity', header: true }
+            ],
+            ...rows
+        ]);
+    }
+}
+exports.addChangeVulnerabilitiesToSummary = addChangeVulnerabilitiesToSummary;
+function addLicensesToSummary(licenseErrors, unknownLicenses, config) {
+    core.summary.addHeading('Licenses');
+    if (config.allow_licenses && config.allow_licenses.length > 0) {
+        core.summary.addQuote(`<strong>Allowed Licenses</strong>: ${config.allow_licenses.join(', ')}`);
+    }
+    if (config.deny_licenses && config.deny_licenses.length > 0) {
+        core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
+    }
+    if (licenseErrors.length === 0 && unknownLicenses.length === 0) {
+        core.summary.addQuote('No license violations detected.');
+        return;
+    }
+    if (licenseErrors.length > 0) {
+        const rows = [];
+        const manifests = getManifests(licenseErrors);
+        core.summary.addHeading('Incompatible Licenses', 3).addSeparator();
+        for (const manifest of manifests) {
+            core.summary.addHeading(`<em>${manifest}</em>`, 4);
+            for (const change of licenseErrors.filter(pkg => pkg.manifest === manifest)) {
+                rows.push([
+                    renderUrl(change.source_repository_url, change.name),
+                    change.version,
+                    change.license || ''
+                ]);
+            }
+            core.summary.addTable([['Package', 'Version', 'License'], ...rows]);
+        }
+    }
+    else {
+        core.summary.addQuote('No license violations detected.');
+    }
+    core.debug(`found ${unknownLicenses.length} unknown licenses`);
+    if (unknownLicenses.length > 0) {
+        const rows = [];
+        const manifests = getManifests(unknownLicenses);
+        core.debug(`found ${manifests.entries.length} manifests for unknown licenses`);
+        core.summary.addHeading('Unknown Licenses', 3).addSeparator();
+        for (const manifest of manifests) {
+            core.summary.addHeading(`<em>${manifest}</em>`, 4);
+            for (const change of unknownLicenses.filter(pkg => pkg.manifest === manifest)) {
+                rows.push([
+                    renderUrl(change.source_repository_url, change.name),
+                    change.version
+                ]);
+            }
+            core.summary.addTable([['Package', 'Version'], ...rows]);
+        }
+    }
+}
+exports.addLicensesToSummary = addLicensesToSummary;
+function getManifests(changes) {
+    return new Set(changes.flatMap(c => c.manifest));
+}
+function renderUrl(url, text) {
+    if (url) {
+        return `<a href="${url}">${text}</a>`;
+    }
+    else {
+        return text;
+    }
+}
 
 
 /***/ }),
