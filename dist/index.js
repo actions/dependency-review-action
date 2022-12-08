@@ -622,7 +622,7 @@ function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
     const manifests = (0, utils_1.getManifestsSet)(addedPackages);
     core.summary
         .addHeading('Vulnerabilities')
-        .addQuote(`Vulnerabilites were filtered by mininum severity <strong>${severity}</strong>.`);
+        .addQuote(`Vulnerabilities were filtered by minimum severity <strong>${severity}</strong>.`);
     if (addedPackages.length === 0) {
         core.summary.addQuote('No vulnerabilities found in added packages.');
         return;
