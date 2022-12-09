@@ -111,7 +111,7 @@ test('it reads an external config file', async () => {
   expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
-test('raises an error when the the config file was not found', async () => {
+test('raises an error when the config file was not found', async () => {
   setInput('config-file', 'fixtures/i-dont-exist')
   await expect(readConfig()).rejects.toThrow(/Unable to fetch/)
 })

@@ -35,7 +35,7 @@ export function addChangeVulnerabilitiesToSummary(
   core.summary
     .addHeading('Vulnerabilities')
     .addQuote(
-      `Vulnerabilites were filtered by mininum severity <strong>${severity}</strong>.`
+      `Vulnerabilities were filtered by minimum severity <strong>${severity}</strong>.`
     )
 
   if (addedPackages.length === 0) {

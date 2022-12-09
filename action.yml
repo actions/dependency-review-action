@@ -30,7 +30,7 @@ inputs:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
   allow-ghsas:
-    description: Comma-separated list of allowed Github Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
+    description: Comma-separated list of allowed GitHub Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
     required: false
   external-repo-token:
     description: A token for fetching external configuration file if it lives in another repository. It is required if the repository is private
