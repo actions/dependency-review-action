@@ -36321,11 +36321,11 @@ exports.visitAsync = visitAsync;
 "use strict";
 __nccwpck_require__.r(__webpack_exports__);
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   "modifierNames": () => (/* binding */ modifierNames),
-/* harmony export */   "foregroundColorNames": () => (/* binding */ foregroundColorNames),
 /* harmony export */   "backgroundColorNames": () => (/* binding */ backgroundColorNames),
 /* harmony export */   "colorNames": () => (/* binding */ colorNames),
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__),
+/* harmony export */   "foregroundColorNames": () => (/* binding */ foregroundColorNames),
+/* harmony export */   "modifierNames": () => (/* binding */ modifierNames)
 /* harmony export */ });
 const ANSI_BACKGROUND_OFFSET = 10;
 
