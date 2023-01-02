@@ -35,7 +35,7 @@
     "octokit": "^2.0.10",
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^5.0.1",
-    "yaml": "^2.1.3",
+    "yaml": "^2.2.1",
     "zod": "^3.20.2"
   },
   "devDependencies": {
