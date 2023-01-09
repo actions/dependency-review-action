@@ -77,4 +77,4 @@ export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>
-export type Scope = typeof SCOPES[number]
+export type Scope = (typeof SCOPES)[number]
