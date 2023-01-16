@@ -28,7 +28,7 @@
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
     "@octokit/plugin-retry": "^4.0.3",
-    "@octokit/request-error": "^2.1.0",
+    "@octokit/request-error": "^3.0.2",
     "ansi-styles": "^6.2.1",
     "got": "^12.5.3",
     "nodemon": "^2.0.20",
