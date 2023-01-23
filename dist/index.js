@@ -8609,7 +8609,7 @@ async function wrapRequest(state, request, options) {
   return limiter.schedule(request, options);
 }
 
-const VERSION = "4.0.3";
+const VERSION = "4.0.4";
 function retry(octokit, octokitOptions) {
   const state = Object.assign({
     enabled: true,
