@@ -8574,6 +8574,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var Bottleneck = _interopDefault(__nccwpck_require__(1174));
+var requestError = __nccwpck_require__(537);
 
 // @ts-ignore
 async function errorRequest(octokit, state, error, options) {
@@ -8606,10 +8607,23 @@ async function wrapRequest(state, request, options) {
       return after * state.retryAfterBaseValue;
     }
   });
-  return limiter.schedule(request, options);
+  return limiter.schedule(requestWithGraphqlErrorHandling.bind(null, request), options);
+}
+// @ts-ignore
+async function requestWithGraphqlErrorHandling(request, options) {
+  const response = await request(request, options);
+  if (response.data && response.data.errors && /Something went wrong while executing your query/.test(response.data.errors[0].message)) {
+    // simulate 500 request error for retry handling
+    const error = new requestError.RequestError(response.data.errors[0].message, 500, {
+      request: options,
+      response
+    });
+    throw error;
+  }
+  return response;
 }
 
-const VERSION = "4.0.4";
+const VERSION = "4.1.1";
 function retry(octokit, octokitOptions) {
   const state = Object.assign({
     enabled: true,
