@@ -66,25 +66,25 @@ jobs:
 
 Configure this action by either inlining these options in your workflow file, or by using an external configuration file. All configuration options are optional.
 
-| Option                | Usage                                                                                                                                                                             | Possible values                                                                          | Default value |
-|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|---------------|
-| `fail-on-severity`    | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                                    | `low`         |
-| `allow-licenses`*     | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/) | none          |
-| `deny-licenses`*      | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/) | none          |
-| `fail-on-scopes`†      | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. |`runtime`, `development`, `unknown`                                                      | `runtime`     |
-| `allow-ghsas`         | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories)             | none          |
-| `license-check`       | Enable or disable the license check performed by the action.                                                                                                                                | `true`, `false`                                                                          | `true`       |
-| `vulnerability-check` | Enable or disable the vulnerability check performed by the action.                                                                                                                          | `true`, `false`                                                                          | `true`       |
-| `base-ref`/`head-ref` | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                                     | none          |
+| Option                  | Usage                                                                                                                                                                             | Possible values                                                              | Default value |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------- |
+| `fail-on-severity`      | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                        | `low`         |
+| `allow-licenses`*       | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
+| `deny-licenses`*        | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
+| `fail-on-scopes`†       | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                          | `runtime`     |
+| `allow-ghsas`           | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories) | none          |
+| `license-check`         | Enable or disable the license check performed by the action.                                                                                                                      | `true`, `false`                                                              | `true`        |
+| `vulnerability-check`   | Enable or disable the vulnerability check performed by the action.                                                                                                                | `true`, `false`                                                              | `true`        |
+| `base-ref`/`head-ref`   | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                         | none          |
+| `comment-summary-in-pr` | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `true`, `false`                                                              | `false`       |
 
 *not supported for use with GitHub Enterprise Server
 
-†will be supported with GitHub Enterprise Server 3.8 
-
+†will be supported with GitHub Enterprise Server 3.8
 
 ### Inline Configuration
 
-You can pass options to the Dependency Review GitHub Action using your workflow file. 
+You can pass options to the Dependency Review GitHub Action using your workflow file.
 
 #### Example
 
@@ -112,10 +112,10 @@ jobs:
 
 You can use an external configuration file to specify the settings for this action. It can be a local file or a file in an external repository. Refer to the following options for the specification.
 
-| Option                | Usage                                                                                                                                                                                    | Possible values                                                                                                                |
-|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| `config-file`         | A path to a file in the current repository or an external repository. Use this syntax for external files: `OWNER/REPOSITORY/FILENAME@BRANCH`                                             | **Local file**: `./.github/dependency-review-config.yml` <br> **External repo**: `github/octorepo/dependency-review-config.yml@main` |
-| `external-repo-token` | Specifies a token for fetching the configuration file. It is required if the file resides in a private external repository and for all GitHub Enterprise Server repositories. Create a token in [developer settings](https://github.com/settings/tokens). | Any token with `read` permissions to the repository hosting the config file.                                                   |
+| Option                | Usage                                                                                                                                                                                                                                                     | Possible values                                                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `config-file`         | A path to a file in the current repository or an external repository. Use this syntax for external files: `OWNER/REPOSITORY/FILENAME@BRANCH`                                                                                                              | **Local file**: `./.github/dependency-review-config.yml` <br> **External repo**: `github/octorepo/dependency-review-config.yml@main` |
+| `external-repo-token` | Specifies a token for fetching the configuration file. It is required if the file resides in a private external repository and for all GitHub Enterprise Server repositories. Create a token in [developer settings](https://github.com/settings/tokens). | Any token with `read` permissions to the repository hosting the config file.                                                         |
 
 #### Example
 
@@ -128,7 +128,7 @@ Start by specifying that you will be using an external configuration file:
     config-file: './.github/dependency-review-config.yml'
 ```
 
-And then create the file in the path you just specified: 
+And then create the file in the path you just specified:
 
 ```yaml
 fail-on-severity: 'critical'
