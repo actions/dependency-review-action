@@ -22,7 +22,8 @@ function clearInputs() {
     'VULNERABILITY-CHECK',
     'CONFIG-FILE',
     'BASE-REF',
-    'HEAD-REF'
+    'HEAD-REF',
+    'COMMENT-SUMMARY-IN-PR'
   ]
 
   allowedOptions.forEach(option => {

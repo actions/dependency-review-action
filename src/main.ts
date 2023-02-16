@@ -15,6 +15,7 @@ import * as summary from './summary'
 import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
+import {commentPr} from './comment-pr'
 
 async function run(): Promise<void> {
   try {
@@ -69,6 +70,9 @@ async function run(): Promise<void> {
 
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
+    if (config.comment_summary_in_pr) {
+      await commentPr(core.summary)
+    }
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       core.setFailed(
