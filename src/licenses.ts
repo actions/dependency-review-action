@@ -14,19 +14,21 @@ import {isSPDXValid, octokitClient} from './utils'
  * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
  * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
  */
+type InvalidLicenseChangeTypes = 'unlicensed' | 'unresolved' | 'forbidden'
+export type InvalidLicenseChanges = Record<InvalidLicenseChangeTypes, Changes>
 export async function getInvalidLicenseChanges(
   changes: Change[],
   licenses: {
     allow?: string[]
     deny?: string[]
   }
-): Promise<Record<string, Changes>> {
+): Promise<InvalidLicenseChanges> {
   const {allow, deny} = licenses
 
   const groupedChanges = await groupChanges(changes)
   const licensedChanges: Changes = groupedChanges.licensed
 
-  const invalidLicenseChanges: Record<string, Changes> = {
+  const invalidLicenseChanges: InvalidLicenseChanges = {
     unlicensed: groupedChanges.unlicensed,
     unresolved: [],
     forbidden: []

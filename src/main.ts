@@ -54,10 +54,7 @@ async function run(): Promise<void> {
       }
     )
 
-    summary.addSummaryToSummary(
-      config.vulnerability_check ? addedChanges : null,
-      config.license_check ? invalidLicenseChanges : null
-    )
+    summary.addSummaryToSummary(addedChanges, invalidLicenseChanges, config)
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)

@@ -1,27 +1,83 @@
 import * as core from '@actions/core'
 import {ConfigurationOptions, Changes} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
+import {InvalidLicenseChanges} from './licenses'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
-export function addSummaryToSummary(
-  addedPackages: Changes | null,
-  invalidLicenseChanges: Record<string, Changes> | null
+const icons = {
+  check: '✅',
+  cross: '❌',
+  warning: '⚠️'
+}
+
+export function createSummary(
+  addedChanges: Changes,
+  invalidLicenseChanges: InvalidLicenseChanges,
+  config: ConfigurationOptions
 ): void {
-  core.summary
-    .addHeading('Dependency Review')
-    .addRaw('We found:')
-    .addList([
-      ...(addedPackages
-        ? [`${addedPackages.length} vulnerable package(s)`]
-        : []),
-      ...(invalidLicenseChanges
-        ? [
-            `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
-            `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
-            `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
-          ]
-        : [])
-    ])
+  addSummaryToSummary(
+    config.vulnerability_check ? addedChanges : [],
+    config.license_check
+      ? invalidLicenseChanges
+      : {unresolved: [], forbidden: [], unlicensed: []},
+    config
+  )
+
+  if (config.vulnerability_check && addedChanges.length > 0) {
+    addChangeVulnerabilitiesToSummary(addedChanges, config.fail_on_severity)
+  }
+
+  if (config.license_check && invalidLicenseChanges.unresolved.length > 0) {
+    addLicensesToSummary(invalidLicenseChanges, config)
+  }
+}
+
+export function addSummaryToSummary(
+  addedPackages: Changes,
+  invalidLicenseChanges: InvalidLicenseChanges,
+  config: ConfigurationOptions
+): void {
+  core.summary.addHeading('Dependency Review', 2)
+
+  if (
+    addedPackages.length === 0 &&
+    countLicenseIssues(invalidLicenseChanges) === 0
+  ) {
+    if (!config.license_check) {
+      core.summary.addRaw(`${icons.check} No vulnerabilities found.`)
+    } else if (!config.vulnerability_check) {
+      core.summary.addRaw(`${icons.check} No license issues found.`)
+    } else {
+      core.summary.addRaw(
+        `${icons.check} No vulnerabilities or license issues found.`
+      )
+    }
+  } else {
+    core.summary
+      .addRaw('The following issues were found:')
+      .addList([
+        ...(config.vulnerability_check
+          ? [
+              `${checkOrFail(addedPackages.length)} ${
+                addedPackages.length
+              } vulnerable package(s)`
+            ]
+          : []),
+        ...(config.license_check
+          ? [
+              `${checkOrFail(invalidLicenseChanges.unresolved.length)} ${
+                invalidLicenseChanges.unresolved.length
+              } package(s) with invalid SPDX license definitions`,
+              `${checkOrFail(invalidLicenseChanges.forbidden.length)} ${
+                invalidLicenseChanges.forbidden.length
+              } package(s) with incompatible licenses`,
+              `${checkOrWarn(invalidLicenseChanges.unlicensed.length)} ${
+                invalidLicenseChanges.unlicensed.length
+              } package(s) with unknown licenses.`
+            ]
+          : [])
+      ])
+  }
 }
 
 export function addChangeVulnerabilitiesToSummary(
@@ -33,15 +89,10 @@ export function addChangeVulnerabilitiesToSummary(
   const manifests = getManifestsSet(addedPackages)
 
   core.summary
-    .addHeading('Vulnerabilities')
+    .addHeading('Vulnerabilities', 3)
     .addQuote(
       `Vulnerabilities were filtered by minimum severity <strong>${severity}</strong>.`
     )
-
-  if (addedPackages.length === 0) {
-    core.summary.addQuote('No vulnerabilities found in added packages.')
-    return
-  }
 
   for (const manifest of manifests) {
     for (const change of addedPackages.filter(
@@ -88,7 +139,7 @@ export function addLicensesToSummary(
   invalidLicenseChanges: Record<string, Changes>,
   config: ConfigurationOptions
 ): void {
-  core.summary.addHeading('Licenses')
+  core.summary.addHeading('License Issues', 3)
 
   if (config.allow_licenses && config.allow_licenses.length > 0) {
     core.summary.addQuote(
@@ -161,7 +212,7 @@ export function addScannedDependencies(changes: Changes): void {
   const manifests = dependencies.keys()
 
   const summary = core.summary
-    .addHeading('Scanned Dependencies')
+    .addHeading('Scanned Dependencies', 3)
     .addHeading(`We scanned ${dependencies.size} manifest files:`, 5)
 
   for (const manifest of manifests) {
@@ -173,4 +224,21 @@ export function addScannedDependencies(changes: Changes): void {
       summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`)
     }
   }
+}
+
+function countLicenseIssues(
+  invalidLicenseChanges: InvalidLicenseChanges
+): number {
+  return Object.values(invalidLicenseChanges).reduce(
+    (acc, val) => acc + val.length,
+    0
+  )
+}
+
+function checkOrFail(count: number): string {
+  return count === 0 ? icons.check : icons.cross
+}
+
+function checkOrWarn(count: number): string {
+  return count === 0 ? icons.check : icons.warning
 }
