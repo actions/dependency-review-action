@@ -3,7 +3,7 @@ import {Change, Changes} from '../src/schemas'
 
 let getInvalidLicenseChanges: Function
 
-let npmChange: Change = {
+const npmChange: Change = {
   manifest: 'package.json',
   change_type: 'added',
   ecosystem: 'npm',
@@ -23,7 +23,7 @@ let npmChange: Change = {
   ]
 }
 
-let rubyChange: Change = {
+const rubyChange: Change = {
   change_type: 'added',
   manifest: 'Gemfile.lock',
   ecosystem: 'rubygems',
@@ -63,6 +63,7 @@ const mockOctokit = {
 
 jest.mock('octokit', () => {
   return {
+    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
     Octokit: class {
       constructor() {
         return mockOctokit
@@ -78,6 +79,7 @@ beforeEach(async () => {
     // true for BSD, false for all others
     return jest.fn((license: string, _: string): boolean => license === 'BSD')
   })
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   ;({getInvalidLicenseChanges} = require('../src/licenses'))
 })
 
@@ -140,6 +142,7 @@ test('it adds all licenses to unresolved if it is unable to determine the validi
       throw new Error('Some Error')
     })
   })
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   ;({getInvalidLicenseChanges} = require('../src/licenses'))
   const changes: Changes = [npmChange, rubyChange]
   const invalidLicenses = await getInvalidLicenseChanges(changes, {

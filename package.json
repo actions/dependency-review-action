@@ -5,7 +5,7 @@
   "description": "A GitHub Action for Dependency Review",
   "main": "lib/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",

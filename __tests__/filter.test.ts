@@ -1,12 +1,12 @@
 import {expect, test} from '@jest/globals'
-import {Change, Changes} from '../src/schemas'
+import {Change} from '../src/schemas'
 import {
   filterChangesBySeverity,
   filterChangesByScopes,
   filterAllowedAdvisories
 } from '../src/filter'
 
-let npmChange: Change = {
+const npmChange: Change = {
   manifest: 'package.json',
   change_type: 'added',
   ecosystem: 'npm',
@@ -26,7 +26,7 @@ let npmChange: Change = {
   ]
 }
 
-let rubyChange: Change = {
+const rubyChange: Change = {
   change_type: 'added',
   manifest: 'Gemfile.lock',
   ecosystem: 'rubygems',
@@ -52,7 +52,7 @@ let rubyChange: Change = {
   ]
 }
 
-let noVulnNpmChange: Change = {
+const noVulnNpmChange: Change = {
   manifest: 'package.json',
   change_type: 'added',
   ecosystem: 'npm',
@@ -92,7 +92,7 @@ test('it properly filters changes by scope', async () => {
 
 test('it properly handles undefined advisory IDs', async () => {
   const changes = [npmChange, rubyChange, noVulnNpmChange]
-  let result = filterAllowedAdvisories(undefined, changes)
+  const result = filterAllowedAdvisories(undefined, changes)
   expect(result).toEqual([npmChange, rubyChange, noVulnNpmChange])
 })
 
