@@ -52,47 +52,49 @@ export function addSummaryToSummary(
         `${icons.check} No vulnerabilities or license issues found.`
       )
     }
-  } else {
-    core.summary
-      .addRaw('The following issues were found:')
-      .addList([
-        ...(config.vulnerability_check
-          ? [
-              `${checkOrFail(addedPackages.length)} ${
-                addedPackages.length
-              } vulnerable package(s)`
-            ]
-          : []),
-        ...(config.license_check
-          ? [
-              `${checkOrFail(invalidLicenseChanges.unresolved.length)} ${
-                invalidLicenseChanges.unresolved.length
-              } package(s) with invalid SPDX license definitions`,
-              `${checkOrFail(invalidLicenseChanges.forbidden.length)} ${
-                invalidLicenseChanges.forbidden.length
-              } package(s) with incompatible licenses`,
-              `${checkOrWarn(invalidLicenseChanges.unlicensed.length)} ${
-                invalidLicenseChanges.unlicensed.length
-              } package(s) with unknown licenses.`
-            ]
-          : [])
-      ])
+
+    return
   }
+
+  core.summary
+    .addRaw('The following issues were found:')
+    .addList([
+      ...(config.vulnerability_check
+        ? [
+            `${checkOrFailIcon(addedPackages.length)} ${
+              addedPackages.length
+            } vulnerable package(s)`
+          ]
+        : []),
+      ...(config.license_check
+        ? [
+            `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
+              invalidLicenseChanges.unresolved.length
+            } package(s) with invalid SPDX license definitions`,
+            `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
+              invalidLicenseChanges.forbidden.length
+            } package(s) with incompatible licenses`,
+            `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
+              invalidLicenseChanges.unlicensed.length
+            } package(s) with unknown licenses.`
+          ]
+        : [])
+    ])
 }
 
 export function addChangeVulnerabilitiesToSummary(
   addedPackages: Changes,
   severity: string
 ): void {
+  if (addedPackages.length === 0) {
+    return
+  }
+
   const rows: SummaryTableRow[] = []
 
   const manifests = getManifestsSet(addedPackages)
 
-  core.summary
-    .addHeading('Vulnerabilities', 3)
-    .addQuote(
-      `Vulnerabilities were filtered by minimum severity <strong>${severity}</strong>.`
-    )
+  core.summary.addHeading('Vulnerabilities', 3)
 
   for (const manifest of manifests) {
     for (const change of addedPackages.filter(
@@ -132,6 +134,12 @@ export function addChangeVulnerabilitiesToSummary(
       ],
       ...rows
     ])
+  }
+
+  if (severity !== 'low') {
+    core.summary.addQuote(
+      `Only included vulnerabilities with severity <strong>${severity}</strong> or higher.`
+    )
   }
 }
 
@@ -235,10 +243,10 @@ function countLicenseIssues(
   )
 }
 
-function checkOrFail(count: number): string {
+function checkOrFailIcon(count: number): string {
   return count === 0 ? icons.check : icons.cross
 }
 
-function checkOrWarn(count: number): string {
+function checkOrWarnIcon(count: number): string {
   return count === 0 ? icons.check : icons.warning
 }
