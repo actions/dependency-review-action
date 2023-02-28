@@ -27,7 +27,7 @@ const defaultConfig: ConfigurationOptions = {
   comment_summary_in_pr: true
 }
 
-test('prints headline as h2', () => {
+test('prints headline as h1', () => {
   summary.addSummaryToSummary(
     emptyChanges,
     emptyInvalidLicenseChanges,
@@ -35,7 +35,7 @@ test('prints headline as h2', () => {
   )
   const text = core.summary.stringify()
 
-  expect(text).toContain('<h2>Dependency Review</h2>')
+  expect(text).toContain('<h1>Dependency Review</h1>')
 })
 
 test('only includes "No vulnerabilities or license issues found"-message if both are configured and nothing was found', () => {
@@ -149,7 +149,7 @@ test('addChangeVulnerabilitiesToSummary() - includes all vulnerabilities', () =>
   summary.addChangeVulnerabilitiesToSummary(changes, 'low')
 
   const text = core.summary.stringify()
-  expect(text).toContain('<h3>Vulnerabilities</h3>')
+  expect(text).toContain('<h2>Vulnerabilities</h2>')
   expect(text).toContain('lodash')
   expect(text).toContain('underscore')
 })
@@ -229,10 +229,10 @@ test('addLicensesToSummary() - includes all license issues', () => {
   summary.addLicensesToSummary(licenseIssues, defaultConfig)
 
   const text = core.summary.stringify()
-  expect(text).toContain('<h3>License Issues</h3>')
-  expect(text).toContain('<h4>Incompatible Licenses</h4>')
-  expect(text).toContain('<h4>Unknown Licenses</h4>')
-  expect(text).toContain('<h4>Invalid SPDX License Definitions</h4>')
+  expect(text).toContain('<h2>License Issues</h2>')
+  expect(text).toContain('<h3>Incompatible Licenses</h3>')
+  expect(text).toContain('<h3>Unknown Licenses</h3>')
+  expect(text).toContain('<h3>Invalid SPDX License Definitions</h3>')
 })
 
 test('addLicensesToSummary() - does not include specific license type sub-section if nothing is found', () => {
@@ -245,9 +245,9 @@ test('addLicensesToSummary() - does not include specific license type sub-sectio
   summary.addLicensesToSummary(licenseIssues, defaultConfig)
 
   const text = core.summary.stringify()
-  expect(text).not.toContain('<h4>Incompatible Licenses</h4>')
-  expect(text).not.toContain('<h4>Unknown Licenses</h4>')
-  expect(text).toContain('<h4>Invalid SPDX License Definitions</h4>')
+  expect(text).not.toContain('<h3>Incompatible Licenses</h3>')
+  expect(text).not.toContain('<h3>Unknown Licenses</h3>')
+  expect(text).toContain('<h3>Invalid SPDX License Definitions</h3>')
 })
 
 test('addLicensesToSummary() - includes list of configured allowed licenses', () => {

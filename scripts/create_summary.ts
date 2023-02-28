@@ -27,14 +27,12 @@ const createExampleSummaries = async (): Promise<void> => {
 }
 
 const createNonIssueSummary = async (): Promise<void> => {
-  summary.addSummaryToSummary(
+  await createSummary(
     [],
     {forbidden: [], unresolved: [], unlicensed: []},
-    defaultConfig
+    defaultConfig,
+    'non-issue-summary.md'
   )
-  const text = core.summary.stringify()
-
-  await fs.promises.writeFile(path.resolve(tmpDir, 'green-summary.md'), text)
 }
 
 const createFullSummary = async (): Promise<void> => {
@@ -61,15 +59,15 @@ const createFullSummary = async (): Promise<void> => {
     ]
   }
 
-  const text = createSummary(changes, licenses, defaultConfig)
-  await fs.promises.writeFile(path.resolve(tmpDir, 'full-summary.md'), text)
+  await createSummary(changes, licenses, defaultConfig, 'full-summary.md')
 }
 
-function createSummary(
+async function createSummary(
   vulnerabilities: Changes,
   licenseIssues: InvalidLicenseChanges,
-  config: ConfigurationOptions
-): string {
+  config: ConfigurationOptions,
+  fileName: string
+): Promise<void> {
   summary.addSummaryToSummary(vulnerabilities, licenseIssues, config)
   summary.addChangeVulnerabilitiesToSummary(
     vulnerabilities,
@@ -87,8 +85,10 @@ function createSummary(
   summary.addScannedDependencies(allChanges)
 
   const text = core.summary.stringify()
+  await fs.promises.writeFile(path.resolve(tmpDir, fileName), text, {
+    flag: 'w'
+  })
   core.summary.emptyBuffer()
-  return text
 }
 
 createExampleSummaries()

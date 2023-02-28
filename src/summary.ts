@@ -11,14 +11,14 @@ const icons = {
 }
 
 export function addSummaryToSummary(
-  addedPackages: Changes,
+  vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
   config: ConfigurationOptions
 ): void {
-  core.summary.addHeading('Dependency Review', 2)
+  core.summary.addHeading('Dependency Review', 1)
 
   if (
-    addedPackages.length === 0 &&
+    vulnerableChanges.length === 0 &&
     countLicenseIssues(invalidLicenseChanges) === 0
   ) {
     if (!config.license_check) {
@@ -39,43 +39,44 @@ export function addSummaryToSummary(
     .addList([
       ...(config.vulnerability_check
         ? [
-            `${checkOrFailIcon(addedPackages.length)} ${
-              addedPackages.length
+            `${checkOrFailIcon(vulnerableChanges.length)} ${
+              vulnerableChanges.length
             } vulnerable package(s)`
           ]
         : []),
       ...(config.license_check
         ? [
-            `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-              invalidLicenseChanges.unresolved.length
-            } package(s) with invalid SPDX license definitions`,
             `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
               invalidLicenseChanges.forbidden.length
             } package(s) with incompatible licenses`,
+            `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
+              invalidLicenseChanges.unresolved.length
+            } package(s) with invalid SPDX license definitions`,
             `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
               invalidLicenseChanges.unlicensed.length
             } package(s) with unknown licenses.`
           ]
         : [])
     ])
+    .addRaw('See the Details below.')
 }
 
 export function addChangeVulnerabilitiesToSummary(
-  addedPackages: Changes,
+  vulnerableChanges: Changes,
   severity: string
 ): void {
-  if (addedPackages.length === 0) {
+  if (vulnerableChanges.length === 0) {
     return
   }
 
   const rows: SummaryTableRow[] = []
 
-  const manifests = getManifestsSet(addedPackages)
+  const manifests = getManifestsSet(vulnerableChanges)
 
-  core.summary.addHeading('Vulnerabilities', 3)
+  core.summary.addHeading('Vulnerabilities', 2)
 
   for (const manifest of manifests) {
-    for (const change of addedPackages.filter(
+    for (const change of vulnerableChanges.filter(
       pkg => pkg.manifest === manifest
     )) {
       let previous_package = ''
@@ -103,7 +104,7 @@ export function addChangeVulnerabilitiesToSummary(
         previous_version = change.version
       }
     }
-    core.summary.addHeading(`<em>${manifest}</em>`, 3).addTable([
+    core.summary.addHeading(`<em>${manifest}</em>`, 4).addTable([
       [
         {data: 'Name', header: true},
         {data: 'Version', header: true},
@@ -129,7 +130,7 @@ export function addLicensesToSummary(
     return
   }
 
-  core.summary.addHeading('License Issues', 3)
+  core.summary.addHeading('License Issues', 2)
 
   if (config.allow_licenses && config.allow_licenses.length > 0) {
     core.summary.addQuote(
@@ -151,21 +152,23 @@ export function addLicensesToSummary(
   )
 
   printLicenseViolation(
-    'Incompatible Licenses',
+    `Incompatible Licenses`,
     invalidLicenseChanges.forbidden
   )
-  printLicenseViolation('Unknown Licenses', invalidLicenseChanges.unlicensed)
   printLicenseViolation(
-    'Invalid SPDX License Definitions',
+    `Invalid SPDX License Definitions`,
     invalidLicenseChanges.unresolved
   )
+  printLicenseViolation(`Unknown Licenses`, invalidLicenseChanges.unlicensed)
+  core.summary.addSeparator()
 }
 function printLicenseViolation(heading: string, changes: Changes): void {
   if (changes.length === 0) {
     return
   }
 
-  core.summary.addHeading(heading, 4).addSeparator()
+  core.summary.addSeparator()
+  core.summary.addHeading(heading, 3)
 
   const rows: SummaryTableRow[] = []
   const manifests = getManifestsSet(changes)
@@ -196,9 +199,7 @@ export function addScannedDependencies(changes: Changes): void {
   const dependencies = groupDependenciesByManifest(changes)
   const manifests = dependencies.keys()
 
-  const summary = core.summary
-    .addHeading('Scanned Dependencies', 3)
-    .addHeading(`We scanned ${dependencies.size} manifest files:`, 5)
+  const summary = core.summary.addHeading('Scanned Manifest Files', 2)
 
   for (const manifest of manifests) {
     const deps = dependencies.get(manifest)
