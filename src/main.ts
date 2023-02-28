@@ -36,7 +36,7 @@ async function run(): Promise<void> {
       scopedChanges
     )
 
-    const addedChanges = filterChangesBySeverity(
+    const vulnerableChanges = filterChangesBySeverity(
       minSeverity,
       filteredChanges
     ).filter(
@@ -54,11 +54,15 @@ async function run(): Promise<void> {
       }
     )
 
-    summary.addSummaryToSummary(addedChanges, invalidLicenseChanges, config)
+    summary.addSummaryToSummary(
+      vulnerableChanges,
+      invalidLicenseChanges,
+      config
+    )
 
     if (config.vulnerability_check) {
-      summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)
-      printVulnerabilitiesBlock(addedChanges, minSeverity)
+      summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
+      printVulnerabilitiesBlock(vulnerableChanges, minSeverity)
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
