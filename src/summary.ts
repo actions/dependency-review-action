@@ -10,28 +10,6 @@ const icons = {
   warning: '⚠️'
 }
 
-export function createSummary(
-  addedChanges: Changes,
-  invalidLicenseChanges: InvalidLicenseChanges,
-  config: ConfigurationOptions
-): void {
-  addSummaryToSummary(
-    config.vulnerability_check ? addedChanges : [],
-    config.license_check
-      ? invalidLicenseChanges
-      : {unresolved: [], forbidden: [], unlicensed: []},
-    config
-  )
-
-  if (config.vulnerability_check && addedChanges.length > 0) {
-    addChangeVulnerabilitiesToSummary(addedChanges, config.fail_on_severity)
-  }
-
-  if (config.license_check && invalidLicenseChanges.unresolved.length > 0) {
-    addLicensesToSummary(invalidLicenseChanges, config)
-  }
-}
-
 export function addSummaryToSummary(
   addedPackages: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
@@ -144,9 +122,13 @@ export function addChangeVulnerabilitiesToSummary(
 }
 
 export function addLicensesToSummary(
-  invalidLicenseChanges: Record<string, Changes>,
+  invalidLicenseChanges: InvalidLicenseChanges,
   config: ConfigurationOptions
 ): void {
+  if (countLicenseIssues(invalidLicenseChanges) === 0) {
+    return
+  }
+
   core.summary.addHeading('License Issues', 3)
 
   if (config.allow_licenses && config.allow_licenses.length > 0) {
@@ -158,11 +140,6 @@ export function addLicensesToSummary(
     core.summary.addQuote(
       `<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`
     )
-  }
-
-  if (Object.values(invalidLicenseChanges).every(item => item.length === 0)) {
-    core.summary.addQuote('No license violations detected.')
-    return
   }
 
   core.debug(
@@ -184,27 +161,27 @@ export function addLicensesToSummary(
   )
 }
 function printLicenseViolation(heading: string, changes: Changes): void {
-  core.summary.addHeading(heading, 5).addSeparator()
+  if (changes.length === 0) {
+    return
+  }
 
-  if (changes.length > 0) {
-    const rows: SummaryTableRow[] = []
-    const manifests = getManifestsSet(changes)
+  core.summary.addHeading(heading, 4).addSeparator()
 
-    for (const manifest of manifests) {
-      core.summary.addHeading(`<em>${manifest}</em>`, 4)
+  const rows: SummaryTableRow[] = []
+  const manifests = getManifestsSet(changes)
 
-      for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
-        rows.push([
-          renderUrl(change.source_repository_url, change.name),
-          change.version,
-          formatLicense(change.license)
-        ])
-      }
+  for (const manifest of manifests) {
+    core.summary.addHeading(`<em>${manifest}</em>`, 4)
 
-      core.summary.addTable([['Package', 'Version', 'License'], ...rows])
+    for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
+      rows.push([
+        renderUrl(change.source_repository_url, change.name),
+        change.version,
+        formatLicense(change.license)
+      ])
     }
-  } else {
-    core.summary.addQuote(`No ${heading.toLowerCase()} detected.`)
+
+    core.summary.addTable([['Package', 'Version', 'License'], ...rows])
   }
 }
 

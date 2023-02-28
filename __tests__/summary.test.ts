@@ -212,3 +212,76 @@ test('addChangeVulnerabilitiesToSummary() - does not print severity statment if 
   const text = core.summary.stringify()
   expect(text).not.toContain('Only included vulnerabilities')
 })
+
+test('addLicensesToSummary() - does not include entire section if no license issues found', () => {
+  summary.addLicensesToSummary(emptyInvalidLicenseChanges, defaultConfig)
+  const text = core.summary.stringify()
+  expect(text).toEqual('')
+})
+
+test('addLicensesToSummary() - includes all license issues', () => {
+  const licenseIssues = {
+    forbidden: [createTestChange()],
+    unresolved: [createTestChange(), createTestChange()],
+    unlicensed: [createTestChange(), createTestChange(), createTestChange()]
+  }
+
+  summary.addLicensesToSummary(licenseIssues, defaultConfig)
+
+  const text = core.summary.stringify()
+  expect(text).toContain('<h3>License Issues</h3>')
+  expect(text).toContain('<h4>Incompatible Licenses</h4>')
+  expect(text).toContain('<h4>Unknown Licenses</h4>')
+  expect(text).toContain('<h4>Invalid SPDX License Definitions</h4>')
+})
+
+test('addLicensesToSummary() - does not include specific license type sub-section if nothing is found', () => {
+  const licenseIssues = {
+    forbidden: [],
+    unlicensed: [],
+    unresolved: [createTestChange()]
+  }
+
+  summary.addLicensesToSummary(licenseIssues, defaultConfig)
+
+  const text = core.summary.stringify()
+  expect(text).not.toContain('<h4>Incompatible Licenses</h4>')
+  expect(text).not.toContain('<h4>Unknown Licenses</h4>')
+  expect(text).toContain('<h4>Invalid SPDX License Definitions</h4>')
+})
+
+test('addLicensesToSummary() - includes list of configured allowed licenses', () => {
+  const licenseIssues = {
+    forbidden: [createTestChange()],
+    unresolved: [],
+    unlicensed: []
+  }
+
+  const config: ConfigurationOptions = {
+    ...defaultConfig,
+    allow_licenses: ['MIT', 'Apache-2.0']
+  }
+
+  summary.addLicensesToSummary(licenseIssues, config)
+
+  const text = core.summary.stringify()
+  expect(text).toContain('<strong>Allowed Licenses</strong>: MIT, Apache-2.0')
+})
+
+test('addLicensesToSummary() - includes configured denied license', () => {
+  const licenseIssues = {
+    forbidden: [createTestChange()],
+    unresolved: [],
+    unlicensed: []
+  }
+
+  const config: ConfigurationOptions = {
+    ...defaultConfig,
+    deny_licenses: ['MIT']
+  }
+
+  summary.addLicensesToSummary(licenseIssues, config)
+
+  const text = core.summary.stringify()
+  expect(text).toContain('<strong>Denied Licenses</strong>: MIT')
+})
