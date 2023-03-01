@@ -259,18 +259,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
-/**
- * Loops through a list of changes, filtering and returning the
- * ones that don't conform to the licenses allow/deny lists.
- *
- * Keep in mind that we don't let users specify both an allow and a deny
- * list in their config files, so this code works under the assumption that
- * one of the two list parameters will be empty. If both lists are provided,
- * we will ignore the deny list.
- * @param {Change[]} changes The list of changes to filter.
- * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
- * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
- */
 function getInvalidLicenseChanges(changes, licenses) {
     return __awaiter(this, void 0, void 0, function* () {
         const { allow, deny } = licenses;
@@ -473,17 +461,17 @@ function run() {
             const minSeverity = config.fail_on_severity;
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
-            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
+            const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             });
-            summary.addSummaryToSummary(config.vulnerability_check ? addedChanges : null, config.license_check ? invalidLicenseChanges : null);
+            summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config);
             if (config.vulnerability_check) {
-                summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity);
-                printVulnerabilitiesBlock(addedChanges, minSeverity);
+                summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
+                printVulnerabilitiesBlock(vulnerableChanges, minSeverity);
             }
             if (config.license_check) {
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
@@ -740,36 +728,54 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
-function addSummaryToSummary(addedPackages, invalidLicenseChanges) {
-    core.summary
-        .addHeading('Dependency Review')
-        .addRaw('We found:')
-        .addList([
-        ...(addedPackages
-            ? [`${addedPackages.length} vulnerable package(s)`]
-            : []),
-        ...(invalidLicenseChanges
-            ? [
-                `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
-                `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
-                `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
-            ]
-            : [])
-    ]);
-}
-exports.addSummaryToSummary = addSummaryToSummary;
-function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
-    const rows = [];
-    const manifests = (0, utils_1.getManifestsSet)(addedPackages);
-    core.summary
-        .addHeading('Vulnerabilities')
-        .addQuote(`Vulnerabilities were filtered by minimum severity <strong>${severity}</strong>.`);
-    if (addedPackages.length === 0) {
-        core.summary.addQuote('No vulnerabilities found in added packages.');
+const icons = {
+    check: '✅',
+    cross: '❌',
+    warning: '⚠️'
+};
+function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config) {
+    core.summary.addHeading('Dependency Review', 1);
+    if (vulnerableChanges.length === 0 &&
+        countLicenseIssues(invalidLicenseChanges) === 0) {
+        if (!config.license_check) {
+            core.summary.addRaw(`${icons.check} No vulnerabilities found.`);
+        }
+        else if (!config.vulnerability_check) {
+            core.summary.addRaw(`${icons.check} No license issues found.`);
+        }
+        else {
+            core.summary.addRaw(`${icons.check} No vulnerabilities or license issues found.`);
+        }
         return;
     }
+    core.summary
+        .addRaw('The following issues were found:')
+        .addList([
+        ...(config.vulnerability_check
+            ? [
+                `${checkOrFailIcon(vulnerableChanges.length)} ${vulnerableChanges.length} vulnerable package(s)`
+            ]
+            : []),
+        ...(config.license_check
+            ? [
+                `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
+                `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
+                `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+            ]
+            : [])
+    ])
+        .addRaw('See the Details below.');
+}
+exports.addSummaryToSummary = addSummaryToSummary;
+function addChangeVulnerabilitiesToSummary(vulnerableChanges, severity) {
+    if (vulnerableChanges.length === 0) {
+        return;
+    }
+    const rows = [];
+    const manifests = (0, utils_1.getManifestsSet)(vulnerableChanges);
+    core.summary.addHeading('Vulnerabilities', 2);
     for (const manifest of manifests) {
-        for (const change of addedPackages.filter(pkg => pkg.manifest === manifest)) {
+        for (const change of vulnerableChanges.filter(pkg => pkg.manifest === manifest)) {
             let previous_package = '';
             let previous_version = '';
             for (const vuln of change.vulnerabilities) {
@@ -794,7 +800,7 @@ function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
                 previous_version = change.version;
             }
         }
-        core.summary.addHeading(`<em>${manifest}</em>`, 3).addTable([
+        core.summary.addHeading(`<em>${manifest}</em>`, 4).addTable([
             [
                 { data: 'Name', header: true },
                 { data: 'Version', header: true },
@@ -804,46 +810,48 @@ function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
             ...rows
         ]);
     }
+    if (severity !== 'low') {
+        core.summary.addQuote(`Only included vulnerabilities with severity <strong>${severity}</strong> or higher.`);
+    }
 }
 exports.addChangeVulnerabilitiesToSummary = addChangeVulnerabilitiesToSummary;
 function addLicensesToSummary(invalidLicenseChanges, config) {
-    core.summary.addHeading('Licenses');
+    if (countLicenseIssues(invalidLicenseChanges) === 0) {
+        return;
+    }
+    core.summary.addHeading('License Issues', 2);
     if (config.allow_licenses && config.allow_licenses.length > 0) {
         core.summary.addQuote(`<strong>Allowed Licenses</strong>: ${config.allow_licenses.join(', ')}`);
     }
     if (config.deny_licenses && config.deny_licenses.length > 0) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
-    if (Object.values(invalidLicenseChanges).every(item => item.length === 0)) {
-        core.summary.addQuote('No license violations detected.');
-        return;
-    }
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
-    printLicenseViolation('Incompatible Licenses', invalidLicenseChanges.forbidden);
-    printLicenseViolation('Unknown Licenses', invalidLicenseChanges.unlicensed);
-    printLicenseViolation('Invalid SPDX License Definitions', invalidLicenseChanges.unresolved);
+    printLicenseViolation(`Incompatible Licenses`, invalidLicenseChanges.forbidden);
+    printLicenseViolation(`Invalid SPDX License Definitions`, invalidLicenseChanges.unresolved);
+    printLicenseViolation(`Unknown Licenses`, invalidLicenseChanges.unlicensed);
+    core.summary.addSeparator();
 }
 exports.addLicensesToSummary = addLicensesToSummary;
 function printLicenseViolation(heading, changes) {
-    core.summary.addHeading(heading, 5).addSeparator();
-    if (changes.length > 0) {
-        const rows = [];
-        const manifests = (0, utils_1.getManifestsSet)(changes);
-        for (const manifest of manifests) {
-            core.summary.addHeading(`<em>${manifest}</em>`, 4);
-            for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
-                rows.push([
-                    (0, utils_1.renderUrl)(change.source_repository_url, change.name),
-                    change.version,
-                    formatLicense(change.license)
-                ]);
-            }
-            core.summary.addTable([['Package', 'Version', 'License'], ...rows]);
-        }
+    if (changes.length === 0) {
+        return;
     }
-    else {
-        core.summary.addQuote(`No ${heading.toLowerCase()} detected.`);
+    core.summary.addSeparator();
+    core.summary.addHeading(heading, 3);
+    const rows = [];
+    const manifests = (0, utils_1.getManifestsSet)(changes);
+    for (const manifest of manifests) {
+        core.summary.addHeading(`<em>${manifest}</em>`, 4);
+        for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
+            rows.push([
+                (0, utils_1.renderUrl)(change.source_repository_url, change.name),
+                change.version,
+                formatLicense(change.license)
+            ]);
+        }
+        core.summary.addTable([['Package', 'Version', 'License'], ...rows]);
     }
 }
 function formatLicense(license) {
@@ -855,9 +863,7 @@ function formatLicense(license) {
 function addScannedDependencies(changes) {
     const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
     const manifests = dependencies.keys();
-    const summary = core.summary
-        .addHeading('Scanned Dependencies')
-        .addHeading(`We scanned ${dependencies.size} manifest files:`, 5);
+    const summary = core.summary.addHeading('Scanned Manifest Files', 2);
     for (const manifest of manifests) {
         const deps = dependencies.get(manifest);
         if (deps) {
@@ -867,6 +873,15 @@ function addScannedDependencies(changes) {
     }
 }
 exports.addScannedDependencies = addScannedDependencies;
+function countLicenseIssues(invalidLicenseChanges) {
+    return Object.values(invalidLicenseChanges).reduce((acc, val) => acc + val.length, 0);
+}
+function checkOrFailIcon(count) {
+    return count === 0 ? icons.check : icons.cross;
+}
+function checkOrWarnIcon(count) {
+    return count === 0 ? icons.check : icons.warning;
+}
 
 
 /***/ }),
@@ -41154,7 +41169,7 @@ const isDirty = (x) => x.status === "dirty";
 exports.isDirty = isDirty;
 const isValid = (x) => x.status === "valid";
 exports.isValid = isValid;
-const isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
+const isAsync = (x) => typeof Promise !== undefined && x instanceof Promise;
 exports.isAsync = isAsync;
 
 
@@ -41707,29 +41722,28 @@ class ZodType {
         return this._refinement(refinement);
     }
     optional() {
-        return ZodOptional.create(this, this._def);
+        return ZodOptional.create(this);
     }
     nullable() {
-        return ZodNullable.create(this, this._def);
+        return ZodNullable.create(this);
     }
     nullish() {
-        return this.nullable().optional();
+        return this.optional().nullable();
     }
     array() {
-        return ZodArray.create(this, this._def);
+        return ZodArray.create(this);
     }
     promise() {
-        return ZodPromise.create(this, this._def);
+        return ZodPromise.create(this);
     }
     or(option) {
-        return ZodUnion.create([this, option], this._def);
+        return ZodUnion.create([this, option]);
     }
     and(incoming) {
-        return ZodIntersection.create(this, incoming, this._def);
+        return ZodIntersection.create(this, incoming);
     }
     transform(transform) {
         return new ZodEffects({
-            ...processCreateParams(this._def),
             schema: this,
             typeName: ZodFirstPartyTypeKind.ZodEffects,
             effect: { type: "transform", transform },
@@ -41738,7 +41752,6 @@ class ZodType {
     default(def) {
         const defaultValueFunc = typeof def === "function" ? def : () => def;
         return new ZodDefault({
-            ...processCreateParams(this._def),
             innerType: this,
             defaultValue: defaultValueFunc,
             typeName: ZodFirstPartyTypeKind.ZodDefault,
@@ -41748,15 +41761,14 @@ class ZodType {
         return new ZodBranded({
             typeName: ZodFirstPartyTypeKind.ZodBranded,
             type: this,
-            ...processCreateParams(this._def),
+            ...processCreateParams(undefined),
         });
     }
     catch(def) {
-        const catchValueFunc = typeof def === "function" ? def : () => def;
+        const defaultValueFunc = typeof def === "function" ? def : () => def;
         return new ZodCatch({
-            ...processCreateParams(this._def),
             innerType: this,
-            catchValue: catchValueFunc,
+            defaultValue: defaultValueFunc,
             typeName: ZodFirstPartyTypeKind.ZodCatch,
         });
     }
@@ -41781,15 +41793,12 @@ exports.ZodType = ZodType;
 exports.Schema = ZodType;
 exports.ZodSchema = ZodType;
 const cuidRegex = /^c[^\s-]{8,}$/i;
-const cuid2Regex = /^[a-z][a-z0-9]*$/;
 const uuidRegex = /^([a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[a-f0-9]{4}-[a-f0-9]{12}|00000000-0000-0000-0000-000000000000)$/i;
 // from https://stackoverflow.com/a/46181/1550155
 // old version: too slow, didn't support unicode
 // const emailRegex = /^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))$/i;
-//old email regex
-// const emailRegex = /^(([^<>()[\].,;:\s@"]+(\.[^<>()[\].,;:\s@"]+)*)|(".+"))@((?!-)([^<>()[\].,;:\s@"]+\.)+[^<>()[\].,;:\s@"]{1,})[^-<>()[\].,;:\s@"]$/i;
 // eslint-disable-next-line
-const emailRegex = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|([^-]([a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}))$/;
+const emailRegex = /^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
 // interface IsDateStringOptions extends StringDateOptions {
 /**
  * Match any configuration
@@ -41800,7 +41809,7 @@ const emailRegex = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\
 const datetimeRegex = (args) => {
     if (args.precision) {
         if (args.offset) {
-            return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{${args.precision}}(([+-]\\d{2}(:?\\d{2})?)|Z)$`);
+            return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{${args.precision}}(([+-]\\d{2}:\\d{2})|Z)$`);
         }
         else {
             return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{${args.precision}}Z$`);
@@ -41808,7 +41817,7 @@ const datetimeRegex = (args) => {
     }
     else if (args.precision === 0) {
         if (args.offset) {
-            return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(([+-]\\d{2}(:?\\d{2})?)|Z)$`);
+            return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(([+-]\\d{2}:\\d{2})|Z)$`);
         }
         else {
             return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$`);
@@ -41816,7 +41825,7 @@ const datetimeRegex = (args) => {
     }
     else {
         if (args.offset) {
-            return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(([+-]\\d{2}(:?\\d{2})?)|Z)$`);
+            return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(([+-]\\d{2}:\\d{2})|Z)$`);
         }
         else {
             return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$`);
@@ -41949,17 +41958,6 @@ class ZodString extends ZodType {
                     status.dirty();
                 }
             }
-            else if (check.kind === "cuid2") {
-                if (!cuid2Regex.test(input.data)) {
-                    ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
-                        validation: "cuid2",
-                        code: ZodError_1.ZodIssueCode.invalid_string,
-                        message: check.message,
-                    });
-                    status.dirty();
-                }
-            }
             else if (check.kind === "url") {
                 try {
                     new URL(input.data);
@@ -42048,9 +42046,6 @@ class ZodString extends ZodType {
     cuid(message) {
         return this._addCheck({ kind: "cuid", ...errorUtil_1.errorUtil.errToObj(message) });
     }
-    cuid2(message) {
-        return this._addCheck({ kind: "cuid2", ...errorUtil_1.errorUtil.errToObj(message) });
-    }
     datetime(options) {
         var _a;
         if (typeof options === "string") {
@@ -42124,9 +42119,6 @@ class ZodString extends ZodType {
     }
     get isCUID() {
         return !!this._def.checks.find((ch) => ch.kind === "cuid");
-    }
-    get isCUID2() {
-        return !!this._def.checks.find((ch) => ch.kind === "cuid2");
     }
     get minLength() {
         let min = null;
@@ -42369,27 +42361,7 @@ class ZodNumber extends ZodType {
         return max;
     }
     get isInt() {
-        return !!this._def.checks.find((ch) => ch.kind === "int" ||
-            (ch.kind === "multipleOf" && util_1.util.isInteger(ch.value)));
-    }
-    get isFinite() {
-        let max = null, min = null;
-        for (const ch of this._def.checks) {
-            if (ch.kind === "finite" ||
-                ch.kind === "int" ||
-                ch.kind === "multipleOf") {
-                return true;
-            }
-            else if (ch.kind === "min") {
-                if (min === null || ch.value > min)
-                    min = ch.value;
-            }
-            else if (ch.kind === "max") {
-                if (max === null || ch.value < max)
-                    max = ch.value;
-            }
-        }
-        return Number.isFinite(min) && Number.isFinite(max);
+        return !!this._def.checks.find((ch) => ch.kind === "int");
     }
 }
 exports.ZodNumber = ZodNumber;
@@ -42761,13 +42733,13 @@ class ZodArray extends ZodType {
             }
         }
         if (ctx.common.async) {
-            return Promise.all([...ctx.data].map((item, i) => {
+            return Promise.all(ctx.data.map((item, i) => {
                 return def.type._parseAsync(new ParseInputLazyPath(ctx, item, ctx.path, i));
             })).then((result) => {
                 return parseUtil_1.ParseStatus.mergeArray(status, result);
             });
         }
-        const result = [...ctx.data].map((item, i) => {
+        const result = ctx.data.map((item, i) => {
             return def.type._parseSync(new ParseInputLazyPath(ctx, item, ctx.path, i));
         });
         return parseUtil_1.ParseStatus.mergeArray(status, result);
@@ -42824,6 +42796,15 @@ var objectUtil;
         };
     };
 })(objectUtil = exports.objectUtil || (exports.objectUtil = {}));
+const AugmentFactory = (def) => (augmentation) => {
+    return new ZodObject({
+        ...def,
+        shape: () => ({
+            ...def.shape(),
+            ...augmentation,
+        }),
+    });
+};
 function deepPartialify(schema) {
     if (schema instanceof ZodObject) {
         const newShape = {};
@@ -42861,43 +42842,8 @@ class ZodObject extends ZodType {
          * If you want to pass through unknown properties, use `.passthrough()` instead.
          */
         this.nonstrict = this.passthrough;
-        // extend<
-        //   Augmentation extends ZodRawShape,
-        //   NewOutput extends util.flatten<{
-        //     [k in keyof Augmentation | keyof Output]: k extends keyof Augmentation
-        //       ? Augmentation[k]["_output"]
-        //       : k extends keyof Output
-        //       ? Output[k]
-        //       : never;
-        //   }>,
-        //   NewInput extends util.flatten<{
-        //     [k in keyof Augmentation | keyof Input]: k extends keyof Augmentation
-        //       ? Augmentation[k]["_input"]
-        //       : k extends keyof Input
-        //       ? Input[k]
-        //       : never;
-        //   }>
-        // >(
-        //   augmentation: Augmentation
-        // ): ZodObject<
-        //   extendShape<T, Augmentation>,
-        //   UnknownKeys,
-        //   Catchall,
-        //   NewOutput,
-        //   NewInput
-        // > {
-        //   return new ZodObject({
-        //     ...this._def,
-        //     shape: () => ({
-        //       ...this._def.shape(),
-        //       ...augmentation,
-        //     }),
-        //   }) as any;
-        // }
-        /**
-         * @deprecated Use `.extend` instead
-         *  */
-        this.augment = this.extend;
+        this.augment = AugmentFactory(this._def);
+        this.extend = AugmentFactory(this._def);
     }
     _getCached() {
         if (this._cached !== null)
@@ -43035,31 +42981,8 @@ class ZodObject extends ZodType {
             unknownKeys: "passthrough",
         });
     }
-    // const AugmentFactory =
-    //   <Def extends ZodObjectDef>(def: Def) =>
-    //   <Augmentation extends ZodRawShape>(
-    //     augmentation: Augmentation
-    //   ): ZodObject<
-    //     extendShape<ReturnType<Def["shape"]>, Augmentation>,
-    //     Def["unknownKeys"],
-    //     Def["catchall"]
-    //   > => {
-    //     return new ZodObject({
-    //       ...def,
-    //       shape: () => ({
-    //         ...def.shape(),
-    //         ...augmentation,
-    //       }),
-    //     }) as any;
-    //   };
-    extend(augmentation) {
-        return new ZodObject({
-            ...this._def,
-            shape: () => ({
-                ...this._def.shape(),
-                ...augmentation,
-            }),
-        });
+    setKey(key, schema) {
+        return this.augment({ [key]: schema });
     }
     /**
      * Prior to zod@1.0.12 there was a bug in the
@@ -43067,6 +42990,10 @@ class ZodObject extends ZodType {
      * upgrade if you are experiencing issues.
      */
     merge(merging) {
+        // const mergedShape = objectUtil.mergeShapes(
+        //   this._def.shape(),
+        //   merging._def.shape()
+        // );
         const merged = new ZodObject({
             unknownKeys: merging._def.unknownKeys,
             catchall: merging._def.catchall,
@@ -43075,65 +43002,6 @@ class ZodObject extends ZodType {
         });
         return merged;
     }
-    // merge<
-    //   Incoming extends AnyZodObject,
-    //   Augmentation extends Incoming["shape"],
-    //   NewOutput extends {
-    //     [k in keyof Augmentation | keyof Output]: k extends keyof Augmentation
-    //       ? Augmentation[k]["_output"]
-    //       : k extends keyof Output
-    //       ? Output[k]
-    //       : never;
-    //   },
-    //   NewInput extends {
-    //     [k in keyof Augmentation | keyof Input]: k extends keyof Augmentation
-    //       ? Augmentation[k]["_input"]
-    //       : k extends keyof Input
-    //       ? Input[k]
-    //       : never;
-    //   }
-    // >(
-    //   merging: Incoming
-    // ): ZodObject<
-    //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
-    //   Incoming["_def"]["unknownKeys"],
-    //   Incoming["_def"]["catchall"],
-    //   NewOutput,
-    //   NewInput
-    // > {
-    //   const merged: any = new ZodObject({
-    //     unknownKeys: merging._def.unknownKeys,
-    //     catchall: merging._def.catchall,
-    //     shape: () =>
-    //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
-    //     typeName: ZodFirstPartyTypeKind.ZodObject,
-    //   }) as any;
-    //   return merged;
-    // }
-    setKey(key, schema) {
-        return this.augment({ [key]: schema });
-    }
-    // merge<Incoming extends AnyZodObject>(
-    //   merging: Incoming
-    // ): //ZodObject<T & Incoming["_shape"], UnknownKeys, Catchall> = (merging) => {
-    // ZodObject<
-    //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
-    //   Incoming["_def"]["unknownKeys"],
-    //   Incoming["_def"]["catchall"]
-    // > {
-    //   // const mergedShape = objectUtil.mergeShapes(
-    //   //   this._def.shape(),
-    //   //   merging._def.shape()
-    //   // );
-    //   const merged: any = new ZodObject({
-    //     unknownKeys: merging._def.unknownKeys,
-    //     catchall: merging._def.catchall,
-    //     shape: () =>
-    //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
-    //     typeName: ZodFirstPartyTypeKind.ZodObject,
-    //   }) as any;
-    //   return merged;
-    // }
     catchall(index) {
         return new ZodObject({
             ...this._def,
@@ -43142,10 +43010,10 @@ class ZodObject extends ZodType {
     }
     pick(mask) {
         const shape = {};
-        util_1.util.objectKeys(mask).forEach((key) => {
-            if (mask[key] && this.shape[key]) {
+        util_1.util.objectKeys(mask).map((key) => {
+            // only add to shape if key corresponds to an element of the current shape
+            if (this.shape[key])
                 shape[key] = this.shape[key];
-            }
         });
         return new ZodObject({
             ...this._def,
@@ -43154,8 +43022,8 @@ class ZodObject extends ZodType {
     }
     omit(mask) {
         const shape = {};
-        util_1.util.objectKeys(this.shape).forEach((key) => {
-            if (!mask[key]) {
+        util_1.util.objectKeys(this.shape).map((key) => {
+            if (util_1.util.objectKeys(mask).indexOf(key) === -1) {
                 shape[key] = this.shape[key];
             }
         });
@@ -43169,15 +43037,26 @@ class ZodObject extends ZodType {
     }
     partial(mask) {
         const newShape = {};
-        util_1.util.objectKeys(this.shape).forEach((key) => {
-            const fieldSchema = this.shape[key];
-            if (mask && !mask[key]) {
-                newShape[key] = fieldSchema;
-            }
-            else {
+        if (mask) {
+            util_1.util.objectKeys(this.shape).map((key) => {
+                if (util_1.util.objectKeys(mask).indexOf(key) === -1) {
+                    newShape[key] = this.shape[key];
+                }
+                else {
+                    newShape[key] = this.shape[key].optional();
+                }
+            });
+            return new ZodObject({
+                ...this._def,
+                shape: () => newShape,
+            });
+        }
+        else {
+            for (const key in this.shape) {
+                const fieldSchema = this.shape[key];
                 newShape[key] = fieldSchema.optional();
             }
-        });
+        }
         return new ZodObject({
             ...this._def,
             shape: () => newShape,
@@ -43185,11 +43064,23 @@ class ZodObject extends ZodType {
     }
     required(mask) {
         const newShape = {};
-        util_1.util.objectKeys(this.shape).forEach((key) => {
-            if (mask && !mask[key]) {
-                newShape[key] = this.shape[key];
-            }
-            else {
+        if (mask) {
+            util_1.util.objectKeys(this.shape).map((key) => {
+                if (util_1.util.objectKeys(mask).indexOf(key) === -1) {
+                    newShape[key] = this.shape[key];
+                }
+                else {
+                    const fieldSchema = this.shape[key];
+                    let newField = fieldSchema;
+                    while (newField instanceof ZodOptional) {
+                        newField = newField._def.innerType;
+                    }
+                    newShape[key] = newField;
+                }
+            });
+        }
+        else {
+            for (const key in this.shape) {
                 const fieldSchema = this.shape[key];
                 let newField = fieldSchema;
                 while (newField instanceof ZodOptional) {
@@ -43197,7 +43088,7 @@ class ZodObject extends ZodType {
                 }
                 newShape[key] = newField;
             }
-        });
+        }
         return new ZodObject({
             ...this._def,
             shape: () => newShape,
@@ -43582,7 +43473,7 @@ class ZodTuple extends ZodType {
             });
             status.dirty();
         }
-        const items = [...ctx.data]
+        const items = ctx.data
             .map((item, itemIndex) => {
             const schema = this._def.items[itemIndex] || this._def.rest;
             if (!schema)
@@ -43968,7 +43859,6 @@ class ZodLiteral extends ZodType {
         if (input.data !== this._def.value) {
             const ctx = this._getOrReturnCtx(input);
             (0, parseUtil_1.addIssueToContext)(ctx, {
-                received: ctx.data,
                 code: ZodError_1.ZodIssueCode.invalid_literal,
                 expected: this._def.value,
             });
@@ -44043,12 +43933,6 @@ class ZodEnum extends ZodType {
         }
         return enumValues;
     }
-    extract(values) {
-        return ZodEnum.create(values);
-    }
-    exclude(values) {
-        return ZodEnum.create(this.options.filter((opt) => !values.includes(opt)));
-    }
 }
 exports.ZodEnum = ZodEnum;
 ZodEnum.create = createZodEnum;
@@ -44090,9 +43974,6 @@ ZodNativeEnum.create = (values, params) => {
     });
 };
 class ZodPromise extends ZodType {
-    unwrap() {
-        return this._def.type;
-    }
     _parse(input) {
         const { ctx } = this._processInputParams(input);
         if (ctx.parsedType !== util_1.ZodParsedType.promise &&
@@ -44338,30 +44219,24 @@ class ZodCatch extends ZodType {
         const result = this._def.innerType._parse({
             data: ctx.data,
             path: ctx.path,
-            parent: {
-                ...ctx,
-                common: {
-                    ...ctx.common,
-                    issues: [], // don't collect issues from inner type
-                },
-            },
+            parent: ctx,
         });
         if ((0, parseUtil_1.isAsync)(result)) {
             return result.then((result) => {
                 return {
                     status: "valid",
-                    value: result.status === "valid" ? result.value : this._def.catchValue(),
+                    value: result.status === "valid" ? result.value : this._def.defaultValue(),
                 };
             });
         }
         else {
             return {
                 status: "valid",
-                value: result.status === "valid" ? result.value : this._def.catchValue(),
+                value: result.status === "valid" ? result.value : this._def.defaultValue(),
             };
         }
     }
-    removeCatch() {
+    removeDefault() {
         return this._def.innerType;
     }
 }
@@ -44370,7 +44245,9 @@ ZodCatch.create = (type, params) => {
     return new ZodCatch({
         innerType: type,
         typeName: ZodFirstPartyTypeKind.ZodCatch,
-        catchValue: typeof params.catch === "function" ? params.catch : () => params.catch,
+        defaultValue: typeof params.default === "function"
+            ? params.default
+            : () => params.default,
         ...processCreateParams(params),
     });
 };
@@ -44613,10 +44490,7 @@ exports.oboolean = oboolean;
 exports.coerce = {
     string: ((arg) => ZodString.create({ ...arg, coerce: true })),
     number: ((arg) => ZodNumber.create({ ...arg, coerce: true })),
-    boolean: ((arg) => ZodBoolean.create({
-        ...arg,
-        coerce: true,
-    })),
+    boolean: ((arg) => ZodBoolean.create({ ...arg, coerce: true })),
     bigint: ((arg) => ZodBigInt.create({ ...arg, coerce: true })),
     date: ((arg) => ZodDate.create({ ...arg, coerce: true })),
 };
