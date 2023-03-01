@@ -1,3 +1,11 @@
+/**
+ * This scripts creates example markdown files for the summary in the ./tmp folder.
+ * You can use it to preview changes to the summary.
+ *
+ * You can execute it like this:
+ * npx ts-node scripts/create_summary.ts
+ */
+
 import {Changes, ConfigurationOptions} from '../src/schemas'
 import {createTestChange} from '../__tests__/fixtures/create-test-change'
 import {InvalidLicenseChanges} from '../src/licenses'
