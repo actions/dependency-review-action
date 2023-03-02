@@ -219,7 +219,7 @@ test('addLicensesToSummary() - does not include entire section if no license iss
   expect(text).toEqual('')
 })
 
-test('addLicensesToSummary() - includes all license issues', () => {
+test('addLicensesToSummary() - includes all license issues in table', () => {
   const licenseIssues = {
     forbidden: [createTestChange()],
     unresolved: [createTestChange(), createTestChange()],
@@ -230,9 +230,27 @@ test('addLicensesToSummary() - includes all license issues', () => {
 
   const text = core.summary.stringify()
   expect(text).toContain('<h2>License Issues</h2>')
-  expect(text).toContain('<h3>Incompatible Licenses</h3>')
-  expect(text).toContain('<h3>Unknown Licenses</h3>')
-  expect(text).toContain('<h3>Invalid SPDX License Definitions</h3>')
+  expect(text).toContain('<td>Incompatible License</td>')
+  expect(text).toContain('<td>Invalid SPDX License</td>')
+  expect(text).toContain('<td>Unknown License</td>')
+})
+
+test('addLicenseToSummary() - adds one table per manifest', () => {
+  const licenseIssues = {
+    forbidden: [
+      createTestChange({manifest: 'package.json'}),
+      createTestChange({manifest: '.github/workflows/test.yml'})
+    ],
+    unresolved: [],
+    unlicensed: []
+  }
+
+  summary.addLicensesToSummary(licenseIssues, defaultConfig)
+
+  const text = core.summary.stringify()
+
+  expect(text).toContain('<h4><em>package.json</em></h4>')
+  expect(text).toContain('<h4><em>.github/workflows/test.yml</em></h4>')
 })
 
 test('addLicensesToSummary() - does not include specific license type sub-section if nothing is found', () => {
@@ -245,9 +263,9 @@ test('addLicensesToSummary() - does not include specific license type sub-sectio
   summary.addLicensesToSummary(licenseIssues, defaultConfig)
 
   const text = core.summary.stringify()
-  expect(text).not.toContain('<h3>Incompatible Licenses</h3>')
-  expect(text).not.toContain('<h3>Unknown Licenses</h3>')
-  expect(text).toContain('<h3>Invalid SPDX License Definitions</h3>')
+  expect(text).not.toContain('<td>Incompatible License</td>')
+  expect(text).not.toContain('<td>Unknown License</td>')
+  expect(text).toContain('<td>Invalid SPDX License</td>')
 })
 
 test('addLicensesToSummary() - includes list of configured allowed licenses', () => {

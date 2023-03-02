@@ -57,12 +57,24 @@ const createFullSummary = async (): Promise<void> => {
       createTestChange({
         name: 'octoinvader',
         license: 'Non SPDX License'
+      }),
+      createTestChange({
+        name: 'owner/action-1',
+        license: 'XYZ-License',
+        version: 'v1.2.2',
+        manifest: '.github/workflows/action.yml'
       })
     ],
     unlicensed: [
       createTestChange({
         name: 'my-other-dependency',
-        license: 'No License'
+        license: null
+      }),
+      createTestChange({
+        name: 'owner/action-2',
+        version: 'main',
+        license: null,
+        manifest: '.github/workflows/action.yml'
       })
     ]
   }

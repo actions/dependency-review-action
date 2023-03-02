@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {ConfigurationOptions, Changes} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
-import {InvalidLicenseChanges} from './licenses'
+import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
 const icons = {
@@ -131,6 +131,7 @@ export function addLicensesToSummary(
   }
 
   core.summary.addHeading('License Issues', 2)
+  printLicenseViolations(invalidLicenseChanges)
 
   if (config.allow_licenses && config.allow_licenses.length > 0) {
     core.summary.addQuote(
@@ -151,40 +152,44 @@ export function addLicensesToSummary(
     `${invalidLicenseChanges.unresolved.length} licenses could not be validated`
   )
 
-  printLicenseViolation(
-    `Incompatible Licenses`,
-    invalidLicenseChanges.forbidden
-  )
-  printLicenseViolation(
-    `Invalid SPDX License Definitions`,
-    invalidLicenseChanges.unresolved
-  )
-  printLicenseViolation(`Unknown Licenses`, invalidLicenseChanges.unlicensed)
   core.summary.addSeparator()
 }
-function printLicenseViolation(heading: string, changes: Changes): void {
-  if (changes.length === 0) {
-    return
-  }
 
-  core.summary.addSeparator()
-  core.summary.addHeading(heading, 3)
+const licenseIssueTypes: InvalidLicenseChangeTypes[] = [
+  'forbidden',
+  'unresolved',
+  'unlicensed'
+]
 
-  const rows: SummaryTableRow[] = []
-  const manifests = getManifestsSet(changes)
+const issueTypeNames: Record<InvalidLicenseChangeTypes, string> = {
+  forbidden: 'Incompatible License',
+  unresolved: 'Invalid SPDX License',
+  unlicensed: 'Unknown License'
+}
 
-  for (const manifest of manifests) {
-    core.summary.addHeading(`<em>${manifest}</em>`, 4)
+function printLicenseViolations(changes: InvalidLicenseChanges): void {
+  const rowsGroupedByManifest: Record<string, SummaryTableRow[]> = {}
 
-    for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
-      rows.push([
+  for (const issueType of licenseIssueTypes) {
+    for (const change of changes[issueType]) {
+      if (!rowsGroupedByManifest[change.manifest]) {
+        rowsGroupedByManifest[change.manifest] = []
+      }
+      rowsGroupedByManifest[change.manifest].push([
         renderUrl(change.source_repository_url, change.name),
         change.version,
-        formatLicense(change.license)
+        formatLicense(change.license),
+        issueTypeNames[issueType]
       ])
     }
+  }
 
-    core.summary.addTable([['Package', 'Version', 'License'], ...rows])
+  for (const [manifest, rows] of Object.entries(rowsGroupedByManifest)) {
+    core.summary.addHeading(`<em>${manifest}</em>`, 4)
+    core.summary.addTable([
+      ['Package', 'Version', 'License', 'Issue Type'],
+      ...rows
+    ])
   }
 }
 
