@@ -458,6 +458,10 @@ function run() {
                 baseRef: refs.base,
                 headRef: refs.head
             });
+            if (!changes) {
+                core.info('No Dependency Changes found. Skipping Dependency Review.');
+                return;
+            }
             const minSeverity = config.fail_on_severity;
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
@@ -820,6 +824,7 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
         return;
     }
     core.summary.addHeading('License Issues', 2);
+    printLicenseViolations(invalidLicenseChanges);
     if (config.allow_licenses && config.allow_licenses.length > 0) {
         core.summary.addQuote(`<strong>Allowed Licenses</strong>: ${config.allow_licenses.join(', ')}`);
     }
@@ -828,30 +833,39 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
     }
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
-    printLicenseViolation(`Incompatible Licenses`, invalidLicenseChanges.forbidden);
-    printLicenseViolation(`Invalid SPDX License Definitions`, invalidLicenseChanges.unresolved);
-    printLicenseViolation(`Unknown Licenses`, invalidLicenseChanges.unlicensed);
-    core.summary.addSeparator();
 }
 exports.addLicensesToSummary = addLicensesToSummary;
-function printLicenseViolation(heading, changes) {
-    if (changes.length === 0) {
-        return;
-    }
-    core.summary.addSeparator();
-    core.summary.addHeading(heading, 3);
-    const rows = [];
-    const manifests = (0, utils_1.getManifestsSet)(changes);
-    for (const manifest of manifests) {
-        core.summary.addHeading(`<em>${manifest}</em>`, 4);
-        for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
-            rows.push([
+const licenseIssueTypes = [
+    'forbidden',
+    'unresolved',
+    'unlicensed'
+];
+const issueTypeNames = {
+    forbidden: 'Incompatible License',
+    unresolved: 'Invalid SPDX License',
+    unlicensed: 'Unknown License'
+};
+function printLicenseViolations(changes) {
+    const rowsGroupedByManifest = {};
+    for (const issueType of licenseIssueTypes) {
+        for (const change of changes[issueType]) {
+            if (!rowsGroupedByManifest[change.manifest]) {
+                rowsGroupedByManifest[change.manifest] = [];
+            }
+            rowsGroupedByManifest[change.manifest].push([
                 (0, utils_1.renderUrl)(change.source_repository_url, change.name),
                 change.version,
-                formatLicense(change.license)
+                formatLicense(change.license),
+                issueTypeNames[issueType]
             ]);
         }
-        core.summary.addTable([['Package', 'Version', 'License'], ...rows]);
+    }
+    for (const [manifest, rows] of Object.entries(rowsGroupedByManifest)) {
+        core.summary.addHeading(`<em>${manifest}</em>`, 4);
+        core.summary.addTable([
+            ['Package', 'Version', 'License', 'Issue Type'],
+            ...rows
+        ]);
     }
 }
 function formatLicense(license) {
