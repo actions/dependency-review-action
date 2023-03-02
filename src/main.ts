@@ -29,6 +29,11 @@ async function run(): Promise<void> {
       headRef: refs.head
     })
 
+    if (!changes) {
+      core.info('No Dependency Changes found. Skipping Dependency Review.')
+      return
+    }
+
     const minSeverity = config.fail_on_severity
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
     const filteredChanges = filterAllowedAdvisories(

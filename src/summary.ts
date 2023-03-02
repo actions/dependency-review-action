@@ -151,8 +151,6 @@ export function addLicensesToSummary(
   core.debug(
     `${invalidLicenseChanges.unresolved.length} licenses could not be validated`
   )
-
-  core.summary.addSeparator()
 }
 
 const licenseIssueTypes: InvalidLicenseChangeTypes[] = [
