@@ -259,18 +259,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
-/**
- * Loops through a list of changes, filtering and returning the
- * ones that don't conform to the licenses allow/deny lists.
- *
- * Keep in mind that we don't let users specify both an allow and a deny
- * list in their config files, so this code works under the assumption that
- * one of the two list parameters will be empty. If both lists are provided,
- * we will ignore the deny list.
- * @param {Change[]} changes The list of changes to filter.
- * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
- * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
- */
 function getInvalidLicenseChanges(changes, licenses) {
     return __awaiter(this, void 0, void 0, function* () {
         const { allow, deny } = licenses;
@@ -470,20 +458,24 @@ function run() {
                 baseRef: refs.base,
                 headRef: refs.head
             });
+            if (!changes) {
+                core.info('No Dependency Changes found. Skipping Dependency Review.');
+                return;
+            }
             const minSeverity = config.fail_on_severity;
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
-            const addedChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
+            const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses
             });
-            summary.addSummaryToSummary(config.vulnerability_check ? addedChanges : null, config.license_check ? invalidLicenseChanges : null);
+            summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config);
             if (config.vulnerability_check) {
-                summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity);
-                printVulnerabilitiesBlock(addedChanges, minSeverity);
+                summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
+                printVulnerabilitiesBlock(vulnerableChanges, minSeverity);
             }
             if (config.license_check) {
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
@@ -740,36 +732,54 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
-function addSummaryToSummary(addedPackages, invalidLicenseChanges) {
-    core.summary
-        .addHeading('Dependency Review')
-        .addRaw('We found:')
-        .addList([
-        ...(addedPackages
-            ? [`${addedPackages.length} vulnerable package(s)`]
-            : []),
-        ...(invalidLicenseChanges
-            ? [
-                `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
-                `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
-                `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
-            ]
-            : [])
-    ]);
-}
-exports.addSummaryToSummary = addSummaryToSummary;
-function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
-    const rows = [];
-    const manifests = (0, utils_1.getManifestsSet)(addedPackages);
-    core.summary
-        .addHeading('Vulnerabilities')
-        .addQuote(`Vulnerabilities were filtered by minimum severity <strong>${severity}</strong>.`);
-    if (addedPackages.length === 0) {
-        core.summary.addQuote('No vulnerabilities found in added packages.');
+const icons = {
+    check: '✅',
+    cross: '❌',
+    warning: '⚠️'
+};
+function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config) {
+    core.summary.addHeading('Dependency Review', 1);
+    if (vulnerableChanges.length === 0 &&
+        countLicenseIssues(invalidLicenseChanges) === 0) {
+        if (!config.license_check) {
+            core.summary.addRaw(`${icons.check} No vulnerabilities found.`);
+        }
+        else if (!config.vulnerability_check) {
+            core.summary.addRaw(`${icons.check} No license issues found.`);
+        }
+        else {
+            core.summary.addRaw(`${icons.check} No vulnerabilities or license issues found.`);
+        }
         return;
     }
+    core.summary
+        .addRaw('The following issues were found:')
+        .addList([
+        ...(config.vulnerability_check
+            ? [
+                `${checkOrFailIcon(vulnerableChanges.length)} ${vulnerableChanges.length} vulnerable package(s)`
+            ]
+            : []),
+        ...(config.license_check
+            ? [
+                `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`,
+                `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`,
+                `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+            ]
+            : [])
+    ])
+        .addRaw('See the Details below.');
+}
+exports.addSummaryToSummary = addSummaryToSummary;
+function addChangeVulnerabilitiesToSummary(vulnerableChanges, severity) {
+    if (vulnerableChanges.length === 0) {
+        return;
+    }
+    const rows = [];
+    const manifests = (0, utils_1.getManifestsSet)(vulnerableChanges);
+    core.summary.addHeading('Vulnerabilities', 2);
     for (const manifest of manifests) {
-        for (const change of addedPackages.filter(pkg => pkg.manifest === manifest)) {
+        for (const change of vulnerableChanges.filter(pkg => pkg.manifest === manifest)) {
             let previous_package = '';
             let previous_version = '';
             for (const vuln of change.vulnerabilities) {
@@ -794,7 +804,7 @@ function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
                 previous_version = change.version;
             }
         }
-        core.summary.addHeading(`<em>${manifest}</em>`, 3).addTable([
+        core.summary.addHeading(`<em>${manifest}</em>`, 4).addTable([
             [
                 { data: 'Name', header: true },
                 { data: 'Version', header: true },
@@ -804,46 +814,58 @@ function addChangeVulnerabilitiesToSummary(addedPackages, severity) {
             ...rows
         ]);
     }
+    if (severity !== 'low') {
+        core.summary.addQuote(`Only included vulnerabilities with severity <strong>${severity}</strong> or higher.`);
+    }
 }
 exports.addChangeVulnerabilitiesToSummary = addChangeVulnerabilitiesToSummary;
 function addLicensesToSummary(invalidLicenseChanges, config) {
-    core.summary.addHeading('Licenses');
+    if (countLicenseIssues(invalidLicenseChanges) === 0) {
+        return;
+    }
+    core.summary.addHeading('License Issues', 2);
+    printLicenseViolations(invalidLicenseChanges);
     if (config.allow_licenses && config.allow_licenses.length > 0) {
         core.summary.addQuote(`<strong>Allowed Licenses</strong>: ${config.allow_licenses.join(', ')}`);
     }
     if (config.deny_licenses && config.deny_licenses.length > 0) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
-    if (Object.values(invalidLicenseChanges).every(item => item.length === 0)) {
-        core.summary.addQuote('No license violations detected.');
-        return;
-    }
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
-    printLicenseViolation('Incompatible Licenses', invalidLicenseChanges.forbidden);
-    printLicenseViolation('Unknown Licenses', invalidLicenseChanges.unlicensed);
-    printLicenseViolation('Invalid SPDX License Definitions', invalidLicenseChanges.unresolved);
 }
 exports.addLicensesToSummary = addLicensesToSummary;
-function printLicenseViolation(heading, changes) {
-    core.summary.addHeading(heading, 5).addSeparator();
-    if (changes.length > 0) {
-        const rows = [];
-        const manifests = (0, utils_1.getManifestsSet)(changes);
-        for (const manifest of manifests) {
-            core.summary.addHeading(`<em>${manifest}</em>`, 4);
-            for (const change of changes.filter(pkg => pkg.manifest === manifest)) {
-                rows.push([
-                    (0, utils_1.renderUrl)(change.source_repository_url, change.name),
-                    change.version,
-                    formatLicense(change.license)
-                ]);
+const licenseIssueTypes = [
+    'forbidden',
+    'unresolved',
+    'unlicensed'
+];
+const issueTypeNames = {
+    forbidden: 'Incompatible License',
+    unresolved: 'Invalid SPDX License',
+    unlicensed: 'Unknown License'
+};
+function printLicenseViolations(changes) {
+    const rowsGroupedByManifest = {};
+    for (const issueType of licenseIssueTypes) {
+        for (const change of changes[issueType]) {
+            if (!rowsGroupedByManifest[change.manifest]) {
+                rowsGroupedByManifest[change.manifest] = [];
             }
-            core.summary.addTable([['Package', 'Version', 'License'], ...rows]);
+            rowsGroupedByManifest[change.manifest].push([
+                (0, utils_1.renderUrl)(change.source_repository_url, change.name),
+                change.version,
+                formatLicense(change.license),
+                issueTypeNames[issueType]
+            ]);
         }
     }
-    else {
-        core.summary.addQuote(`No ${heading.toLowerCase()} detected.`);
+    for (const [manifest, rows] of Object.entries(rowsGroupedByManifest)) {
+        core.summary.addHeading(`<em>${manifest}</em>`, 4);
+        core.summary.addTable([
+            ['Package', 'Version', 'License', 'Issue Type'],
+            ...rows
+        ]);
     }
 }
 function formatLicense(license) {
@@ -855,9 +877,7 @@ function formatLicense(license) {
 function addScannedDependencies(changes) {
     const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
     const manifests = dependencies.keys();
-    const summary = core.summary
-        .addHeading('Scanned Dependencies')
-        .addHeading(`We scanned ${dependencies.size} manifest files:`, 5);
+    const summary = core.summary.addHeading('Scanned Manifest Files', 2);
     for (const manifest of manifests) {
         const deps = dependencies.get(manifest);
         if (deps) {
@@ -867,6 +887,15 @@ function addScannedDependencies(changes) {
     }
 }
 exports.addScannedDependencies = addScannedDependencies;
+function countLicenseIssues(invalidLicenseChanges) {
+    return Object.values(invalidLicenseChanges).reduce((acc, val) => acc + val.length, 0);
+}
+function checkOrFailIcon(count) {
+    return count === 0 ? icons.check : icons.cross;
+}
+function checkOrWarnIcon(count) {
+    return count === 0 ? icons.check : icons.warning;
+}
 
 
 /***/ }),

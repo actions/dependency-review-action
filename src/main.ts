@@ -29,6 +29,11 @@ async function run(): Promise<void> {
       headRef: refs.head
     })
 
+    if (!changes) {
+      core.info('No Dependency Changes found. Skipping Dependency Review.')
+      return
+    }
+
     const minSeverity = config.fail_on_severity
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
     const filteredChanges = filterAllowedAdvisories(
@@ -36,7 +41,7 @@ async function run(): Promise<void> {
       scopedChanges
     )
 
-    const addedChanges = filterChangesBySeverity(
+    const vulnerableChanges = filterChangesBySeverity(
       minSeverity,
       filteredChanges
     ).filter(
@@ -55,13 +60,14 @@ async function run(): Promise<void> {
     )
 
     summary.addSummaryToSummary(
-      config.vulnerability_check ? addedChanges : null,
-      config.license_check ? invalidLicenseChanges : null
+      vulnerableChanges,
+      invalidLicenseChanges,
+      config
     )
 
     if (config.vulnerability_check) {
-      summary.addChangeVulnerabilitiesToSummary(addedChanges, minSeverity)
-      printVulnerabilitiesBlock(addedChanges, minSeverity)
+      summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
+      printVulnerabilitiesBlock(vulnerableChanges, minSeverity)
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)

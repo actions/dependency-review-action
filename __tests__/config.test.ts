@@ -5,13 +5,13 @@ import * as Utils from '../src/utils'
 
 // GitHub Action inputs come in the form of environment variables
 // with an INPUT prefix (e.g. INPUT_FAIL-ON-SEVERITY)
-function setInput(input: string, value: string) {
+function setInput(input: string, value: string): void {
   process.env[`INPUT_${input.toUpperCase()}`] = value
 }
 
 // We want a clean ENV before each test. We use `delete`
 // since we want `undefined` values and not empty strings.
-function clearInputs() {
+function clearInputs(): void {
   const allowedOptions = [
     'FAIL-ON-SEVERITY',
     'FAIL-ON-SCOPES',
@@ -26,6 +26,7 @@ function clearInputs() {
     'COMMENT-SUMMARY-IN-PR'
   ]
 
+  // eslint-disable-next-line github/array-foreach
   allowedOptions.forEach(option => {
     delete process.env[`INPUT_${option.toUpperCase()}`]
   })
@@ -238,7 +239,7 @@ test('it supports comma-separated lists', async () => {
     'config-file',
     './__tests__/fixtures/inline-license-config-sample.yml'
   )
-  let config = await readConfig()
+  const config = await readConfig()
 
   expect(config.allow_licenses).toEqual(['MIT', 'GPL-2.0-only'])
 })
