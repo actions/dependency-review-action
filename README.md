@@ -66,19 +66,22 @@ jobs:
 
 Configure this action by either inlining these options in your workflow file, or by using an external configuration file. All configuration options are optional.
 
-| Option                  | Usage                                                                                                                                                                             | Possible values                                                              | Default value |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------- |
-| `fail-on-severity`      | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                        | `low`         |
-| `allow-licenses`*       | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
-| `deny-licenses`*        | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
-| `fail-on-scopes`†       | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                          | `runtime`     |
-| `allow-ghsas`           | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories) | none          |
-| `license-check`         | Enable or disable the license check performed by the action.                                                                                                                      | `true`, `false`                                                              | `true`        |
-| `vulnerability-check`   | Enable or disable the vulnerability check performed by the action.                                                                                                                | `true`, `false`                                                              | `true`        |
-| `base-ref`/`head-ref`   | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                         | none          |
-| `comment-summary-in-pr` | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `true`, `false`                                                              | `false`       |
+| Option                            | Usage                                                                                                                                                                             | Possible values                                                              | Default value |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------- |
+| `fail-on-severity`                | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                        | `low`         |
+| `allow-licenses`\*                | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
+| `deny-licenses`\*                 | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
+| `allow-dependencies-licenses`\*\* | Containts excluded packages per ecosystem for the licenses checks.                                                                                                                | `ecosystemName: pkgName1, pkgName2`                                          | none          |
+| `fail-on-scopes`†                 | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                          | `runtime`     |
+| `allow-ghsas`                     | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories) | none          |
+| `license-check`                   | Enable or disable the license check performed by the action.                                                                                                                      | `true`, `false`                                                              | `true`        |
+| `vulnerability-check`             | Enable or disable the vulnerability check performed by the action.                                                                                                                | `true`, `false`                                                              | `true`        |
+| `base-ref`/`head-ref`             | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                         | none          |
+| `comment-summary-in-pr`           | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `true`, `false`                                                              | `false`       |
 
-*not supported for use with GitHub Enterprise Server
+\*not supported for use with GitHub Enterprise Server
+
+\*\*not supported for use with GitHub Enterprise Server and configuration must be provided in external configuration file
 
 †will be supported with GitHub Enterprise Server 3.8
 
@@ -136,6 +139,9 @@ allow-licenses:
   - 'GPL-3.0'
   - 'BSD-3-Clause'
   - 'MIT'
+allow-dependencies-licenses:
+  npm: @actions/core, @actions/github
+  pip: requests
 ```
 
 ### Considerations
@@ -143,6 +149,7 @@ allow-licenses:
 - Checking for licenses is not supported on Enterprise Server.
 - The action will only accept one of the two `license` parameters; an error will be raised if you provide both.
 - We don't have license information for all of your dependents. If we can't detect the license for a dependency **we will inform you, but the action won't fail**.
+- The `allow-dependencies-licenses` option can only be used with the external configuration file.
 
 ## Blocking pull requests
 
