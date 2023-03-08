@@ -144,13 +144,14 @@ export function addLicensesToSummary(
     )
   }
   if (config.allow_dependencies_licenses) {
-    core.summary.addRaw(
-      "<strong>Allow Dependencies (Exceptions)' Licenses</strong>: true"
-    )
+    core.summary.addHeading('Allowed licensing exceptions', 3)
+
     for (const [ecosystem, dependencies] of Object.entries(
       config.allow_dependencies_licenses
     )) {
-      core.summary.addRaw(`- ${ecosystem}</strong>: ${dependencies.join(', ')}`)
+      core.summary.addRaw(
+        `<li> ${ecosystem}</strong>: ${dependencies.join(', ')} </li>`
+      )
     }
   }
 

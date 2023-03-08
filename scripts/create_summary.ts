@@ -22,6 +22,10 @@ const defaultConfig: ConfigurationOptions = {
   allow_ghsas: [],
   allow_licenses: ['MIT'],
   deny_licenses: [],
+  allow_dependencies_licenses: {
+    npm: ['pkg1'],
+    pip: ['pkg2']
+  },
   comment_summary_in_pr: true
 }
 
