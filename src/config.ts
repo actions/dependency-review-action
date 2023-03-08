@@ -35,9 +35,6 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
   const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr')
-  const allow_dependencies_licenses = parseRecord(
-    getOptionalRecord('allow-dependencies-licenses')
-  )
 
   validateLicenses('allow-licenses', allow_licenses)
   validateLicenses('deny-licenses', deny_licenses)
@@ -47,7 +44,6 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     fail_on_scopes,
     allow_licenses,
     deny_licenses,
-    allow_dependencies_licenses,
     allow_ghsas,
     license_check,
     vulnerability_check,
@@ -69,28 +65,6 @@ function getOptionalBoolean(name: string): boolean | undefined {
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
   return value.length > 0 ? value : undefined
-}
-
-function getOptionalRecord(
-  records: string
-): Record<string, string[]> | undefined {
-  const value = core.getInput(records)
-  return value.length > 0 ? YAML.parse(value) : undefined
-}
-
-function parseRecord(
-  records: Record<string, string[]> | undefined
-): Record<string, string[]> | undefined {
-  if (records === undefined) {
-    return records
-  } else {
-    return Object.fromEntries(
-      Object.entries(records).map(([key, value]) => [
-        key,
-        value.map(x => x.trim())
-      ])
-    )
-  }
 }
 
 function parseList(list: string | undefined): string[] | undefined {
