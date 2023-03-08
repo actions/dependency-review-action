@@ -261,8 +261,16 @@ const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
 function getInvalidLicenseChanges(changes, licenses) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { allow, deny } = licenses;
+        const { allow, deny, exception } = licenses;
         const groupedChanges = yield groupChanges(changes);
+        // filter out changes that are part of exclusions list - config.allow_license_exceptions
+        groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+            if ((0, utils_1.isDefined)(exception) &&
+                exception[change.ecosystem].includes(change.name)) {
+                return false;
+            }
+            return true;
+        });
         const licensedChanges = groupedChanges.licensed;
         const invalidLicenseChanges = {
             unlicensed: groupedChanges.unlicensed,
@@ -470,7 +478,8 @@ function run() {
                 change.vulnerabilities.length > 0);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
-                deny: config.deny_licenses
+                deny: config.deny_licenses,
+                exception: config.allow_dependencies_licenses
             });
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config);
             if (config.vulnerability_check) {
@@ -666,6 +675,9 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z
+        .record(z.string(), z.array(z.string()))
+        .optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
@@ -831,6 +843,12 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
     if (config.deny_licenses && config.deny_licenses.length > 0) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
+    if (config.allow_dependencies_licenses) {
+        core.summary.addHeading('Allowed licensing exceptions', 3);
+        for (const [ecosystem, dependencies] of Object.entries(config.allow_dependencies_licenses)) {
+            core.summary.addRaw(`<li> ${ecosystem}</strong>: ${dependencies.join(', ')} </li>`);
+        }
+    }
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
 }
@@ -932,7 +950,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isDefined = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -972,6 +990,11 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+// function to check if a value is not null or undefined
+function isDefined(value) {
+    return value !== null && value !== undefined;
+}
+exports.isDefined = isDefined;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
@@ -45045,7 +45068,8 @@ function parseConfigFile(configData) {
             'allow-licenses',
             'deny-licenses',
             'fail-on-scopes',
-            'allow-ghsas'
+            'allow-ghsas',
+            'allow-dependencies-licenses'
         ];
         for (const key of Object.keys(data)) {
             // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
@@ -45059,6 +45083,18 @@ function parseConfigFile(configData) {
             // perform SPDX validation
             if (key === 'allow-licenses' || key === 'deny-licenses') {
                 validateLicenses(key, data[key]);
+            }
+            // parse the allow-dependencies-licenses configs value
+            // per-ecosystem: ['pkg1', 'pkg2']
+            if (key === 'allow-dependencies-licenses') {
+                const val = data[key];
+                for (const ecosystem of Object.keys(val)) {
+                    const pkgs = val[ecosystem];
+                    if (typeof pkgs === 'string') {
+                        val[ecosystem] = pkgs.split(',').map(x => x.trim());
+                    }
+                }
+                data[key] = val;
             }
             // get rid of the ugly dashes from the actions conventions
             if (key.includes('-')) {
@@ -45242,6 +45278,9 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z
+        .record(z.string(), z.array(z.string()))
+        .optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
@@ -45308,7 +45347,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isDefined = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -45348,6 +45387,11 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+// function to check if a value is not null or undefined
+function isDefined(value) {
+    return value !== null && value !== undefined;
+}
+exports.isDefined = isDefined;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
