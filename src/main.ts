@@ -55,7 +55,8 @@ async function run(): Promise<void> {
       filteredChanges,
       {
         allow: config.allow_licenses,
-        deny: config.deny_licenses
+        deny: config.deny_licenses,
+        exception: config.allow_dependencies_licenses
       }
     )
 

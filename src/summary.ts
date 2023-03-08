@@ -143,6 +143,16 @@ export function addLicensesToSummary(
       `<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`
     )
   }
+  if (config.allow_dependencies_licenses) {
+    core.summary.addRaw(
+      "<strong>Allow Dependencies (Exceptions)' Licenses</strong>: true"
+    )
+    for (const [ecosystem, dependencies] of Object.entries(
+      config.allow_dependencies_licenses
+    )) {
+      core.summary.addRaw(`- ${ecosystem}</strong>: ${dependencies.join(', ')}`)
+    }
+  }
 
   core.debug(
     `found ${invalidLicenseChanges.unlicensed.length} unknown licenses`

@@ -1,6 +1,7 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {isSPDXValid, octokitClient, isDefined} from './utils'
+import * as core from '@actions/core'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -24,11 +25,22 @@ export async function getInvalidLicenseChanges(
   licenses: {
     allow?: string[]
     deny?: string[]
+    exception?: Record<string, string[]>
   }
 ): Promise<InvalidLicenseChanges> {
-  const {allow, deny} = licenses
+  const {allow, deny, exception} = licenses
 
   const groupedChanges = await groupChanges(changes)
+  // filter out changes that are part of exclusions list - config.allow_license_exceptions
+  groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+    if (
+      isDefined(exception) &&
+      exception[change.ecosystem].includes(change.name)
+    ) {
+      return false
+    }
+    return true
+  })
   const licensedChanges: Changes = groupedChanges.licensed
 
   const invalidLicenseChanges: InvalidLicenseChanges = {

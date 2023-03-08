@@ -130,7 +130,8 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
       'allow-licenses',
       'deny-licenses',
       'fail-on-scopes',
-      'allow-ghsas'
+      'allow-ghsas',
+      'allow-dependencies-licenses'
     ]
 
     for (const key of Object.keys(data)) {
@@ -147,6 +148,19 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
       // perform SPDX validation
       if (key === 'allow-licenses' || key === 'deny-licenses') {
         validateLicenses(key, data[key])
+      }
+
+      // parse the allow-dependencies-licenses configs value
+      // per-ecosystem: ['pkg1', 'pkg2']
+      if (key === 'allow-dependencies-licenses') {
+        const val = data[key]
+        for (const ecosystem of Object.keys(val)) {
+          const pkgs = val[ecosystem]
+          if (typeof pkgs === 'string') {
+            val[ecosystem] = pkgs.split(',').map(x => x.trim())
+          }
+        }
+        data[key] = val
       }
 
       // get rid of the ugly dashes from the actions conventions
