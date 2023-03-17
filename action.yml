@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ${{ github.token }}
   fail-on-severity:
-    description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.
+    description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`, `none`.
     required: false
     default: 'low'
   fail-on-scopes:

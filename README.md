@@ -68,7 +68,7 @@ Configure this action by either inlining these options in your workflow file, or
 
 | Option                  | Usage                                                                                                                                                                             | Possible values                                                              | Default value |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------- |
-| `fail-on-severity`      | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                        | `low`         |
+| `fail-on-severity`      | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`, `none`+                               | `low`         |
 | `allow-licenses`*       | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
 | `deny-licenses`*        | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
 | `fail-on-scopes`†       | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                          | `runtime`     |
@@ -81,6 +81,8 @@ Configure this action by either inlining these options in your workflow file, or
 *not supported for use with GitHub Enterprise Server
 
 †will be supported with GitHub Enterprise Server 3.8
+
++when `fail-on-severity` is set to `none`, the action will not fail on any vulnerabilities or invalid licenses. This is useful if you want to use the action to generate a report of vulnerabilities and invalid licenses, but not fail the workflow.
 
 ### Inline Configuration
 

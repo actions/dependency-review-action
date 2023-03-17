@@ -462,7 +462,13 @@ function run() {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;
             }
-            const minSeverity = config.fail_on_severity;
+            // config.fail_on_severity
+            const failOnSeverityParams = config.fail_on_severity;
+            const failOnVulnerability = (config.fail_on_severity != 'none');
+            let minSeverity = 'low';
+            if (failOnSeverityParams != 'none') {
+                minSeverity = failOnSeverityParams;
+            }
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
             const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
@@ -475,11 +481,11 @@ function run() {
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config);
             if (config.vulnerability_check) {
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
-                printVulnerabilitiesBlock(vulnerableChanges, minSeverity);
+                printVulnerabilitiesBlock(vulnerableChanges, minSeverity, failOnVulnerability);
             }
             if (config.license_check) {
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
-                printLicensesBlock(invalidLicenseChanges);
+                printLicensesBlock(invalidLicenseChanges, failOnVulnerability);
             }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
@@ -508,17 +514,24 @@ function run() {
         }
     });
 }
-function printVulnerabilitiesBlock(addedChanges, minSeverity) {
-    let failed = false;
+function printVulnerabilitiesBlock(addedChanges, minSeverity, failOnVulnerability) {
+    let vulFound = false;
     core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
         if (addedChanges.length > 0) {
             for (const change of addedChanges) {
                 printChangeVulnerabilities(change);
             }
-            failed = true;
+            vulFound = true;
         }
-        if (failed) {
-            core.setFailed('Dependency review detected vulnerable packages.');
+        if (vulFound) {
+            const msg = 'Dependency review detected vulnerable packages.';
+            if (failOnVulnerability) {
+                const msg = 'Dependency review detected vulnerable packages.';
+                core.setFailed(msg);
+            }
+            else {
+                core.warning(msg);
+            }
         }
         else {
             core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
@@ -531,12 +544,18 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
-function printLicensesBlock(invalidLicenseChanges) {
+function printLicensesBlock(invalidLicenseChanges, failOnVulnerability) {
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
         if (invalidLicenseChanges.forbidden.length > 0) {
             core.info('\nThe following dependencies have incompatible licenses:');
             printLicensesError(invalidLicenseChanges.forbidden);
-            core.setFailed('Dependency review detected incompatible licenses.');
+            const msg = 'Dependency review detected incompatible licenses.';
+            if (failOnVulnerability) {
+                core.setFailed(msg);
+            }
+            else {
+                core.warning(msg);
+            }
         }
         if (invalidLicenseChanges.unresolved.length > 0) {
             core.warning('\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:');
@@ -630,10 +649,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.FailOnSeveritySchema = exports.SCOPES = exports.SEVERITIES = exports.FAIL_ON_SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
+exports.FAIL_ON_SEVERITIES = ['critical', 'high', 'moderate', 'low', 'none'];
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
+exports.FailOnSeveritySchema = z.enum(exports.FAIL_ON_SEVERITIES).default('low');
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -662,7 +683,7 @@ exports.PullRequestSchema = z.object({
 });
 exports.ConfigurationOptionsSchema = z
     .object({
-    fail_on_severity: exports.SeveritySchema,
+    fail_on_severity: exports.FailOnSeveritySchema,
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
@@ -45083,10 +45104,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.FailOnSeveritySchema = exports.SCOPES = exports.SEVERITIES = exports.FAIL_ON_SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
+exports.FAIL_ON_SEVERITIES = ['critical', 'high', 'moderate', 'low', 'none'];
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
+exports.FailOnSeveritySchema = z.enum(exports.FAIL_ON_SEVERITIES).default('low');
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -45115,7 +45138,7 @@ exports.PullRequestSchema = z.object({
 });
 exports.ConfigurationOptionsSchema = z
     .object({
-    fail_on_severity: exports.SeveritySchema,
+    fail_on_severity: exports.FailOnSeveritySchema,
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),

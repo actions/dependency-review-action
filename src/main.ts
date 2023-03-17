@@ -3,7 +3,7 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Changes} from './schemas'
+import {Change, Severity, Changes, FailOnSeverity} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -33,8 +33,14 @@ async function run(): Promise<void> {
       core.info('No Dependency Changes found. Skipping Dependency Review.')
       return
     }
+    // config.fail_on_severity
+    const failOnSeverityParams = config.fail_on_severity
+    const failOnVulnerability = (config.fail_on_severity != 'none')
+    let minSeverity: Severity = 'low' 
+    if (failOnSeverityParams != 'none') {
+      minSeverity = failOnSeverityParams
+    }
 
-    const minSeverity = config.fail_on_severity
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
     const filteredChanges = filterAllowedAdvisories(
       config.allow_ghsas,
@@ -67,11 +73,11 @@ async function run(): Promise<void> {
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      printVulnerabilitiesBlock(vulnerableChanges, minSeverity)
+      printVulnerabilitiesBlock(vulnerableChanges, minSeverity, failOnVulnerability)
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      printLicensesBlock(invalidLicenseChanges)
+      printLicensesBlock(invalidLicenseChanges, failOnVulnerability)
     }
 
     summary.addScannedDependencies(changes)
@@ -102,19 +108,26 @@ async function run(): Promise<void> {
 
 function printVulnerabilitiesBlock(
   addedChanges: Changes,
-  minSeverity: Severity
+  minSeverity: Severity,
+  failOnVulnerability: boolean
 ): void {
-  let failed = false
+  let vulFound = false
   core.group('Vulnerabilities', async () => {
     if (addedChanges.length > 0) {
       for (const change of addedChanges) {
         printChangeVulnerabilities(change)
       }
-      failed = true
+      vulFound = true
     }
 
-    if (failed) {
-      core.setFailed('Dependency review detected vulnerable packages.')
+    if (vulFound) {
+      const msg = 'Dependency review detected vulnerable packages.'
+      if (failOnVulnerability) {
+      const msg = 'Dependency review detected vulnerable packages.'
+        core.setFailed(msg)
+      } else {
+        core.warning(msg)
+      }
     } else {
       core.info(
         `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
@@ -137,13 +150,19 @@ function printChangeVulnerabilities(change: Change): void {
 }
 
 function printLicensesBlock(
-  invalidLicenseChanges: Record<string, Changes>
+  invalidLicenseChanges: Record<string, Changes>,
+  failOnVulnerability: boolean
 ): void {
   core.group('Licenses', async () => {
     if (invalidLicenseChanges.forbidden.length > 0) {
       core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
-      core.setFailed('Dependency review detected incompatible licenses.')
+      const msg = 'Dependency review detected incompatible licenses.';
+      if (failOnVulnerability) {
+        core.setFailed(msg)
+      } else {
+        core.warning(msg)
+      }
     }
     if (invalidLicenseChanges.unresolved.length > 0) {
       core.warning(

@@ -54,6 +54,13 @@ test('it reads custom configs', async () => {
   expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
+test('it defaults to none severity', async () => {
+  setInput('fail-on-severity', 'none')
+  const config = await readConfig()
+  expect(config.fail_on_severity).toEqual('none')
+})
+
+
 test('it defaults to empty allow/deny lists ', async () => {
   const config = await readConfig()
 
