@@ -3,7 +3,7 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Changes, FailOnSeverity} from './schemas'
+import {Change, Severity, Changes} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -35,9 +35,9 @@ async function run(): Promise<void> {
     }
     // config.fail_on_severity
     const failOnSeverityParams = config.fail_on_severity
-    const failOnVulnerability = (config.fail_on_severity != 'none')
-    let minSeverity: Severity = 'low' 
-    if (failOnSeverityParams != 'none') {
+    const failOnVulnerability = config.fail_on_severity !== 'none'
+    let minSeverity: Severity = 'low'
+    if (failOnSeverityParams !== 'none') {
       minSeverity = failOnSeverityParams
     }
 
@@ -73,7 +73,11 @@ async function run(): Promise<void> {
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      printVulnerabilitiesBlock(vulnerableChanges, minSeverity, failOnVulnerability)
+      printVulnerabilitiesBlock(
+        vulnerableChanges,
+        minSeverity,
+        failOnVulnerability
+      )
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
@@ -123,7 +127,6 @@ function printVulnerabilitiesBlock(
     if (vulFound) {
       const msg = 'Dependency review detected vulnerable packages.'
       if (failOnVulnerability) {
-      const msg = 'Dependency review detected vulnerable packages.'
         core.setFailed(msg)
       } else {
         core.warning(msg)
@@ -157,7 +160,7 @@ function printLicensesBlock(
     if (invalidLicenseChanges.forbidden.length > 0) {
       core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
-      const msg = 'Dependency review detected incompatible licenses.';
+      const msg = 'Dependency review detected incompatible licenses.'
       if (failOnVulnerability) {
         core.setFailed(msg)
       } else {

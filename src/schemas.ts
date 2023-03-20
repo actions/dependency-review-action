@@ -1,6 +1,12 @@
 import * as z from 'zod'
 
-export const FAIL_ON_SEVERITIES = ['critical', 'high', 'moderate', 'low', 'none'] as const
+export const FAIL_ON_SEVERITIES = [
+  'critical',
+  'high',
+  'moderate',
+  'low',
+  'none'
+] as const
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
 export const SCOPES = ['unknown', 'runtime', 'development'] as const
 

@@ -60,7 +60,6 @@ test('it defaults to none severity', async () => {
   expect(config.fail_on_severity).toEqual('none')
 })
 
-
 test('it defaults to empty allow/deny lists ', async () => {
   const config = await readConfig()
 
