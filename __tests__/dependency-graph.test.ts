@@ -21,7 +21,8 @@ test('it properly catches RequestError type', async () => {
       owner: 'actions',
       repo: 'dependency-review-action',
       baseRef: 'refs/heads/master',
-      headRef: 'refs/heads/master'
+      headRef: 'refs/heads/master',
+      includeDependencySnapshots: false
     })
   } catch (error) {
     expect(error).toBeInstanceOf(RequestError)

@@ -34,6 +34,9 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const vulnerability_check = getOptionalBoolean('vulnerability-check')
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
+  const include_dependency_snapshots = getOptionalBoolean(
+    'include-dependency-snapshots'
+  )
   const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr')
 
   validateLicenses('allow-licenses', allow_licenses)
@@ -49,6 +52,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     vulnerability_check,
     base_ref,
     head_ref,
+    include_dependency_snapshots,
     comment_summary_in_pr
   }
 

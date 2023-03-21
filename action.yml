@@ -20,6 +20,9 @@ inputs:
   head-ref:
     description: The head git ref to be used for this check. Has a default value when the workflow event is `pull_request` or `pull_request_target`. Must be provided otherwise.
     required: false
+  include-dependency-snapshots:
+    description: Whether to include dependencies submitted through the Dependency Submission API in the comparison. Defaults to `false`.
+    required: false
   config-file:
     description: A path to the configuration file for the action.
     required: false

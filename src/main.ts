@@ -22,12 +22,15 @@ async function run(): Promise<void> {
     const config = await readConfig()
     const refs = getRefs(config, github.context)
 
-    const changes = await dependencyGraph.compare({
+    const comparison = await dependencyGraph.compare({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
       baseRef: refs.base,
-      headRef: refs.head
+      headRef: refs.head,
+      includeDependencySnapshots: config.include_dependency_snapshots
     })
+    const changes = comparison.changes
+    const snapshot_warnings = comparison.snapshot_warnings
 
     if (!changes) {
       core.info('No Dependency Changes found. Skipping Dependency Review.')
@@ -64,6 +67,10 @@ async function run(): Promise<void> {
       invalidLicenseChanges,
       config
     )
+
+    if (snapshot_warnings) {
+      summary.addSnapshotWarnings(snapshot_warnings)
+    }
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)

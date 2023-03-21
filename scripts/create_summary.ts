@@ -19,6 +19,7 @@ const defaultConfig: ConfigurationOptions = {
   license_check: true,
   fail_on_severity: 'high',
   fail_on_scopes: ['runtime'],
+  include_dependency_snapshots: false,
   allow_ghsas: [],
   allow_licenses: ['MIT'],
   deny_licenses: [],
