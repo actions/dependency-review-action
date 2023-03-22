@@ -181,7 +181,7 @@ const githubUtils = __importStar(__nccwpck_require__(3030));
 const retry = __importStar(__nccwpck_require__(6298));
 const schemas_1 = __nccwpck_require__(8774);
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
-const SnapshotWarningsHeader = 'X-GitHub-Dependency-Graph-Snapshot-Warnings';
+const SnapshotWarningsHeader = 'x-github-dependency-graph-snapshot-warnings';
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 function compare({ owner, repo, baseRef, headRef, includeDependencySnapshots }) {
     return __awaiter(this, void 0, void 0, function* () {

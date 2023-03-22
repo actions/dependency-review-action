@@ -8,7 +8,7 @@ import {
 } from './schemas'
 
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry)
-const SnapshotWarningsHeader = 'X-GitHub-Dependency-Graph-Snapshot-Warnings'
+const SnapshotWarningsHeader = 'x-github-dependency-graph-snapshot-warnings'
 const octo = new retryingOctokit(
   githubUtils.getOctokitOptions(core.getInput('repo-token', {required: true}))
 )
