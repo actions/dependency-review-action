@@ -215,6 +215,12 @@ export function addScannedDependencies(changes: Changes): void {
   }
 }
 
+export function addSnapshotWarnings(warnings: string): void {
+  core.summary.addHeading('Snapshot Warnings', 2)
+  core.summary.addQuote(`${icons.warning}: ${warnings}`)
+  core.summary.addRaw('See the documentation for troubleshooting help.')
+}
+
 function countLicenseIssues(
   invalidLicenseChanges: InvalidLicenseChanges
 ): number {
