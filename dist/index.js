@@ -920,7 +920,7 @@ function addSnapshotWarnings(warnings) {
     }
     core.summary.addHeading('Snapshot Warnings', 2);
     core.summary.addQuote(`${icons.warning}: ${warnings}`);
-    core.summary.addRaw('See the documentation for troubleshooting help.');
+    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.');
 }
 exports.addSnapshotWarnings = addSnapshotWarnings;
 function countLicenseIssues(invalidLicenseChanges) {
