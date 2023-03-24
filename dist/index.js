@@ -976,7 +976,9 @@ function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
     for (const change of changes) {
-        const manifestName = change.manifest;
+        // If the manifest is null or empty, use a space as the key to avoid
+        // breaking the HTML rendering later
+        const manifestName = change.manifest || ' ';
         if (dependencies.get(manifestName) === undefined) {
             dependencies.set(manifestName, []);
         }
@@ -45233,7 +45235,9 @@ function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
     for (const change of changes) {
-        const manifestName = change.manifest;
+        // If the manifest is null or empty, use a space as the key to avoid
+        // breaking the HTML rendering later
+        const manifestName = change.manifest || ' ';
         if (dependencies.get(manifestName) === undefined) {
             dependencies.set(manifestName, []);
         }
