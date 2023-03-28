@@ -113,7 +113,7 @@ test('groups dependencies with empty manifest paths together', () => {
   summary.addScannedDependencies(changesWithEmptyManifests)
   const text = core.summary.stringify()
 
-  expect(text).toContain('<summary> </summary>')
+  expect(text).toContain('<summary>Unnamed Manifest</summary>')
   expect(text).toContain('castore')
   expect(text).toContain('connection')
   expect(text).toContain('<summary>python/dist-info/METADATA</summary>')

@@ -8,9 +8,9 @@ export function groupDependenciesByManifest(
 ): Map<string, Changes> {
   const dependencies: Map<string, Changes> = new Map()
   for (const change of changes) {
-    // If the manifest is null or empty, use a space as the key to avoid
+    // If the manifest is null or empty, give it a name now to avoid
     // breaking the HTML rendering later
-    const manifestName = change.manifest || ' '
+    const manifestName = change.manifest || 'Unnamed Manifest'
 
     if (dependencies.get(manifestName) === undefined) {
       dependencies.set(manifestName, [])
