@@ -131,8 +131,8 @@ Start by specifying that you will be using an external configuration file:
 And then create the file in the path you just specified:
 
 ```yaml
-fail-on-severity: 'critical'
-allow-licenses:
+fail_on_severity: 'critical'
+allow_licenses:
   - 'GPL-3.0'
   - 'BSD-3-Clause'
   - 'MIT'
