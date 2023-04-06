@@ -1,3 +1,3 @@
-fail-on-severity: 'so many zombies'
-deny-licenses:
+fail_on_severity: 'so many zombies'
+deny_licenses:
   - MIT
