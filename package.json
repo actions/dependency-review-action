@@ -33,6 +33,7 @@
     "got": "^12.6.0",
     "nodemon": "^2.0.22",
     "octokit": "^2.0.14",
+    "packageurl-js": "^1.0.2",
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^5.0.1",
     "yaml": "^2.2.1",
@@ -41,8 +42,6 @@
   "devDependencies": {
     "@types/jest": "^27.5.2",
     "@types/node": "^16.18.23",
-    "@typescript-eslint/eslint-plugin": "^5.48.1",
-    "@typescript-eslint/parser": "^5.48.0",
     "@types/spdx-expression-parse": "^3.0.2",
     "@types/spdx-satisfies": "^0.1.0",
     "@typescript-eslint/eslint-plugin": "^5.57.0",

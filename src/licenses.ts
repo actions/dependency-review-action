@@ -1,6 +1,7 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {isSPDXValid, octokitClient, isDefined} from './utils'
+import {PackageURL} from 'packageurl-js'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -24,11 +25,40 @@ export async function getInvalidLicenseChanges(
   licenses: {
     allow?: string[]
     deny?: string[]
+    licenseExclusions?: string[]
   }
 ): Promise<InvalidLicenseChanges> {
   const {allow, deny} = licenses
+  const licenseExclusions = licenses.licenseExclusions?.map(
+    (pkgUrl: string) => {
+      return PackageURL.fromString(pkgUrl)
+    }
+  )
 
   const groupedChanges = await groupChanges(changes)
+
+  // filter out changes that are part of exclusions list - config.allow_dependencies_licenses
+  groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+    const changeAsPackageURL = new PackageURL(
+      change.ecosystem,
+      undefined,
+      change.name,
+      change.version,
+      undefined,
+      undefined
+    )
+    if (
+      isDefined(licenseExclusions) &&
+      licenseExclusions.findIndex(
+        exclusion =>
+          exclusion.type === changeAsPackageURL.type &&
+          exclusion.name === changeAsPackageURL.name
+      ) !== -1
+    ) {
+      return false
+    }
+    return true
+  })
   const licensedChanges: Changes = groupedChanges.licensed
 
   const invalidLicenseChanges: InvalidLicenseChanges = {

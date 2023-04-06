@@ -20,6 +20,7 @@ import {commentPr} from './comment-pr'
 async function run(): Promise<void> {
   try {
     const config = await readConfig()
+
     const refs = getRefs(config, github.context)
 
     const changes = await dependencyGraph.compare({
@@ -55,7 +56,8 @@ async function run(): Promise<void> {
       filteredChanges,
       {
         allow: config.allow_licenses,
-        deny: config.deny_licenses
+        deny: config.deny_licenses,
+        licenseExclusions: config.allow_dependencies_licenses
       }
     )
 

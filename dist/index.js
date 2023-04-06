@@ -259,10 +259,25 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
+const packageurl_js_1 = __nccwpck_require__(8915);
 function getInvalidLicenseChanges(changes, licenses) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const { allow, deny } = licenses;
+        const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
+            return packageurl_js_1.PackageURL.fromString(pkgUrl);
+        });
         const groupedChanges = yield groupChanges(changes);
+        // filter out changes that are part of exclusions list - config.allow_dependencies_licenses
+        groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+            const changeAsPackageURL = new packageurl_js_1.PackageURL(change.ecosystem, undefined, change.name, change.version, undefined, undefined);
+            if ((0, utils_1.isDefined)(licenseExclusions) &&
+                licenseExclusions.findIndex(exclusion => exclusion.type === changeAsPackageURL.type &&
+                    exclusion.name === changeAsPackageURL.name) !== -1) {
+                return false;
+            }
+            return true;
+        });
         const licensedChanges = groupedChanges.licensed;
         const invalidLicenseChanges = {
             unlicensed: groupedChanges.unlicensed,
@@ -470,7 +485,8 @@ function run() {
                 change.vulnerabilities.length > 0);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
-                deny: config.deny_licenses
+                deny: config.deny_licenses,
+                licenseExclusions: config.allow_dependencies_licenses
             });
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config);
             if (config.vulnerability_check) {
@@ -666,6 +682,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
@@ -831,6 +848,9 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
     if (config.deny_licenses && config.deny_licenses.length > 0) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
+    if (config.allow_dependencies_licenses) {
+        core.summary.addQuote(`<strong>Excluded from license check</strong>: ${config.allow_dependencies_licenses.join(', ')}`);
+    }
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
 }
@@ -932,7 +952,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isDefined = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -972,6 +992,11 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+// function to check if a value is not null or undefined
+function isDefined(value) {
+    return value !== null && value !== undefined;
+}
+exports.isDefined = isDefined;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
@@ -36424,6 +36449,251 @@ function onceStrict (fn) {
 
 /***/ }),
 
+/***/ 8915:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/*!
+Copyright (c) the purl authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+const PackageURL = __nccwpck_require__(8749);
+
+module.exports = {
+  PackageURL
+};
+
+
+/***/ }),
+
+/***/ 8749:
+/***/ ((module) => {
+
+/*!
+Copyright (c) the purl authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+const KnownQualifierNames = Object.freeze({
+  // known qualifiers as defined here:
+  // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
+  RepositoryUrl: 'repository_url',
+  DownloadUrl: 'download_url',
+  VcsUrl: 'vcs_url',
+  FileName: 'file_name',
+  Checksum: 'checksum'
+});
+
+class PackageURL {
+
+  static get KnownQualifierNames() {
+    return KnownQualifierNames;
+  }
+
+  constructor(type, namespace, name, version, qualifiers, subpath) {
+    let required = { 'type': type, 'name': name };
+    Object.keys(required).forEach(key => {
+      if (!required[key]) {
+        throw new Error('Invalid purl: "' + key + '" is a required field.');
+      }
+    });
+
+    let strings = { 'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath };
+    Object.keys(strings).forEach(key => {
+      if (strings[key] && typeof strings[key] === 'string' || !strings[key]) {
+        return;
+      }
+      throw new Error('Invalid purl: "' + key + '" argument must be a string.');
+    });
+
+    if (qualifiers) {
+      if (typeof qualifiers !== 'object') {
+        throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
+      }
+      Object.keys(qualifiers).forEach(key => {
+        if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
+          throw new Error('Invalid purl: qualifier "' + key + '" contains an illegal character.');
+        }
+      });
+    }
+
+    this.type = type;
+    this.name = name;
+    this.namespace = namespace;
+    this.version = version;
+    this.qualifiers = qualifiers;
+    this.subpath = subpath;
+  }
+
+  _handlePyPi() {
+    this.name = this.name.toLowerCase().replace(/_/g, '-');
+  }
+
+  toString() {
+    var purl = ['pkg:', encodeURIComponent(this.type), '/'];
+
+    if (this.type === 'pypi') {
+      this._handlePyPi();
+    }
+
+    if (this.namespace) {
+      purl.push(
+        encodeURIComponent(this.namespace)
+          .replace(/%3A/g, ':')
+          .replace(/%2F/g, '/')
+        );
+      purl.push('/');
+    }
+
+    purl.push(encodeURIComponent(this.name).replace(/%3A/g, ':'));
+
+    if (this.version) {
+      purl.push('@');
+      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':'));
+    }
+
+    if (this.qualifiers) {
+      purl.push('?');
+
+      let qualifiers = this.qualifiers;
+      let qualifierString = [];
+      Object.keys(qualifiers).sort().forEach(key => {
+        qualifierString.push(
+          encodeURIComponent(key).replace(/%3A/g, ':')
+          + '='
+          + encodeURIComponent(qualifiers[key]).replace(/%2F/g, '/')
+        );
+      });
+
+      purl.push(qualifierString.join('&'));
+    }
+
+    if (this.subpath) {
+      purl.push('#');
+      purl.push(encodeURIComponent(this.subpath)
+        .replace(/%3A/g, ':')
+        .replace(/%2F/g, '/'));
+    }
+
+    return purl.join('');
+  }
+
+  static fromString(purl) {
+    if (!purl || typeof purl !== 'string' || !purl.trim()) {
+      throw new Error('A purl string argument is required.');
+    }
+
+    let [scheme, remainder] = purl.split(':', 2);
+    if (scheme !== 'pkg') {
+      throw new Error('purl is missing the required "pkg" scheme component.');
+    }
+    // this strip '/, // and /// as possible in :// or :///
+    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
+    remainder = remainder.trim().replace(/^\/+/g, '');
+
+    let type
+    [type, remainder] = remainder.split('/', 2);
+    if (!type || !remainder) {
+      throw new Error('purl is missing the required "type" component.');
+    }
+    type = decodeURIComponent(type)
+
+    let url = new URL(purl);
+
+    let qualifiers = null;
+    url.searchParams.forEach((value, key) => {
+      if (!qualifiers) {
+        qualifiers = {};
+      }
+      qualifiers[key] = value;
+    });
+    let subpath = url.hash;
+    if (subpath.indexOf('#') === 0) {
+      subpath = subpath.substring(1);
+    }
+    subpath = subpath.length === 0
+      ? null
+      : decodeURIComponent(subpath)
+
+    if (url.username !== '' || url.password !== '') {
+      throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
+    }
+
+    // this strip '/, // and /// as possible in :// or :///
+    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
+    let path = url.pathname.trim().replace(/^\/+/g, '');
+
+    // version is optional - check for existence
+    let version = null;
+    if (path.includes('@')) {
+      let index = path.indexOf('@');
+      version = decodeURIComponent(path.substring(index + 1));
+      remainder = path.substring(0, index);
+    } else {
+      remainder = path;
+    }
+
+    // The 'remainder' should now consist of an optional namespace and the name
+    let remaining = remainder.split('/').slice(1);
+    let name = null;
+    let namespace = null;
+    if (remaining.length > 1) {
+      let nameIndex = remaining.length - 1;
+      let namespaceComponents = remaining.slice(0, nameIndex);
+      name = decodeURIComponent(remaining[nameIndex]);
+      namespace = decodeURIComponent(namespaceComponents.join('/'));
+    } else if (remaining.length === 1) {
+      name = decodeURIComponent(remaining[0]);
+    }
+
+    if (name === '') {
+      throw new Error('purl is missing the required "name" component.');
+    }
+
+    return new PackageURL(type, namespace, name, version, qualifiers, subpath);
+  }
+
+};
+
+module.exports = PackageURL;
+
+
+/***/ }),
+
 /***/ 1867:
 /***/ ((module, exports, __nccwpck_require__) => {
 
@@ -44824,6 +45094,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
+const packageurl_js_1 = __nccwpck_require__(8915);
 function readConfig() {
     return __awaiter(this, void 0, void 0, function* () {
         const inlineConfig = readInlineConfig();
@@ -44841,12 +45112,14 @@ function readInlineConfig() {
     const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'));
     const allow_licenses = parseList(getOptionalInput('allow-licenses'));
     const deny_licenses = parseList(getOptionalInput('deny-licenses'));
+    const allow_dependencies_licenses = parseList(getOptionalInput('allow-dependencies-licenses'));
     const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
     const license_check = getOptionalBoolean('license-check');
     const vulnerability_check = getOptionalBoolean('vulnerability-check');
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
     const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr');
+    validatepurl(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const keys = {
@@ -44854,6 +45127,7 @@ function readInlineConfig() {
         fail_on_scopes,
         allow_licenses,
         deny_licenses,
+        allow_dependencies_licenses,
         allow_ghsas,
         license_check,
         vulnerability_check,
@@ -44922,7 +45196,8 @@ function parseConfigFile(configData) {
             'allow-licenses',
             'deny-licenses',
             'fail-on-scopes',
-            'allow-ghsas'
+            'allow-ghsas',
+            'allow-dependencies-licenses'
         ];
         for (const key of Object.keys(data)) {
             // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
@@ -44936,6 +45211,10 @@ function parseConfigFile(configData) {
             // perform SPDX validation
             if (key === 'allow-licenses' || key === 'deny-licenses') {
                 validateLicenses(key, data[key]);
+            }
+            // validate purls from the allow-dependencies-licenses
+            if (key === 'allow-dependencies-licenses') {
+                validatepurl(data[key]);
             }
             // get rid of the ugly dashes from the actions conventions
             if (key.includes('-')) {
@@ -44971,6 +45250,17 @@ function getRemoteConfig(configOpts) {
             throw new Error('Error fetching remote config file');
         }
     });
+}
+function validatepurl(allow_dependencies_licenses) {
+    //validate that the provided elements of the string are in valid purl format
+    if (allow_dependencies_licenses === undefined) {
+        return;
+    }
+    const invalid_purls = allow_dependencies_licenses.filter(purl => !packageurl_js_1.PackageURL.fromString(purl));
+    if (invalid_purls.length > 0) {
+        throw new Error(`Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`);
+    }
+    return;
 }
 
 
@@ -45119,6 +45409,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
@@ -45185,7 +45476,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isDefined = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -45225,6 +45516,11 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
+// function to check if a value is not null or undefined
+function isDefined(value) {
+    return value !== null && value !== undefined;
+}
+exports.isDefined = isDefined;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');

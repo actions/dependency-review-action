@@ -5,6 +5,7 @@ import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
+import {PackageURL} from 'packageurl-js'
 
 type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
 
@@ -29,6 +30,9 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'))
   const allow_licenses = parseList(getOptionalInput('allow-licenses'))
   const deny_licenses = parseList(getOptionalInput('deny-licenses'))
+  const allow_dependencies_licenses = parseList(
+    getOptionalInput('allow-dependencies-licenses')
+  )
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
   const license_check = getOptionalBoolean('license-check')
   const vulnerability_check = getOptionalBoolean('vulnerability-check')
@@ -36,6 +40,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const head_ref = getOptionalInput('head-ref')
   const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr')
 
+  validatepurl(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
   validateLicenses('deny-licenses', deny_licenses)
 
@@ -44,6 +49,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     fail_on_scopes,
     allow_licenses,
     deny_licenses,
+    allow_dependencies_licenses,
     allow_ghsas,
     license_check,
     vulnerability_check,
@@ -130,7 +136,8 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
       'allow-licenses',
       'deny-licenses',
       'fail-on-scopes',
-      'allow-ghsas'
+      'allow-ghsas',
+      'allow-dependencies-licenses'
     ]
 
     for (const key of Object.keys(data)) {
@@ -147,6 +154,11 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
       // perform SPDX validation
       if (key === 'allow-licenses' || key === 'deny-licenses') {
         validateLicenses(key, data[key])
+      }
+
+      // validate purls from the allow-dependencies-licenses
+      if (key === 'allow-dependencies-licenses') {
+        validatepurl(data[key])
       }
 
       // get rid of the ugly dashes from the actions conventions
@@ -186,4 +198,20 @@ async function getRemoteConfig(configOpts: {
     core.debug(error as string)
     throw new Error('Error fetching remote config file')
   }
+}
+function validatepurl(allow_dependencies_licenses: string[] | undefined): void {
+  //validate that the provided elements of the string are in valid purl format
+  if (allow_dependencies_licenses === undefined) {
+    return
+  }
+  const invalid_purls = allow_dependencies_licenses.filter(
+    purl => !PackageURL.fromString(purl)
+  )
+
+  if (invalid_purls.length > 0) {
+    throw new Error(
+      `Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`
+    )
+  }
+  return
 }
