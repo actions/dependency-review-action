@@ -1,6 +1,8 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
 import {isSPDXValid, octokitClient, isDefined} from './utils'
+import {PackageURL} from 'packageurl-js'
+import * as core from '@actions/core'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -24,22 +26,49 @@ export async function getInvalidLicenseChanges(
   licenses: {
     allow?: string[]
     deny?: string[]
-    exception?: Record<string, string[]>
+    licenseExclusions?: string[]
   }
 ): Promise<InvalidLicenseChanges> {
-  const {allow, deny, exception} = licenses
+  const {allow, deny} = licenses
+
+  // licenseExclusions = licenseExclusions.map((pkgUrl: string) => {
+  //   return PackageURL.fromString(pkgUrl)
+  // })
+  const licenseExclusions = licenses.licenseExclusions?.map(
+    (pkgUrl: string) => {
+      return PackageURL.fromString(pkgUrl)
+    }
+  )
 
   const groupedChanges = await groupChanges(changes)
-  // filter out changes that are part of exclusions list - config.allow_license_exceptions
+  core.info(
+    `Grouped changes BEFORE filter size: ${groupedChanges.licensed.length}`
+  )
+  // filter out changes that are part of exclusions list - config.allow_dependencies_licenses
   groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+    const changeAsPackageURL = new PackageURL(
+      change.ecosystem,
+      undefined,
+      change.name,
+      change.version,
+      undefined,
+      undefined
+    )
     if (
-      isDefined(exception) &&
-      exception[change.ecosystem].includes(change.name)
+      isDefined(licenseExclusions) &&
+      licenseExclusions.findIndex(
+        exclusion =>
+          exclusion.type === changeAsPackageURL.type &&
+          exclusion.name === changeAsPackageURL.name
+      ) !== -1
     ) {
       return false
     }
     return true
   })
+  core.info(
+    `Grouped changes after filter size: ${groupedChanges.licensed.length}`
+  )
   const licensedChanges: Changes = groupedChanges.licensed
 
   const invalidLicenseChanges: InvalidLicenseChanges = {

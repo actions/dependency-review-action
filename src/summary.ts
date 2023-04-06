@@ -149,9 +149,7 @@ export function addLicensesToSummary(
     for (const [ecosystem, dependencies] of Object.entries(
       config.allow_dependencies_licenses
     )) {
-      core.summary.addRaw(
-        `<li> ${ecosystem}</strong>: ${dependencies.join(', ')} </li>`
-      )
+      core.summary.addRaw(`<li> ${ecosystem}</strong>: ${dependencies} </li>`)
     }
   }
 

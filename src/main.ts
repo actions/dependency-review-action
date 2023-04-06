@@ -16,10 +16,12 @@ import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
+import {PackageURL} from 'packageurl-js'
 
 async function run(): Promise<void> {
   try {
     const config = await readConfig()
+
     const refs = getRefs(config, github.context)
 
     const changes = await dependencyGraph.compare({
@@ -56,7 +58,7 @@ async function run(): Promise<void> {
       {
         allow: config.allow_licenses,
         deny: config.deny_licenses,
-        exception: config.allow_dependencies_licenses
+        licenseExclusions: config.allow_dependencies_licenses
       }
     )
 
