@@ -132,15 +132,8 @@ test('it reads a config file hosted in another repo', async () => {
   )
   setInput('external-repo-token', 'gh_viptoken')
 
-  setInput(
-    'config-file',
-    'future-funk/anyone-cualkiera/external-config.yml@main'
-  )
+  const config = await readConfig()
 
-  setInput('external-repo-token', 'gh_viptoken')
-
-  const config = await Config.readConfig()
-
-  expect(config.fail_on_severity).toEqual('critical')
-  expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
+  expect(config.fail_on_severity).toEqual('high')
+  expect(config.allow_licenses).toEqual(['GPL-2.0-only'])
 })
