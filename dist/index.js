@@ -243,29 +243,6 @@ exports.getRefs = getRefs;
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -283,19 +260,14 @@ exports.getInvalidLicenseChanges = void 0;
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
 const packageurl_js_1 = __nccwpck_require__(8915);
-const core = __importStar(__nccwpck_require__(2186));
 function getInvalidLicenseChanges(changes, licenses) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const { allow, deny } = licenses;
-        // licenseExclusions = licenseExclusions.map((pkgUrl: string) => {
-        //   return PackageURL.fromString(pkgUrl)
-        // })
         const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
             return packageurl_js_1.PackageURL.fromString(pkgUrl);
         });
         const groupedChanges = yield groupChanges(changes);
-        core.info(`Grouped changes BEFORE filter size: ${groupedChanges.licensed.length}`);
         // filter out changes that are part of exclusions list - config.allow_dependencies_licenses
         groupedChanges.licensed = groupedChanges.licensed.filter(change => {
             const changeAsPackageURL = new packageurl_js_1.PackageURL(change.ecosystem, undefined, change.name, change.version, undefined, undefined);
@@ -306,7 +278,6 @@ function getInvalidLicenseChanges(changes, licenses) {
             }
             return true;
         });
-        core.info(`Grouped changes after filter size: ${groupedChanges.licensed.length}`);
         const licensedChanges = groupedChanges.licensed;
         const invalidLicenseChanges = {
             unlicensed: groupedChanges.unlicensed,
@@ -878,10 +849,7 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
     if (config.allow_dependencies_licenses) {
-        core.summary.addHeading('Allowed licensing exceptions', 3);
-        for (const [ecosystem, dependencies] of Object.entries(config.allow_dependencies_licenses)) {
-            core.summary.addRaw(`<li> ${ecosystem}</strong>: ${dependencies} </li>`);
-        }
+        core.summary.addQuote(`<strong>Excluded from license check</strong>: ${config.allow_dependencies_licenses.join(', ')}`);
     }
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);

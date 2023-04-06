@@ -30,10 +30,6 @@ export async function getInvalidLicenseChanges(
   }
 ): Promise<InvalidLicenseChanges> {
   const {allow, deny} = licenses
-
-  // licenseExclusions = licenseExclusions.map((pkgUrl: string) => {
-  //   return PackageURL.fromString(pkgUrl)
-  // })
   const licenseExclusions = licenses.licenseExclusions?.map(
     (pkgUrl: string) => {
       return PackageURL.fromString(pkgUrl)
@@ -41,9 +37,7 @@ export async function getInvalidLicenseChanges(
   )
 
   const groupedChanges = await groupChanges(changes)
-  core.info(
-    `Grouped changes BEFORE filter size: ${groupedChanges.licensed.length}`
-  )
+
   // filter out changes that are part of exclusions list - config.allow_dependencies_licenses
   groupedChanges.licensed = groupedChanges.licensed.filter(change => {
     const changeAsPackageURL = new PackageURL(
@@ -66,9 +60,6 @@ export async function getInvalidLicenseChanges(
     }
     return true
   })
-  core.info(
-    `Grouped changes after filter size: ${groupedChanges.licensed.length}`
-  )
   const licensedChanges: Changes = groupedChanges.licensed
 
   const invalidLicenseChanges: InvalidLicenseChanges = {
