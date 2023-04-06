@@ -1,5 +1,5 @@
-import { expect, test, beforeEach } from '@jest/globals'
-import { readConfig } from '../src/config'
+import {expect, test, beforeEach} from '@jest/globals'
+import {readConfig} from '../src/config'
 import * as Utils from '../src/utils'
 
 // GitHub Action inputs come in the form of environment variables
@@ -101,4 +101,24 @@ test('it supports comma-separated lists', async () => {
   const config = await readConfig()
 
   expect(config.allow_licenses).toEqual(['MIT', 'GPL-2.0-only'])
+})
+
+test('it reads a config file hosted in another repo', async () => {
+  setInput(
+    'config-file',
+    'future-funk/anyone-cualkiera/external-config.yml@main'
+  )
+  setInput('external-repo-token', 'gh_viptoken')
+
+  setInput(
+    'config-file',
+    'future-funk/anyone-cualkiera/external-config.yml@main'
+  )
+
+  setInput('external-repo-token', 'gh_viptoken')
+
+  const config = await Config.readConfig()
+
+  expect(config.fail_on_severity).toEqual('critical')
+  expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
