@@ -31,6 +31,28 @@ function clearInputs(): void {
   })
 }
 
+const externalConfig = `fail_on_severity: 'high'
+allow_licenses: ['GPL-2.0-only']
+`
+const mockOctokit = {
+  rest: {
+    repos: {
+      getContent: jest.fn().mockReturnValue({data: externalConfig})
+    }
+  }
+}
+
+jest.mock('octokit', () => {
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+    Octokit: class {
+      constructor() {
+        return mockOctokit
+      }
+    }
+  }
+})
+
 beforeAll(() => {
   jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(true)
 })
