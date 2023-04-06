@@ -1,3 +1,5 @@
+# Avoid using default values for options here since they will
+# end up overriding external configurations.
 name: 'Dependency Review'
 description: 'Prevent the introduction of dependencies with known vulnerabilities'
 author: 'GitHub'
@@ -9,11 +11,9 @@ inputs:
   fail-on-severity:
     description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.
     required: false
-    default: 'low'
   fail-on-scopes:
     description: Dependency scopes to block PRs on. Comma-separated list. Possible values are 'unknown', 'runtime', and 'development' (e.g. "runtime, development")
     required: false
-    default: 'runtime'
   base-ref:
     description: The base git ref to be used for this check. Has a default value when the workflow event is `pull_request` or `pull_request_target`. Must be provided otherwise.
     required: false
