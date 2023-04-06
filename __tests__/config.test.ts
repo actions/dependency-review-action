@@ -2,35 +2,7 @@ import {expect, test, beforeEach} from '@jest/globals'
 import {readConfig} from '../src/config'
 import {getRefs} from '../src/git-refs'
 import * as Utils from '../src/utils'
-
-// GitHub Action inputs come in the form of environment variables
-// with an INPUT prefix (e.g. INPUT_FAIL-ON-SEVERITY)
-function setInput(input: string, value: string): void {
-  process.env[`INPUT_${input.toUpperCase()}`] = value
-}
-
-// We want a clean ENV before each test. We use `delete`
-// since we want `undefined` values and not empty strings.
-function clearInputs(): void {
-  const allowedOptions = [
-    'FAIL-ON-SEVERITY',
-    'FAIL-ON-SCOPES',
-    'ALLOW-LICENSES',
-    'DENY-LICENSES',
-    'ALLOW-GHSAS',
-    'LICENSE-CHECK',
-    'VULNERABILITY-CHECK',
-    'CONFIG-FILE',
-    'BASE-REF',
-    'HEAD-REF',
-    'COMMENT-SUMMARY-IN-PR'
-  ]
-
-  // eslint-disable-next-line github/array-foreach
-  allowedOptions.forEach(option => {
-    delete process.env[`INPUT_${option.toUpperCase()}`]
-  })
-}
+import {setInput, clearInputs} from './test-helpers'
 
 beforeAll(() => {
   jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(true)
