@@ -16,7 +16,6 @@ import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
-import {PackageURL} from 'packageurl-js'
 
 async function run(): Promise<void> {
   try {

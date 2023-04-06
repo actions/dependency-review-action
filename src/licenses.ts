@@ -2,7 +2,6 @@ import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
 import {isSPDXValid, octokitClient, isDefined} from './utils'
 import {PackageURL} from 'packageurl-js'
-import * as core from '@actions/core'
 
 /**
  * Loops through a list of changes, filtering and returning the

@@ -139,6 +139,8 @@ allow-licenses:
   - 'MIT'
 ```
 
+For more examples of how to use this action and its configuration options, see the [examples](docs/examples.md) page.
+
 ### Considerations
 
 - Checking for licenses is not supported on Enterprise Server.
