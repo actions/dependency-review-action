@@ -2,35 +2,7 @@ import {expect, test, beforeEach} from '@jest/globals'
 import {readConfig} from '../src/config'
 import {getRefs} from '../src/git-refs'
 import * as Utils from '../src/utils'
-
-// GitHub Action inputs come in the form of environment variables
-// with an INPUT prefix (e.g. INPUT_FAIL-ON-SEVERITY)
-function setInput(input: string, value: string): void {
-  process.env[`INPUT_${input.toUpperCase()}`] = value
-}
-
-// We want a clean ENV before each test. We use `delete`
-// since we want `undefined` values and not empty strings.
-function clearInputs(): void {
-  const allowedOptions = [
-    'FAIL-ON-SEVERITY',
-    'FAIL-ON-SCOPES',
-    'ALLOW-LICENSES',
-    'DENY-LICENSES',
-    'ALLOW-GHSAS',
-    'LICENSE-CHECK',
-    'VULNERABILITY-CHECK',
-    'CONFIG-FILE',
-    'BASE-REF',
-    'HEAD-REF',
-    'COMMENT-SUMMARY-IN-PR'
-  ]
-
-  // eslint-disable-next-line github/array-foreach
-  allowedOptions.forEach(option => {
-    delete process.env[`INPUT_${option.toUpperCase()}`]
-  })
-}
+import {setInput, clearInputs} from './test-helpers'
 
 beforeAll(() => {
   jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(true)
@@ -103,60 +75,6 @@ test('it raises an error when no refs are provided and the event is not a pull r
       eventName: 'workflow_dispatch'
     })
   ).toThrow()
-})
-
-test('it reads an external config file', async () => {
-  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml')
-
-  const config = await readConfig()
-  expect(config.fail_on_severity).toEqual('critical')
-  expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
-})
-
-test('raises an error when the config file was not found', async () => {
-  setInput('config-file', 'fixtures/i-dont-exist')
-  await expect(readConfig()).rejects.toThrow(/Unable to fetch/)
-})
-
-test('it parses options from both sources', async () => {
-  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml')
-
-  let config = await readConfig()
-  expect(config.fail_on_severity).toEqual('critical')
-
-  setInput('base-ref', 'a-custom-base-ref')
-  config = await readConfig()
-  expect(config.base_ref).toEqual('a-custom-base-ref')
-})
-
-test('in case of conflicts, the inline config is the source of truth', async () => {
-  setInput('fail-on-severity', 'low')
-  setInput('config-file', './__tests__/fixtures/config-allow-sample.yml') // this will set fail-on-severity to 'critical'
-
-  const config = await readConfig()
-  expect(config.fail_on_severity).toEqual('low')
-})
-
-test('it uses the default values when loading external files', async () => {
-  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
-  let config = await readConfig()
-  expect(config.allow_licenses).toEqual(undefined)
-  expect(config.deny_licenses).toEqual(undefined)
-
-  setInput('config-file', './__tests__/fixtures/license-config-sample.yml')
-  config = await readConfig()
-  expect(config.fail_on_severity).toEqual('low')
-})
-
-test('it accepts an external configuration filename', async () => {
-  setInput('config-file', './__tests__/fixtures/no-licenses-config.yml')
-  const config = await readConfig()
-  expect(config.fail_on_severity).toEqual('critical')
-})
-
-test('it raises an error when given an unknown severity in an external config file', async () => {
-  setInput('config-file', './__tests__/fixtures/invalid-severity-config.yml')
-  await expect(readConfig()).rejects.toThrow()
 })
 
 test('it defaults to runtime scope', async () => {
@@ -232,16 +150,6 @@ test('it is not possible to disable both checks', async () => {
   await expect(readConfig()).rejects.toThrow(
     /Can't disable both license-check and vulnerability-check/
   )
-})
-
-test('it supports comma-separated lists', async () => {
-  setInput(
-    'config-file',
-    './__tests__/fixtures/inline-license-config-sample.yml'
-  )
-  const config = await readConfig()
-
-  expect(config.allow_licenses).toEqual(['MIT', 'GPL-2.0-only'])
 })
 
 describe('licenses that are not valid SPDX licenses', () => {
