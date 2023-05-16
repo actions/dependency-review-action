@@ -41,11 +41,6 @@ export function isSPDXValid(license: string): boolean {
   }
 }
 
-// function to check if a value is not null or undefined
-export function isDefined<T>(value: T | null | undefined): value is T {
-  return value !== null && value !== undefined
-}
-
 function isEnterprise(): boolean {
   const serverUrl = new URL(
     process.env['GITHUB_SERVER_URL'] ?? 'https://github.com'

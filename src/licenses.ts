@@ -1,6 +1,6 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient, isDefined} from './utils'
+import {isSPDXValid, octokitClient} from './utils'
 import {PackageURL} from 'packageurl-js'
 
 /**
@@ -37,18 +37,23 @@ export async function getInvalidLicenseChanges(
 
   const groupedChanges = await groupChanges(changes)
 
-  // filter out changes that are part of exclusions list - config.allow_dependencies_licenses
+  // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
+  // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
   groupedChanges.licensed = groupedChanges.licensed.filter(change => {
     const changeAsPackageURL = new PackageURL(
       change.ecosystem,
-      undefined,
+      null,
       change.name,
       change.version,
-      undefined,
-      undefined
+      null,
+      null
     )
+    // We want to find if the licenseExclussion list contains the PackageURL of the change
+    // If it does, we want to filter it out and therefore return false
+    // If it doesn't, we want to keep it and therefore return true
     if (
-      isDefined(licenseExclusions) &&
+      licenseExclusions !== null &&
+      licenseExclusions !== undefined &&
       licenseExclusions.findIndex(
         exclusion =>
           exclusion.type === changeAsPackageURL.type &&

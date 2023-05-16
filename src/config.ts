@@ -40,7 +40,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const head_ref = getOptionalInput('head-ref')
   const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr')
 
-  validatepurl(allow_dependencies_licenses)
+  validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
   validateLicenses('deny-licenses', deny_licenses)
 
@@ -158,7 +158,7 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
 
       // validate purls from the allow-dependencies-licenses
       if (key === 'allow-dependencies-licenses') {
-        validatepurl(data[key])
+        validatePURL(data[key])
       }
 
       // get rid of the ugly dashes from the actions conventions
@@ -199,7 +199,7 @@ async function getRemoteConfig(configOpts: {
     throw new Error('Error fetching remote config file')
   }
 }
-function validatepurl(allow_dependencies_licenses: string[] | undefined): void {
+function validatePURL(allow_dependencies_licenses: string[] | undefined): void {
   //validate that the provided elements of the string are in valid purl format
   if (allow_dependencies_licenses === undefined) {
     return
