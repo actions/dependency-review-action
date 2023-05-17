@@ -166,7 +166,7 @@ jobs:
 
 ## Exclude dependencies from the license check
 
-Using the `allow-dependencies-licenses` you can exclude dependencies from the license check. You can exclude dependencies per ecosystem and the values should be provided in a valid [purl](https://github.com/package-url/purl-spec) format.
+Using the `allow-dependencies-licenses` you can exclude dependencies from the license check. The values should be provided in [purl](https://github.com/package-url/purl-spec) format.
 
 In this example, we are excluding `lodash` from `npm` and `requests` from `pip` dependencies from the license check
 
