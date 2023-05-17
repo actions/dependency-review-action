@@ -30,7 +30,7 @@ inputs:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
   allow-dependencies-licenses:
-    description: Comma-separated list of allowed licenses for specific dependencies in purl format (e.g. "pkg:npm/express, pkg:pip/pycrypto")
+    description: Comma-separated list of dependencies in purl format (e.g. "pkg:npm/express, pkg:pip/pycrypto"). These dependencies will be permitted to use any license, no matter what license policy is enforced otherwise.
     required: false
   allow-ghsas:
     description: Comma-separated list of allowed GitHub Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
