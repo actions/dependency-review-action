@@ -2,7 +2,7 @@
 
 ## Basic Usage
 
-A very basic example of how to use the action. This will run the aciton with the default configuration.
+A very basic example of how to use the action. This will run the action with the default configuration.
 
 The full list of configuration options can be found [here](../README.md#configuration-options).
 
