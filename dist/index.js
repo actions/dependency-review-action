@@ -268,10 +268,15 @@ function getInvalidLicenseChanges(changes, licenses) {
             return packageurl_js_1.PackageURL.fromString(pkgUrl);
         });
         const groupedChanges = yield groupChanges(changes);
-        // filter out changes that are part of exclusions list - config.allow_dependencies_licenses
+        // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
+        // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
         groupedChanges.licensed = groupedChanges.licensed.filter(change => {
-            const changeAsPackageURL = new packageurl_js_1.PackageURL(change.ecosystem, undefined, change.name, change.version, undefined, undefined);
-            if ((0, utils_1.isDefined)(licenseExclusions) &&
+            const changeAsPackageURL = packageurl_js_1.PackageURL.fromString(change.package_url);
+            // We want to find if the licenseExclussion list contains the PackageURL of the Change
+            // If it does, we want to filter it out and therefore return false
+            // If it doesn't, we want to keep it and therefore return true
+            if (licenseExclusions !== null &&
+                licenseExclusions !== undefined &&
                 licenseExclusions.findIndex(exclusion => exclusion.type === changeAsPackageURL.type &&
                     exclusion.name === changeAsPackageURL.name) !== -1) {
                 return false;
@@ -952,7 +957,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isDefined = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -992,11 +997,6 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
-// function to check if a value is not null or undefined
-function isDefined(value) {
-    return value !== null && value !== undefined;
-}
-exports.isDefined = isDefined;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
@@ -41173,6 +41173,7 @@ class ZodError extends Error {
         };
         const actualProto = new.target.prototype;
         if (Object.setPrototypeOf) {
+            // eslint-disable-next-line ban/ban
             Object.setPrototypeOf(this, actualProto);
         }
         else {
@@ -41212,6 +41213,13 @@ class ZodError extends Error {
                         const terminal = i === issue.path.length - 1;
                         if (!terminal) {
                             curr[el] = curr[el] || { _errors: [] };
+                            // if (typeof el === "string") {
+                            //   curr[el] = curr[el] || { _errors: [] };
+                            // } else if (typeof el === "number") {
+                            //   const errorArray: any = [];
+                            //   errorArray._errors = [];
+                            //   curr[el] = curr[el] || errorArray;
+                            // }
                         }
                         else {
                             curr[el] = curr[el] || { _errors: [] };
@@ -41373,7 +41381,7 @@ function addIssueToContext(ctx, issueData) {
             ctx.common.contextualErrorMap,
             ctx.schemaErrorMap,
             (0, errors_1.getErrorMap)(),
-            en_1.default,
+            en_1.default, // then global default map
         ].filter((x) => !!x),
     });
     ctx.common.issues.push(issue);
@@ -41467,7 +41475,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getParsedType = exports.ZodParsedType = exports.objectUtil = exports.util = void 0;
+exports.getParsedType = exports.ZodParsedType = exports.util = void 0;
 var util;
 (function (util) {
     util.assertEqual = (val) => val;
@@ -41497,8 +41505,8 @@ var util;
             return obj[e];
         });
     };
-    util.objectKeys = typeof Object.keys === "function"
-        ? (obj) => Object.keys(obj)
+    util.objectKeys = typeof Object.keys === "function" // eslint-disable-line ban/ban
+        ? (obj) => Object.keys(obj) // eslint-disable-line ban/ban
         : (object) => {
             const keys = [];
             for (const key in object) {
@@ -41516,7 +41524,7 @@ var util;
         return undefined;
     };
     util.isInteger = typeof Number.isInteger === "function"
-        ? (val) => Number.isInteger(val)
+        ? (val) => Number.isInteger(val) // eslint-disable-line ban/ban
         : (val) => typeof val === "number" && isFinite(val) && Math.floor(val) === val;
     function joinValues(array, separator = " | ") {
         return array
@@ -41531,15 +41539,6 @@ var util;
         return value;
     };
 })(util = exports.util || (exports.util = {}));
-var objectUtil;
-(function (objectUtil) {
-    objectUtil.mergeShapes = (first, second) => {
-        return {
-            ...first,
-            ...second,
-        };
-    };
-})(objectUtil = exports.objectUtil || (exports.objectUtil = {}));
 exports.ZodParsedType = util.arrayToEnum([
     "string",
     "nan",
@@ -41693,13 +41692,7 @@ const errorMap = (issue, _ctx) => {
             break;
         case ZodError_1.ZodIssueCode.invalid_string:
             if (typeof issue.validation === "object") {
-                if ("includes" in issue.validation) {
-                    message = `Invalid input: must include "${issue.validation.includes}"`;
-                    if (typeof issue.validation.position === "number") {
-                        message = `${message} at one or more positions greater than or equal to ${issue.validation.position}`;
-                    }
-                }
-                else if ("startsWith" in issue.validation) {
+                if ("startsWith" in issue.validation) {
                     message = `Invalid input: must start with "${issue.validation.startsWith}"`;
                 }
                 else if ("endsWith" in issue.validation) {
@@ -41791,8 +41784,8 @@ exports["default"] = errorMap;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.discriminatedUnion = exports.date = exports.boolean = exports.bigint = exports.array = exports.any = exports.coerce = exports.ZodFirstPartyTypeKind = exports.late = exports.ZodSchema = exports.Schema = exports.custom = exports.ZodPipeline = exports.ZodBranded = exports.BRAND = exports.ZodNaN = exports.ZodCatch = exports.ZodDefault = exports.ZodNullable = exports.ZodOptional = exports.ZodTransformer = exports.ZodEffects = exports.ZodPromise = exports.ZodNativeEnum = exports.ZodEnum = exports.ZodLiteral = exports.ZodLazy = exports.ZodFunction = exports.ZodSet = exports.ZodMap = exports.ZodRecord = exports.ZodTuple = exports.ZodIntersection = exports.ZodDiscriminatedUnion = exports.ZodUnion = exports.ZodObject = exports.ZodArray = exports.ZodVoid = exports.ZodNever = exports.ZodUnknown = exports.ZodAny = exports.ZodNull = exports.ZodUndefined = exports.ZodSymbol = exports.ZodDate = exports.ZodBoolean = exports.ZodBigInt = exports.ZodNumber = exports.ZodString = exports.ZodType = void 0;
-exports.NEVER = exports["void"] = exports.unknown = exports.union = exports.undefined = exports.tuple = exports.transformer = exports.symbol = exports.string = exports.strictObject = exports.set = exports.record = exports.promise = exports.preprocess = exports.pipeline = exports.ostring = exports.optional = exports.onumber = exports.oboolean = exports.object = exports.number = exports.nullable = exports["null"] = exports.never = exports.nativeEnum = exports.nan = exports.map = exports.literal = exports.lazy = exports.intersection = exports["instanceof"] = exports["function"] = exports["enum"] = exports.effect = void 0;
+exports.date = exports.boolean = exports.bigint = exports.array = exports.any = exports.coerce = exports.ZodFirstPartyTypeKind = exports.late = exports.ZodSchema = exports.Schema = exports.custom = exports.ZodPipeline = exports.ZodBranded = exports.BRAND = exports.ZodNaN = exports.ZodCatch = exports.ZodDefault = exports.ZodNullable = exports.ZodOptional = exports.ZodTransformer = exports.ZodEffects = exports.ZodPromise = exports.ZodNativeEnum = exports.ZodEnum = exports.ZodLiteral = exports.ZodLazy = exports.ZodFunction = exports.ZodSet = exports.ZodMap = exports.ZodRecord = exports.ZodTuple = exports.ZodIntersection = exports.ZodDiscriminatedUnion = exports.ZodUnion = exports.ZodObject = exports.objectUtil = exports.ZodArray = exports.ZodVoid = exports.ZodNever = exports.ZodUnknown = exports.ZodAny = exports.ZodNull = exports.ZodUndefined = exports.ZodSymbol = exports.ZodDate = exports.ZodBoolean = exports.ZodBigInt = exports.ZodNumber = exports.ZodString = exports.ZodType = void 0;
+exports.NEVER = exports["void"] = exports.unknown = exports.union = exports.undefined = exports.tuple = exports.transformer = exports.symbol = exports.string = exports.strictObject = exports.set = exports.record = exports.promise = exports.preprocess = exports.pipeline = exports.ostring = exports.optional = exports.onumber = exports.oboolean = exports.object = exports.number = exports.nullable = exports["null"] = exports.never = exports.nativeEnum = exports.nan = exports.map = exports.literal = exports.lazy = exports.intersection = exports["instanceof"] = exports["function"] = exports["enum"] = exports.effect = exports.discriminatedUnion = void 0;
 const errors_1 = __nccwpck_require__(9566);
 const errorUtil_1 = __nccwpck_require__(2513);
 const parseUtil_1 = __nccwpck_require__(888);
@@ -41800,22 +41793,13 @@ const util_1 = __nccwpck_require__(3985);
 const ZodError_1 = __nccwpck_require__(9892);
 class ParseInputLazyPath {
     constructor(parent, value, path, key) {
-        this._cachedPath = [];
         this.parent = parent;
         this.data = value;
         this._path = path;
         this._key = key;
     }
     get path() {
-        if (!this._cachedPath.length) {
-            if (this._key instanceof Array) {
-                this._cachedPath.push(...this._path, ...this._key);
-            }
-            else {
-                this._cachedPath.push(...this._path, this._key);
-            }
-        }
-        return this._cachedPath;
+        return this._path.concat(this._key);
     }
 }
 const handleResult = (ctx, result) => {
@@ -41826,16 +41810,8 @@ const handleResult = (ctx, result) => {
         if (!ctx.common.issues.length) {
             throw new Error("Validation failed but no issues detected.");
         }
-        return {
-            success: false,
-            get error() {
-                if (this._error)
-                    return this._error;
-                const error = new ZodError_1.ZodError(ctx.common.issues);
-                this._error = error;
-                return this._error;
-            },
-        };
+        const error = new ZodError_1.ZodError(ctx.common.issues);
+        return { success: false, error };
     }
 };
 function processCreateParams(params) {
@@ -41859,6 +41835,7 @@ function processCreateParams(params) {
 }
 class ZodType {
     constructor(def) {
+        /** Alias of safeParseAsync */
         this.spa = this.safeParseAsync;
         this._def = def;
         this.parse = this.parse.bind(this);
@@ -42110,12 +42087,19 @@ exports.Schema = ZodType;
 exports.ZodSchema = ZodType;
 const cuidRegex = /^c[^\s-]{8,}$/i;
 const cuid2Regex = /^[a-z][a-z0-9]*$/;
-const ulidRegex = /[0-9A-HJKMNP-TV-Z]{26}/;
 const uuidRegex = /^([a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[a-f0-9]{4}-[a-f0-9]{12}|00000000-0000-0000-0000-000000000000)$/i;
+// from https://stackoverflow.com/a/46181/1550155
+// old version: too slow, didn't support unicode
+// const emailRegex = /^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))$/i;
+//old email regex
+// const emailRegex = /^(([^<>()[\].,;:\s@"]+(\.[^<>()[\].,;:\s@"]+)*)|(".+"))@((?!-)([^<>()[\].,;:\s@"]+\.)+[^<>()[\].,;:\s@"]{1,})[^-<>()[\].,;:\s@"]$/i;
+// eslint-disable-next-line
 const emailRegex = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\])|(\[IPv6:(([a-f0-9]{1,4}:){7}|::([a-f0-9]{1,4}:){0,6}|([a-f0-9]{1,4}:){1}:([a-f0-9]{1,4}:){0,5}|([a-f0-9]{1,4}:){2}:([a-f0-9]{1,4}:){0,4}|([a-f0-9]{1,4}:){3}:([a-f0-9]{1,4}:){0,3}|([a-f0-9]{1,4}:){4}:([a-f0-9]{1,4}:){0,2}|([a-f0-9]{1,4}:){5}:([a-f0-9]{1,4}:){0,1})([a-f0-9]{1,4}|(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2})))\])|([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])*(\.[A-Za-z]{2,})+))$/;
+// from https://thekevinscott.com/emojis-in-javascript/#writing-a-regular-expression
 const emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji_Component})+$/u;
 const ipv4Regex = /^(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))$/;
 const ipv6Regex = /^(([a-f0-9]{1,4}:){7}|::([a-f0-9]{1,4}:){0,6}|([a-f0-9]{1,4}:){1}:([a-f0-9]{1,4}:){0,5}|([a-f0-9]{1,4}:){2}:([a-f0-9]{1,4}:){0,4}|([a-f0-9]{1,4}:){3}:([a-f0-9]{1,4}:){0,3}|([a-f0-9]{1,4}:){4}:([a-f0-9]{1,4}:){0,2}|([a-f0-9]{1,4}:){5}:([a-f0-9]{1,4}:){0,1})([a-f0-9]{1,4}|(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2})))$/;
+// Adapted from https://stackoverflow.com/a/3143231
 const datetimeRegex = (args) => {
     if (args.precision) {
         if (args.offset) {
@@ -42159,6 +42143,10 @@ class ZodString extends ZodType {
             code: ZodError_1.ZodIssueCode.invalid_string,
             ...errorUtil_1.errorUtil.errToObj(message),
         });
+        /**
+         * @deprecated Use z.string().min(1) instead.
+         * @see {@link ZodString.min}
+         */
         this.nonempty = (message) => this.min(1, errorUtil_1.errorUtil.errToObj(message));
         this.trim = () => new ZodString({
             ...this._def,
@@ -42184,7 +42172,9 @@ class ZodString extends ZodType {
                 code: ZodError_1.ZodIssueCode.invalid_type,
                 expected: util_1.ZodParsedType.string,
                 received: ctx.parsedType,
-            });
+            }
+            //
+            );
             return parseUtil_1.INVALID;
         }
         const status = new parseUtil_1.ParseStatus();
@@ -42301,17 +42291,6 @@ class ZodString extends ZodType {
                     status.dirty();
                 }
             }
-            else if (check.kind === "ulid") {
-                if (!ulidRegex.test(input.data)) {
-                    ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
-                        validation: "ulid",
-                        code: ZodError_1.ZodIssueCode.invalid_string,
-                        message: check.message,
-                    });
-                    status.dirty();
-                }
-            }
             else if (check.kind === "url") {
                 try {
                     new URL(input.data);
@@ -42341,17 +42320,6 @@ class ZodString extends ZodType {
             }
             else if (check.kind === "trim") {
                 input.data = input.data.trim();
-            }
-            else if (check.kind === "includes") {
-                if (!input.data.includes(check.value, check.position)) {
-                    ctx = this._getOrReturnCtx(input, ctx);
-                    (0, parseUtil_1.addIssueToContext)(ctx, {
-                        code: ZodError_1.ZodIssueCode.invalid_string,
-                        validation: { includes: check.value, position: check.position },
-                        message: check.message,
-                    });
-                    status.dirty();
-                }
             }
             else if (check.kind === "toLowerCase") {
                 input.data = input.data.toLowerCase();
@@ -42434,9 +42402,6 @@ class ZodString extends ZodType {
     cuid2(message) {
         return this._addCheck({ kind: "cuid2", ...errorUtil_1.errorUtil.errToObj(message) });
     }
-    ulid(message) {
-        return this._addCheck({ kind: "ulid", ...errorUtil_1.errorUtil.errToObj(message) });
-    }
     ip(options) {
         return this._addCheck({ kind: "ip", ...errorUtil_1.errorUtil.errToObj(options) });
     }
@@ -42462,14 +42427,6 @@ class ZodString extends ZodType {
             kind: "regex",
             regex: regex,
             ...errorUtil_1.errorUtil.errToObj(message),
-        });
-    }
-    includes(value, options) {
-        return this._addCheck({
-            kind: "includes",
-            value: value,
-            position: options === null || options === void 0 ? void 0 : options.position,
-            ...errorUtil_1.errorUtil.errToObj(options === null || options === void 0 ? void 0 : options.message),
         });
     }
     startsWith(value, message) {
@@ -42528,9 +42485,6 @@ class ZodString extends ZodType {
     get isCUID2() {
         return !!this._def.checks.find((ch) => ch.kind === "cuid2");
     }
-    get isULID() {
-        return !!this._def.checks.find((ch) => ch.kind === "ulid");
-    }
     get isIP() {
         return !!this._def.checks.find((ch) => ch.kind === "ip");
     }
@@ -42565,6 +42519,7 @@ ZodString.create = (params) => {
         ...processCreateParams(params),
     });
 };
+// https://stackoverflow.com/questions/3966484/why-does-modulus-operator-return-fractional-number-in-javascript/31711034#31711034
 function floatSafeRemainder(val, step) {
     const valDecCount = (val.toString().split(".")[1] || "").length;
     const stepDecCount = (step.toString().split(".")[1] || "").length;
@@ -43200,6 +43155,7 @@ ZodNull.create = (params) => {
 class ZodAny extends ZodType {
     constructor() {
         super(...arguments);
+        // to prevent instances of other classes from extending ZodAny. this causes issues with catchall in ZodObject.
         this._any = true;
     }
     _parse(input) {
@@ -43216,6 +43172,7 @@ ZodAny.create = (params) => {
 class ZodUnknown extends ZodType {
     constructor() {
         super(...arguments);
+        // required
         this._unknown = true;
     }
     _parse(input) {
@@ -43371,6 +43328,22 @@ ZodArray.create = (schema, params) => {
         ...processCreateParams(params),
     });
 };
+/////////////////////////////////////////
+/////////////////////////////////////////
+//////////                     //////////
+//////////      ZodObject      //////////
+//////////                     //////////
+/////////////////////////////////////////
+/////////////////////////////////////////
+var objectUtil;
+(function (objectUtil) {
+    objectUtil.mergeShapes = (first, second) => {
+        return {
+            ...first,
+            ...second, // second overwrites first
+        };
+    };
+})(objectUtil = exports.objectUtil || (exports.objectUtil = {}));
 function deepPartialify(schema) {
     if (schema instanceof ZodObject) {
         const newShape = {};
@@ -43384,10 +43357,7 @@ function deepPartialify(schema) {
         });
     }
     else if (schema instanceof ZodArray) {
-        return new ZodArray({
-            ...schema._def,
-            type: deepPartialify(schema.element),
-        });
+        return ZodArray.create(deepPartialify(schema.element));
     }
     else if (schema instanceof ZodOptional) {
         return ZodOptional.create(deepPartialify(schema.unwrap()));
@@ -43406,7 +43376,47 @@ class ZodObject extends ZodType {
     constructor() {
         super(...arguments);
         this._cached = null;
+        /**
+         * @deprecated In most cases, this is no longer needed - unknown properties are now silently stripped.
+         * If you want to pass through unknown properties, use `.passthrough()` instead.
+         */
         this.nonstrict = this.passthrough;
+        // extend<
+        //   Augmentation extends ZodRawShape,
+        //   NewOutput extends util.flatten<{
+        //     [k in keyof Augmentation | keyof Output]: k extends keyof Augmentation
+        //       ? Augmentation[k]["_output"]
+        //       : k extends keyof Output
+        //       ? Output[k]
+        //       : never;
+        //   }>,
+        //   NewInput extends util.flatten<{
+        //     [k in keyof Augmentation | keyof Input]: k extends keyof Augmentation
+        //       ? Augmentation[k]["_input"]
+        //       : k extends keyof Input
+        //       ? Input[k]
+        //       : never;
+        //   }>
+        // >(
+        //   augmentation: Augmentation
+        // ): ZodObject<
+        //   extendShape<T, Augmentation>,
+        //   UnknownKeys,
+        //   Catchall,
+        //   NewOutput,
+        //   NewInput
+        // > {
+        //   return new ZodObject({
+        //     ...this._def,
+        //     shape: () => ({
+        //       ...this._def.shape(),
+        //       ...augmentation,
+        //     }),
+        //   }) as any;
+        // }
+        /**
+         * @deprecated Use `.extend` instead
+         *  */
         this.augment = this.extend;
     }
     _getCached() {
@@ -43474,12 +43484,14 @@ class ZodObject extends ZodType {
             }
         }
         else {
+            // run catchall validation
             const catchall = this._def.catchall;
             for (const key of extraKeys) {
                 const value = ctx.data[key];
                 pairs.push({
                     key: { status: "valid", value: key },
-                    value: catchall._parse(new ParseInputLazyPath(ctx, value, ctx.path, key)),
+                    value: catchall._parse(new ParseInputLazyPath(ctx, value, ctx.path, key) //, ctx.child(key), value, getParsedType(value)
+                    ),
                     alwaysSet: key in ctx.data,
                 });
             }
@@ -43543,6 +43555,23 @@ class ZodObject extends ZodType {
             unknownKeys: "passthrough",
         });
     }
+    // const AugmentFactory =
+    //   <Def extends ZodObjectDef>(def: Def) =>
+    //   <Augmentation extends ZodRawShape>(
+    //     augmentation: Augmentation
+    //   ): ZodObject<
+    //     extendShape<ReturnType<Def["shape"]>, Augmentation>,
+    //     Def["unknownKeys"],
+    //     Def["catchall"]
+    //   > => {
+    //     return new ZodObject({
+    //       ...def,
+    //       shape: () => ({
+    //         ...def.shape(),
+    //         ...augmentation,
+    //       }),
+    //     }) as any;
+    //   };
     extend(augmentation) {
         return new ZodObject({
             ...this._def,
@@ -43552,21 +43581,79 @@ class ZodObject extends ZodType {
             }),
         });
     }
+    /**
+     * Prior to zod@1.0.12 there was a bug in the
+     * inferred type of merged objects. Please
+     * upgrade if you are experiencing issues.
+     */
     merge(merging) {
         const merged = new ZodObject({
             unknownKeys: merging._def.unknownKeys,
             catchall: merging._def.catchall,
-            shape: () => ({
-                ...this._def.shape(),
-                ...merging._def.shape(),
-            }),
+            shape: () => objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
             typeName: ZodFirstPartyTypeKind.ZodObject,
         });
         return merged;
     }
+    // merge<
+    //   Incoming extends AnyZodObject,
+    //   Augmentation extends Incoming["shape"],
+    //   NewOutput extends {
+    //     [k in keyof Augmentation | keyof Output]: k extends keyof Augmentation
+    //       ? Augmentation[k]["_output"]
+    //       : k extends keyof Output
+    //       ? Output[k]
+    //       : never;
+    //   },
+    //   NewInput extends {
+    //     [k in keyof Augmentation | keyof Input]: k extends keyof Augmentation
+    //       ? Augmentation[k]["_input"]
+    //       : k extends keyof Input
+    //       ? Input[k]
+    //       : never;
+    //   }
+    // >(
+    //   merging: Incoming
+    // ): ZodObject<
+    //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
+    //   Incoming["_def"]["unknownKeys"],
+    //   Incoming["_def"]["catchall"],
+    //   NewOutput,
+    //   NewInput
+    // > {
+    //   const merged: any = new ZodObject({
+    //     unknownKeys: merging._def.unknownKeys,
+    //     catchall: merging._def.catchall,
+    //     shape: () =>
+    //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
+    //     typeName: ZodFirstPartyTypeKind.ZodObject,
+    //   }) as any;
+    //   return merged;
+    // }
     setKey(key, schema) {
         return this.augment({ [key]: schema });
     }
+    // merge<Incoming extends AnyZodObject>(
+    //   merging: Incoming
+    // ): //ZodObject<T & Incoming["_shape"], UnknownKeys, Catchall> = (merging) => {
+    // ZodObject<
+    //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
+    //   Incoming["_def"]["unknownKeys"],
+    //   Incoming["_def"]["catchall"]
+    // > {
+    //   // const mergedShape = objectUtil.mergeShapes(
+    //   //   this._def.shape(),
+    //   //   merging._def.shape()
+    //   // );
+    //   const merged: any = new ZodObject({
+    //     unknownKeys: merging._def.unknownKeys,
+    //     catchall: merging._def.catchall,
+    //     shape: () =>
+    //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
+    //     typeName: ZodFirstPartyTypeKind.ZodObject,
+    //   }) as any;
+    //   return merged;
+    // }
     catchall(index) {
         return new ZodObject({
             ...this._def,
@@ -43597,6 +43684,9 @@ class ZodObject extends ZodType {
             shape: () => shape,
         });
     }
+    /**
+     * @deprecated
+     */
     deepPartial() {
         return deepPartialify(this);
     }
@@ -43673,6 +43763,7 @@ class ZodUnion extends ZodType {
         const { ctx } = this._processInputParams(input);
         const options = this._def.options;
         function handleResults(results) {
+            // return first issue-free validation if it exists
             for (const result of results) {
                 if (result.result.status === "valid") {
                     return result.result;
@@ -43680,10 +43771,12 @@ class ZodUnion extends ZodType {
             }
             for (const result of results) {
                 if (result.result.status === "dirty") {
+                    // add issues from dirty option
                     ctx.common.issues.push(...result.ctx.common.issues);
                     return result.result;
                 }
             }
+            // return invalid
             const unionErrors = results.map((result) => new ZodError_1.ZodError(result.ctx.common.issues));
             (0, parseUtil_1.addIssueToContext)(ctx, {
                 code: ZodError_1.ZodIssueCode.invalid_union,
@@ -43762,6 +43855,13 @@ ZodUnion.create = (types, params) => {
         ...processCreateParams(params),
     });
 };
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+//////////                                 //////////
+//////////      ZodDiscriminatedUnion      //////////
+//////////                                 //////////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
 const getDiscriminator = (type) => {
     if (type instanceof ZodLazy) {
         return getDiscriminator(type.schema);
@@ -43776,6 +43876,7 @@ const getDiscriminator = (type) => {
         return type.options;
     }
     else if (type instanceof ZodNativeEnum) {
+        // eslint-disable-next-line ban/ban
         return Object.keys(type.enum);
     }
     else if (type instanceof ZodDefault) {
@@ -43837,8 +43938,18 @@ class ZodDiscriminatedUnion extends ZodType {
     get optionsMap() {
         return this._def.optionsMap;
     }
+    /**
+     * The constructor of the discriminated union schema. Its behaviour is very similar to that of the normal z.union() constructor.
+     * However, it only allows a union of objects, all of which need to share a discriminator property. This property must
+     * have a different value for each object in the union.
+     * @param discriminator the name of the discriminator property
+     * @param types an array of object schemas
+     * @param params
+     */
     static create(discriminator, options, params) {
+        // Get all the valid discriminator values
         const optionsMap = new Map();
+        // try {
         for (const type of options) {
             const discriminatorValues = getDiscriminator(type.shape[discriminator]);
             if (!discriminatorValues) {
@@ -44001,7 +44112,7 @@ class ZodTuple extends ZodType {
                 return null;
             return schema._parse(new ParseInputLazyPath(ctx, item, ctx.path, itemIndex));
         })
-            .filter((x) => !!x);
+            .filter((x) => !!x); // filter nulls
         if (ctx.common.async) {
             return Promise.all(items).then((results) => {
                 return parseUtil_1.ParseStatus.mergeArray(status, results);
@@ -44582,7 +44693,9 @@ class ZodEffects extends ZodType {
         };
         checkCtx.addIssue = checkCtx.addIssue.bind(checkCtx);
         if (effect.type === "refinement") {
-            const executeRefinement = (acc) => {
+            const executeRefinement = (acc
+            // effect: RefinementEffect<any>
+            ) => {
                 const result = effect.refinement(acc, checkCtx);
                 if (ctx.common.async) {
                     return Promise.resolve(result);
@@ -44602,6 +44715,7 @@ class ZodEffects extends ZodType {
                     return parseUtil_1.INVALID;
                 if (inner.status === "dirty")
                     status.dirty();
+                // return value is ignored
                 executeRefinement(inner.value);
                 return { status: status.value, value: inner.value };
             }
@@ -44626,6 +44740,10 @@ class ZodEffects extends ZodType {
                     path: ctx.path,
                     parent: ctx,
                 });
+                // if (base.status === "aborted") return INVALID;
+                // if (base.status === "dirty") {
+                //   return { status: "dirty", value: base.value };
+                // }
                 if (!(0, parseUtil_1.isValid)(base))
                     return base;
                 const result = effect.transform(base.value, checkCtx);
@@ -44640,6 +44758,10 @@ class ZodEffects extends ZodType {
                     .then((base) => {
                     if (!(0, parseUtil_1.isValid)(base))
                         return base;
+                    // if (base.status === "aborted") return INVALID;
+                    // if (base.status === "dirty") {
+                    //   return { status: "dirty", value: base.value };
+                    // }
                     return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({ status: status.value, value: result }));
                 });
             }
@@ -44736,6 +44858,7 @@ ZodDefault.create = (type, params) => {
 class ZodCatch extends ZodType {
     _parse(input) {
         const { ctx } = this._processInputParams(input);
+        // newCtx is used to not collect issues from inner types in ctx
         const newCtx = {
             ...ctx,
             common: {
@@ -44760,7 +44883,6 @@ class ZodCatch extends ZodType {
                             get error() {
                                 return new ZodError_1.ZodError(newCtx.common.issues);
                             },
-                            input: newCtx.data,
                         }),
                 };
             });
@@ -44774,7 +44896,6 @@ class ZodCatch extends ZodType {
                         get error() {
                             return new ZodError_1.ZodError(newCtx.common.issues);
                         },
-                        input: newCtx.data,
                     }),
             };
         }
@@ -44889,16 +45010,14 @@ class ZodPipeline extends ZodType {
     }
 }
 exports.ZodPipeline = ZodPipeline;
-const custom = (check, params = {}, fatal) => {
+const custom = (check, params = {}, 
+/* @deprecated */
+fatal) => {
     if (check)
         return ZodAny.create().superRefine((data, ctx) => {
             var _a, _b;
             if (!check(data)) {
-                const p = typeof params === "function"
-                    ? params(data)
-                    : typeof params === "string"
-                        ? { message: params }
-                        : params;
+                const p = typeof params === "function" ? params(data) : params;
                 const _fatal = (_b = (_a = p.fatal) !== null && _a !== void 0 ? _a : fatal) !== null && _b !== void 0 ? _b : true;
                 const p2 = typeof p === "string" ? { message: p } : p;
                 ctx.addIssue({ code: "custom", ...p2, fatal: _fatal });
@@ -44948,10 +45067,14 @@ var ZodFirstPartyTypeKind;
     ZodFirstPartyTypeKind["ZodBranded"] = "ZodBranded";
     ZodFirstPartyTypeKind["ZodPipeline"] = "ZodPipeline";
 })(ZodFirstPartyTypeKind = exports.ZodFirstPartyTypeKind || (exports.ZodFirstPartyTypeKind = {}));
+// new approach that works for abstract classes
+// but requires TS 4.4+
 class Class {
     constructor(..._) { }
 }
-const instanceOfType = (cls, params = {
+const instanceOfType = (
+// const instanceOfType = <T extends new (...args: any[]) => any>(
+cls, params = {
     message: `Input not instance of ${cls.name}`,
 }) => (0, exports.custom)((data) => data instanceof cls, params);
 exports["instanceof"] = instanceOfType;
@@ -45119,7 +45242,7 @@ function readInlineConfig() {
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
     const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr');
-    validatepurl(allow_dependencies_licenses);
+    validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const keys = {
@@ -45214,7 +45337,7 @@ function parseConfigFile(configData) {
             }
             // validate purls from the allow-dependencies-licenses
             if (key === 'allow-dependencies-licenses') {
-                validatepurl(data[key]);
+                validatePURL(data[key]);
             }
             // get rid of the ugly dashes from the actions conventions
             if (key.includes('-')) {
@@ -45251,7 +45374,7 @@ function getRemoteConfig(configOpts) {
         }
     });
 }
-function validatepurl(allow_dependencies_licenses) {
+function validatePURL(allow_dependencies_licenses) {
     //validate that the provided elements of the string are in valid purl format
     if (allow_dependencies_licenses === undefined) {
         return;
@@ -45476,7 +45599,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isDefined = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -45516,11 +45639,6 @@ function isSPDXValid(license) {
     }
 }
 exports.isSPDXValid = isSPDXValid;
-// function to check if a value is not null or undefined
-function isDefined(value) {
-    return value !== null && value !== undefined;
-}
-exports.isDefined = isDefined;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
