@@ -129,11 +129,12 @@ Start by specifying that you will be using an external configuration file:
     config-file: './.github/dependency-review-config.yml'
 ```
 
-And then create the file in the path you just specified:
+And then create the file in the path you just specified. Please note
+that the **option names in external files use underscores instead of dashes**:
 
 ```yaml
-fail-on-severity: 'critical'
-allow-licenses:
+fail_on_severity: 'critical'
+allow_licenses:
   - 'GPL-3.0'
   - 'BSD-3-Clause'
   - 'MIT'

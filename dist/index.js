@@ -181,15 +181,28 @@ const githubUtils = __importStar(__nccwpck_require__(3030));
 const retry = __importStar(__nccwpck_require__(6298));
 const schemas_1 = __nccwpck_require__(8774);
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+const SnapshotWarningsHeader = 'x-github-dependency-graph-snapshot-warnings';
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 function compare({ owner, repo, baseRef, headRef }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const changes = yield octo.paginate('GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}', {
+        let snapshot_warnings = '';
+        const changes = yield octo.paginate({
+            method: 'GET',
+            url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}',
             owner,
             repo,
             basehead: `${baseRef}...${headRef}`
+        }, response => {
+            if (response.headers[SnapshotWarningsHeader] &&
+                typeof response.headers[SnapshotWarningsHeader] === 'string') {
+                snapshot_warnings = Buffer.from(response.headers[SnapshotWarningsHeader], 'base64').toString('utf-8');
+            }
+            return schemas_1.ChangesSchema.parse(response.data);
         });
-        return schemas_1.ChangesSchema.parse(changes);
+        return schemas_1.ComparisonResponseSchema.parse({
+            changes,
+            snapshot_warnings
+        });
     });
 }
 exports.compare = compare;
@@ -472,12 +485,14 @@ function run() {
         try {
             const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
-            const changes = yield dependencyGraph.compare({
+            const comparison = yield dependencyGraph.compare({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo,
                 baseRef: refs.base,
                 headRef: refs.head
             });
+            const changes = comparison.changes;
+            const snapshot_warnings = comparison.snapshot_warnings;
             if (!changes) {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;
@@ -494,6 +509,9 @@ function run() {
                 licenseExclusions: config.allow_dependencies_licenses
             });
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config);
+            if (snapshot_warnings) {
+                summary.addSnapshotWarnings(snapshot_warnings);
+            }
             if (config.vulnerability_check) {
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
                 printVulnerabilitiesBlock(vulnerableChanges, minSeverity);
@@ -651,7 +669,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -718,6 +736,10 @@ exports.ConfigurationOptionsSchema = z
     }
 });
 exports.ChangesSchema = z.array(exports.ChangeSchema);
+exports.ComparisonResponseSchema = z.object({
+    changes: z.array(exports.ChangeSchema),
+    snapshot_warnings: z.string()
+});
 
 
 /***/ }),
@@ -751,7 +773,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addSnapshotWarnings = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -912,6 +934,20 @@ function addScannedDependencies(changes) {
     }
 }
 exports.addScannedDependencies = addScannedDependencies;
+function addSnapshotWarnings(warnings) {
+    // For now, we want to ignore warnings that just complain
+    // about missing snapshots on the head SHA. This is a product
+    // decision to avoid presenting warnings to users who simply
+    // don't use snapshots.
+    const ignore_regex = new RegExp(/No.*snapshot.*found.*head.*/, 'i');
+    if (ignore_regex.test(warnings)) {
+        return;
+    }
+    core.summary.addHeading('Snapshot Warnings', 2);
+    core.summary.addQuote(`${icons.warning}: ${warnings}`);
+    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.');
+}
+exports.addSnapshotWarnings = addSnapshotWarnings;
 function countLicenseIssues(invalidLicenseChanges) {
     return Object.values(invalidLicenseChanges).reduce((acc, val) => acc + val.length, 0);
 }
@@ -965,7 +1001,9 @@ function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
     for (const change of changes) {
-        const manifestName = change.manifest;
+        // If the manifest is null or empty, give it a name now to avoid
+        // breaking the HTML rendering later
+        const manifestName = change.manifest || 'Unnamed Manifest';
         if (dependencies.get(manifestName) === undefined) {
             dependencies.set(manifestName, []);
         }
@@ -45496,7 +45534,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -45563,6 +45601,10 @@ exports.ConfigurationOptionsSchema = z
     }
 });
 exports.ChangesSchema = z.array(exports.ChangeSchema);
+exports.ComparisonResponseSchema = z.object({
+    changes: z.array(exports.ChangeSchema),
+    snapshot_warnings: z.string()
+});
 
 
 /***/ }),
@@ -45607,7 +45649,9 @@ function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
     for (const change of changes) {
-        const manifestName = change.manifest;
+        // If the manifest is null or empty, give it a name now to avoid
+        // breaking the HTML rendering later
+        const manifestName = change.manifest || 'Unnamed Manifest';
         if (dependencies.get(manifestName) === undefined) {
             dependencies.set(manifestName, []);
         }

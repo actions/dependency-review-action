@@ -74,9 +74,14 @@ export const ConfigurationOptionsSchema = z
   })
 
 export const ChangesSchema = z.array(ChangeSchema)
+export const ComparisonResponseSchema = z.object({
+  changes: z.array(ChangeSchema),
+  snapshot_warnings: z.string()
+})
 
 export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
+export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
