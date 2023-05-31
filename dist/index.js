@@ -284,6 +284,9 @@ function getInvalidLicenseChanges(changes, licenses) {
         // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
         // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
         groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+            if (change.package_url.length === 0) {
+                return true;
+            }
             const changeAsPackageURL = packageurl_js_1.PackageURL.fromString(change.package_url);
             // We want to find if the licenseExclussion list contains the PackageURL of the Change
             // If it does, we want to filter it out and therefore return false
@@ -294,7 +297,9 @@ function getInvalidLicenseChanges(changes, licenses) {
                     exclusion.name === changeAsPackageURL.name) !== -1) {
                 return false;
             }
-            return true;
+            else {
+                return true;
+            }
         });
         const licensedChanges = groupedChanges.licensed;
         const invalidLicenseChanges = {
