@@ -56,8 +56,8 @@ The configuration file can be located in the same repository or in a separate re
 In this example, the configuration file is located in the same repository under `.github/dependency-review-config.yml`. The following configuration will fail the action if any vulnerabilities are found with a severity of critical; and if any packages are found with an incompatible license - in this case, the LGPL-2.0 and BSD-2-Clause licenses.
 
 ```yaml
-fail-on-severity: 'critical'
-allow-licenses:
+fail_on_severity: 'critical'
+allow_licenses:
   - 'LGPL-2.0'
   - 'BSD-2-Clause'
 ```
