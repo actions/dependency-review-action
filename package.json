@@ -1,6 +1,6 @@
 {
   "name": "dependency-review-action",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "private": true,
   "description": "A GitHub Action for Dependency Review",
   "main": "lib/main.js",
@@ -33,6 +33,7 @@
     "got": "^12.6.0",
     "nodemon": "^2.0.22",
     "octokit": "^2.0.16",
+    "packageurl-js": "^1.0.2",
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^5.0.1",
     "yaml": "^2.3.1",

@@ -143,6 +143,13 @@ export function addLicensesToSummary(
       `<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`
     )
   }
+  if (config.allow_dependencies_licenses) {
+    core.summary.addQuote(
+      `<strong>Excluded from license check</strong>: ${config.allow_dependencies_licenses.join(
+        ', '
+      )}`
+    )
+  }
 
   core.debug(
     `found ${invalidLicenseChanges.unlicensed.length} unknown licenses`

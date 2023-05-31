@@ -1,17 +1,19 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
+import {PackageURL} from 'packageurl-js'
 
 /**
  * Loops through a list of changes, filtering and returning the
  * ones that don't conform to the licenses allow/deny lists.
+ * It will also filter out the changes which are defined in the licenseExclusions list.
  *
  * Keep in mind that we don't let users specify both an allow and a deny
  * list in their config files, so this code works under the assumption that
  * one of the two list parameters will be empty. If both lists are provided,
  * we will ignore the deny list.
  * @param {Change[]} changes The list of changes to filter.
- * @param { { allow?: string[], deny?: string[]}} licenses An object with `allow`/`deny` keys, each containing a list of licenses.
+ * @param { { allow?: string[], deny?: string[], licenseExclusions?: string[]}} licenses An object with `allow`/`deny`/`licenseExclusions` keys, each containing a list of licenses.
  * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
  */
 export type InvalidLicenseChangeTypes =
@@ -24,11 +26,39 @@ export async function getInvalidLicenseChanges(
   licenses: {
     allow?: string[]
     deny?: string[]
+    licenseExclusions?: string[]
   }
 ): Promise<InvalidLicenseChanges> {
   const {allow, deny} = licenses
+  const licenseExclusions = licenses.licenseExclusions?.map(
+    (pkgUrl: string) => {
+      return PackageURL.fromString(pkgUrl)
+    }
+  )
 
   const groupedChanges = await groupChanges(changes)
+
+  // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
+  // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
+  groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+    const changeAsPackageURL = PackageURL.fromString(change.package_url)
+
+    // We want to find if the licenseExclussion list contains the PackageURL of the Change
+    // If it does, we want to filter it out and therefore return false
+    // If it doesn't, we want to keep it and therefore return true
+    if (
+      licenseExclusions !== null &&
+      licenseExclusions !== undefined &&
+      licenseExclusions.findIndex(
+        exclusion =>
+          exclusion.type === changeAsPackageURL.type &&
+          exclusion.name === changeAsPackageURL.name
+      ) !== -1
+    ) {
+      return false
+    }
+    return true
+  })
   const licensedChanges: Changes = groupedChanges.licensed
 
   const invalidLicenseChanges: InvalidLicenseChanges = {
