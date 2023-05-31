@@ -41,6 +41,10 @@ export async function getInvalidLicenseChanges(
   // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
   // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
   groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+    if (change.package_url.length === 0) {
+      return true
+    }
+
     const changeAsPackageURL = PackageURL.fromString(change.package_url)
 
     // We want to find if the licenseExclussion list contains the PackageURL of the Change
@@ -56,8 +60,9 @@ export async function getInvalidLicenseChanges(
       ) !== -1
     ) {
       return false
+    } else {
+      return true
     }
-    return true
   })
   const licensedChanges: Changes = groupedChanges.licensed
 
