@@ -485,19 +485,34 @@ const summary = __importStar(__nccwpck_require__(8608));
 const git_refs_1 = __nccwpck_require__(1086);
 const utils_1 = __nccwpck_require__(918);
 const comment_pr_1 = __nccwpck_require__(5842);
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
-            const comparison = yield dependencyGraph.compare({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-                baseRef: refs.base,
-                headRef: refs.head
-            });
-            const changes = comparison.changes;
-            const snapshot_warnings = comparison.snapshot_warnings;
+            let changes;
+            let snapshot_warnings;
+            for (let i = 0; i < 60 * 5; i++) {
+                const comparison = yield dependencyGraph.compare({
+                    owner: github.context.repo.owner,
+                    repo: github.context.repo.repo,
+                    baseRef: refs.base,
+                    headRef: refs.head
+                });
+                if (comparison.snapshot_warnings.match(/No snapshots were found for the head SHA/i)) {
+                    core.info(comparison.snapshot_warnings);
+                    core.info('Retrying in 1 second...');
+                    yield delay(1000);
+                }
+                else {
+                    changes = comparison.changes;
+                    snapshot_warnings = comparison.snapshot_warnings;
+                    break;
+                }
+            }
             if (!changes) {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;
