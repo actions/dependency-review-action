@@ -188,7 +188,7 @@ function compare({ owner, repo, baseRef, headRef }) {
         let snapshot_warnings = '';
         const changes = yield octo.paginate({
             method: 'GET',
-            url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}',
+            url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}?includes_dependency_snapshots=true',
             owner,
             repo,
             basehead: `${baseRef}...${headRef}`
@@ -486,7 +486,9 @@ const git_refs_1 = __nccwpck_require__(1086);
 const utils_1 = __nccwpck_require__(918);
 const comment_pr_1 = __nccwpck_require__(5842);
 function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    });
 }
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -495,23 +497,29 @@ function run() {
             const refs = (0, git_refs_1.getRefs)(config, github.context);
             let changes;
             let snapshot_warnings;
-            for (let i = 0; i < 60 * 5; i++) {
+            let i = 0;
+            while (true) {
                 const comparison = yield dependencyGraph.compare({
                     owner: github.context.repo.owner,
                     repo: github.context.repo.repo,
                     baseRef: refs.base,
                     headRef: refs.head
                 });
-                if (comparison.snapshot_warnings.match(/No snapshots were found for the head SHA/i)) {
+                if (i >= 12) {
+                    core.setFailed('Exhausted retries. Exiting.');
+                    return;
+                }
+                else if (comparison.snapshot_warnings.trim() !== '') {
                     core.info(comparison.snapshot_warnings);
-                    core.info('Retrying in 1 second...');
-                    yield delay(1000);
+                    core.info('Retrying in 10 seconds...');
+                    yield delay(10000);
                 }
                 else {
                     changes = comparison.changes;
                     snapshot_warnings = comparison.snapshot_warnings;
                     break;
                 }
+                i++;
             }
             if (!changes) {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');

@@ -17,7 +17,7 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
 
-function delay(ms: number): Promise<void> {
+async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
@@ -40,7 +40,7 @@ async function run(): Promise<void> {
       if (i >= 12) {
         core.setFailed('Exhausted retries. Exiting.')
         return
-      } else if (comparison.snapshot_warnings.trim() != '') {
+      } else if (comparison.snapshot_warnings.trim() !== '') {
         core.info(comparison.snapshot_warnings)
         core.info('Retrying in 10 seconds...')
         await delay(10000)
