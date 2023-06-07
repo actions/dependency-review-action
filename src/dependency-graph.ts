@@ -28,11 +28,10 @@ export async function compare({
   const changes = await octo.paginate(
     {
       method: 'GET',
-      url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}{?includes_dependency_snapshots}',
+      url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}?includes_dependency_snapshots=true',
       owner,
       repo,
-      basehead: `${baseRef}...${headRef}`,
-      includes_dependency_snapshots: true
+      basehead: `${baseRef}...${headRef}`
     },
     response => {
       if (
