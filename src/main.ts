@@ -29,26 +29,27 @@ async function run(): Promise<void> {
 
     let changes
     let snapshot_warnings
-    for (let i = 0; i < 60 * 5; i++) {
+    let i = 0
+    while (true) {
       const comparison = await dependencyGraph.compare({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         baseRef: refs.base,
         headRef: refs.head
       })
-      if (
-        comparison.snapshot_warnings.match(
-          /No snapshots were found for the head SHA/i
-        )
-      ) {
+      if (i >= 12) {
+        core.setFailed('Exhausted retries. Exiting.')
+        return
+      } else if (comparison.snapshot_warnings.trim() != '') {
         core.info(comparison.snapshot_warnings)
-        core.info('Retrying in 1 second...')
-        await delay(1000)
+        core.info('Retrying in 10 seconds...')
+        await delay(10000)
       } else {
         changes = comparison.changes
         snapshot_warnings = comparison.snapshot_warnings
         break
       }
+      i++
     }
 
     if (!changes) {
