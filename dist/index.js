@@ -506,8 +506,11 @@ function run() {
                     headRef: refs.head
                 });
                 if (i >= 12) {
-                    core.setFailed('Exhausted retries. Exiting.');
-                    return;
+                    core.info(comparison.snapshot_warnings);
+                    core.info('Proceeding...');
+                    changes = comparison.changes;
+                    snapshot_warnings = comparison.snapshot_warnings;
+                    break;
                 }
                 else if (comparison.snapshot_warnings.trim() !== '') {
                     core.info(comparison.snapshot_warnings);
