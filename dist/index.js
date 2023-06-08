@@ -490,40 +490,34 @@ function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     });
 }
+function getComparison(baseRef, headRef, opts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const comparison = yield dependencyGraph.compare({
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            baseRef,
+            headRef
+        });
+        if (comparison.snapshot_warnings.trim() !== '' && opts.retries > 0) {
+            core.info(comparison.snapshot_warnings);
+            core.info('Retrying in 10 seconds...');
+            yield delay(opts.retryDelay);
+            return getComparison(baseRef, headRef, Object.assign(Object.assign({}, opts), { retries: opts.retries - 1 }));
+        }
+        return comparison;
+    });
+}
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
-            let changes;
-            let snapshot_warnings;
-            let i = 0;
-            while (true) {
-                const comparison = yield dependencyGraph.compare({
-                    owner: github.context.repo.owner,
-                    repo: github.context.repo.repo,
-                    baseRef: refs.base,
-                    headRef: refs.head
-                });
-                if (i >= 12) {
-                    core.info(comparison.snapshot_warnings);
-                    core.info('Proceeding...');
-                    changes = comparison.changes;
-                    snapshot_warnings = comparison.snapshot_warnings;
-                    break;
-                }
-                else if (comparison.snapshot_warnings.trim() !== '') {
-                    core.info(comparison.snapshot_warnings);
-                    core.info('Retrying in 10 seconds...');
-                    yield delay(10000);
-                }
-                else {
-                    changes = comparison.changes;
-                    snapshot_warnings = comparison.snapshot_warnings;
-                    break;
-                }
-                i++;
-            }
+            const comparison = yield getComparison(refs.base, refs.head, {
+                retries: 10,
+                retryDelay: 10000
+            });
+            const changes = comparison.changes;
+            const snapshot_warnings = comparison.snapshot_warnings;
             if (!changes) {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;

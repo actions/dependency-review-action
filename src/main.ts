@@ -21,39 +21,42 @@ async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+async function getComparison(
+  baseRef: string,
+  headRef: string,
+  opts: {
+    retries: number
+    retryDelay: number
+  }
+): ReturnType<typeof dependencyGraph.compare> {
+  const comparison = await dependencyGraph.compare({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    baseRef,
+    headRef
+  })
+  if (comparison.snapshot_warnings.trim() !== '' && opts.retries > 0) {
+    core.info(comparison.snapshot_warnings)
+    core.info('Retrying in 10 seconds...')
+    await delay(opts.retryDelay)
+    return getComparison(baseRef, headRef, {...opts, retries: opts.retries - 1})
+  }
+  return comparison
+}
+
 async function run(): Promise<void> {
   try {
     const config = await readConfig()
 
     const refs = getRefs(config, github.context)
 
-    let changes
-    let snapshot_warnings
-    let i = 0
-    while (true) {
-      const comparison = await dependencyGraph.compare({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
-        baseRef: refs.base,
-        headRef: refs.head
-      })
-      if (i >= 12) {
-        core.info(comparison.snapshot_warnings)
-        core.info('Proceeding...')
-        changes = comparison.changes
-        snapshot_warnings = comparison.snapshot_warnings
-        break
-      } else if (comparison.snapshot_warnings.trim() !== '') {
-        core.info(comparison.snapshot_warnings)
-        core.info('Retrying in 10 seconds...')
-        await delay(10000)
-      } else {
-        changes = comparison.changes
-        snapshot_warnings = comparison.snapshot_warnings
-        break
-      }
-      i++
-    }
+    const comparison = await getComparison(refs.base, refs.head, {
+      retries: 10,
+      retryDelay: 10_000
+    })
+
+    const changes = comparison.changes
+    const snapshot_warnings = comparison.snapshot_warnings
 
     if (!changes) {
       core.info('No Dependency Changes found. Skipping Dependency Review.')
