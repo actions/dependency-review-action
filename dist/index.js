@@ -490,7 +490,7 @@ function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     });
 }
-function getComparison(baseRef, headRef, opts) {
+function getComparison(baseRef, headRef, retryOpts) {
     return __awaiter(this, void 0, void 0, function* () {
         const comparison = yield dependencyGraph.compare({
             owner: github.context.repo.owner,
@@ -498,11 +498,13 @@ function getComparison(baseRef, headRef, opts) {
             baseRef,
             headRef
         });
-        if (comparison.snapshot_warnings.trim() !== '' && opts.retries > 0) {
+        if (retryOpts !== undefined &&
+            comparison.snapshot_warnings.trim() !== '' &&
+            retryOpts.retryUntil < Date.now()) {
             core.info(comparison.snapshot_warnings);
-            core.info('Retrying in 10 seconds...');
-            yield delay(opts.retryDelay);
-            return getComparison(baseRef, headRef, Object.assign(Object.assign({}, opts), { retries: opts.retries - 1 }));
+            core.info(`Retrying in ${retryOpts.retryDelay} seconds...`);
+            yield delay(retryOpts.retryDelay * 1000);
+            return getComparison(baseRef, headRef, retryOpts);
         }
         return comparison;
     });
@@ -512,10 +514,12 @@ function run() {
         try {
             const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
-            const comparison = yield getComparison(refs.base, refs.head, {
-                retries: 10,
-                retryDelay: 10000
-            });
+            const comparison = yield getComparison(refs.base, refs.head, config.retry_on_snapshot_warnings
+                ? {
+                    retryUntil: Date.now() + config.retry_on_snapshot_warnings_timeout * 1000,
+                    retryDelay: 10
+                }
+                : undefined);
             const changes = comparison.changes;
             const snapshot_warnings = comparison.snapshot_warnings;
             if (!changes) {
@@ -737,7 +741,9 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.boolean().default(false)
+    comment_summary_in_pr: z.boolean().default(false),
+    retry_on_snapshot_warnings: z.boolean().default(true),
+    retry_on_snapshot_warnings_timeout: z.number().default(120)
 })
     .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {
@@ -46372,6 +46378,8 @@ function readInlineConfig() {
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
     const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr');
+    const retry_on_snapshot_warnings = getOptionalBoolean('retry-on-snapshot-warnings');
+    const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
@@ -46386,9 +46394,16 @@ function readInlineConfig() {
         vulnerability_check,
         base_ref,
         head_ref,
-        comment_summary_in_pr
+        comment_summary_in_pr,
+        retry_on_snapshot_warnings,
+        retry_on_snapshot_warnings_timeout
     };
     return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
+}
+function getOptionalNumber(name) {
+    const value = core.getInput(name);
+    const parsed = z.number().safeParse(value);
+    return parsed.success ? parsed.data : undefined;
 }
 function getOptionalBoolean(name) {
     const value = core.getInput(name);
@@ -46669,7 +46684,9 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.boolean().default(false)
+    comment_summary_in_pr: z.boolean().default(false),
+    retry_on_snapshot_warnings: z.boolean().default(true),
+    retry_on_snapshot_warnings_timeout: z.number().default(120)
 })
     .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {

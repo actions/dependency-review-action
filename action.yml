@@ -47,6 +47,14 @@ inputs:
   comment-summary-in-pr:
     description: A boolean to determine if the report should be posted as a comment in the PR itself. Setting this to true requires you to give the workflow the write permissions for pull-requests
     required: false
+  retry-on-snapshot-warnings:
+    description: Whether to retry on snapshot warnings
+    required: false
+    default: true
+  retry-on-snapshot-warnings-timeout:
+    description: How many seconds before bailing on retries
+    required: false
+    default: 120
 runs:
   using: 'node16'
   main: 'dist/index.js'

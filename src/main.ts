@@ -24,8 +24,8 @@ async function delay(ms: number): Promise<void> {
 async function getComparison(
   baseRef: string,
   headRef: string,
-  opts: {
-    retries: number
+  retryOpts?: {
+    retryUntil: number
     retryDelay: number
   }
 ): ReturnType<typeof dependencyGraph.compare> {
@@ -35,11 +35,15 @@ async function getComparison(
     baseRef,
     headRef
   })
-  if (comparison.snapshot_warnings.trim() !== '' && opts.retries > 0) {
+  if (
+    retryOpts !== undefined &&
+    comparison.snapshot_warnings.trim() !== '' &&
+    retryOpts.retryUntil < Date.now()
+  ) {
     core.info(comparison.snapshot_warnings)
-    core.info('Retrying in 10 seconds...')
-    await delay(opts.retryDelay)
-    return getComparison(baseRef, headRef, {...opts, retries: opts.retries - 1})
+    core.info(`Retrying in ${retryOpts.retryDelay} seconds...`)
+    await delay(retryOpts.retryDelay * 1000)
+    return getComparison(baseRef, headRef, retryOpts)
   }
   return comparison
 }
@@ -50,10 +54,17 @@ async function run(): Promise<void> {
 
     const refs = getRefs(config, github.context)
 
-    const comparison = await getComparison(refs.base, refs.head, {
-      retries: 10,
-      retryDelay: 10_000
-    })
+    const comparison = await getComparison(
+      refs.base,
+      refs.head,
+      config.retry_on_snapshot_warnings
+        ? {
+            retryUntil:
+              Date.now() + config.retry_on_snapshot_warnings_timeout * 1000,
+            retryDelay: 10
+          }
+        : undefined
+    )
 
     const changes = comparison.changes
     const snapshot_warnings = comparison.snapshot_warnings
