@@ -46379,7 +46379,7 @@ function readInlineConfig() {
     const head_ref = getOptionalInput('head-ref');
     const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr');
     const retry_on_snapshot_warnings = getOptionalBoolean('retry-on-snapshot-warnings');
-    const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings');
+    const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings-timeout');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);

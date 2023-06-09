@@ -43,7 +43,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     'retry-on-snapshot-warnings'
   )
   const retry_on_snapshot_warnings_timeout = getOptionalNumber(
-    'retry-on-snapshot-warnings'
+    'retry-on-snapshot-warnings-timeout'
   )
 
   validatePURL(allow_dependencies_licenses)
