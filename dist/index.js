@@ -500,7 +500,7 @@ function getComparison(baseRef, headRef, retryOpts) {
         });
         if (retryOpts !== undefined &&
             comparison.snapshot_warnings.trim() !== '' &&
-            retryOpts.retryUntil < Date.now()) {
+            retryOpts.retryUntil > Date.now()) {
             core.info(comparison.snapshot_warnings);
             core.info(`Retrying in ${retryOpts.retryDelay} seconds...`);
             yield delay(retryOpts.retryDelay * 1000);

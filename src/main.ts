@@ -38,7 +38,7 @@ async function getComparison(
   if (
     retryOpts !== undefined &&
     comparison.snapshot_warnings.trim() !== '' &&
-    retryOpts.retryUntil < Date.now()
+    retryOpts.retryUntil > Date.now()
   ) {
     core.info(comparison.snapshot_warnings)
     core.info(`Retrying in ${retryOpts.retryDelay} seconds...`)
