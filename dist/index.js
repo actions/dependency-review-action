@@ -4033,7 +4033,7 @@ var import_auth_app3 = __nccwpck_require__(7541);
 var import_oauth_app2 = __nccwpck_require__(3493);
 
 // pkg/dist-src/version.js
-var VERSION = "13.1.4";
+var VERSION = "13.1.5";
 
 // pkg/dist-src/webhooks.js
 var import_auth_app = __nccwpck_require__(7541);
@@ -5207,20 +5207,51 @@ function createAppAuth(options) {
 /***/ }),
 
 /***/ 4098:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createOAuthAppAuth: () => createOAuthAppAuth,
+  createOAuthUserAuth: () => import_auth_oauth_user3.createOAuthUserAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_request = __nccwpck_require__(6234);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var universalUserAgent = __nccwpck_require__(5030);
-var request = __nccwpck_require__(6234);
-var btoa = _interopDefault(__nccwpck_require__(2358));
-var authOauthUser = __nccwpck_require__(1591);
-
+// pkg/dist-src/auth.js
+var import_btoa_lite = __toESM(__nccwpck_require__(2358));
+var import_auth_oauth_user = __nccwpck_require__(1591);
 async function auth(state, authOptions) {
   if (authOptions.type === "oauth-app") {
     return {
@@ -5229,19 +5260,17 @@ async function auth(state, authOptions) {
       clientSecret: state.clientSecret,
       clientType: state.clientType,
       headers: {
-        authorization: `basic ${btoa(`${state.clientId}:${state.clientSecret}`)}`
+        authorization: `basic ${(0, import_btoa_lite.default)(
+          `${state.clientId}:${state.clientSecret}`
+        )}`
       }
     };
   }
   if ("factory" in authOptions) {
-    const {
-      type,
-      ...options
-    } = {
+    const { type, ...options } = {
       ...authOptions,
       ...state
     };
-    // @ts-expect-error TODO: `option` cannot be never, is this a bug?
     return authOptions.factory(options);
   }
   const common = {
@@ -5250,115 +5279,143 @@ async function auth(state, authOptions) {
     request: state.request,
     ...authOptions
   };
-  // TS: Look what you made me do
-  const userAuth = state.clientType === "oauth-app" ? await authOauthUser.createOAuthUserAuth({
+  const userAuth = state.clientType === "oauth-app" ? await (0, import_auth_oauth_user.createOAuthUserAuth)({
     ...common,
     clientType: state.clientType
-  }) : await authOauthUser.createOAuthUserAuth({
+  }) : await (0, import_auth_oauth_user.createOAuthUserAuth)({
     ...common,
     clientType: state.clientType
   });
   return userAuth();
 }
 
-async function hook(state, request, route, parameters) {
-  let endpoint = request.endpoint.merge(route, parameters);
-  // Do not intercept OAuth Web/Device flow request
+// pkg/dist-src/hook.js
+var import_btoa_lite2 = __toESM(__nccwpck_require__(2358));
+var import_auth_oauth_user2 = __nccwpck_require__(1591);
+async function hook(state, request2, route, parameters) {
+  let endpoint = request2.endpoint.merge(
+    route,
+    parameters
+  );
   if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) {
-    return request(endpoint);
+    return request2(endpoint);
   }
-  if (state.clientType === "github-app" && !authOauthUser.requiresBasicAuth(endpoint.url)) {
-    throw new Error(`[@octokit/auth-oauth-app] GitHub Apps cannot use their client ID/secret for basic authentication for endpoints other than "/applications/{client_id}/**". "${endpoint.method} ${endpoint.url}" is not supported.`);
+  if (state.clientType === "github-app" && !(0, import_auth_oauth_user2.requiresBasicAuth)(endpoint.url)) {
+    throw new Error(
+      `[@octokit/auth-oauth-app] GitHub Apps cannot use their client ID/secret for basic authentication for endpoints other than "/applications/{client_id}/**". "${endpoint.method} ${endpoint.url}" is not supported.`
+    );
   }
-  const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
+  const credentials = (0, import_btoa_lite2.default)(`${state.clientId}:${state.clientSecret}`);
   endpoint.headers.authorization = `basic ${credentials}`;
   try {
-    return await request(endpoint);
+    return await request2(endpoint);
   } catch (error) {
-    /* istanbul ignore if */
-    if (error.status !== 401) throw error;
+    if (error.status !== 401)
+      throw error;
     error.message = `[@octokit/auth-oauth-app] "${endpoint.method} ${endpoint.url}" does not support clientId/clientSecret basic authentication.`;
     throw error;
   }
 }
 
-const VERSION = "5.0.5";
+// pkg/dist-src/version.js
+var VERSION = "5.0.6";
 
+// pkg/dist-src/index.js
+var import_auth_oauth_user3 = __nccwpck_require__(1591);
 function createOAuthAppAuth(options) {
-  const state = Object.assign({
-    request: request.request.defaults({
-      headers: {
-        "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${universalUserAgent.getUserAgent()}`
-      }
-    }),
-    clientType: "oauth-app"
-  }, options);
-  // @ts-expect-error not worth the extra code to appease TS
+  const state = Object.assign(
+    {
+      request: import_request.request.defaults({
+        headers: {
+          "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
+        }
+      }),
+      clientType: "oauth-app"
+    },
+    options
+  );
   return Object.assign(auth.bind(null, state), {
     hook: hook.bind(null, state)
   });
 }
-
-Object.defineProperty(exports, "createOAuthUserAuth", ({
-    enumerable: true,
-    get: function () {
-        return authOauthUser.createOAuthUserAuth;
-    }
-}));
-exports.createOAuthAppAuth = createOAuthAppAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 4344:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createOAuthDeviceAuth: () => createOAuthDeviceAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_request = __nccwpck_require__(6234);
 
-var universalUserAgent = __nccwpck_require__(5030);
-var request = __nccwpck_require__(6234);
-var oauthMethods = __nccwpck_require__(8445);
-
+// pkg/dist-src/get-oauth-access-token.js
+var import_oauth_methods = __nccwpck_require__(8445);
 async function getOAuthAccessToken(state, options) {
   const cachedAuthentication = getCachedAuthentication(state, options.auth);
-  if (cachedAuthentication) return cachedAuthentication;
-  // Step 1: Request device and user codes
-  // https://docs.github.com/en/developers/apps/authorizing-oauth-apps#step-1-app-requests-the-device-and-user-verification-codes-from-github
-  const {
-    data: verification
-  } = await oauthMethods.createDeviceCode({
+  if (cachedAuthentication)
+    return cachedAuthentication;
+  const { data: verification } = await (0, import_oauth_methods.createDeviceCode)({
     clientType: state.clientType,
     clientId: state.clientId,
     request: options.request || state.request,
     // @ts-expect-error the extra code to make TS happy is not worth it
     scopes: options.auth.scopes || state.scopes
   });
-  // Step 2: User must enter the user code on https://github.com/login/device
-  // See https://docs.github.com/en/developers/apps/authorizing-oauth-apps#step-2-prompt-the-user-to-enter-the-user-code-in-a-browser
   await state.onVerification(verification);
-  // Step 3: Exchange device code for access token
-  // See https://docs.github.com/en/developers/apps/authorizing-oauth-apps#step-3-app-polls-github-to-check-if-the-user-authorized-the-device
-  const authentication = await waitForAccessToken(options.request || state.request, state.clientId, state.clientType, verification);
+  const authentication = await waitForAccessToken(
+    options.request || state.request,
+    state.clientId,
+    state.clientType,
+    verification
+  );
   state.authentication = authentication;
   return authentication;
 }
-function getCachedAuthentication(state, auth) {
-  if (auth.refresh === true) return false;
-  if (!state.authentication) return false;
+function getCachedAuthentication(state, auth2) {
+  if (auth2.refresh === true)
+    return false;
+  if (!state.authentication)
+    return false;
   if (state.clientType === "github-app") {
     return state.authentication;
   }
   const authentication = state.authentication;
-  const newScope = ("scopes" in auth && auth.scopes || state.scopes).join(" ");
+  const newScope = ("scopes" in auth2 && auth2.scopes || state.scopes).join(
+    " "
+  );
   const currentScope = authentication.scopes.join(" ");
   return newScope === currentScope ? authentication : false;
 }
 async function wait(seconds) {
-  await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  await new Promise((resolve) => setTimeout(resolve, seconds * 1e3));
 }
 async function waitForAccessToken(request, clientId, clientType, verification) {
   try {
@@ -5367,13 +5424,10 @@ async function waitForAccessToken(request, clientId, clientType, verification) {
       request,
       code: verification.device_code
     };
-    // WHY TYPESCRIPT WHY ARE YOU DOING THIS TO ME
-    const {
-      authentication
-    } = clientType === "oauth-app" ? await oauthMethods.exchangeDeviceCode({
+    const { authentication } = clientType === "oauth-app" ? await (0, import_oauth_methods.exchangeDeviceCode)({
       ...options,
       clientType: "oauth-app"
-    }) : await oauthMethods.exchangeDeviceCode({
+    }) : await (0, import_oauth_methods.exchangeDeviceCode)({
       ...options,
       clientType: "github-app"
     });
@@ -5383,10 +5437,8 @@ async function waitForAccessToken(request, clientId, clientType, verification) {
       ...authentication
     };
   } catch (error) {
-    // istanbul ignore if
-    // @ts-ignore
-    if (!error.response) throw error;
-    // @ts-ignore
+    if (!error.response)
+      throw error;
     const errorType = error.response.data.error;
     if (errorType === "authorization_pending") {
       await wait(verification.interval);
@@ -5400,95 +5452,123 @@ async function waitForAccessToken(request, clientId, clientType, verification) {
   }
 }
 
+// pkg/dist-src/auth.js
 async function auth(state, authOptions) {
   return getOAuthAccessToken(state, {
     auth: authOptions
   });
 }
 
+// pkg/dist-src/hook.js
 async function hook(state, request, route, parameters) {
-  let endpoint = request.endpoint.merge(route, parameters);
-  // Do not intercept request to retrieve codes or token
+  let endpoint = request.endpoint.merge(
+    route,
+    parameters
+  );
   if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) {
     return request(endpoint);
   }
-  const {
-    token
-  } = await getOAuthAccessToken(state, {
+  const { token } = await getOAuthAccessToken(state, {
     request,
-    auth: {
-      type: "oauth"
-    }
+    auth: { type: "oauth" }
   });
   endpoint.headers.authorization = `token ${token}`;
   return request(endpoint);
 }
 
-const VERSION = "4.0.4";
+// pkg/dist-src/version.js
+var VERSION = "4.0.5";
 
+// pkg/dist-src/index.js
 function createOAuthDeviceAuth(options) {
-  const requestWithDefaults = options.request || request.request.defaults({
+  const requestWithDefaults = options.request || import_request.request.defaults({
     headers: {
-      "user-agent": `octokit-auth-oauth-device.js/${VERSION} ${universalUserAgent.getUserAgent()}`
+      "user-agent": `octokit-auth-oauth-device.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
     }
   });
-  const {
-    request: request$1 = requestWithDefaults,
-    ...otherOptions
-  } = options;
+  const { request = requestWithDefaults, ...otherOptions } = options;
   const state = options.clientType === "github-app" ? {
     ...otherOptions,
     clientType: "github-app",
-    request: request$1
+    request
   } : {
     ...otherOptions,
     clientType: "oauth-app",
-    request: request$1,
+    request,
     scopes: options.scopes || []
   };
   if (!options.clientId) {
-    throw new Error('[@octokit/auth-oauth-device] "clientId" option must be set (https://github.com/octokit/auth-oauth-device.js#usage)');
+    throw new Error(
+      '[@octokit/auth-oauth-device] "clientId" option must be set (https://github.com/octokit/auth-oauth-device.js#usage)'
+    );
   }
   if (!options.onVerification) {
-    throw new Error('[@octokit/auth-oauth-device] "onVerification" option must be a function (https://github.com/octokit/auth-oauth-device.js#usage)');
+    throw new Error(
+      '[@octokit/auth-oauth-device] "onVerification" option must be a function (https://github.com/octokit/auth-oauth-device.js#usage)'
+    );
   }
-  // @ts-ignore too much for tsc / ts-jest ¯\_(ツ)_/¯
   return Object.assign(auth.bind(null, state), {
     hook: hook.bind(null, state)
   });
 }
-
-exports.createOAuthDeviceAuth = createOAuthDeviceAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 1591:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createOAuthUserAuth: () => createOAuthUserAuth,
+  requiresBasicAuth: () => requiresBasicAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_request = __nccwpck_require__(6234);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+// pkg/dist-src/version.js
+var VERSION = "2.1.2";
 
-var universalUserAgent = __nccwpck_require__(5030);
-var request = __nccwpck_require__(6234);
-var authOauthDevice = __nccwpck_require__(4344);
-var oauthMethods = __nccwpck_require__(8445);
-var btoa = _interopDefault(__nccwpck_require__(2358));
-
-const VERSION = "2.1.1";
-
-// @ts-nocheck there is only place for one of us in this file. And it's not you, TS
+// pkg/dist-src/get-authentication.js
+var import_auth_oauth_device = __nccwpck_require__(4344);
+var import_oauth_methods = __nccwpck_require__(8445);
 async function getAuthentication(state) {
-  // handle code exchange form OAuth Web Flow
   if ("code" in state.strategyOptions) {
-    const {
-      authentication
-    } = await oauthMethods.exchangeWebFlowCode({
+    const { authentication } = await (0, import_oauth_methods.exchangeWebFlowCode)({
       clientId: state.clientId,
       clientSecret: state.clientSecret,
       clientType: state.clientType,
@@ -5502,9 +5582,8 @@ async function getAuthentication(state) {
       ...authentication
     };
   }
-  // handle OAuth device flow
   if ("onVerification" in state.strategyOptions) {
-    const deviceAuth = authOauthDevice.createOAuthDeviceAuth({
+    const deviceAuth = (0, import_auth_oauth_device.createOAuthDeviceAuth)({
       clientType: state.clientType,
       clientId: state.clientId,
       onTokenCreated: state.onTokenCreated,
@@ -5519,7 +5598,6 @@ async function getAuthentication(state) {
       ...authentication
     };
   }
-  // use existing authentication
   if ("token" in state.strategyOptions) {
     return {
       type: "token",
@@ -5534,21 +5612,20 @@ async function getAuthentication(state) {
   throw new Error("[@octokit/auth-oauth-user] Invalid strategy options");
 }
 
+// pkg/dist-src/auth.js
+var import_oauth_methods2 = __nccwpck_require__(8445);
 async function auth(state, options = {}) {
+  var _a, _b;
   if (!state.authentication) {
-    // This is what TS makes us do ¯\_(ツ)_/¯
     state.authentication = state.clientType === "oauth-app" ? await getAuthentication(state) : await getAuthentication(state);
   }
   if (state.authentication.invalid) {
     throw new Error("[@octokit/auth-oauth-user] Token is invalid");
   }
   const currentAuthentication = state.authentication;
-  // (auto) refresh for user-to-server tokens
   if ("expiresAt" in currentAuthentication) {
-    if (options.type === "refresh" || new Date(currentAuthentication.expiresAt) < new Date()) {
-      const {
-        authentication
-      } = await oauthMethods.refreshToken({
+    if (options.type === "refresh" || new Date(currentAuthentication.expiresAt) < /* @__PURE__ */ new Date()) {
+      const { authentication } = await (0, import_oauth_methods2.refreshToken)({
         clientType: "github-app",
         clientId: state.clientId,
         clientSecret: state.clientSecret,
@@ -5562,26 +5639,23 @@ async function auth(state, options = {}) {
       };
     }
   }
-  // throw error for invalid refresh call
   if (options.type === "refresh") {
-    var _state$onTokenCreated;
     if (state.clientType === "oauth-app") {
-      throw new Error("[@octokit/auth-oauth-user] OAuth Apps do not support expiring tokens");
+      throw new Error(
+        "[@octokit/auth-oauth-user] OAuth Apps do not support expiring tokens"
+      );
     }
     if (!currentAuthentication.hasOwnProperty("expiresAt")) {
       throw new Error("[@octokit/auth-oauth-user] Refresh token missing");
     }
-    await ((_state$onTokenCreated = state.onTokenCreated) === null || _state$onTokenCreated === void 0 ? void 0 : _state$onTokenCreated.call(state, state.authentication, {
+    await ((_a = state.onTokenCreated) == null ? void 0 : _a.call(state, state.authentication, {
       type: options.type
     }));
   }
-  // check or reset token
   if (options.type === "check" || options.type === "reset") {
-    const method = options.type === "check" ? oauthMethods.checkToken : oauthMethods.resetToken;
+    const method = options.type === "check" ? import_oauth_methods2.checkToken : import_oauth_methods2.resetToken;
     try {
-      const {
-        authentication
-      } = await method({
+      const { authentication } = await method({
         // @ts-expect-error making TS happy would require unnecessary code so no
         clientType: state.clientType,
         clientId: state.clientId,
@@ -5596,25 +5670,21 @@ async function auth(state, options = {}) {
         ...authentication
       };
       if (options.type === "reset") {
-        var _state$onTokenCreated2;
-        await ((_state$onTokenCreated2 = state.onTokenCreated) === null || _state$onTokenCreated2 === void 0 ? void 0 : _state$onTokenCreated2.call(state, state.authentication, {
+        await ((_b = state.onTokenCreated) == null ? void 0 : _b.call(state, state.authentication, {
           type: options.type
         }));
       }
       return state.authentication;
     } catch (error) {
-      // istanbul ignore else
       if (error.status === 404) {
         error.message = "[@octokit/auth-oauth-user] Token is invalid";
-        // @ts-expect-error TBD
         state.authentication.invalid = true;
       }
       throw error;
     }
   }
-  // invalidate
   if (options.type === "delete" || options.type === "deleteAuthorization") {
-    const method = options.type === "delete" ? oauthMethods.deleteToken : oauthMethods.deleteAuthorization;
+    const method = options.type === "delete" ? import_oauth_methods2.deleteToken : import_oauth_methods2.deleteAuthorization;
     try {
       await method({
         // @ts-expect-error making TS happy would require unnecessary code so no
@@ -5625,8 +5695,8 @@ async function auth(state, options = {}) {
         request: state.request
       });
     } catch (error) {
-      // istanbul ignore if
-      if (error.status !== 404) throw error;
+      if (error.status !== 404)
+        throw error;
     }
     state.authentication.invalid = true;
     return state.authentication;
@@ -5634,59 +5704,42 @@ async function auth(state, options = {}) {
   return state.authentication;
 }
 
-/**
- * The following endpoints require an OAuth App to authenticate using its client_id and client_secret.
- *
- * - [`POST /applications/{client_id}/token`](https://docs.github.com/en/rest/reference/apps#check-a-token) - Check a token
- * - [`PATCH /applications/{client_id}/token`](https://docs.github.com/en/rest/reference/apps#reset-a-token) - Reset a token
- * - [`POST /applications/{client_id}/token/scoped`](https://docs.github.com/en/rest/reference/apps#create-a-scoped-access-token) - Create a scoped access token
- * - [`DELETE /applications/{client_id}/token`](https://docs.github.com/en/rest/reference/apps#delete-an-app-token) - Delete an app token
- * - [`DELETE /applications/{client_id}/grant`](https://docs.github.com/en/rest/reference/apps#delete-an-app-authorization) - Delete an app authorization
- *
- * deprecated:
- *
- * - [`GET /applications/{client_id}/tokens/{access_token}`](https://docs.github.com/en/rest/reference/apps#check-an-authorization) - Check an authorization
- * - [`POST /applications/{client_id}/tokens/{access_token}`](https://docs.github.com/en/rest/reference/apps#reset-an-authorization) - Reset an authorization
- * - [`DELETE /applications/{client_id}/tokens/{access_token}`](https://docs.github.com/en/rest/reference/apps#revoke-an-authorization-for-an-application) - Revoke an authorization for an application
- * - [`DELETE /applications/{client_id}/grants/{access_token}`](https://docs.github.com/en/rest/reference/apps#revoke-a-grant-for-an-application) - Revoke a grant for an application
- */
-const ROUTES_REQUIRING_BASIC_AUTH = /\/applications\/[^/]+\/(token|grant)s?/;
+// pkg/dist-src/hook.js
+var import_btoa_lite = __toESM(__nccwpck_require__(2358));
+
+// pkg/dist-src/requires-basic-auth.js
+var ROUTES_REQUIRING_BASIC_AUTH = /\/applications\/[^/]+\/(token|grant)s?/;
 function requiresBasicAuth(url) {
   return url && ROUTES_REQUIRING_BASIC_AUTH.test(url);
 }
 
+// pkg/dist-src/hook.js
 async function hook(state, request, route, parameters = {}) {
-  const endpoint = request.endpoint.merge(route, parameters);
-  // Do not intercept OAuth Web/Device flow request
+  const endpoint = request.endpoint.merge(
+    route,
+    parameters
+  );
   if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) {
     return request(endpoint);
   }
   if (requiresBasicAuth(endpoint.url)) {
-    const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
+    const credentials = (0, import_btoa_lite.default)(`${state.clientId}:${state.clientSecret}`);
     endpoint.headers.authorization = `basic ${credentials}`;
     return request(endpoint);
   }
-  // TS makes us do this ¯\_(ツ)_/¯
-  const {
-    token
-  } = state.clientType === "oauth-app" ? await auth({
-    ...state,
-    request
-  }) : await auth({
-    ...state,
-    request
-  });
+  const { token } = state.clientType === "oauth-app" ? await auth({ ...state, request }) : await auth({ ...state, request });
   endpoint.headers.authorization = "token " + token;
   return request(endpoint);
 }
 
+// pkg/dist-src/index.js
 function createOAuthUserAuth({
   clientId,
   clientSecret,
   clientType = "oauth-app",
-  request: request$1 = request.request.defaults({
+  request = import_request.request.defaults({
     headers: {
-      "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${universalUserAgent.getUserAgent()}`
+      "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
     }
   }),
   onTokenCreated,
@@ -5698,19 +5751,16 @@ function createOAuthUserAuth({
     clientSecret,
     onTokenCreated,
     strategyOptions,
-    request: request$1
+    request
   });
-  // @ts-expect-error not worth the extra code needed to appease TS
   return Object.assign(auth.bind(null, state), {
     // @ts-expect-error not worth the extra code needed to appease TS
     hook: hook.bind(null, state)
   });
 }
 createOAuthUserAuth.VERSION = VERSION;
-
-exports.createOAuthUserAuth = createOAuthUserAuth;
-exports.requiresBasicAuth = requiresBasicAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -7477,22 +7527,64 @@ exports.oauthAuthorizationUrl = oauthAuthorizationUrl;
 /***/ }),
 
 /***/ 8445:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  VERSION: () => VERSION,
+  checkToken: () => checkToken,
+  createDeviceCode: () => createDeviceCode,
+  deleteAuthorization: () => deleteAuthorization,
+  deleteToken: () => deleteToken,
+  exchangeDeviceCode: () => exchangeDeviceCode,
+  exchangeWebFlowCode: () => exchangeWebFlowCode,
+  getWebFlowAuthorizationUrl: () => getWebFlowAuthorizationUrl,
+  refreshToken: () => refreshToken,
+  resetToken: () => resetToken,
+  scopeToken: () => scopeToken
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+// pkg/dist-src/version.js
+var VERSION = "2.0.6";
 
-var oauthAuthorizationUrl = __nccwpck_require__(2272);
-var request = __nccwpck_require__(6234);
-var requestError = __nccwpck_require__(2434);
-var btoa = _interopDefault(__nccwpck_require__(2358));
+// pkg/dist-src/get-web-flow-authorization-url.js
+var import_oauth_authorization_url = __nccwpck_require__(2272);
+var import_request = __nccwpck_require__(6234);
 
-const VERSION = "2.0.5";
-
+// pkg/dist-src/utils.js
+var import_request_error = __nccwpck_require__(2434);
 function requestToOAuthBaseUrl(request) {
   const endpointDefaults = request.endpoint.DEFAULTS;
   return /^https:\/\/(api\.)?github\.com$/.test(endpointDefaults.baseUrl) ? "https://github.com" : endpointDefaults.baseUrl.replace("/api/v3", "");
@@ -7507,38 +7599,50 @@ async function oauthRequest(request, route, parameters) {
   };
   const response = await request(route, withOAuthParameters);
   if ("error" in response.data) {
-    const error = new requestError.RequestError(`${response.data.error_description} (${response.data.error}, ${response.data.error_uri})`, 400, {
-      request: request.endpoint.merge(route, withOAuthParameters),
-      headers: response.headers
-    });
-    // @ts-ignore add custom response property until https://github.com/octokit/request-error.js/issues/169 is resolved
+    const error = new import_request_error.RequestError(
+      `${response.data.error_description} (${response.data.error}, ${response.data.error_uri})`,
+      400,
+      {
+        request: request.endpoint.merge(
+          route,
+          withOAuthParameters
+        ),
+        headers: response.headers
+      }
+    );
     error.response = response;
     throw error;
   }
   return response;
 }
 
+// pkg/dist-src/get-web-flow-authorization-url.js
 function getWebFlowAuthorizationUrl({
-  request: request$1 = request.request,
+  request = import_request.request,
   ...options
 }) {
-  const baseUrl = requestToOAuthBaseUrl(request$1);
-  // @ts-expect-error TypeScript wants `clientType` to be set explicitly ¯\_(ツ)_/¯
-  return oauthAuthorizationUrl.oauthAuthorizationUrl({
+  const baseUrl = requestToOAuthBaseUrl(request);
+  return (0, import_oauth_authorization_url.oauthAuthorizationUrl)({
     ...options,
     baseUrl
   });
 }
 
+// pkg/dist-src/exchange-web-flow-code.js
+var import_request2 = __nccwpck_require__(6234);
 async function exchangeWebFlowCode(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await oauthRequest(request$1, "POST /login/oauth/access_token", {
-    client_id: options.clientId,
-    client_secret: options.clientSecret,
-    code: options.code,
-    redirect_uri: options.redirectUrl
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request2.request;
+  const response = await oauthRequest(
+    request,
+    "POST /login/oauth/access_token",
+    {
+      client_id: options.clientId,
+      client_secret: options.clientSecret,
+      code: options.code,
+      redirect_uri: options.redirectUrl
+    }
+  );
   const authentication = {
     clientType: options.clientType,
     clientId: options.clientId,
@@ -7549,39 +7653,50 @@ async function exchangeWebFlowCode(options) {
   if (options.clientType === "github-app") {
     if ("refresh_token" in response.data) {
       const apiTimeInMs = new Date(response.headers.date).getTime();
-      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp(apiTimeInMs, response.data.refresh_token_expires_in);
+      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp(
+        apiTimeInMs,
+        response.data.expires_in
+      ), authentication.refreshTokenExpiresAt = toTimestamp(
+        apiTimeInMs,
+        response.data.refresh_token_expires_in
+      );
     }
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 function toTimestamp(apiTimeInMs, expirationInSeconds) {
-  return new Date(apiTimeInMs + expirationInSeconds * 1000).toISOString();
+  return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
 }
 
+// pkg/dist-src/create-device-code.js
+var import_request3 = __nccwpck_require__(6234);
 async function createDeviceCode(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request3.request;
   const parameters = {
     client_id: options.clientId
   };
   if ("scopes" in options && Array.isArray(options.scopes)) {
     parameters.scope = options.scopes.join(" ");
   }
-  return oauthRequest(request$1, "POST /login/device/code", parameters);
+  return oauthRequest(request, "POST /login/device/code", parameters);
 }
 
+// pkg/dist-src/exchange-device-code.js
+var import_request4 = __nccwpck_require__(6234);
 async function exchangeDeviceCode(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await oauthRequest(request$1, "POST /login/oauth/access_token", {
-    client_id: options.clientId,
-    device_code: options.code,
-    grant_type: "urn:ietf:params:oauth:grant-type:device_code"
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request4.request;
+  const response = await oauthRequest(
+    request,
+    "POST /login/oauth/access_token",
+    {
+      client_id: options.clientId,
+      device_code: options.code,
+      grant_type: "urn:ietf:params:oauth:grant-type:device_code"
+    }
+  );
   const authentication = {
     clientType: options.clientType,
     clientId: options.clientId,
@@ -7594,25 +7709,33 @@ async function exchangeDeviceCode(options) {
   if (options.clientType === "github-app") {
     if ("refresh_token" in response.data) {
       const apiTimeInMs = new Date(response.headers.date).getTime();
-      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp$1(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp$1(apiTimeInMs, response.data.refresh_token_expires_in);
+      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp2(
+        apiTimeInMs,
+        response.data.expires_in
+      ), authentication.refreshTokenExpiresAt = toTimestamp2(
+        apiTimeInMs,
+        response.data.refresh_token_expires_in
+      );
     }
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
-function toTimestamp$1(apiTimeInMs, expirationInSeconds) {
-  return new Date(apiTimeInMs + expirationInSeconds * 1000).toISOString();
+function toTimestamp2(apiTimeInMs, expirationInSeconds) {
+  return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
 }
 
+// pkg/dist-src/check-token.js
+var import_request5 = __nccwpck_require__(6234);
+var import_btoa_lite = __toESM(__nccwpck_require__(2358));
 async function checkToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await request$1("POST /applications/{client_id}/token", {
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request5.request;
+  const response = await request("POST /applications/{client_id}/token", {
     headers: {
-      authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}`
+      authorization: `basic ${(0, import_btoa_lite.default)(
+        `${options.clientId}:${options.clientSecret}`
+      )}`
     },
     client_id: options.clientId,
     access_token: options.token
@@ -7624,25 +7747,29 @@ async function checkToken(options) {
     token: options.token,
     scopes: response.data.scopes
   };
-  if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
+  if (response.data.expires_at)
+    authentication.expiresAt = response.data.expires_at;
   if (options.clientType === "github-app") {
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/refresh-token.js
+var import_request6 = __nccwpck_require__(6234);
 async function refreshToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await oauthRequest(request$1, "POST /login/oauth/access_token", {
-    client_id: options.clientId,
-    client_secret: options.clientSecret,
-    grant_type: "refresh_token",
-    refresh_token: options.refreshToken
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request6.request;
+  const response = await oauthRequest(
+    request,
+    "POST /login/oauth/access_token",
+    {
+      client_id: options.clientId,
+      client_secret: options.clientSecret,
+      grant_type: "refresh_token",
+      refresh_token: options.refreshToken
+    }
+  );
   const apiTimeInMs = new Date(response.headers.date).getTime();
   const authentication = {
     clientType: "github-app",
@@ -7650,18 +7777,21 @@ async function refreshToken(options) {
     clientSecret: options.clientSecret,
     token: response.data.access_token,
     refreshToken: response.data.refresh_token,
-    expiresAt: toTimestamp$2(apiTimeInMs, response.data.expires_in),
-    refreshTokenExpiresAt: toTimestamp$2(apiTimeInMs, response.data.refresh_token_expires_in)
+    expiresAt: toTimestamp3(apiTimeInMs, response.data.expires_in),
+    refreshTokenExpiresAt: toTimestamp3(
+      apiTimeInMs,
+      response.data.refresh_token_expires_in
+    )
   };
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
-function toTimestamp$2(apiTimeInMs, expirationInSeconds) {
-  return new Date(apiTimeInMs + expirationInSeconds * 1000).toISOString();
+function toTimestamp3(apiTimeInMs, expirationInSeconds) {
+  return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
 }
 
+// pkg/dist-src/scope-token.js
+var import_request7 = __nccwpck_require__(6234);
+var import_btoa_lite2 = __toESM(__nccwpck_require__(2358));
 async function scopeToken(options) {
   const {
     request: optionsRequest,
@@ -7671,41 +7801,48 @@ async function scopeToken(options) {
     token,
     ...requestOptions
   } = options;
-  const request$1 = optionsRequest || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await request$1("POST /applications/{client_id}/token/scoped", {
-    headers: {
-      authorization: `basic ${btoa(`${clientId}:${clientSecret}`)}`
+  const request = optionsRequest || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request7.request;
+  const response = await request(
+    "POST /applications/{client_id}/token/scoped",
+    {
+      headers: {
+        authorization: `basic ${(0, import_btoa_lite2.default)(`${clientId}:${clientSecret}`)}`
+      },
+      client_id: clientId,
+      access_token: token,
+      ...requestOptions
+    }
+  );
+  const authentication = Object.assign(
+    {
+      clientType,
+      clientId,
+      clientSecret,
+      token: response.data.token
     },
-    client_id: clientId,
-    access_token: token,
-    ...requestOptions
-  });
-  const authentication = Object.assign({
-    clientType,
-    clientId,
-    clientSecret,
-    token: response.data.token
-  }, response.data.expires_at ? {
-    expiresAt: response.data.expires_at
-  } : {});
-  return {
-    ...response,
-    authentication
-  };
+    response.data.expires_at ? { expiresAt: response.data.expires_at } : {}
+  );
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/reset-token.js
+var import_request8 = __nccwpck_require__(6234);
+var import_btoa_lite3 = __toESM(__nccwpck_require__(2358));
 async function resetToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const auth = btoa(`${options.clientId}:${options.clientSecret}`);
-  const response = await request$1("PATCH /applications/{client_id}/token", {
-    headers: {
-      authorization: `basic ${auth}`
-    },
-    client_id: options.clientId,
-    access_token: options.token
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request8.request;
+  const auth = (0, import_btoa_lite3.default)(`${options.clientId}:${options.clientSecret}`);
+  const response = await request(
+    "PATCH /applications/{client_id}/token",
+    {
+      headers: {
+        authorization: `basic ${auth}`
+      },
+      client_id: options.clientId,
+      access_token: options.token
+    }
+  );
   const authentication = {
     clientType: options.clientType,
     clientId: options.clientId,
@@ -7713,54 +7850,53 @@ async function resetToken(options) {
     token: response.data.token,
     scopes: response.data.scopes
   };
-  if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
+  if (response.data.expires_at)
+    authentication.expiresAt = response.data.expires_at;
   if (options.clientType === "github-app") {
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/delete-token.js
+var import_request9 = __nccwpck_require__(6234);
+var import_btoa_lite4 = __toESM(__nccwpck_require__(2358));
 async function deleteToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const auth = btoa(`${options.clientId}:${options.clientSecret}`);
-  return request$1("DELETE /applications/{client_id}/token", {
-    headers: {
-      authorization: `basic ${auth}`
-    },
-    client_id: options.clientId,
-    access_token: options.token
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request9.request;
+  const auth = (0, import_btoa_lite4.default)(`${options.clientId}:${options.clientSecret}`);
+  return request(
+    "DELETE /applications/{client_id}/token",
+    {
+      headers: {
+        authorization: `basic ${auth}`
+      },
+      client_id: options.clientId,
+      access_token: options.token
+    }
+  );
 }
 
+// pkg/dist-src/delete-authorization.js
+var import_request10 = __nccwpck_require__(6234);
+var import_btoa_lite5 = __toESM(__nccwpck_require__(2358));
 async function deleteAuthorization(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const auth = btoa(`${options.clientId}:${options.clientSecret}`);
-  return request$1("DELETE /applications/{client_id}/grant", {
-    headers: {
-      authorization: `basic ${auth}`
-    },
-    client_id: options.clientId,
-    access_token: options.token
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request10.request;
+  const auth = (0, import_btoa_lite5.default)(`${options.clientId}:${options.clientSecret}`);
+  return request(
+    "DELETE /applications/{client_id}/grant",
+    {
+      headers: {
+        authorization: `basic ${auth}`
+      },
+      client_id: options.clientId,
+      access_token: options.token
+    }
+  );
 }
-
-exports.VERSION = VERSION;
-exports.checkToken = checkToken;
-exports.createDeviceCode = createDeviceCode;
-exports.deleteAuthorization = deleteAuthorization;
-exports.deleteToken = deleteToken;
-exports.exchangeDeviceCode = exchangeDeviceCode;
-exports.exchangeWebFlowCode = exchangeWebFlowCode;
-exports.getWebFlowAuthorizationUrl = getWebFlowAuthorizationUrl;
-exports.refreshToken = refreshToken;
-exports.resetToken = resetToken;
-exports.scopeToken = scopeToken;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -9909,72 +10045,116 @@ exports.RequestError = RequestError;
 /***/ }),
 
 /***/ 9768:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  sign: () => sign,
+  verify: () => verify,
+  verifyWithFallback: () => verifyWithFallback
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-var crypto = __nccwpck_require__(6113);
-var buffer = __nccwpck_require__(4300);
+// pkg/dist-src/node/sign.js
+var import_crypto = __nccwpck_require__(6113);
 
-var Algorithm;
-(function (Algorithm) {
-  Algorithm["SHA1"] = "sha1";
-  Algorithm["SHA256"] = "sha256";
-})(Algorithm || (Algorithm = {}));
+// pkg/dist-src/types.js
+var Algorithm = /* @__PURE__ */ ((Algorithm2) => {
+  Algorithm2["SHA1"] = "sha1";
+  Algorithm2["SHA256"] = "sha256";
+  return Algorithm2;
+})(Algorithm || {});
 
-const VERSION = "3.0.2";
+// pkg/dist-src/version.js
+var VERSION = "3.0.3";
 
+// pkg/dist-src/node/sign.js
 async function sign(options, payload) {
-  const {
-    secret,
-    algorithm
-  } = typeof options === "object" ? {
+  const { secret, algorithm } = typeof options === "object" ? {
     secret: options.secret,
     algorithm: options.algorithm || Algorithm.SHA256
-  } : {
-    secret: options,
-    algorithm: Algorithm.SHA256
-  };
+  } : { secret: options, algorithm: Algorithm.SHA256 };
   if (!secret || !payload) {
-    throw new TypeError("[@octokit/webhooks-methods] secret & payload required for sign()");
+    throw new TypeError(
+      "[@octokit/webhooks-methods] secret & payload required for sign()"
+    );
   }
   if (!Object.values(Algorithm).includes(algorithm)) {
-    throw new TypeError(`[@octokit/webhooks] Algorithm ${algorithm} is not supported. Must be  'sha1' or 'sha256'`);
+    throw new TypeError(
+      `[@octokit/webhooks] Algorithm ${algorithm} is not supported. Must be  'sha1' or 'sha256'`
+    );
   }
-  return `${algorithm}=${crypto.createHmac(algorithm, secret).update(payload).digest("hex")}`;
+  return `${algorithm}=${(0, import_crypto.createHmac)(algorithm, secret).update(payload).digest("hex")}`;
 }
 sign.VERSION = VERSION;
 
-const getAlgorithm = signature => {
+// pkg/dist-src/node/verify.js
+var import_crypto2 = __nccwpck_require__(6113);
+var import_buffer = __nccwpck_require__(4300);
+
+// pkg/dist-src/utils.js
+var getAlgorithm = (signature) => {
   return signature.startsWith("sha256=") ? "sha256" : "sha1";
 };
 
+// pkg/dist-src/node/verify.js
 async function verify(secret, eventPayload, signature) {
   if (!secret || !eventPayload || !signature) {
-    throw new TypeError("[@octokit/webhooks-methods] secret, eventPayload & signature required");
+    throw new TypeError(
+      "[@octokit/webhooks-methods] secret, eventPayload & signature required"
+    );
   }
-  const signatureBuffer = buffer.Buffer.from(signature);
+  const signatureBuffer = import_buffer.Buffer.from(signature);
   const algorithm = getAlgorithm(signature);
-  const verificationBuffer = buffer.Buffer.from(await sign({
-    secret,
-    algorithm
-  }, eventPayload));
+  const verificationBuffer = import_buffer.Buffer.from(
+    await sign({ secret, algorithm }, eventPayload)
+  );
   if (signatureBuffer.length !== verificationBuffer.length) {
     return false;
   }
-  // constant time comparison to prevent timing attachs
-  // https://stackoverflow.com/a/31096242/206879
-  // https://en.wikipedia.org/wiki/Timing_attack
-  return crypto.timingSafeEqual(signatureBuffer, verificationBuffer);
+  return (0, import_crypto2.timingSafeEqual)(signatureBuffer, verificationBuffer);
 }
 verify.VERSION = VERSION;
 
-exports.sign = sign;
-exports.verify = verify;
-//# sourceMappingURL=index.js.map
+// pkg/dist-src/index.js
+async function verifyWithFallback(secret, payload, signature, additionalSecrets) {
+  const firstPass = await verify(secret, payload, signature);
+  if (firstPass) {
+    return true;
+  }
+  if (additionalSecrets !== void 0) {
+    for (const s of additionalSecrets) {
+      const v = await verify(s, payload, signature);
+      if (v) {
+        return v;
+      }
+    }
+  }
+  return false;
+}
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -35936,7 +36116,7 @@ var import_plugin_retry = __nccwpck_require__(8519);
 var import_plugin_throttling = __nccwpck_require__(9968);
 
 // pkg/dist-src/version.js
-var VERSION = "2.0.16";
+var VERSION = "2.0.19";
 
 // pkg/dist-src/octokit.js
 var Octokit = import_core.Octokit.plugin(
