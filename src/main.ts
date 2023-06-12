@@ -16,7 +16,6 @@ import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
-import { warn } from 'console'
 
 async function run(): Promise<void> {
   try {
