@@ -181,15 +181,28 @@ const githubUtils = __importStar(__nccwpck_require__(3030));
 const retry = __importStar(__nccwpck_require__(6298));
 const schemas_1 = __nccwpck_require__(8774);
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+const SnapshotWarningsHeader = 'x-github-dependency-graph-snapshot-warnings';
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 function compare({ owner, repo, baseRef, headRef }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const changes = yield octo.paginate('GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}', {
+        let snapshot_warnings = '';
+        const changes = yield octo.paginate({
+            method: 'GET',
+            url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}',
             owner,
             repo,
             basehead: `${baseRef}...${headRef}`
+        }, response => {
+            if (response.headers[SnapshotWarningsHeader] &&
+                typeof response.headers[SnapshotWarningsHeader] === 'string') {
+                snapshot_warnings = Buffer.from(response.headers[SnapshotWarningsHeader], 'base64').toString('utf-8');
+            }
+            return schemas_1.ChangesSchema.parse(response.data);
         });
-        return schemas_1.ChangesSchema.parse(changes);
+        return schemas_1.ComparisonResponseSchema.parse({
+            changes,
+            snapshot_warnings
+        });
     });
 }
 exports.compare = compare;
@@ -259,10 +272,35 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
+const packageurl_js_1 = __nccwpck_require__(8915);
 function getInvalidLicenseChanges(changes, licenses) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const { allow, deny } = licenses;
+        const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
+            return packageurl_js_1.PackageURL.fromString(pkgUrl);
+        });
         const groupedChanges = yield groupChanges(changes);
+        // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
+        // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
+        groupedChanges.licensed = groupedChanges.licensed.filter(change => {
+            if (change.package_url.length === 0) {
+                return true;
+            }
+            const changeAsPackageURL = packageurl_js_1.PackageURL.fromString(change.package_url);
+            // We want to find if the licenseExclussion list contains the PackageURL of the Change
+            // If it does, we want to filter it out and therefore return false
+            // If it doesn't, we want to keep it and therefore return true
+            if (licenseExclusions !== null &&
+                licenseExclusions !== undefined &&
+                licenseExclusions.findIndex(exclusion => exclusion.type === changeAsPackageURL.type &&
+                    exclusion.name === changeAsPackageURL.name) !== -1) {
+                return false;
+            }
+            else {
+                return true;
+            }
+        });
         const licensedChanges = groupedChanges.licensed;
         const invalidLicenseChanges = {
             unlicensed: groupedChanges.unlicensed,
@@ -452,12 +490,14 @@ function run() {
         try {
             const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
-            const changes = yield dependencyGraph.compare({
+            const comparison = yield dependencyGraph.compare({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo,
                 baseRef: refs.base,
                 headRef: refs.head
             });
+            const changes = comparison.changes;
+            const snapshot_warnings = comparison.snapshot_warnings;
             if (!changes) {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;
@@ -476,9 +516,13 @@ function run() {
                 change.vulnerabilities.length > 0);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
-                deny: config.deny_licenses
+                deny: config.deny_licenses,
+                licenseExclusions: config.allow_dependencies_licenses
             });
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, config);
+            if (snapshot_warnings) {
+                summary.addSnapshotWarnings(snapshot_warnings);
+            }
             if (config.vulnerability_check) {
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
                 printVulnerabilitiesBlock(vulnerableChanges, minSeverity, failOnVulnerability);
@@ -649,7 +693,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+<<<<<<< HEAD
 exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.FailOnSeveritySchema = exports.SCOPES = exports.SEVERITIES = exports.FAIL_ON_SEVERITIES = void 0;
+=======
+exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+>>>>>>> main
 const z = __importStar(__nccwpck_require__(3301));
 exports.FAIL_ON_SEVERITIES = ['critical', 'high', 'moderate', 'low', 'none'];
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -687,6 +735,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
@@ -717,6 +766,10 @@ exports.ConfigurationOptionsSchema = z
     }
 });
 exports.ChangesSchema = z.array(exports.ChangeSchema);
+exports.ComparisonResponseSchema = z.object({
+    changes: z.array(exports.ChangeSchema),
+    snapshot_warnings: z.string()
+});
 
 
 /***/ }),
@@ -750,7 +803,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addSnapshotWarnings = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -852,6 +905,9 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
     if (config.deny_licenses && config.deny_licenses.length > 0) {
         core.summary.addQuote(`<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`);
     }
+    if (config.allow_dependencies_licenses) {
+        core.summary.addQuote(`<strong>Excluded from license check</strong>: ${config.allow_dependencies_licenses.join(', ')}`);
+    }
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
 }
@@ -908,6 +964,20 @@ function addScannedDependencies(changes) {
     }
 }
 exports.addScannedDependencies = addScannedDependencies;
+function addSnapshotWarnings(warnings) {
+    // For now, we want to ignore warnings that just complain
+    // about missing snapshots on the head SHA. This is a product
+    // decision to avoid presenting warnings to users who simply
+    // don't use snapshots.
+    const ignore_regex = new RegExp(/No.*snapshot.*found.*head.*/, 'i');
+    if (ignore_regex.test(warnings)) {
+        return;
+    }
+    core.summary.addHeading('Snapshot Warnings', 2);
+    core.summary.addQuote(`${icons.warning}: ${warnings}`);
+    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.');
+}
+exports.addSnapshotWarnings = addSnapshotWarnings;
 function countLicenseIssues(invalidLicenseChanges) {
     return Object.values(invalidLicenseChanges).reduce((acc, val) => acc + val.length, 0);
 }
@@ -961,7 +1031,9 @@ function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
     for (const change of changes) {
-        const manifestName = change.manifest;
+        // If the manifest is null or empty, give it a name now to avoid
+        // breaking the HTML rendering later
+        const manifestName = change.manifest || 'Unnamed Manifest';
         if (dependencies.get(manifestName) === undefined) {
             dependencies.set(manifestName, []);
         }
@@ -3952,39 +4024,60 @@ exports.checkBypass = checkBypass;
 /***/ }),
 
 /***/ 4389:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  App: () => App,
+  createNodeMiddleware: () => createNodeMiddleware
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_core = __nccwpck_require__(6762);
+var import_auth_app3 = __nccwpck_require__(7541);
+var import_oauth_app2 = __nccwpck_require__(3493);
 
-var core = __nccwpck_require__(6762);
-var authApp = __nccwpck_require__(7541);
-var oauthApp = __nccwpck_require__(3493);
-var authUnauthenticated = __nccwpck_require__(9567);
-var webhooks$1 = __nccwpck_require__(8513);
-var pluginPaginateRest = __nccwpck_require__(8076);
+// pkg/dist-src/version.js
+var VERSION = "13.1.5";
 
-const VERSION = "13.1.1";
-
-function webhooks(appOctokit, options
-// Explict return type for better debugability and performance,
-// see https://github.com/octokit/app.js/pull/201
-) {
-  return new webhooks$1.Webhooks({
+// pkg/dist-src/webhooks.js
+var import_auth_app = __nccwpck_require__(7541);
+var import_auth_unauthenticated = __nccwpck_require__(9567);
+var import_webhooks = __nccwpck_require__(8513);
+function webhooks(appOctokit, options) {
+  return new import_webhooks.Webhooks({
     secret: options.secret,
-    transform: async event => {
+    transform: async (event) => {
       if (!("installation" in event.payload) || typeof event.payload.installation !== "object") {
-        const octokit = new appOctokit.constructor({
-          authStrategy: authUnauthenticated.createUnauthenticatedAuth,
+        const octokit2 = new appOctokit.constructor({
+          authStrategy: import_auth_unauthenticated.createUnauthenticatedAuth,
           auth: {
             reason: `"installation" key missing in webhook event payload`
           }
         });
         return {
           ...event,
-          octokit
+          octokit: octokit2
         };
       }
       const installationId = event.payload.installation.id;
@@ -3994,7 +4087,7 @@ function webhooks(appOctokit, options
         factory(auth) {
           return new auth.octokit.constructor({
             ...auth.octokitOptions,
-            authStrategy: authApp.createAppAuth,
+            authStrategy: import_auth_app.createAppAuth,
             ...{
               auth: {
                 ...auth,
@@ -4004,14 +4097,8 @@ function webhooks(appOctokit, options
           });
         }
       });
-      // set `x-github-delivery` header on all requests sent in response to the current
-      // event. This allows GitHub Support to correlate the request with the event.
-      // This is not documented and not considered public API, the header may change.
-      // Once we document this as best practice on https://docs.github.com/en/rest/guides/best-practices-for-integrators
-      // we will make it official
-      /* istanbul ignore next */
-      octokit.hook.before("request", options => {
-        options.headers["x-github-delivery"] = event.id;
+      octokit.hook.before("request", (options2) => {
+        options2.headers["x-github-delivery"] = event.id;
       });
       return {
         ...event,
@@ -4021,26 +4108,27 @@ function webhooks(appOctokit, options
   });
 }
 
+// pkg/dist-src/each-installation.js
+var import_plugin_paginate_rest = __nccwpck_require__(8076);
+
+// pkg/dist-src/get-installation-octokit.js
+var import_auth_app2 = __nccwpck_require__(7541);
 async function getInstallationOctokit(app, installationId) {
   return app.octokit.auth({
     type: "installation",
-    installationId: installationId,
+    installationId,
     factory(auth) {
       const options = {
         ...auth.octokitOptions,
-        authStrategy: authApp.createAppAuth,
-        ...{
-          auth: {
-            ...auth,
-            installationId: installationId
-          }
-        }
+        authStrategy: import_auth_app2.createAppAuth,
+        ...{ auth: { ...auth, installationId } }
       };
       return new auth.octokit.constructor(options);
     }
   });
 }
 
+// pkg/dist-src/each-installation.js
 function eachInstallationFactory(app) {
   return Object.assign(eachInstallation.bind(null, app), {
     iterator: eachInstallationIterator.bind(null, app)
@@ -4057,29 +4145,35 @@ async function eachInstallation(app, callback) {
 function eachInstallationIterator(app) {
   return {
     async *[Symbol.asyncIterator]() {
-      const iterator = pluginPaginateRest.composePaginateRest.iterator(app.octokit, "GET /app/installations");
-      for await (const {
-        data: installations
-      } of iterator) {
+      const iterator = import_plugin_paginate_rest.composePaginateRest.iterator(
+        app.octokit,
+        "GET /app/installations"
+      );
+      for await (const { data: installations } of iterator) {
         for (const installation of installations) {
-          const installationOctokit = await getInstallationOctokit(app, installation.id);
-          yield {
-            octokit: installationOctokit,
-            installation
-          };
+          const installationOctokit = await getInstallationOctokit(
+            app,
+            installation.id
+          );
+          yield { octokit: installationOctokit, installation };
         }
       }
     }
   };
 }
 
+// pkg/dist-src/each-repository.js
+var import_plugin_paginate_rest2 = __nccwpck_require__(8076);
 function eachRepositoryFactory(app) {
   return Object.assign(eachRepository.bind(null, app), {
     iterator: eachRepositoryIterator.bind(null, app)
   });
 }
 async function eachRepository(app, queryOrCallback, callback) {
-  const i = eachRepositoryIterator(app, callback ? queryOrCallback : undefined)[Symbol.asyncIterator]();
+  const i = eachRepositoryIterator(
+    app,
+    callback ? queryOrCallback : void 0
+  )[Symbol.asyncIterator]();
   let result = await i.next();
   while (!result.done) {
     if (callback) {
@@ -4103,18 +4197,14 @@ function eachRepositoryIterator(app, query) {
   return {
     async *[Symbol.asyncIterator]() {
       const iterator = query ? singleInstallationIterator(app, query.installationId) : app.eachInstallation.iterator();
-      for await (const {
-        octokit
-      } of iterator) {
-        const repositoriesIterator = pluginPaginateRest.composePaginateRest.iterator(octokit, "GET /installation/repositories");
-        for await (const {
-          data: repositories
-        } of repositoriesIterator) {
+      for await (const { octokit } of iterator) {
+        const repositoriesIterator = import_plugin_paginate_rest2.composePaginateRest.iterator(
+          octokit,
+          "GET /installation/repositories"
+        );
+        for await (const { data: repositories } of repositoriesIterator) {
           for (const repository of repositories) {
-            yield {
-              octokit: octokit,
-              repository
-            };
+            yield { octokit, repository };
           }
         }
       }
@@ -4122,35 +4212,47 @@ function eachRepositoryIterator(app, query) {
   };
 }
 
+// pkg/dist-src/middleware/node/index.js
+var import_oauth_app = __nccwpck_require__(3493);
+var import_webhooks2 = __nccwpck_require__(8513);
+
+// pkg/dist-src/middleware/node/on-unhandled-request-default.js
 function onUnhandledRequestDefault(request, response) {
   response.writeHead(404, {
     "content-type": "application/json"
   });
-  response.end(JSON.stringify({
-    error: `Unknown route: ${request.method} ${request.url}`
-  }));
+  response.end(
+    JSON.stringify({
+      error: `Unknown route: ${request.method} ${request.url}`
+    })
+  );
 }
 
-function noop() {}
+// pkg/dist-src/middleware/node/index.js
+function noop() {
+}
 function createNodeMiddleware(app, options = {}) {
-  const log = Object.assign({
-    debug: noop,
-    info: noop,
-    warn: console.warn.bind(console),
-    error: console.error.bind(console)
-  }, options.log);
+  const log = Object.assign(
+    {
+      debug: noop,
+      info: noop,
+      warn: console.warn.bind(console),
+      error: console.error.bind(console)
+    },
+    options.log
+  );
   const optionsWithDefaults = {
     onUnhandledRequest: onUnhandledRequestDefault,
     pathPrefix: "/api/github",
     ...options,
     log
   };
-  const webhooksMiddleware = webhooks$1.createNodeMiddleware(app.webhooks, {
+  const webhooksMiddleware = (0, import_webhooks2.createNodeMiddleware)(app.webhooks, {
     path: optionsWithDefaults.pathPrefix + "/webhooks",
     log,
     onUnhandledRequest: optionsWithDefaults.onUnhandledRequest
   });
-  const oauthMiddleware = oauthApp.createNodeMiddleware(app.oauth, {
+  const oauthMiddleware = (0, import_oauth_app.createNodeMiddleware)(app.oauth, {
     pathPrefix: optionsWithDefaults.pathPrefix + "/oauth",
     onUnhandledRequest: optionsWithDefaults.onUnhandledRequest
   });
@@ -4159,13 +4261,8 @@ function createNodeMiddleware(app, options = {}) {
     oauthMiddleware
   });
 }
-async function middleware(options, {
-  webhooksMiddleware,
-  oauthMiddleware
-}, request, response, next) {
-  const {
-    pathname
-  } = new URL(request.url, "http://localhost");
+async function middleware(options, { webhooksMiddleware, oauthMiddleware }, request, response, next) {
+  const { pathname } = new URL(request.url, "http://localhost");
   if (pathname === `${options.pathPrefix}/webhooks`) {
     return webhooksMiddleware(request, response, next);
   }
@@ -4174,13 +4271,13 @@ async function middleware(options, {
   }
   const isExpressMiddleware = typeof next === "function";
   if (isExpressMiddleware) {
-    // @ts-ignore `next` must be a function as we check two lines above
     return next();
   }
   return options.onUnhandledRequest(request, response);
 }
 
-class App {
+// pkg/dist-src/index.js
+var App = class {
   static defaults(defaults) {
     const AppWithDefaults = class extends this {
       constructor(...args) {
@@ -4193,28 +4290,34 @@ class App {
     return AppWithDefaults;
   }
   constructor(options) {
-    const Octokit = options.Octokit || core.Octokit;
-    const authOptions = Object.assign({
-      appId: options.appId,
-      privateKey: options.privateKey
-    }, options.oauth ? {
-      clientId: options.oauth.clientId,
-      clientSecret: options.oauth.clientSecret
-    } : {});
+    const Octokit = options.Octokit || import_core.Octokit;
+    const authOptions = Object.assign(
+      {
+        appId: options.appId,
+        privateKey: options.privateKey
+      },
+      options.oauth ? {
+        clientId: options.oauth.clientId,
+        clientSecret: options.oauth.clientSecret
+      } : {}
+    );
     this.octokit = new Octokit({
-      authStrategy: authApp.createAppAuth,
+      authStrategy: import_auth_app3.createAppAuth,
       auth: authOptions,
       log: options.log
     });
-    this.log = Object.assign({
-      debug: () => {},
-      info: () => {},
-      warn: console.warn.bind(console),
-      error: console.error.bind(console)
-    }, options.log);
-    // set app.webhooks depending on whether "webhooks" option has been passed
+    this.log = Object.assign(
+      {
+        debug: () => {
+        },
+        info: () => {
+        },
+        warn: console.warn.bind(console),
+        error: console.error.bind(console)
+      },
+      options.log
+    );
     if (options.webhooks) {
-      // @ts-expect-error TODO: figure this out
       this.webhooks = webhooks(this.octokit, options.webhooks);
     } else {
       Object.defineProperty(this, "webhooks", {
@@ -4223,9 +4326,8 @@ class App {
         }
       });
     }
-    // set app.oauth depending on whether "oauth" option has been passed
     if (options.oauth) {
-      this.oauth = new oauthApp.OAuthApp({
+      this.oauth = new import_oauth_app2.OAuthApp({
         ...options.oauth,
         clientType: "github-app",
         Octokit
@@ -4233,52 +4335,69 @@ class App {
     } else {
       Object.defineProperty(this, "oauth", {
         get() {
-          throw new Error("[@octokit/app] oauth.clientId / oauth.clientSecret options are not set");
+          throw new Error(
+            "[@octokit/app] oauth.clientId / oauth.clientSecret options are not set"
+          );
         }
       });
     }
-    this.getInstallationOctokit = getInstallationOctokit.bind(null, this);
-    this.eachInstallation = eachInstallationFactory(this);
-    this.eachRepository = eachRepositoryFactory(this);
+    this.getInstallationOctokit = getInstallationOctokit.bind(
+      null,
+      this
+    );
+    this.eachInstallation = eachInstallationFactory(
+      this
+    );
+    this.eachRepository = eachRepositoryFactory(
+      this
+    );
   }
-}
+};
 App.VERSION = VERSION;
-
-exports.App = App;
-exports.createNodeMiddleware = createNodeMiddleware;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 8076:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((module) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  composePaginateRest: () => composePaginateRest,
+  isPaginatingEndpoint: () => isPaginatingEndpoint,
+  paginateRest: () => paginateRest,
+  paginatingEndpoints: () => paginatingEndpoints
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-const VERSION = "5.0.1";
+// pkg/dist-src/version.js
+var VERSION = "6.1.2";
 
-/**
- * Some “list” response that can be paginated have a different response structure
- *
- * They have a `total_count` key in the response (search also has `incomplete_results`,
- * /installation/repositories also has `repository_selection`), as well as a key with
- * the list of the items which name varies from endpoint to endpoint.
- *
- * Octokit normalizes these responses so that paginated results are always returned following
- * the same structure. One challenge is that if the list response has only one page, no Link
- * header is provided, so this header alone is not sufficient to check wether a response is
- * paginated or not.
- *
- * We check if a "total_count" key is present in the response data, but also make sure that
- * a "url" property is not, as the "Get the combined status for a specific ref" endpoint would
- * otherwise match: https://developer.github.com/v3/repos/statuses/#get-the-combined-status-for-a-specific-ref
- */
+// pkg/dist-src/normalize-paginated-list-response.js
 function normalizePaginatedListResponse(response) {
-  // endpoints can respond with 204 if repository is empty
   if (!response.data) {
     return {
       ...response,
@@ -4286,9 +4405,8 @@ function normalizePaginatedListResponse(response) {
     };
   }
   const responseNeedsNormalization = "total_count" in response.data && !("url" in response.data);
-  if (!responseNeedsNormalization) return response;
-  // keep the additional properties intact as there is currently no other way
-  // to retrieve the same information.
+  if (!responseNeedsNormalization)
+    return response;
   const incompleteResults = response.data.incomplete_results;
   const repositorySelection = response.data.repository_selection;
   const totalCount = response.data.total_count;
@@ -4308,6 +4426,7 @@ function normalizePaginatedListResponse(response) {
   return response;
 }
 
+// pkg/dist-src/iterator.js
 function iterator(octokit, route, parameters) {
   const options = typeof route === "function" ? route.endpoint(parameters) : octokit.request.endpoint(route, parameters);
   const requestMethod = typeof route === "function" ? route : octokit.request;
@@ -4317,25 +4436,18 @@ function iterator(octokit, route, parameters) {
   return {
     [Symbol.asyncIterator]: () => ({
       async next() {
-        if (!url) return {
-          done: true
-        };
+        if (!url)
+          return { done: true };
         try {
-          const response = await requestMethod({
-            method,
-            url,
-            headers
-          });
+          const response = await requestMethod({ method, url, headers });
           const normalizedResponse = normalizePaginatedListResponse(response);
-          // `response.headers.link` format:
-          // '<https://api.github.com/users/aseemk/followers?page=2>; rel="next", <https://api.github.com/users/aseemk/followers?page=2>; rel="last"'
-          // sets `url` to undefined if "next" URL is not present or `link` header is not set
-          url = ((normalizedResponse.headers.link || "").match(/<([^>]+)>;\s*rel="next"/) || [])[1];
-          return {
-            value: normalizedResponse
-          };
+          url = ((normalizedResponse.headers.link || "").match(
+            /<([^>]+)>;\s*rel="next"/
+          ) || [])[1];
+          return { value: normalizedResponse };
         } catch (error) {
-          if (error.status !== 409) throw error;
+          if (error.status !== 409)
+            throw error;
           url = "";
           return {
             value: {
@@ -4350,15 +4462,21 @@ function iterator(octokit, route, parameters) {
   };
 }
 
+// pkg/dist-src/paginate.js
 function paginate(octokit, route, parameters, mapFn) {
   if (typeof parameters === "function") {
     mapFn = parameters;
-    parameters = undefined;
+    parameters = void 0;
   }
-  return gather(octokit, [], iterator(octokit, route, parameters)[Symbol.asyncIterator](), mapFn);
+  return gather(
+    octokit,
+    [],
+    iterator(octokit, route, parameters)[Symbol.asyncIterator](),
+    mapFn
+  );
 }
-function gather(octokit, results, iterator, mapFn) {
-  return iterator.next().then(result => {
+function gather(octokit, results, iterator2, mapFn) {
+  return iterator2.next().then((result) => {
     if (result.done) {
       return results;
     }
@@ -4366,20 +4484,248 @@ function gather(octokit, results, iterator, mapFn) {
     function done() {
       earlyExit = true;
     }
-    results = results.concat(mapFn ? mapFn(result.value, done) : result.value.data);
+    results = results.concat(
+      mapFn ? mapFn(result.value, done) : result.value.data
+    );
     if (earlyExit) {
       return results;
     }
-    return gather(octokit, results, iterator, mapFn);
+    return gather(octokit, results, iterator2, mapFn);
   });
 }
 
-const composePaginateRest = Object.assign(paginate, {
+// pkg/dist-src/compose-paginate.js
+var composePaginateRest = Object.assign(paginate, {
   iterator
 });
 
-const paginatingEndpoints = ["GET /app/hook/deliveries", "GET /app/installations", "GET /enterprises/{enterprise}/actions/permissions/organizations", "GET /enterprises/{enterprise}/actions/runner-groups", "GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/organizations", "GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/runners", "GET /enterprises/{enterprise}/actions/runners", "GET /enterprises/{enterprise}/code-scanning/alerts", "GET /enterprises/{enterprise}/secret-scanning/alerts", "GET /enterprises/{enterprise}/settings/billing/advanced-security", "GET /events", "GET /gists", "GET /gists/public", "GET /gists/starred", "GET /gists/{gist_id}/comments", "GET /gists/{gist_id}/commits", "GET /gists/{gist_id}/forks", "GET /installation/repositories", "GET /issues", "GET /licenses", "GET /marketplace_listing/plans", "GET /marketplace_listing/plans/{plan_id}/accounts", "GET /marketplace_listing/stubbed/plans", "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts", "GET /networks/{owner}/{repo}/events", "GET /notifications", "GET /organizations", "GET /organizations/{org}/codespaces/secrets", "GET /organizations/{org}/codespaces/secrets/{secret_name}/repositories", "GET /orgs/{org}/actions/cache/usage-by-repository", "GET /orgs/{org}/actions/permissions/repositories", "GET /orgs/{org}/actions/runner-groups", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/runners", "GET /orgs/{org}/actions/runners", "GET /orgs/{org}/actions/secrets", "GET /orgs/{org}/actions/secrets/{secret_name}/repositories", "GET /orgs/{org}/blocks", "GET /orgs/{org}/code-scanning/alerts", "GET /orgs/{org}/codespaces", "GET /orgs/{org}/dependabot/secrets", "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories", "GET /orgs/{org}/events", "GET /orgs/{org}/failed_invitations", "GET /orgs/{org}/hooks", "GET /orgs/{org}/hooks/{hook_id}/deliveries", "GET /orgs/{org}/installations", "GET /orgs/{org}/invitations", "GET /orgs/{org}/invitations/{invitation_id}/teams", "GET /orgs/{org}/issues", "GET /orgs/{org}/members", "GET /orgs/{org}/migrations", "GET /orgs/{org}/migrations/{migration_id}/repositories", "GET /orgs/{org}/outside_collaborators", "GET /orgs/{org}/packages", "GET /orgs/{org}/packages/{package_type}/{package_name}/versions", "GET /orgs/{org}/projects", "GET /orgs/{org}/public_members", "GET /orgs/{org}/repos", "GET /orgs/{org}/secret-scanning/alerts", "GET /orgs/{org}/settings/billing/advanced-security", "GET /orgs/{org}/teams", "GET /orgs/{org}/teams/{team_slug}/discussions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/invitations", "GET /orgs/{org}/teams/{team_slug}/members", "GET /orgs/{org}/teams/{team_slug}/projects", "GET /orgs/{org}/teams/{team_slug}/repos", "GET /orgs/{org}/teams/{team_slug}/teams", "GET /projects/columns/{column_id}/cards", "GET /projects/{project_id}/collaborators", "GET /projects/{project_id}/columns", "GET /repos/{owner}/{repo}/actions/artifacts", "GET /repos/{owner}/{repo}/actions/caches", "GET /repos/{owner}/{repo}/actions/runners", "GET /repos/{owner}/{repo}/actions/runs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs", "GET /repos/{owner}/{repo}/actions/secrets", "GET /repos/{owner}/{repo}/actions/workflows", "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs", "GET /repos/{owner}/{repo}/assignees", "GET /repos/{owner}/{repo}/branches", "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations", "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs", "GET /repos/{owner}/{repo}/code-scanning/alerts", "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances", "GET /repos/{owner}/{repo}/code-scanning/analyses", "GET /repos/{owner}/{repo}/codespaces", "GET /repos/{owner}/{repo}/codespaces/devcontainers", "GET /repos/{owner}/{repo}/codespaces/secrets", "GET /repos/{owner}/{repo}/collaborators", "GET /repos/{owner}/{repo}/comments", "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/commits", "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments", "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls", "GET /repos/{owner}/{repo}/commits/{ref}/check-runs", "GET /repos/{owner}/{repo}/commits/{ref}/check-suites", "GET /repos/{owner}/{repo}/commits/{ref}/status", "GET /repos/{owner}/{repo}/commits/{ref}/statuses", "GET /repos/{owner}/{repo}/contributors", "GET /repos/{owner}/{repo}/dependabot/alerts", "GET /repos/{owner}/{repo}/dependabot/secrets", "GET /repos/{owner}/{repo}/deployments", "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses", "GET /repos/{owner}/{repo}/environments", "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies", "GET /repos/{owner}/{repo}/events", "GET /repos/{owner}/{repo}/forks", "GET /repos/{owner}/{repo}/hooks", "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries", "GET /repos/{owner}/{repo}/invitations", "GET /repos/{owner}/{repo}/issues", "GET /repos/{owner}/{repo}/issues/comments", "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/issues/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/comments", "GET /repos/{owner}/{repo}/issues/{issue_number}/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/labels", "GET /repos/{owner}/{repo}/issues/{issue_number}/reactions", "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline", "GET /repos/{owner}/{repo}/keys", "GET /repos/{owner}/{repo}/labels", "GET /repos/{owner}/{repo}/milestones", "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels", "GET /repos/{owner}/{repo}/notifications", "GET /repos/{owner}/{repo}/pages/builds", "GET /repos/{owner}/{repo}/projects", "GET /repos/{owner}/{repo}/pulls", "GET /repos/{owner}/{repo}/pulls/comments", "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments", "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", "GET /repos/{owner}/{repo}/pulls/{pull_number}/files", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments", "GET /repos/{owner}/{repo}/releases", "GET /repos/{owner}/{repo}/releases/{release_id}/assets", "GET /repos/{owner}/{repo}/releases/{release_id}/reactions", "GET /repos/{owner}/{repo}/secret-scanning/alerts", "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations", "GET /repos/{owner}/{repo}/stargazers", "GET /repos/{owner}/{repo}/subscribers", "GET /repos/{owner}/{repo}/tags", "GET /repos/{owner}/{repo}/teams", "GET /repos/{owner}/{repo}/topics", "GET /repositories", "GET /repositories/{repository_id}/environments/{environment_name}/secrets", "GET /search/code", "GET /search/commits", "GET /search/issues", "GET /search/labels", "GET /search/repositories", "GET /search/topics", "GET /search/users", "GET /teams/{team_id}/discussions", "GET /teams/{team_id}/discussions/{discussion_number}/comments", "GET /teams/{team_id}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /teams/{team_id}/discussions/{discussion_number}/reactions", "GET /teams/{team_id}/invitations", "GET /teams/{team_id}/members", "GET /teams/{team_id}/projects", "GET /teams/{team_id}/repos", "GET /teams/{team_id}/teams", "GET /user/blocks", "GET /user/codespaces", "GET /user/codespaces/secrets", "GET /user/emails", "GET /user/followers", "GET /user/following", "GET /user/gpg_keys", "GET /user/installations", "GET /user/installations/{installation_id}/repositories", "GET /user/issues", "GET /user/keys", "GET /user/marketplace_purchases", "GET /user/marketplace_purchases/stubbed", "GET /user/memberships/orgs", "GET /user/migrations", "GET /user/migrations/{migration_id}/repositories", "GET /user/orgs", "GET /user/packages", "GET /user/packages/{package_type}/{package_name}/versions", "GET /user/public_emails", "GET /user/repos", "GET /user/repository_invitations", "GET /user/ssh_signing_keys", "GET /user/starred", "GET /user/subscriptions", "GET /user/teams", "GET /users", "GET /users/{username}/events", "GET /users/{username}/events/orgs/{org}", "GET /users/{username}/events/public", "GET /users/{username}/followers", "GET /users/{username}/following", "GET /users/{username}/gists", "GET /users/{username}/gpg_keys", "GET /users/{username}/keys", "GET /users/{username}/orgs", "GET /users/{username}/packages", "GET /users/{username}/projects", "GET /users/{username}/received_events", "GET /users/{username}/received_events/public", "GET /users/{username}/repos", "GET /users/{username}/ssh_signing_keys", "GET /users/{username}/starred", "GET /users/{username}/subscriptions"];
+// pkg/dist-src/generated/paginating-endpoints.js
+var paginatingEndpoints = [
+  "GET /app/hook/deliveries",
+  "GET /app/installation-requests",
+  "GET /app/installations",
+  "GET /enterprises/{enterprise}/dependabot/alerts",
+  "GET /enterprises/{enterprise}/secret-scanning/alerts",
+  "GET /events",
+  "GET /gists",
+  "GET /gists/public",
+  "GET /gists/starred",
+  "GET /gists/{gist_id}/comments",
+  "GET /gists/{gist_id}/commits",
+  "GET /gists/{gist_id}/forks",
+  "GET /installation/repositories",
+  "GET /issues",
+  "GET /licenses",
+  "GET /marketplace_listing/plans",
+  "GET /marketplace_listing/plans/{plan_id}/accounts",
+  "GET /marketplace_listing/stubbed/plans",
+  "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts",
+  "GET /networks/{owner}/{repo}/events",
+  "GET /notifications",
+  "GET /organizations",
+  "GET /organizations/{org}/personal-access-token-requests",
+  "GET /organizations/{org}/personal-access-token-requests/{pat_request_id}/repositories",
+  "GET /organizations/{org}/personal-access-tokens",
+  "GET /organizations/{org}/personal-access-tokens/{pat_id}/repositories",
+  "GET /orgs/{org}/actions/cache/usage-by-repository",
+  "GET /orgs/{org}/actions/permissions/repositories",
+  "GET /orgs/{org}/actions/required_workflows",
+  "GET /orgs/{org}/actions/runners",
+  "GET /orgs/{org}/actions/secrets",
+  "GET /orgs/{org}/actions/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/actions/variables",
+  "GET /orgs/{org}/actions/variables/{name}/repositories",
+  "GET /orgs/{org}/blocks",
+  "GET /orgs/{org}/code-scanning/alerts",
+  "GET /orgs/{org}/codespaces",
+  "GET /orgs/{org}/codespaces/secrets",
+  "GET /orgs/{org}/codespaces/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/dependabot/alerts",
+  "GET /orgs/{org}/dependabot/secrets",
+  "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/events",
+  "GET /orgs/{org}/failed_invitations",
+  "GET /orgs/{org}/hooks",
+  "GET /orgs/{org}/hooks/{hook_id}/deliveries",
+  "GET /orgs/{org}/installations",
+  "GET /orgs/{org}/invitations",
+  "GET /orgs/{org}/invitations/{invitation_id}/teams",
+  "GET /orgs/{org}/issues",
+  "GET /orgs/{org}/members",
+  "GET /orgs/{org}/members/{username}/codespaces",
+  "GET /orgs/{org}/migrations",
+  "GET /orgs/{org}/migrations/{migration_id}/repositories",
+  "GET /orgs/{org}/outside_collaborators",
+  "GET /orgs/{org}/packages",
+  "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
+  "GET /orgs/{org}/projects",
+  "GET /orgs/{org}/public_members",
+  "GET /orgs/{org}/repos",
+  "GET /orgs/{org}/secret-scanning/alerts",
+  "GET /orgs/{org}/teams",
+  "GET /orgs/{org}/teams/{team_slug}/discussions",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions",
+  "GET /orgs/{org}/teams/{team_slug}/invitations",
+  "GET /orgs/{org}/teams/{team_slug}/members",
+  "GET /orgs/{org}/teams/{team_slug}/projects",
+  "GET /orgs/{org}/teams/{team_slug}/repos",
+  "GET /orgs/{org}/teams/{team_slug}/teams",
+  "GET /projects/columns/{column_id}/cards",
+  "GET /projects/{project_id}/collaborators",
+  "GET /projects/{project_id}/columns",
+  "GET /repos/{org}/{repo}/actions/required_workflows",
+  "GET /repos/{owner}/{repo}/actions/artifacts",
+  "GET /repos/{owner}/{repo}/actions/caches",
+  "GET /repos/{owner}/{repo}/actions/organization-secrets",
+  "GET /repos/{owner}/{repo}/actions/organization-variables",
+  "GET /repos/{owner}/{repo}/actions/required_workflows/{required_workflow_id_for_repo}/runs",
+  "GET /repos/{owner}/{repo}/actions/runners",
+  "GET /repos/{owner}/{repo}/actions/runs",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs",
+  "GET /repos/{owner}/{repo}/actions/secrets",
+  "GET /repos/{owner}/{repo}/actions/variables",
+  "GET /repos/{owner}/{repo}/actions/workflows",
+  "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs",
+  "GET /repos/{owner}/{repo}/assignees",
+  "GET /repos/{owner}/{repo}/branches",
+  "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations",
+  "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs",
+  "GET /repos/{owner}/{repo}/code-scanning/alerts",
+  "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances",
+  "GET /repos/{owner}/{repo}/code-scanning/analyses",
+  "GET /repos/{owner}/{repo}/codespaces",
+  "GET /repos/{owner}/{repo}/codespaces/devcontainers",
+  "GET /repos/{owner}/{repo}/codespaces/secrets",
+  "GET /repos/{owner}/{repo}/collaborators",
+  "GET /repos/{owner}/{repo}/comments",
+  "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/commits",
+  "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments",
+  "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls",
+  "GET /repos/{owner}/{repo}/commits/{ref}/check-runs",
+  "GET /repos/{owner}/{repo}/commits/{ref}/check-suites",
+  "GET /repos/{owner}/{repo}/commits/{ref}/status",
+  "GET /repos/{owner}/{repo}/commits/{ref}/statuses",
+  "GET /repos/{owner}/{repo}/contributors",
+  "GET /repos/{owner}/{repo}/dependabot/alerts",
+  "GET /repos/{owner}/{repo}/dependabot/secrets",
+  "GET /repos/{owner}/{repo}/deployments",
+  "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses",
+  "GET /repos/{owner}/{repo}/environments",
+  "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies",
+  "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps",
+  "GET /repos/{owner}/{repo}/events",
+  "GET /repos/{owner}/{repo}/forks",
+  "GET /repos/{owner}/{repo}/hooks",
+  "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries",
+  "GET /repos/{owner}/{repo}/invitations",
+  "GET /repos/{owner}/{repo}/issues",
+  "GET /repos/{owner}/{repo}/issues/comments",
+  "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/issues/events",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/events",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/labels",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/reactions",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline",
+  "GET /repos/{owner}/{repo}/keys",
+  "GET /repos/{owner}/{repo}/labels",
+  "GET /repos/{owner}/{repo}/milestones",
+  "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels",
+  "GET /repos/{owner}/{repo}/notifications",
+  "GET /repos/{owner}/{repo}/pages/builds",
+  "GET /repos/{owner}/{repo}/projects",
+  "GET /repos/{owner}/{repo}/pulls",
+  "GET /repos/{owner}/{repo}/pulls/comments",
+  "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments",
+  "GET /repos/{owner}/{repo}/releases",
+  "GET /repos/{owner}/{repo}/releases/{release_id}/assets",
+  "GET /repos/{owner}/{repo}/releases/{release_id}/reactions",
+  "GET /repos/{owner}/{repo}/secret-scanning/alerts",
+  "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations",
+  "GET /repos/{owner}/{repo}/security-advisories",
+  "GET /repos/{owner}/{repo}/stargazers",
+  "GET /repos/{owner}/{repo}/subscribers",
+  "GET /repos/{owner}/{repo}/tags",
+  "GET /repos/{owner}/{repo}/teams",
+  "GET /repos/{owner}/{repo}/topics",
+  "GET /repositories",
+  "GET /repositories/{repository_id}/environments/{environment_name}/secrets",
+  "GET /repositories/{repository_id}/environments/{environment_name}/variables",
+  "GET /search/code",
+  "GET /search/commits",
+  "GET /search/issues",
+  "GET /search/labels",
+  "GET /search/repositories",
+  "GET /search/topics",
+  "GET /search/users",
+  "GET /teams/{team_id}/discussions",
+  "GET /teams/{team_id}/discussions/{discussion_number}/comments",
+  "GET /teams/{team_id}/discussions/{discussion_number}/comments/{comment_number}/reactions",
+  "GET /teams/{team_id}/discussions/{discussion_number}/reactions",
+  "GET /teams/{team_id}/invitations",
+  "GET /teams/{team_id}/members",
+  "GET /teams/{team_id}/projects",
+  "GET /teams/{team_id}/repos",
+  "GET /teams/{team_id}/teams",
+  "GET /user/blocks",
+  "GET /user/codespaces",
+  "GET /user/codespaces/secrets",
+  "GET /user/emails",
+  "GET /user/followers",
+  "GET /user/following",
+  "GET /user/gpg_keys",
+  "GET /user/installations",
+  "GET /user/installations/{installation_id}/repositories",
+  "GET /user/issues",
+  "GET /user/keys",
+  "GET /user/marketplace_purchases",
+  "GET /user/marketplace_purchases/stubbed",
+  "GET /user/memberships/orgs",
+  "GET /user/migrations",
+  "GET /user/migrations/{migration_id}/repositories",
+  "GET /user/orgs",
+  "GET /user/packages",
+  "GET /user/packages/{package_type}/{package_name}/versions",
+  "GET /user/public_emails",
+  "GET /user/repos",
+  "GET /user/repository_invitations",
+  "GET /user/social_accounts",
+  "GET /user/ssh_signing_keys",
+  "GET /user/starred",
+  "GET /user/subscriptions",
+  "GET /user/teams",
+  "GET /users",
+  "GET /users/{username}/events",
+  "GET /users/{username}/events/orgs/{org}",
+  "GET /users/{username}/events/public",
+  "GET /users/{username}/followers",
+  "GET /users/{username}/following",
+  "GET /users/{username}/gists",
+  "GET /users/{username}/gpg_keys",
+  "GET /users/{username}/keys",
+  "GET /users/{username}/orgs",
+  "GET /users/{username}/packages",
+  "GET /users/{username}/projects",
+  "GET /users/{username}/received_events",
+  "GET /users/{username}/received_events/public",
+  "GET /users/{username}/repos",
+  "GET /users/{username}/social_accounts",
+  "GET /users/{username}/ssh_signing_keys",
+  "GET /users/{username}/starred",
+  "GET /users/{username}/subscriptions"
+];
 
+// pkg/dist-src/paginating-endpoints.js
 function isPaginatingEndpoint(arg) {
   if (typeof arg === "string") {
     return paginatingEndpoints.includes(arg);
@@ -4388,10 +4734,7 @@ function isPaginatingEndpoint(arg) {
   }
 }
 
-/**
- * @param octokit Octokit instance
- * @param options Options passed to Octokit constructor
- */
+// pkg/dist-src/index.js
 function paginateRest(octokit) {
   return {
     paginate: Object.assign(paginate.bind(null, octokit), {
@@ -4400,67 +4743,87 @@ function paginateRest(octokit) {
   };
 }
 paginateRest.VERSION = VERSION;
-
-exports.composePaginateRest = composePaginateRest;
-exports.isPaginatingEndpoint = isPaginatingEndpoint;
-exports.paginateRest = paginateRest;
-exports.paginatingEndpoints = paginatingEndpoints;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 7541:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createAppAuth: () => createAppAuth,
+  createOAuthUserAuth: () => import_auth_oauth_user2.createOAuthUserAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_request = __nccwpck_require__(6234);
+var import_auth_oauth_app = __nccwpck_require__(4098);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+// pkg/dist-src/auth.js
+var import_deprecation = __nccwpck_require__(8932);
 
-var universalUserAgent = __nccwpck_require__(5030);
-var request = __nccwpck_require__(6234);
-var authOauthApp = __nccwpck_require__(4098);
-var deprecation = __nccwpck_require__(8932);
-var universalGithubAppJwt = __nccwpck_require__(4419);
-var LRU = _interopDefault(__nccwpck_require__(7129));
-var authOauthUser = __nccwpck_require__(1591);
-
+// pkg/dist-src/get-app-authentication.js
+var import_universal_github_app_jwt = __nccwpck_require__(4419);
 async function getAppAuthentication({
   appId,
   privateKey,
   timeDifference
 }) {
   try {
-    const appAuthentication = await universalGithubAppJwt.githubAppJwt({
+    const appAuthentication = await (0, import_universal_github_app_jwt.githubAppJwt)({
       id: +appId,
       privateKey,
-      now: timeDifference && Math.floor(Date.now() / 1000) + timeDifference
+      now: timeDifference && Math.floor(Date.now() / 1e3) + timeDifference
     });
     return {
       type: "app",
       token: appAuthentication.token,
       appId: appAuthentication.appId,
-      expiresAt: new Date(appAuthentication.expiration * 1000).toISOString()
+      expiresAt: new Date(appAuthentication.expiration * 1e3).toISOString()
     };
   } catch (error) {
     if (privateKey === "-----BEGIN RSA PRIVATE KEY-----") {
-      throw new Error("The 'privateKey` option contains only the first line '-----BEGIN RSA PRIVATE KEY-----'. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'");
+      throw new Error(
+        "The 'privateKey` option contains only the first line '-----BEGIN RSA PRIVATE KEY-----'. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'"
+      );
     } else {
       throw error;
     }
   }
 }
 
-// https://github.com/isaacs/node-lru-cache#readme
+// pkg/dist-src/cache.js
+var import_lru_cache = __nccwpck_require__(6820);
 function getCache() {
-  return new LRU({
+  return new import_lru_cache.LRUCache({
     // cache max. 15000 tokens, that will use less than 10mb memory
-    max: 15000,
+    max: 15e3,
     // Cache for 1 minute less than GitHub expiry
-    maxAge: 1000 * 60 * 59
+    ttl: 1e3 * 60 * 59
   });
 }
 async function get(cache, options) {
@@ -4469,14 +4832,21 @@ async function get(cache, options) {
   if (!result) {
     return;
   }
-  const [token, createdAt, expiresAt, repositorySelection, permissionsString, singleFileName] = result.split("|");
-  const permissions = options.permissions || permissionsString.split(/,/).reduce((permissions, string) => {
+  const [
+    token,
+    createdAt,
+    expiresAt,
+    repositorySelection,
+    permissionsString,
+    singleFileName
+  ] = result.split("|");
+  const permissions = options.permissions || permissionsString.split(/,/).reduce((permissions2, string) => {
     if (/!$/.test(string)) {
-      permissions[string.slice(0, -1)] = "write";
+      permissions2[string.slice(0, -1)] = "write";
     } else {
-      permissions[string] = "read";
+      permissions2[string] = "read";
     }
-    return permissions;
+    return permissions2;
   }, {});
   return {
     token,
@@ -4486,13 +4856,22 @@ async function get(cache, options) {
     repositoryIds: options.repositoryIds,
     repositoryNames: options.repositoryNames,
     singleFileName,
-    repositorySelection: repositorySelection
+    repositorySelection
   };
 }
 async function set(cache, options, data) {
   const key = optionsToCacheKey(options);
-  const permissionsString = options.permissions ? "" : Object.keys(data.permissions).map(name => `${name}${data.permissions[name] === "write" ? "!" : ""}`).join(",");
-  const value = [data.token, data.createdAt, data.expiresAt, data.repositorySelection, permissionsString, data.singleFileName].join("|");
+  const permissionsString = options.permissions ? "" : Object.keys(data.permissions).map(
+    (name) => `${name}${data.permissions[name] === "write" ? "!" : ""}`
+  ).join(",");
+  const value = [
+    data.token,
+    data.createdAt,
+    data.expiresAt,
+    data.repositorySelection,
+    permissionsString,
+    data.singleFileName
+  ].join("|");
   await cache.set(key, value);
 }
 function optionsToCacheKey({
@@ -4501,12 +4880,18 @@ function optionsToCacheKey({
   repositoryIds = [],
   repositoryNames = []
 }) {
-  const permissionsString = Object.keys(permissions).sort().map(name => permissions[name] === "read" ? name : `${name}!`).join(",");
+  const permissionsString = Object.keys(permissions).sort().map((name) => permissions[name] === "read" ? name : `${name}!`).join(",");
   const repositoryIdsString = repositoryIds.sort().join(",");
   const repositoryNamesString = repositoryNames.join(",");
-  return [installationId, repositoryIdsString, repositoryNamesString, permissionsString].filter(Boolean).join("|");
+  return [
+    installationId,
+    repositoryIdsString,
+    repositoryNamesString,
+    permissionsString
+  ].filter(Boolean).join("|");
 }
 
+// pkg/dist-src/to-token-authentication.js
 function toTokenAuthentication({
   installationId,
   token,
@@ -4518,68 +4903,68 @@ function toTokenAuthentication({
   repositoryNames,
   singleFileName
 }) {
-  return Object.assign({
-    type: "token",
-    tokenType: "installation",
-    token,
-    installationId,
-    permissions,
-    createdAt,
-    expiresAt,
-    repositorySelection
-  }, repositoryIds ? {
-    repositoryIds
-  } : null, repositoryNames ? {
-    repositoryNames
-  } : null, singleFileName ? {
-    singleFileName
-  } : null);
+  return Object.assign(
+    {
+      type: "token",
+      tokenType: "installation",
+      token,
+      installationId,
+      permissions,
+      createdAt,
+      expiresAt,
+      repositorySelection
+    },
+    repositoryIds ? { repositoryIds } : null,
+    repositoryNames ? { repositoryNames } : null,
+    singleFileName ? { singleFileName } : null
+  );
 }
 
+// pkg/dist-src/get-installation-authentication.js
 async function getInstallationAuthentication(state, options, customRequest) {
   const installationId = Number(options.installationId || state.installationId);
   if (!installationId) {
-    throw new Error("[@octokit/auth-app] installationId option is required for installation authentication.");
+    throw new Error(
+      "[@octokit/auth-app] installationId option is required for installation authentication."
+    );
   }
   if (options.factory) {
-    const {
-      type,
-      factory,
-      oauthApp,
-      ...factoryAuthOptions
-    } = {
+    const { type, factory, oauthApp, ...factoryAuthOptions } = {
       ...state,
       ...options
     };
-    // @ts-expect-error if `options.factory` is set, the return type for `auth()` should be `Promise<ReturnType<options.factory>>`
     return factory(factoryAuthOptions);
   }
-  const optionsWithInstallationTokenFromState = Object.assign({
-    installationId
-  }, options);
+  const optionsWithInstallationTokenFromState = Object.assign(
+    { installationId },
+    options
+  );
   if (!options.refresh) {
-    const result = await get(state.cache, optionsWithInstallationTokenFromState);
+    const result = await get(
+      state.cache,
+      optionsWithInstallationTokenFromState
+    );
     if (result) {
       const {
-        token,
-        createdAt,
-        expiresAt,
-        permissions,
-        repositoryIds,
-        repositoryNames,
-        singleFileName,
-        repositorySelection
+        token: token2,
+        createdAt: createdAt2,
+        expiresAt: expiresAt2,
+        permissions: permissions2,
+        repositoryIds: repositoryIds2,
+        repositoryNames: repositoryNames2,
+        singleFileName: singleFileName2,
+        repositorySelection: repositorySelection2
       } = result;
       return toTokenAuthentication({
         installationId,
-        token,
-        createdAt,
-        expiresAt,
-        permissions,
-        repositorySelection,
-        repositoryIds,
-        repositoryNames,
-        singleFileName
+        token: token2,
+        createdAt: createdAt2,
+        expiresAt: expiresAt2,
+        permissions: permissions2,
+        repositorySelection: repositorySelection2,
+        repositoryIds: repositoryIds2,
+        repositoryNames: repositoryNames2,
+        singleFileName: singleFileName2
       });
     }
   }
@@ -4606,13 +4991,11 @@ async function getInstallationAuthentication(state, options, customRequest) {
       authorization: `bearer ${appAuthentication.token}`
     }
   });
-  /* istanbul ignore next - permissions are optional per OpenAPI spec, but we think that is incorrect */
   const permissions = permissionsOptional || {};
-  /* istanbul ignore next - repositorySelection are optional per OpenAPI spec, but we think that is incorrect */
   const repositorySelection = repositorySelectionOptional || "all";
-  const repositoryIds = repositories ? repositories.map(r => r.id) : void 0;
-  const repositoryNames = repositories ? repositories.map(repo => repo.name) : void 0;
-  const createdAt = new Date().toISOString();
+  const repositoryIds = repositories ? repositories.map((r) => r.id) : void 0;
+  const repositoryNames = repositories ? repositories.map((repo) => repo.name) : void 0;
+  const createdAt = (/* @__PURE__ */ new Date()).toISOString();
   await set(state.cache, optionsWithInstallationTokenFromState, {
     token,
     createdAt,
@@ -4636,131 +5019,136 @@ async function getInstallationAuthentication(state, options, customRequest) {
   });
 }
 
+// pkg/dist-src/auth.js
 async function auth(state, authOptions) {
   switch (authOptions.type) {
     case "app":
       return getAppAuthentication(state);
-    // @ts-expect-error "oauth" is not supperted in types
     case "oauth":
       state.log.warn(
-      // @ts-expect-error `log.warn()` expects string
-      new deprecation.Deprecation(`[@octokit/auth-app] {type: "oauth"} is deprecated. Use {type: "oauth-app"} instead`));
+        // @ts-expect-error `log.warn()` expects string
+        new import_deprecation.Deprecation(
+          `[@octokit/auth-app] {type: "oauth"} is deprecated. Use {type: "oauth-app"} instead`
+        )
+      );
     case "oauth-app":
-      return state.oauthApp({
-        type: "oauth-app"
-      });
+      return state.oauthApp({ type: "oauth-app" });
     case "installation":
+      authOptions;
       return getInstallationAuthentication(state, {
         ...authOptions,
         type: "installation"
       });
     case "oauth-user":
-      // @ts-expect-error TODO: infer correct auth options type based on type. authOptions should be typed as "WebFlowAuthOptions | OAuthAppDeviceFlowAuthOptions | GitHubAppDeviceFlowAuthOptions"
       return state.oauthApp(authOptions);
     default:
-      // @ts-expect-error type is "never" at this point
       throw new Error(`Invalid auth type: ${authOptions.type}`);
   }
 }
 
-const PATHS = ["/app", "/app/hook/config", "/app/hook/deliveries", "/app/hook/deliveries/{delivery_id}", "/app/hook/deliveries/{delivery_id}/attempts", "/app/installations", "/app/installations/{installation_id}", "/app/installations/{installation_id}/access_tokens", "/app/installations/{installation_id}/suspended", "/marketplace_listing/accounts/{account_id}", "/marketplace_listing/plan", "/marketplace_listing/plans", "/marketplace_listing/plans/{plan_id}/accounts", "/marketplace_listing/stubbed/accounts/{account_id}", "/marketplace_listing/stubbed/plan", "/marketplace_listing/stubbed/plans", "/marketplace_listing/stubbed/plans/{plan_id}/accounts", "/orgs/{org}/installation", "/repos/{owner}/{repo}/installation", "/users/{username}/installation"];
-// CREDIT: Simon Grondin (https://github.com/SGrondin)
-// https://github.com/octokit/plugin-throttling.js/blob/45c5d7f13b8af448a9dbca468d9c9150a73b3948/lib/route-matcher.js
+// pkg/dist-src/hook.js
+var import_auth_oauth_user = __nccwpck_require__(1591);
+
+// pkg/dist-src/requires-app-auth.js
+var PATHS = [
+  "/app",
+  "/app/hook/config",
+  "/app/hook/deliveries",
+  "/app/hook/deliveries/{delivery_id}",
+  "/app/hook/deliveries/{delivery_id}/attempts",
+  "/app/installations",
+  "/app/installations/{installation_id}",
+  "/app/installations/{installation_id}/access_tokens",
+  "/app/installations/{installation_id}/suspended",
+  "/marketplace_listing/accounts/{account_id}",
+  "/marketplace_listing/plan",
+  "/marketplace_listing/plans",
+  "/marketplace_listing/plans/{plan_id}/accounts",
+  "/marketplace_listing/stubbed/accounts/{account_id}",
+  "/marketplace_listing/stubbed/plan",
+  "/marketplace_listing/stubbed/plans",
+  "/marketplace_listing/stubbed/plans/{plan_id}/accounts",
+  "/orgs/{org}/installation",
+  "/repos/{owner}/{repo}/installation",
+  "/users/{username}/installation"
+];
 function routeMatcher(paths) {
-  // EXAMPLE. For the following paths:
-  /* [
-      "/orgs/{org}/invitations",
-      "/repos/{owner}/{repo}/collaborators/{username}"
-  ] */
-  const regexes = paths.map(p => p.split("/").map(c => c.startsWith("{") ? "(?:.+?)" : c).join("/"));
-  // 'regexes' would contain:
-  /* [
-      '/orgs/(?:.+?)/invitations',
-      '/repos/(?:.+?)/(?:.+?)/collaborators/(?:.+?)'
-  ] */
-  const regex = `^(?:${regexes.map(r => `(?:${r})`).join("|")})[^/]*$`;
-  // 'regex' would contain:
-  /*
-    ^(?:(?:\/orgs\/(?:.+?)\/invitations)|(?:\/repos\/(?:.+?)\/(?:.+?)\/collaborators\/(?:.+?)))[^\/]*$
-       It may look scary, but paste it into https://www.debuggex.com/
-    and it will make a lot more sense!
-  */
+  const regexes = paths.map(
+    (p) => p.split("/").map((c) => c.startsWith("{") ? "(?:.+?)" : c).join("/")
+  );
+  const regex = `^(?:${regexes.map((r) => `(?:${r})`).join("|")})$`;
   return new RegExp(regex, "i");
 }
-const REGEX = routeMatcher(PATHS);
+var REGEX = routeMatcher(PATHS);
 function requiresAppAuth(url) {
-  return !!url && REGEX.test(url);
+  return !!url && REGEX.test(url.split("?")[0]);
 }
 
-const FIVE_SECONDS_IN_MS = 5 * 1000;
+// pkg/dist-src/hook.js
+var FIVE_SECONDS_IN_MS = 5 * 1e3;
 function isNotTimeSkewError(error) {
-  return !(error.message.match(/'Expiration time' claim \('exp'\) must be a numeric value representing the future time at which the assertion expires/) || error.message.match(/'Issued at' claim \('iat'\) must be an Integer representing the time that the assertion was issued/));
+  return !(error.message.match(
+    /'Expiration time' claim \('exp'\) must be a numeric value representing the future time at which the assertion expires/
+  ) || error.message.match(
+    /'Issued at' claim \('iat'\) must be an Integer representing the time that the assertion was issued/
+  ));
 }
 async function hook(state, request, route, parameters) {
   const endpoint = request.endpoint.merge(route, parameters);
   const url = endpoint.url;
-  // Do not intercept request to retrieve a new token
   if (/\/login\/oauth\/access_token$/.test(url)) {
     return request(endpoint);
   }
   if (requiresAppAuth(url.replace(request.endpoint.DEFAULTS.baseUrl, ""))) {
-    const {
-      token
-    } = await getAppAuthentication(state);
-    endpoint.headers.authorization = `bearer ${token}`;
+    const { token: token2 } = await getAppAuthentication(state);
+    endpoint.headers.authorization = `bearer ${token2}`;
     let response;
     try {
       response = await request(endpoint);
     } catch (error) {
-      // If there's an issue with the expiration, regenerate the token and try again.
-      // Otherwise rethrow the error for upstream handling.
       if (isNotTimeSkewError(error)) {
         throw error;
       }
-      // If the date header is missing, we can't correct the system time skew.
-      // Throw the error to be handled upstream.
       if (typeof error.response.headers.date === "undefined") {
         throw error;
       }
-      const diff = Math.floor((Date.parse(error.response.headers.date) - Date.parse(new Date().toString())) / 1000);
+      const diff = Math.floor(
+        (Date.parse(error.response.headers.date) - Date.parse((/* @__PURE__ */ new Date()).toString())) / 1e3
+      );
       state.log.warn(error.message);
-      state.log.warn(`[@octokit/auth-app] GitHub API time and system time are different by ${diff} seconds. Retrying request with the difference accounted for.`);
-      const {
-        token
-      } = await getAppAuthentication({
+      state.log.warn(
+        `[@octokit/auth-app] GitHub API time and system time are different by ${diff} seconds. Retrying request with the difference accounted for.`
+      );
+      const { token: token3 } = await getAppAuthentication({
         ...state,
         timeDifference: diff
       });
-      endpoint.headers.authorization = `bearer ${token}`;
+      endpoint.headers.authorization = `bearer ${token3}`;
       return request(endpoint);
     }
     return response;
   }
-  if (authOauthUser.requiresBasicAuth(url)) {
-    const authentication = await state.oauthApp({
-      type: "oauth-app"
-    });
+  if ((0, import_auth_oauth_user.requiresBasicAuth)(url)) {
+    const authentication = await state.oauthApp({ type: "oauth-app" });
     endpoint.headers.authorization = authentication.headers.authorization;
     return request(endpoint);
   }
-  const {
-    token,
-    createdAt
-  } = await getInstallationAuthentication(state,
-  // @ts-expect-error TBD
-  {}, request);
+  const { token, createdAt } = await getInstallationAuthentication(
+    state,
+    // @ts-expect-error TBD
+    {},
+    request
+  );
   endpoint.headers.authorization = `token ${token}`;
-  return sendRequestWithRetries(state, request, endpoint, createdAt);
+  return sendRequestWithRetries(
+    state,
+    request,
+    endpoint,
+    createdAt
+  );
 }
-/**
- * Newly created tokens might not be accessible immediately after creation.
- * In case of a 401 response, we retry with an exponential delay until more
- * than five seconds pass since the creation of the token.
- *
- * @see https://github.com/octokit/auth-app.js/issues/65
- */
 async function sendRequestWithRetries(state, request, options, createdAt, retries = 0) {
-  const timeSinceTokenCreationInMs = +new Date() - +new Date(createdAt);
+  const timeSinceTokenCreationInMs = +/* @__PURE__ */ new Date() - +new Date(createdAt);
   try {
     return await request(options);
   } catch (error) {
@@ -4769,88 +5157,126 @@ async function sendRequestWithRetries(state, request, options, createdAt, retrie
     }
     if (timeSinceTokenCreationInMs >= FIVE_SECONDS_IN_MS) {
       if (retries > 0) {
-        error.message = `After ${retries} retries within ${timeSinceTokenCreationInMs / 1000}s of creating the installation access token, the response remains 401. At this point, the cause may be an authentication problem or a system outage. Please check https://www.githubstatus.com for status information`;
+        error.message = `After ${retries} retries within ${timeSinceTokenCreationInMs / 1e3}s of creating the installation access token, the response remains 401. At this point, the cause may be an authentication problem or a system outage. Please check https://www.githubstatus.com for status information`;
       }
       throw error;
     }
     ++retries;
-    const awaitTime = retries * 1000;
-    state.log.warn(`[@octokit/auth-app] Retrying after 401 response to account for token replication delay (retry: ${retries}, wait: ${awaitTime / 1000}s)`);
-    await new Promise(resolve => setTimeout(resolve, awaitTime));
+    const awaitTime = retries * 1e3;
+    state.log.warn(
+      `[@octokit/auth-app] Retrying after 401 response to account for token replication delay (retry: ${retries}, wait: ${awaitTime / 1e3}s)`
+    );
+    await new Promise((resolve) => setTimeout(resolve, awaitTime));
     return sendRequestWithRetries(state, request, options, createdAt, retries);
   }
 }
 
-const VERSION = "4.0.8";
+// pkg/dist-src/version.js
+var VERSION = "4.0.13";
 
+// pkg/dist-src/index.js
+var import_auth_oauth_user2 = __nccwpck_require__(1591);
 function createAppAuth(options) {
   if (!options.appId) {
     throw new Error("[@octokit/auth-app] appId option is required");
   }
   if (!Number.isFinite(+options.appId)) {
-    throw new Error("[@octokit/auth-app] appId option must be a number or numeric string");
+    throw new Error(
+      "[@octokit/auth-app] appId option must be a number or numeric string"
+    );
   }
   if (!options.privateKey) {
     throw new Error("[@octokit/auth-app] privateKey option is required");
   }
   if ("installationId" in options && !options.installationId) {
-    throw new Error("[@octokit/auth-app] installationId is set to a falsy value");
+    throw new Error(
+      "[@octokit/auth-app] installationId is set to a falsy value"
+    );
   }
-  const log = Object.assign({
-    warn: console.warn.bind(console)
-  }, options.log);
-  const request$1 = options.request || request.request.defaults({
+  const log = Object.assign(
+    {
+      warn: console.warn.bind(console)
+    },
+    options.log
+  );
+  const request = options.request || import_request.request.defaults({
     headers: {
-      "user-agent": `octokit-auth-app.js/${VERSION} ${universalUserAgent.getUserAgent()}`
+      "user-agent": `octokit-auth-app.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
     }
   });
-  const state = Object.assign({
-    request: request$1,
-    cache: getCache()
-  }, options, options.installationId ? {
-    installationId: Number(options.installationId)
-  } : {}, {
-    log,
-    oauthApp: authOauthApp.createOAuthAppAuth({
-      clientType: "github-app",
-      clientId: options.clientId || "",
-      clientSecret: options.clientSecret || "",
-      request: request$1
-    })
-  });
-  // @ts-expect-error not worth the extra code to appease TS
+  const state = Object.assign(
+    {
+      request,
+      cache: getCache()
+    },
+    options,
+    options.installationId ? { installationId: Number(options.installationId) } : {},
+    {
+      log,
+      oauthApp: (0, import_auth_oauth_app.createOAuthAppAuth)({
+        clientType: "github-app",
+        clientId: options.clientId || "",
+        clientSecret: options.clientSecret || "",
+        request
+      })
+    }
+  );
   return Object.assign(auth.bind(null, state), {
     hook: hook.bind(null, state)
   });
 }
-
-Object.defineProperty(exports, "createOAuthUserAuth", ({
-    enumerable: true,
-    get: function () {
-        return authOauthUser.createOAuthUserAuth;
-    }
-}));
-exports.createAppAuth = createAppAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 4098:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createOAuthAppAuth: () => createOAuthAppAuth,
+  createOAuthUserAuth: () => import_auth_oauth_user3.createOAuthUserAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_request = __nccwpck_require__(6234);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var universalUserAgent = __nccwpck_require__(5030);
-var request = __nccwpck_require__(6234);
-var btoa = _interopDefault(__nccwpck_require__(2358));
-var authOauthUser = __nccwpck_require__(1591);
-
+// pkg/dist-src/auth.js
+var import_btoa_lite = __toESM(__nccwpck_require__(2358));
+var import_auth_oauth_user = __nccwpck_require__(1591);
 async function auth(state, authOptions) {
   if (authOptions.type === "oauth-app") {
     return {
@@ -4859,157 +5285,175 @@ async function auth(state, authOptions) {
       clientSecret: state.clientSecret,
       clientType: state.clientType,
       headers: {
-        authorization: `basic ${btoa(`${state.clientId}:${state.clientSecret}`)}`
+        authorization: `basic ${(0, import_btoa_lite.default)(
+          `${state.clientId}:${state.clientSecret}`
+        )}`
       }
     };
   }
-
   if ("factory" in authOptions) {
-    const {
-      type,
-      ...options
-    } = { ...authOptions,
+    const { type, ...options } = {
+      ...authOptions,
       ...state
-    }; // @ts-expect-error TODO: `option` cannot be never, is this a bug?
-
+    };
     return authOptions.factory(options);
   }
-
   const common = {
     clientId: state.clientId,
     clientSecret: state.clientSecret,
     request: state.request,
     ...authOptions
-  }; // TS: Look what you made me do
-
-  const userAuth = state.clientType === "oauth-app" ? await authOauthUser.createOAuthUserAuth({ ...common,
+  };
+  const userAuth = state.clientType === "oauth-app" ? await (0, import_auth_oauth_user.createOAuthUserAuth)({
+    ...common,
     clientType: state.clientType
-  }) : await authOauthUser.createOAuthUserAuth({ ...common,
+  }) : await (0, import_auth_oauth_user.createOAuthUserAuth)({
+    ...common,
     clientType: state.clientType
   });
   return userAuth();
 }
 
-async function hook(state, request, route, parameters) {
-  let endpoint = request.endpoint.merge(route, parameters); // Do not intercept OAuth Web/Device flow request
-
+// pkg/dist-src/hook.js
+var import_btoa_lite2 = __toESM(__nccwpck_require__(2358));
+var import_auth_oauth_user2 = __nccwpck_require__(1591);
+async function hook(state, request2, route, parameters) {
+  let endpoint = request2.endpoint.merge(
+    route,
+    parameters
+  );
   if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) {
-    return request(endpoint);
+    return request2(endpoint);
   }
-
-  if (state.clientType === "github-app" && !authOauthUser.requiresBasicAuth(endpoint.url)) {
-    throw new Error(`[@octokit/auth-oauth-app] GitHub Apps cannot use their client ID/secret for basic authentication for endpoints other than "/applications/{client_id}/**". "${endpoint.method} ${endpoint.url}" is not supported.`);
+  if (state.clientType === "github-app" && !(0, import_auth_oauth_user2.requiresBasicAuth)(endpoint.url)) {
+    throw new Error(
+      `[@octokit/auth-oauth-app] GitHub Apps cannot use their client ID/secret for basic authentication for endpoints other than "/applications/{client_id}/**". "${endpoint.method} ${endpoint.url}" is not supported.`
+    );
   }
-
-  const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
+  const credentials = (0, import_btoa_lite2.default)(`${state.clientId}:${state.clientSecret}`);
   endpoint.headers.authorization = `basic ${credentials}`;
-
   try {
-    return await request(endpoint);
+    return await request2(endpoint);
   } catch (error) {
-    /* istanbul ignore if */
-    if (error.status !== 401) throw error;
+    if (error.status !== 401)
+      throw error;
     error.message = `[@octokit/auth-oauth-app] "${endpoint.method} ${endpoint.url}" does not support clientId/clientSecret basic authentication.`;
     throw error;
   }
 }
 
-const VERSION = "5.0.4";
+// pkg/dist-src/version.js
+var VERSION = "5.0.6";
 
+// pkg/dist-src/index.js
+var import_auth_oauth_user3 = __nccwpck_require__(1591);
 function createOAuthAppAuth(options) {
-  const state = Object.assign({
-    request: request.request.defaults({
-      headers: {
-        "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${universalUserAgent.getUserAgent()}`
-      }
-    }),
-    clientType: "oauth-app"
-  }, options); // @ts-expect-error not worth the extra code to appease TS
-
+  const state = Object.assign(
+    {
+      request: import_request.request.defaults({
+        headers: {
+          "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
+        }
+      }),
+      clientType: "oauth-app"
+    },
+    options
+  );
   return Object.assign(auth.bind(null, state), {
     hook: hook.bind(null, state)
   });
 }
-
-Object.defineProperty(exports, "createOAuthUserAuth", ({
-    enumerable: true,
-    get: function () {
-        return authOauthUser.createOAuthUserAuth;
-    }
-}));
-exports.createOAuthAppAuth = createOAuthAppAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 4344:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createOAuthDeviceAuth: () => createOAuthDeviceAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_request = __nccwpck_require__(6234);
 
-var universalUserAgent = __nccwpck_require__(5030);
-var request = __nccwpck_require__(6234);
-var oauthMethods = __nccwpck_require__(8445);
-
+// pkg/dist-src/get-oauth-access-token.js
+var import_oauth_methods = __nccwpck_require__(8445);
 async function getOAuthAccessToken(state, options) {
   const cachedAuthentication = getCachedAuthentication(state, options.auth);
-  if (cachedAuthentication) return cachedAuthentication; // Step 1: Request device and user codes
-  // https://docs.github.com/en/developers/apps/authorizing-oauth-apps#step-1-app-requests-the-device-and-user-verification-codes-from-github
-
-  const {
-    data: verification
-  } = await oauthMethods.createDeviceCode({
+  if (cachedAuthentication)
+    return cachedAuthentication;
+  const { data: verification } = await (0, import_oauth_methods.createDeviceCode)({
     clientType: state.clientType,
     clientId: state.clientId,
     request: options.request || state.request,
     // @ts-expect-error the extra code to make TS happy is not worth it
     scopes: options.auth.scopes || state.scopes
-  }); // Step 2: User must enter the user code on https://github.com/login/device
-  // See https://docs.github.com/en/developers/apps/authorizing-oauth-apps#step-2-prompt-the-user-to-enter-the-user-code-in-a-browser
-
-  await state.onVerification(verification); // Step 3: Exchange device code for access token
-  // See https://docs.github.com/en/developers/apps/authorizing-oauth-apps#step-3-app-polls-github-to-check-if-the-user-authorized-the-device
-
-  const authentication = await waitForAccessToken(options.request || state.request, state.clientId, state.clientType, verification);
+  });
+  await state.onVerification(verification);
+  const authentication = await waitForAccessToken(
+    options.request || state.request,
+    state.clientId,
+    state.clientType,
+    verification
+  );
   state.authentication = authentication;
   return authentication;
 }
-
-function getCachedAuthentication(state, auth) {
-  if (auth.refresh === true) return false;
-  if (!state.authentication) return false;
-
+function getCachedAuthentication(state, auth2) {
+  if (auth2.refresh === true)
+    return false;
+  if (!state.authentication)
+    return false;
   if (state.clientType === "github-app") {
     return state.authentication;
   }
-
   const authentication = state.authentication;
-  const newScope = ("scopes" in auth && auth.scopes || state.scopes).join(" ");
+  const newScope = ("scopes" in auth2 && auth2.scopes || state.scopes).join(
+    " "
+  );
   const currentScope = authentication.scopes.join(" ");
   return newScope === currentScope ? authentication : false;
 }
-
 async function wait(seconds) {
-  await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  await new Promise((resolve) => setTimeout(resolve, seconds * 1e3));
 }
-
 async function waitForAccessToken(request, clientId, clientType, verification) {
   try {
     const options = {
       clientId,
       request,
       code: verification.device_code
-    }; // WHY TYPESCRIPT WHY ARE YOU DOING THIS TO ME
-
-    const {
-      authentication
-    } = clientType === "oauth-app" ? await oauthMethods.exchangeDeviceCode({ ...options,
+    };
+    const { authentication } = clientType === "oauth-app" ? await (0, import_oauth_methods.exchangeDeviceCode)({
+      ...options,
       clientType: "oauth-app"
-    }) : await oauthMethods.exchangeDeviceCode({ ...options,
+    }) : await (0, import_oauth_methods.exchangeDeviceCode)({
+      ...options,
       clientType: "github-app"
     });
     return {
@@ -5018,120 +5462,142 @@ async function waitForAccessToken(request, clientId, clientType, verification) {
       ...authentication
     };
   } catch (error) {
-    // istanbul ignore if
-    // @ts-ignore
-    if (!error.response) throw error; // @ts-ignore
-
+    if (!error.response)
+      throw error;
     const errorType = error.response.data.error;
-
     if (errorType === "authorization_pending") {
       await wait(verification.interval);
       return waitForAccessToken(request, clientId, clientType, verification);
     }
-
     if (errorType === "slow_down") {
       await wait(verification.interval + 5);
       return waitForAccessToken(request, clientId, clientType, verification);
     }
-
     throw error;
   }
 }
 
+// pkg/dist-src/auth.js
 async function auth(state, authOptions) {
   return getOAuthAccessToken(state, {
     auth: authOptions
   });
 }
 
+// pkg/dist-src/hook.js
 async function hook(state, request, route, parameters) {
-  let endpoint = request.endpoint.merge(route, parameters); // Do not intercept request to retrieve codes or token
-
+  let endpoint = request.endpoint.merge(
+    route,
+    parameters
+  );
   if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) {
     return request(endpoint);
   }
-
-  const {
-    token
-  } = await getOAuthAccessToken(state, {
+  const { token } = await getOAuthAccessToken(state, {
     request,
-    auth: {
-      type: "oauth"
-    }
+    auth: { type: "oauth" }
   });
   endpoint.headers.authorization = `token ${token}`;
   return request(endpoint);
 }
 
-const VERSION = "4.0.3";
+// pkg/dist-src/version.js
+var VERSION = "4.0.5";
 
+// pkg/dist-src/index.js
 function createOAuthDeviceAuth(options) {
-  const requestWithDefaults = options.request || request.request.defaults({
+  const requestWithDefaults = options.request || import_request.request.defaults({
     headers: {
-      "user-agent": `octokit-auth-oauth-device.js/${VERSION} ${universalUserAgent.getUserAgent()}`
+      "user-agent": `octokit-auth-oauth-device.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
     }
   });
-  const {
-    request: request$1 = requestWithDefaults,
-    ...otherOptions
-  } = options;
-  const state = options.clientType === "github-app" ? { ...otherOptions,
+  const { request = requestWithDefaults, ...otherOptions } = options;
+  const state = options.clientType === "github-app" ? {
+    ...otherOptions,
     clientType: "github-app",
-    request: request$1
-  } : { ...otherOptions,
+    request
+  } : {
+    ...otherOptions,
     clientType: "oauth-app",
-    request: request$1,
+    request,
     scopes: options.scopes || []
   };
-
   if (!options.clientId) {
-    throw new Error('[@octokit/auth-oauth-device] "clientId" option must be set (https://github.com/octokit/auth-oauth-device.js#usage)');
+    throw new Error(
+      '[@octokit/auth-oauth-device] "clientId" option must be set (https://github.com/octokit/auth-oauth-device.js#usage)'
+    );
   }
-
   if (!options.onVerification) {
-    throw new Error('[@octokit/auth-oauth-device] "onVerification" option must be a function (https://github.com/octokit/auth-oauth-device.js#usage)');
-  } // @ts-ignore too much for tsc / ts-jest ¯\_(ツ)_/¯
-
-
+    throw new Error(
+      '[@octokit/auth-oauth-device] "onVerification" option must be a function (https://github.com/octokit/auth-oauth-device.js#usage)'
+    );
+  }
   return Object.assign(auth.bind(null, state), {
     hook: hook.bind(null, state)
   });
 }
-
-exports.createOAuthDeviceAuth = createOAuthDeviceAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 1591:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createOAuthUserAuth: () => createOAuthUserAuth,
+  requiresBasicAuth: () => requiresBasicAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_request = __nccwpck_require__(6234);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+// pkg/dist-src/version.js
+var VERSION = "2.1.2";
 
-var universalUserAgent = __nccwpck_require__(5030);
-var request = __nccwpck_require__(6234);
-var authOauthDevice = __nccwpck_require__(4344);
-var oauthMethods = __nccwpck_require__(8445);
-var btoa = _interopDefault(__nccwpck_require__(2358));
-
-const VERSION = "2.0.4";
-
-// @ts-nocheck there is only place for one of us in this file. And it's not you, TS
+// pkg/dist-src/get-authentication.js
+var import_auth_oauth_device = __nccwpck_require__(4344);
+var import_oauth_methods = __nccwpck_require__(8445);
 async function getAuthentication(state) {
-  // handle code exchange form OAuth Web Flow
   if ("code" in state.strategyOptions) {
-    const {
-      authentication
-    } = await oauthMethods.exchangeWebFlowCode({
+    const { authentication } = await (0, import_oauth_methods.exchangeWebFlowCode)({
       clientId: state.clientId,
       clientSecret: state.clientSecret,
       clientType: state.clientType,
+      onTokenCreated: state.onTokenCreated,
       ...state.strategyOptions,
       request: state.request
     });
@@ -5140,13 +5606,12 @@ async function getAuthentication(state) {
       tokenType: "oauth",
       ...authentication
     };
-  } // handle OAuth device flow
-
-
+  }
   if ("onVerification" in state.strategyOptions) {
-    const deviceAuth = authOauthDevice.createOAuthDeviceAuth({
+    const deviceAuth = (0, import_auth_oauth_device.createOAuthDeviceAuth)({
       clientType: state.clientType,
       clientId: state.clientId,
+      onTokenCreated: state.onTokenCreated,
       ...state.strategyOptions,
       request: state.request
     });
@@ -5157,9 +5622,7 @@ async function getAuthentication(state) {
       clientSecret: state.clientSecret,
       ...authentication
     };
-  } // use existing authentication
-
-
+  }
   if ("token" in state.strategyOptions) {
     return {
       type: "token",
@@ -5167,30 +5630,27 @@ async function getAuthentication(state) {
       clientId: state.clientId,
       clientSecret: state.clientSecret,
       clientType: state.clientType,
+      onTokenCreated: state.onTokenCreated,
       ...state.strategyOptions
     };
   }
-
   throw new Error("[@octokit/auth-oauth-user] Invalid strategy options");
 }
 
+// pkg/dist-src/auth.js
+var import_oauth_methods2 = __nccwpck_require__(8445);
 async function auth(state, options = {}) {
+  var _a, _b;
   if (!state.authentication) {
-    // This is what TS makes us do ¯\_(ツ)_/¯
     state.authentication = state.clientType === "oauth-app" ? await getAuthentication(state) : await getAuthentication(state);
   }
-
   if (state.authentication.invalid) {
     throw new Error("[@octokit/auth-oauth-user] Token is invalid");
   }
-
-  const currentAuthentication = state.authentication; // (auto) refresh for user-to-server tokens
-
+  const currentAuthentication = state.authentication;
   if ("expiresAt" in currentAuthentication) {
-    if (options.type === "refresh" || new Date(currentAuthentication.expiresAt) < new Date()) {
-      const {
-        authentication
-      } = await oauthMethods.refreshToken({
+    if (options.type === "refresh" || new Date(currentAuthentication.expiresAt) < /* @__PURE__ */ new Date()) {
+      const { authentication } = await (0, import_oauth_methods2.refreshToken)({
         clientType: "github-app",
         clientId: state.clientId,
         clientSecret: state.clientSecret,
@@ -5203,27 +5663,24 @@ async function auth(state, options = {}) {
         ...authentication
       };
     }
-  } // throw error for invalid refresh call
-
-
+  }
   if (options.type === "refresh") {
     if (state.clientType === "oauth-app") {
-      throw new Error("[@octokit/auth-oauth-user] OAuth Apps do not support expiring tokens");
+      throw new Error(
+        "[@octokit/auth-oauth-user] OAuth Apps do not support expiring tokens"
+      );
     }
-
     if (!currentAuthentication.hasOwnProperty("expiresAt")) {
       throw new Error("[@octokit/auth-oauth-user] Refresh token missing");
     }
-  } // check or reset token
-
-
+    await ((_a = state.onTokenCreated) == null ? void 0 : _a.call(state, state.authentication, {
+      type: options.type
+    }));
+  }
   if (options.type === "check" || options.type === "reset") {
-    const method = options.type === "check" ? oauthMethods.checkToken : oauthMethods.resetToken;
-
+    const method = options.type === "check" ? import_oauth_methods2.checkToken : import_oauth_methods2.resetToken;
     try {
-      const {
-        authentication
-      } = await method({
+      const { authentication } = await method({
         // @ts-expect-error making TS happy would require unnecessary code so no
         clientType: state.clientType,
         clientId: state.clientId,
@@ -5237,23 +5694,22 @@ async function auth(state, options = {}) {
         // @ts-expect-error TBD
         ...authentication
       };
+      if (options.type === "reset") {
+        await ((_b = state.onTokenCreated) == null ? void 0 : _b.call(state, state.authentication, {
+          type: options.type
+        }));
+      }
       return state.authentication;
     } catch (error) {
-      // istanbul ignore else
       if (error.status === 404) {
-        error.message = "[@octokit/auth-oauth-user] Token is invalid"; // @ts-expect-error TBD
-
+        error.message = "[@octokit/auth-oauth-user] Token is invalid";
         state.authentication.invalid = true;
       }
-
       throw error;
     }
-  } // invalidate
-
-
+  }
   if (options.type === "delete" || options.type === "deleteAuthorization") {
-    const method = options.type === "delete" ? oauthMethods.deleteToken : oauthMethods.deleteAuthorization;
-
+    const method = options.type === "delete" ? import_oauth_methods2.deleteToken : import_oauth_methods2.deleteAuthorization;
     try {
       await method({
         // @ts-expect-error making TS happy would require unnecessary code so no
@@ -5264,92 +5720,72 @@ async function auth(state, options = {}) {
         request: state.request
       });
     } catch (error) {
-      // istanbul ignore if
-      if (error.status !== 404) throw error;
+      if (error.status !== 404)
+        throw error;
     }
-
     state.authentication.invalid = true;
     return state.authentication;
   }
-
   return state.authentication;
 }
 
-/**
- * The following endpoints require an OAuth App to authenticate using its client_id and client_secret.
- *
- * - [`POST /applications/{client_id}/token`](https://docs.github.com/en/rest/reference/apps#check-a-token) - Check a token
- * - [`PATCH /applications/{client_id}/token`](https://docs.github.com/en/rest/reference/apps#reset-a-token) - Reset a token
- * - [`POST /applications/{client_id}/token/scoped`](https://docs.github.com/en/rest/reference/apps#create-a-scoped-access-token) - Create a scoped access token
- * - [`DELETE /applications/{client_id}/token`](https://docs.github.com/en/rest/reference/apps#delete-an-app-token) - Delete an app token
- * - [`DELETE /applications/{client_id}/grant`](https://docs.github.com/en/rest/reference/apps#delete-an-app-authorization) - Delete an app authorization
- *
- * deprecated:
- *
- * - [`GET /applications/{client_id}/tokens/{access_token}`](https://docs.github.com/en/rest/reference/apps#check-an-authorization) - Check an authorization
- * - [`POST /applications/{client_id}/tokens/{access_token}`](https://docs.github.com/en/rest/reference/apps#reset-an-authorization) - Reset an authorization
- * - [`DELETE /applications/{client_id}/tokens/{access_token}`](https://docs.github.com/en/rest/reference/apps#revoke-an-authorization-for-an-application) - Revoke an authorization for an application
- * - [`DELETE /applications/{client_id}/grants/{access_token}`](https://docs.github.com/en/rest/reference/apps#revoke-a-grant-for-an-application) - Revoke a grant for an application
- */
-const ROUTES_REQUIRING_BASIC_AUTH = /\/applications\/[^/]+\/(token|grant)s?/;
+// pkg/dist-src/hook.js
+var import_btoa_lite = __toESM(__nccwpck_require__(2358));
+
+// pkg/dist-src/requires-basic-auth.js
+var ROUTES_REQUIRING_BASIC_AUTH = /\/applications\/[^/]+\/(token|grant)s?/;
 function requiresBasicAuth(url) {
   return url && ROUTES_REQUIRING_BASIC_AUTH.test(url);
 }
 
+// pkg/dist-src/hook.js
 async function hook(state, request, route, parameters = {}) {
-  const endpoint = request.endpoint.merge(route, parameters); // Do not intercept OAuth Web/Device flow request
-
+  const endpoint = request.endpoint.merge(
+    route,
+    parameters
+  );
   if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) {
     return request(endpoint);
   }
-
   if (requiresBasicAuth(endpoint.url)) {
-    const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
+    const credentials = (0, import_btoa_lite.default)(`${state.clientId}:${state.clientSecret}`);
     endpoint.headers.authorization = `basic ${credentials}`;
     return request(endpoint);
-  } // TS makes us do this ¯\_(ツ)_/¯
-
-
-  const {
-    token
-  } = state.clientType === "oauth-app" ? await auth({ ...state,
-    request
-  }) : await auth({ ...state,
-    request
-  });
+  }
+  const { token } = state.clientType === "oauth-app" ? await auth({ ...state, request }) : await auth({ ...state, request });
   endpoint.headers.authorization = "token " + token;
   return request(endpoint);
 }
 
+// pkg/dist-src/index.js
 function createOAuthUserAuth({
   clientId,
   clientSecret,
   clientType = "oauth-app",
-  request: request$1 = request.request.defaults({
+  request = import_request.request.defaults({
     headers: {
-      "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${universalUserAgent.getUserAgent()}`
+      "user-agent": `octokit-auth-oauth-app.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
     }
   }),
+  onTokenCreated,
   ...strategyOptions
 }) {
   const state = Object.assign({
     clientType,
     clientId,
     clientSecret,
+    onTokenCreated,
     strategyOptions,
-    request: request$1
-  }); // @ts-expect-error not worth the extra code needed to appease TS
-
+    request
+  });
   return Object.assign(auth.bind(null, state), {
     // @ts-expect-error not worth the extra code needed to appease TS
     hook: hook.bind(null, state)
   });
 }
 createOAuthUserAuth.VERSION = VERSION;
-
-exports.createOAuthUserAuth = createOAuthUserAuth;
-exports.requiresBasicAuth = requiresBasicAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -5418,13 +5854,36 @@ exports.createTokenAuth = createTokenAuth;
 /***/ }),
 
 /***/ 9567:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((module) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  createUnauthenticatedAuth: () => createUnauthenticatedAuth
+});
+module.exports = __toCommonJS(dist_src_exports);
 
+// pkg/dist-src/auth.js
 async function auth(reason) {
   return {
     type: "unauthenticated",
@@ -5432,193 +5891,135 @@ async function auth(reason) {
   };
 }
 
+// pkg/dist-src/is-rate-limit-error.js
 function isRateLimitError(error) {
   if (error.status !== 403) {
     return false;
   }
-  /* istanbul ignore if */
-
-
   if (!error.response) {
     return false;
   }
-
   return error.response.headers["x-ratelimit-remaining"] === "0";
 }
 
-const REGEX_ABUSE_LIMIT_MESSAGE = /\babuse\b/i;
+// pkg/dist-src/is-abuse-limit-error.js
+var REGEX_ABUSE_LIMIT_MESSAGE = /\babuse\b/i;
 function isAbuseLimitError(error) {
   if (error.status !== 403) {
     return false;
   }
-
   return REGEX_ABUSE_LIMIT_MESSAGE.test(error.message);
 }
 
+// pkg/dist-src/hook.js
 async function hook(reason, request, route, parameters) {
-  const endpoint = request.endpoint.merge(route, parameters);
-  return request(endpoint).catch(error => {
+  const endpoint = request.endpoint.merge(
+    route,
+    parameters
+  );
+  return request(endpoint).catch((error) => {
     if (error.status === 404) {
       error.message = `Not found. May be due to lack of authentication. Reason: ${reason}`;
       throw error;
     }
-
     if (isRateLimitError(error)) {
       error.message = `API rate limit exceeded. This maybe caused by the lack of authentication. Reason: ${reason}`;
       throw error;
     }
-
     if (isAbuseLimitError(error)) {
       error.message = `You have triggered an abuse detection mechanism. This maybe caused by the lack of authentication. Reason: ${reason}`;
       throw error;
     }
-
     if (error.status === 401) {
       error.message = `Unauthorized. "${endpoint.method} ${endpoint.url}" failed most likely due to lack of authentication. Reason: ${reason}`;
       throw error;
     }
-
     if (error.status >= 400 && error.status < 500) {
-      error.message = error.message.replace(/\.?$/, `. May be caused by lack of authentication (${reason}).`);
+      error.message = error.message.replace(
+        /\.?$/,
+        `. May be caused by lack of authentication (${reason}).`
+      );
     }
-
     throw error;
   });
 }
 
-const createUnauthenticatedAuth = function createUnauthenticatedAuth(options) {
+// pkg/dist-src/index.js
+var createUnauthenticatedAuth = function createUnauthenticatedAuth2(options) {
   if (!options || !options.reason) {
-    throw new Error("[@octokit/auth-unauthenticated] No reason passed to createUnauthenticatedAuth");
+    throw new Error(
+      "[@octokit/auth-unauthenticated] No reason passed to createUnauthenticatedAuth"
+    );
   }
-
   return Object.assign(auth.bind(null, options.reason), {
     hook: hook.bind(null, options.reason)
   });
 };
-
-exports.createUnauthenticatedAuth = createUnauthenticatedAuth;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 6762:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-
-var universalUserAgent = __nccwpck_require__(5030);
-var beforeAfterHook = __nccwpck_require__(3682);
-var request = __nccwpck_require__(6234);
-var graphql = __nccwpck_require__(8467);
-var authToken = __nccwpck_require__(334);
-
-const VERSION = "4.1.0";
-
-class Octokit {
-  constructor(options = {}) {
-    const hook = new beforeAfterHook.Collection();
-    const requestDefaults = {
-      baseUrl: request.request.endpoint.DEFAULTS.baseUrl,
-      headers: {},
-      request: Object.assign({}, options.request, {
-        // @ts-ignore internal usage only, no need to type
-        hook: hook.bind(null, "request")
-      }),
-      mediaType: {
-        previews: [],
-        format: ""
-      }
-    }; // prepend default user agent with `options.userAgent` if set
-
-    requestDefaults.headers["user-agent"] = [options.userAgent, `octokit-core.js/${VERSION} ${universalUserAgent.getUserAgent()}`].filter(Boolean).join(" ");
-
-    if (options.baseUrl) {
-      requestDefaults.baseUrl = options.baseUrl;
-    }
-
-    if (options.previews) {
-      requestDefaults.mediaType.previews = options.previews;
-    }
-
-    if (options.timeZone) {
-      requestDefaults.headers["time-zone"] = options.timeZone;
-    }
-
-    this.request = request.request.defaults(requestDefaults);
-    this.graphql = graphql.withCustomRequest(this.request).defaults(requestDefaults);
-    this.log = Object.assign({
-      debug: () => {},
-      info: () => {},
-      warn: console.warn.bind(console),
-      error: console.error.bind(console)
-    }, options.log);
-    this.hook = hook; // (1) If neither `options.authStrategy` nor `options.auth` are set, the `octokit` instance
-    //     is unauthenticated. The `this.auth()` method is a no-op and no request hook is registered.
-    // (2) If only `options.auth` is set, use the default token authentication strategy.
-    // (3) If `options.authStrategy` is set then use it and pass in `options.auth`. Always pass own request as many strategies accept a custom request instance.
-    // TODO: type `options.auth` based on `options.authStrategy`.
-
-    if (!options.authStrategy) {
-      if (!options.auth) {
-        // (1)
-        this.auth = async () => ({
-          type: "unauthenticated"
-        });
-      } else {
-        // (2)
-        const auth = authToken.createTokenAuth(options.auth); // @ts-ignore  ¯\_(ツ)_/¯
-
-        hook.wrap("request", auth.hook);
-        this.auth = auth;
-      }
-    } else {
-      const {
-        authStrategy,
-        ...otherOptions
-      } = options;
-      const auth = authStrategy(Object.assign({
-        request: this.request,
-        log: this.log,
-        // we pass the current octokit instance as well as its constructor options
-        // to allow for authentication strategies that return a new octokit instance
-        // that shares the same internal state as the current one. The original
-        // requirement for this was the "event-octokit" authentication strategy
-        // of https://github.com/probot/octokit-auth-probot.
-        octokit: this,
-        octokitOptions: otherOptions
-      }, options.auth)); // @ts-ignore  ¯\_(ツ)_/¯
-
-      hook.wrap("request", auth.hook);
-      this.auth = auth;
-    } // apply plugins
-    // https://stackoverflow.com/a/16345172
-
-
-    const classConstructor = this.constructor;
-    classConstructor.plugins.forEach(plugin => {
-      Object.assign(this, plugin(this, options));
-    });
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
   }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  Octokit: () => Octokit
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var import_before_after_hook = __nccwpck_require__(3682);
+var import_request = __nccwpck_require__(6234);
+var import_graphql = __nccwpck_require__(8467);
+var import_auth_token = __nccwpck_require__(334);
+
+// pkg/dist-src/version.js
+var VERSION = "4.2.1";
+
+// pkg/dist-src/index.js
+var Octokit = class {
   static defaults(defaults) {
     const OctokitWithDefaults = class extends this {
       constructor(...args) {
         const options = args[0] || {};
-
         if (typeof defaults === "function") {
           super(defaults(options));
           return;
         }
-
-        super(Object.assign({}, defaults, options, options.userAgent && defaults.userAgent ? {
-          userAgent: `${options.userAgent} ${defaults.userAgent}`
-        } : null));
+        super(
+          Object.assign(
+            {},
+            defaults,
+            options,
+            options.userAgent && defaults.userAgent ? {
+              userAgent: `${options.userAgent} ${defaults.userAgent}`
+            } : null
+          )
+        );
       }
-
     };
     return OctokitWithDefaults;
   }
@@ -5628,22 +6029,97 @@ class Octokit {
    * @example
    * const API = Octokit.plugin(plugin1, plugin2, plugin3, ...)
    */
-
-
   static plugin(...newPlugins) {
     var _a;
-
     const currentPlugins = this.plugins;
-    const NewOctokit = (_a = class extends this {}, _a.plugins = currentPlugins.concat(newPlugins.filter(plugin => !currentPlugins.includes(plugin))), _a);
+    const NewOctokit = (_a = class extends this {
+    }, _a.plugins = currentPlugins.concat(
+      newPlugins.filter((plugin) => !currentPlugins.includes(plugin))
+    ), _a);
     return NewOctokit;
   }
-
-}
+  constructor(options = {}) {
+    const hook = new import_before_after_hook.Collection();
+    const requestDefaults = {
+      baseUrl: import_request.request.endpoint.DEFAULTS.baseUrl,
+      headers: {},
+      request: Object.assign({}, options.request, {
+        // @ts-ignore internal usage only, no need to type
+        hook: hook.bind(null, "request")
+      }),
+      mediaType: {
+        previews: [],
+        format: ""
+      }
+    };
+    requestDefaults.headers["user-agent"] = [
+      options.userAgent,
+      `octokit-core.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
+    ].filter(Boolean).join(" ");
+    if (options.baseUrl) {
+      requestDefaults.baseUrl = options.baseUrl;
+    }
+    if (options.previews) {
+      requestDefaults.mediaType.previews = options.previews;
+    }
+    if (options.timeZone) {
+      requestDefaults.headers["time-zone"] = options.timeZone;
+    }
+    this.request = import_request.request.defaults(requestDefaults);
+    this.graphql = (0, import_graphql.withCustomRequest)(this.request).defaults(requestDefaults);
+    this.log = Object.assign(
+      {
+        debug: () => {
+        },
+        info: () => {
+        },
+        warn: console.warn.bind(console),
+        error: console.error.bind(console)
+      },
+      options.log
+    );
+    this.hook = hook;
+    if (!options.authStrategy) {
+      if (!options.auth) {
+        this.auth = async () => ({
+          type: "unauthenticated"
+        });
+      } else {
+        const auth = (0, import_auth_token.createTokenAuth)(options.auth);
+        hook.wrap("request", auth.hook);
+        this.auth = auth;
+      }
+    } else {
+      const { authStrategy, ...otherOptions } = options;
+      const auth = authStrategy(
+        Object.assign(
+          {
+            request: this.request,
+            log: this.log,
+            // we pass the current octokit instance as well as its constructor options
+            // to allow for authentication strategies that return a new octokit instance
+            // that shares the same internal state as the current one. The original
+            // requirement for this was the "event-octokit" authentication strategy
+            // of https://github.com/probot/octokit-auth-probot.
+            octokit: this,
+            octokitOptions: otherOptions
+          },
+          options.auth
+        )
+      );
+      hook.wrap("request", auth.hook);
+      this.auth = auth;
+    }
+    const classConstructor = this.constructor;
+    classConstructor.plugins.forEach((plugin) => {
+      Object.assign(this, plugin(this, options));
+    });
+  }
+};
 Octokit.VERSION = VERSION;
 Octokit.plugins = [];
-
-exports.Octokit = Octokit;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -6157,25 +6633,55 @@ exports.withCustomRequest = withCustomRequest;
 /***/ }),
 
 /***/ 3493:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  OAuthApp: () => OAuthApp,
+  createAWSLambdaAPIGatewayV2Handler: () => createAWSLambdaAPIGatewayV2Handler,
+  createCloudflareHandler: () => createCloudflareHandler,
+  createNodeMiddleware: () => createNodeMiddleware,
+  createWebWorkerHandler: () => createWebWorkerHandler,
+  handleRequest: () => handleRequest
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_auth_oauth_app = __nccwpck_require__(4098);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+// pkg/dist-src/version.js
+var VERSION = "4.2.2";
 
-var OAuthAppAuth = __nccwpck_require__(4098);
-var core = __nccwpck_require__(6762);
-var universalUserAgent = __nccwpck_require__(5030);
-var authOauthUser = __nccwpck_require__(1591);
-var OAuthMethods = __nccwpck_require__(8445);
-var authUnauthenticated = __nccwpck_require__(9567);
-var fromEntries = _interopDefault(__nccwpck_require__(6522));
-
-const VERSION = "4.2.0";
-
+// pkg/dist-src/add-event-handler.js
 function addEventHandler(state, eventName, eventHandler) {
   if (Array.isArray(eventName)) {
     for (const singleEventName of eventName) {
@@ -6189,15 +6695,19 @@ function addEventHandler(state, eventName, eventHandler) {
   state.eventHandlers[eventName].push(eventHandler);
 }
 
-const OAuthAppOctokit = core.Octokit.defaults({
-  userAgent: `octokit-oauth-app.js/${VERSION} ${universalUserAgent.getUserAgent()}`
+// pkg/dist-src/oauth-app-octokit.js
+var import_core = __nccwpck_require__(6762);
+var import_universal_user_agent = __nccwpck_require__(5030);
+var OAuthAppOctokit = import_core.Octokit.defaults({
+  userAgent: `octokit-oauth-app.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
 });
 
+// pkg/dist-src/methods/get-user-octokit.js
+var import_auth_oauth_user = __nccwpck_require__(1591);
+
+// pkg/dist-src/emit-event.js
 async function emitEvent(state, context) {
-  const {
-    name,
-    action
-  } = context;
+  const { name, action } = context;
   if (state.eventHandlers[`${name}.${action}`]) {
     for (const eventHandler of state.eventHandlers[`${name}.${action}`]) {
       await eventHandler(context);
@@ -6210,14 +6720,15 @@ async function emitEvent(state, context) {
   }
 }
 
+// pkg/dist-src/methods/get-user-octokit.js
 async function getUserOctokitWithState(state, options) {
   return state.octokit.auth({
     type: "oauth-user",
     ...options,
-    async factory(options) {
+    async factory(options2) {
       const octokit = new state.Octokit({
-        authStrategy: authOauthUser.createOAuthUserAuth,
-        auth: options
+        authStrategy: import_auth_oauth_user.createOAuthUserAuth,
+        auth: options2
       });
       const authentication = await octokit.auth({
         type: "get"
@@ -6235,24 +6746,16 @@ async function getUserOctokitWithState(state, options) {
   });
 }
 
+// pkg/dist-src/methods/get-web-flow-authorization-url.js
+var OAuthMethods = __toESM(__nccwpck_require__(8445));
 function getWebFlowAuthorizationUrlWithState(state, options) {
-  let allowSignup;
-  if (options.allowSignup === undefined && state.allowSignup === undefined) {
-    allowSignup = true;
-  } else if (options.allowSignup === undefined && state.allowSignup !== undefined) {
-    allowSignup = state.allowSignup;
-  } else if (state.allowSignup === undefined && options.allowSignup !== undefined) {
-    allowSignup = options.allowSignup;
-  } else {
-    allowSignup = options.allowSignup || state.allowSignup;
-  }
   const optionsWithDefaults = {
     clientId: state.clientId,
     request: state.octokit.request,
     ...options,
-    allowSignup,
-    redirectUrl: options.redirectUrl || state.redirectUrl,
-    scopes: options.scopes || state.defaultScopes
+    allowSignup: state.allowSignup ?? options.allowSignup,
+    redirectUrl: options.redirectUrl ?? state.redirectUrl,
+    scopes: options.scopes ?? state.defaultScopes
   };
   return OAuthMethods.getWebFlowAuthorizationUrl({
     clientType: state.clientType,
@@ -6260,6 +6763,8 @@ function getWebFlowAuthorizationUrlWithState(state, options) {
   });
 }
 
+// pkg/dist-src/methods/create-token.js
+var OAuthAppAuth = __toESM(__nccwpck_require__(4098));
 async function createTokenWithState(state, options) {
   const authentication = await state.octokit.auth({
     type: "oauth-user",
@@ -6285,13 +6790,13 @@ async function createTokenWithState(state, options) {
       }
     })
   });
-  return {
-    authentication
-  };
+  return { authentication };
 }
 
+// pkg/dist-src/methods/check-token.js
+var OAuthMethods2 = __toESM(__nccwpck_require__(8445));
 async function checkTokenWithState(state, options) {
-  const result = await OAuthMethods.checkToken({
+  const result = await OAuthMethods2.checkToken({
     // @ts-expect-error not worth the extra code to appease TS
     clientType: state.clientType,
     clientId: state.clientId,
@@ -6299,13 +6804,13 @@ async function checkTokenWithState(state, options) {
     request: state.octokit.request,
     ...options
   });
-  Object.assign(result.authentication, {
-    type: "token",
-    tokenType: "oauth"
-  });
+  Object.assign(result.authentication, { type: "token", tokenType: "oauth" });
   return result;
 }
 
+// pkg/dist-src/methods/reset-token.js
+var OAuthMethods3 = __toESM(__nccwpck_require__(8445));
+var import_auth_oauth_user2 = __nccwpck_require__(1591);
 async function resetTokenWithState(state, options) {
   const optionsWithDefaults = {
     clientId: state.clientId,
@@ -6314,37 +6819,34 @@ async function resetTokenWithState(state, options) {
     ...options
   };
   if (state.clientType === "oauth-app") {
-    const response = await OAuthMethods.resetToken({
+    const response2 = await OAuthMethods3.resetToken({
       clientType: "oauth-app",
       ...optionsWithDefaults
     });
-    const authentication = Object.assign(response.authentication, {
+    const authentication2 = Object.assign(response2.authentication, {
       type: "token",
       tokenType: "oauth"
     });
     await emitEvent(state, {
       name: "token",
       action: "reset",
-      token: response.authentication.token,
-      scopes: response.authentication.scopes || undefined,
-      authentication: authentication,
+      token: response2.authentication.token,
+      scopes: response2.authentication.scopes || void 0,
+      authentication: authentication2,
       octokit: new state.Octokit({
-        authStrategy: authOauthUser.createOAuthUserAuth,
+        authStrategy: import_auth_oauth_user2.createOAuthUserAuth,
         auth: {
           clientType: state.clientType,
           clientId: state.clientId,
           clientSecret: state.clientSecret,
-          token: response.authentication.token,
-          scopes: response.authentication.scopes
+          token: response2.authentication.token,
+          scopes: response2.authentication.scopes
         }
       })
     });
-    return {
-      ...response,
-      authentication
-    };
+    return { ...response2, authentication: authentication2 };
   }
-  const response = await OAuthMethods.resetToken({
+  const response = await OAuthMethods3.resetToken({
     clientType: "github-app",
     ...optionsWithDefaults
   });
@@ -6356,9 +6858,9 @@ async function resetTokenWithState(state, options) {
     name: "token",
     action: "reset",
     token: response.authentication.token,
-    authentication: authentication,
+    authentication,
     octokit: new state.Octokit({
-      authStrategy: authOauthUser.createOAuthUserAuth,
+      authStrategy: import_auth_oauth_user2.createOAuthUserAuth,
       auth: {
         clientType: state.clientType,
         clientId: state.clientId,
@@ -6367,17 +6869,19 @@ async function resetTokenWithState(state, options) {
       }
     })
   });
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/methods/refresh-token.js
+var OAuthMethods4 = __toESM(__nccwpck_require__(8445));
+var import_auth_oauth_user3 = __nccwpck_require__(1591);
 async function refreshTokenWithState(state, options) {
   if (state.clientType === "oauth-app") {
-    throw new Error("[@octokit/oauth-app] app.refreshToken() is not supported for OAuth Apps");
+    throw new Error(
+      "[@octokit/oauth-app] app.refreshToken() is not supported for OAuth Apps"
+    );
   }
-  const response = await OAuthMethods.refreshToken({
+  const response = await OAuthMethods4.refreshToken({
     clientType: "github-app",
     clientId: state.clientId,
     clientSecret: state.clientSecret,
@@ -6392,9 +6896,9 @@ async function refreshTokenWithState(state, options) {
     name: "token",
     action: "refreshed",
     token: response.authentication.token,
-    authentication: authentication,
+    authentication,
     octokit: new state.Octokit({
-      authStrategy: authOauthUser.createOAuthUserAuth,
+      authStrategy: import_auth_oauth_user3.createOAuthUserAuth,
       auth: {
         clientType: state.clientType,
         clientId: state.clientId,
@@ -6403,17 +6907,19 @@ async function refreshTokenWithState(state, options) {
       }
     })
   });
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/methods/scope-token.js
+var OAuthMethods5 = __toESM(__nccwpck_require__(8445));
+var import_auth_oauth_user4 = __nccwpck_require__(1591);
 async function scopeTokenWithState(state, options) {
   if (state.clientType === "oauth-app") {
-    throw new Error("[@octokit/oauth-app] app.scopeToken() is not supported for OAuth Apps");
+    throw new Error(
+      "[@octokit/oauth-app] app.scopeToken() is not supported for OAuth Apps"
+    );
   }
-  const response = await OAuthMethods.scopeToken({
+  const response = await OAuthMethods5.scopeToken({
     clientType: "github-app",
     clientId: state.clientId,
     clientSecret: state.clientSecret,
@@ -6428,9 +6934,9 @@ async function scopeTokenWithState(state, options) {
     name: "token",
     action: "scoped",
     token: response.authentication.token,
-    authentication: authentication,
+    authentication,
     octokit: new state.Octokit({
-      authStrategy: authOauthUser.createOAuthUserAuth,
+      authStrategy: import_auth_oauth_user4.createOAuthUserAuth,
       auth: {
         clientType: state.clientType,
         clientId: state.clientId,
@@ -6439,12 +6945,12 @@ async function scopeTokenWithState(state, options) {
       }
     })
   });
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/methods/delete-token.js
+var OAuthMethods6 = __toESM(__nccwpck_require__(8445));
+var import_auth_unauthenticated = __nccwpck_require__(9567);
 async function deleteTokenWithState(state, options) {
   const optionsWithDefaults = {
     clientId: state.clientId,
@@ -6452,21 +6958,22 @@ async function deleteTokenWithState(state, options) {
     request: state.octokit.request,
     ...options
   };
-  const response = state.clientType === "oauth-app" ? await OAuthMethods.deleteToken({
+  const response = state.clientType === "oauth-app" ? await OAuthMethods6.deleteToken({
     clientType: "oauth-app",
     ...optionsWithDefaults
-  }) :
-  // istanbul ignore next
-  await OAuthMethods.deleteToken({
-    clientType: "github-app",
-    ...optionsWithDefaults
-  });
+  }) : (
+    // istanbul ignore next
+    await OAuthMethods6.deleteToken({
+      clientType: "github-app",
+      ...optionsWithDefaults
+    })
+  );
   await emitEvent(state, {
     name: "token",
     action: "deleted",
     token: options.token,
     octokit: new state.Octokit({
-      authStrategy: authUnauthenticated.createUnauthenticatedAuth,
+      authStrategy: import_auth_unauthenticated.createUnauthenticatedAuth,
       auth: {
         reason: `Handling "token.deleted" event. The access for the token has been revoked.`
       }
@@ -6475,6 +6982,9 @@ async function deleteTokenWithState(state, options) {
   return response;
 }
 
+// pkg/dist-src/methods/delete-authorization.js
+var OAuthMethods7 = __toESM(__nccwpck_require__(8445));
+var import_auth_unauthenticated2 = __nccwpck_require__(9567);
 async function deleteAuthorizationWithState(state, options) {
   const optionsWithDefaults = {
     clientId: state.clientId,
@@ -6482,21 +6992,22 @@ async function deleteAuthorizationWithState(state, options) {
     request: state.octokit.request,
     ...options
   };
-  const response = state.clientType === "oauth-app" ? await OAuthMethods.deleteAuthorization({
+  const response = state.clientType === "oauth-app" ? await OAuthMethods7.deleteAuthorization({
     clientType: "oauth-app",
     ...optionsWithDefaults
-  }) :
-  // istanbul ignore next
-  await OAuthMethods.deleteAuthorization({
-    clientType: "github-app",
-    ...optionsWithDefaults
-  });
+  }) : (
+    // istanbul ignore next
+    await OAuthMethods7.deleteAuthorization({
+      clientType: "github-app",
+      ...optionsWithDefaults
+    })
+  );
   await emitEvent(state, {
     name: "token",
     action: "deleted",
     token: options.token,
     octokit: new state.Octokit({
-      authStrategy: authUnauthenticated.createUnauthenticatedAuth,
+      authStrategy: import_auth_unauthenticated2.createUnauthenticatedAuth,
       auth: {
         reason: `Handling "token.deleted" event. The access for the token has been revoked.`
       }
@@ -6507,7 +7018,7 @@ async function deleteAuthorizationWithState(state, options) {
     action: "deleted",
     token: options.token,
     octokit: new state.Octokit({
-      authStrategy: authUnauthenticated.createUnauthenticatedAuth,
+      authStrategy: import_auth_unauthenticated2.createUnauthenticatedAuth,
       auth: {
         reason: `Handling "authorization.deleted" event. The access for the app has been revoked.`
       }
@@ -6516,10 +7027,10 @@ async function deleteAuthorizationWithState(state, options) {
   return response;
 }
 
-// @ts-ignore - requires esModuleInterop flag
-async function handleRequest(app, {
-  pathPrefix = "/api/github/oauth"
-}, request) {
+// pkg/dist-src/middleware/handle-request.js
+var import_fromentries = __toESM(__nccwpck_require__(6522));
+async function handleRequest(app, { pathPrefix = "/api/github/oauth" }, request) {
+  var _a, _b, _c, _d, _e, _f;
   if (request.method === "OPTIONS") {
     return {
       status: 200,
@@ -6530,11 +7041,7 @@ async function handleRequest(app, {
       }
     };
   }
-  // request.url may include ?query parameters which we don't want for `route`
-  // hence the workaround using new URL()
-  const {
-    pathname
-  } = new URL(request.url, "http://localhost");
+  const { pathname } = new URL(request.url, "http://localhost");
   const route = [request.method, pathname].join(" ");
   const routes = {
     getLogin: `GET ${pathPrefix}/login`,
@@ -6547,7 +7054,6 @@ async function handleRequest(app, {
     deleteToken: `DELETE ${pathPrefix}/token`,
     deleteGrant: `DELETE ${pathPrefix}/grant`
   };
-  // handle unknown routes
   if (!Object.values(routes).includes(route)) {
     return null;
   }
@@ -6567,40 +7073,30 @@ async function handleRequest(app, {
       })
     };
   }
-  const {
-    searchParams
-  } = new URL(request.url, "http://localhost");
-  const query = fromEntries(searchParams);
+  const { searchParams } = new URL(request.url, "http://localhost");
+  const query = (0, import_fromentries.default)(searchParams);
   const headers = request.headers;
   try {
-    var _headers$authorizatio6;
     if (route === routes.getLogin) {
-      const {
-        url
-      } = app.getWebFlowAuthorizationUrl({
+      const { url } = app.getWebFlowAuthorizationUrl({
         state: query.state,
-        scopes: query.scopes ? query.scopes.split(",") : undefined,
-        allowSignup: query.allowSignup ? query.allowSignup === "true" : undefined,
+        scopes: query.scopes ? query.scopes.split(",") : void 0,
+        allowSignup: query.allowSignup ? query.allowSignup === "true" : void 0,
         redirectUrl: query.redirectUrl
       });
-      return {
-        status: 302,
-        headers: {
-          location: url
-        }
-      };
+      return { status: 302, headers: { location: url } };
     }
     if (route === routes.getCallback) {
       if (query.error) {
-        throw new Error(`[@octokit/oauth-app] ${query.error} ${query.error_description}`);
+        throw new Error(
+          `[@octokit/oauth-app] ${query.error} ${query.error_description}`
+        );
       }
       if (!query.code) {
         throw new Error('[@octokit/oauth-app] "code" parameter is required');
       }
       const {
-        authentication: {
-          token
-        }
+        authentication: { token: token2 }
       } = await app.createToken({
         code: query.code
       });
@@ -6611,14 +7107,11 @@ async function handleRequest(app, {
         },
         text: `<h1>Token created successfully</h1>
     
-<p>Your token is: <strong>${token}</strong>. Copy it now as it cannot be shown again.</p>`
+<p>Your token is: <strong>${token2}</strong>. Copy it now as it cannot be shown again.</p>`
       };
     }
     if (route === routes.createToken) {
-      const {
-        code,
-        redirectUrl
-      } = json;
+      const { code, redirectUrl } = json;
       if (!code) {
         throw new Error('[@octokit/oauth-app] "code" parameter is required');
       }
@@ -6626,7 +7119,6 @@ async function handleRequest(app, {
         code,
         redirectUrl
       });
-      // @ts-ignore
       delete result.authentication.clientSecret;
       return {
         status: 201,
@@ -6638,15 +7130,15 @@ async function handleRequest(app, {
       };
     }
     if (route === routes.getToken) {
-      var _headers$authorizatio;
-      const token = (_headers$authorizatio = headers.authorization) === null || _headers$authorizatio === void 0 ? void 0 : _headers$authorizatio.substr("token ".length);
-      if (!token) {
-        throw new Error('[@octokit/oauth-app] "Authorization" header is required');
+      const token2 = (_a = headers.authorization) == null ? void 0 : _a.substr("token ".length);
+      if (!token2) {
+        throw new Error(
+          '[@octokit/oauth-app] "Authorization" header is required'
+        );
       }
       const result = await app.checkToken({
-        token
+        token: token2
       });
-      // @ts-ignore
       delete result.authentication.clientSecret;
       return {
         status: 200,
@@ -6658,15 +7150,13 @@ async function handleRequest(app, {
       };
     }
     if (route === routes.patchToken) {
-      var _headers$authorizatio2;
-      const token = (_headers$authorizatio2 = headers.authorization) === null || _headers$authorizatio2 === void 0 ? void 0 : _headers$authorizatio2.substr("token ".length);
-      if (!token) {
-        throw new Error('[@octokit/oauth-app] "Authorization" header is required');
+      const token2 = (_b = headers.authorization) == null ? void 0 : _b.substr("token ".length);
+      if (!token2) {
+        throw new Error(
+          '[@octokit/oauth-app] "Authorization" header is required'
+        );
       }
-      const result = await app.resetToken({
-        token
-      });
-      // @ts-ignore
+      const result = await app.resetToken({ token: token2 });
       delete result.authentication.clientSecret;
       return {
         status: 200,
@@ -6678,21 +7168,19 @@ async function handleRequest(app, {
       };
     }
     if (route === routes.patchRefreshToken) {
-      var _headers$authorizatio3;
-      const token = (_headers$authorizatio3 = headers.authorization) === null || _headers$authorizatio3 === void 0 ? void 0 : _headers$authorizatio3.substr("token ".length);
-      if (!token) {
-        throw new Error('[@octokit/oauth-app] "Authorization" header is required');
+      const token2 = (_c = headers.authorization) == null ? void 0 : _c.substr("token ".length);
+      if (!token2) {
+        throw new Error(
+          '[@octokit/oauth-app] "Authorization" header is required'
+        );
       }
-      const {
-        refreshToken
-      } = json;
-      if (!refreshToken) {
-        throw new Error("[@octokit/oauth-app] refreshToken must be sent in request body");
+      const { refreshToken: refreshToken2 } = json;
+      if (!refreshToken2) {
+        throw new Error(
+          "[@octokit/oauth-app] refreshToken must be sent in request body"
+        );
       }
-      const result = await app.refreshToken({
-        refreshToken
-      });
-      // @ts-ignore
+      const result = await app.refreshToken({ refreshToken: refreshToken2 });
       delete result.authentication.clientSecret;
       return {
         status: 200,
@@ -6704,16 +7192,16 @@ async function handleRequest(app, {
       };
     }
     if (route === routes.scopeToken) {
-      var _headers$authorizatio4;
-      const token = (_headers$authorizatio4 = headers.authorization) === null || _headers$authorizatio4 === void 0 ? void 0 : _headers$authorizatio4.substr("token ".length);
-      if (!token) {
-        throw new Error('[@octokit/oauth-app] "Authorization" header is required');
+      const token2 = (_d = headers.authorization) == null ? void 0 : _d.substr("token ".length);
+      if (!token2) {
+        throw new Error(
+          '[@octokit/oauth-app] "Authorization" header is required'
+        );
       }
       const result = await app.scopeToken({
-        token,
+        token: token2,
         ...json
       });
-      // @ts-ignore
       delete result.authentication.clientSecret;
       return {
         status: 200,
@@ -6725,34 +7213,32 @@ async function handleRequest(app, {
       };
     }
     if (route === routes.deleteToken) {
-      var _headers$authorizatio5;
-      const token = (_headers$authorizatio5 = headers.authorization) === null || _headers$authorizatio5 === void 0 ? void 0 : _headers$authorizatio5.substr("token ".length);
-      if (!token) {
-        throw new Error('[@octokit/oauth-app] "Authorization" header is required');
+      const token2 = (_e = headers.authorization) == null ? void 0 : _e.substr("token ".length);
+      if (!token2) {
+        throw new Error(
+          '[@octokit/oauth-app] "Authorization" header is required'
+        );
       }
       await app.deleteToken({
-        token
+        token: token2
       });
       return {
         status: 204,
-        headers: {
-          "access-control-allow-origin": "*"
-        }
+        headers: { "access-control-allow-origin": "*" }
       };
     }
-    // route === routes.deleteGrant
-    const token = (_headers$authorizatio6 = headers.authorization) === null || _headers$authorizatio6 === void 0 ? void 0 : _headers$authorizatio6.substr("token ".length);
+    const token = (_f = headers.authorization) == null ? void 0 : _f.substr("token ".length);
     if (!token) {
-      throw new Error('[@octokit/oauth-app] "Authorization" header is required');
+      throw new Error(
+        '[@octokit/oauth-app] "Authorization" header is required'
+      );
     }
     await app.deleteAuthorization({
       token
     });
     return {
       status: 204,
-      headers: {
-        "access-control-allow-origin": "*"
-      }
+      headers: { "access-control-allow-origin": "*" }
     };
   } catch (error) {
     return {
@@ -6761,51 +7247,42 @@ async function handleRequest(app, {
         "content-type": "application/json",
         "access-control-allow-origin": "*"
       },
-      text: JSON.stringify({
-        error: error.message
-      })
+      text: JSON.stringify({ error: error.message })
     };
   }
 }
 
+// pkg/dist-src/middleware/node/parse-request.js
 function parseRequest(request) {
-  const {
-    method,
-    url,
-    headers
-  } = request;
+  const { method, url, headers } = request;
   async function text() {
-    const text = await new Promise((resolve, reject) => {
+    const text2 = await new Promise((resolve, reject) => {
       let bodyChunks = [];
-      request.on("error", reject).on("data", chunk => bodyChunks.push(chunk)).on("end", () => resolve(Buffer.concat(bodyChunks).toString()));
+      request.on("error", reject).on("data", (chunk) => bodyChunks.push(chunk)).on("end", () => resolve(Buffer.concat(bodyChunks).toString()));
     });
-    return text;
+    return text2;
   }
-  return {
-    method,
-    url,
-    headers,
-    text
-  };
+  return { method, url, headers, text };
 }
 
+// pkg/dist-src/middleware/node/send-response.js
 function sendResponse(octokitResponse, response) {
   response.writeHead(octokitResponse.status, octokitResponse.headers);
   response.end(octokitResponse.text);
 }
 
+// pkg/dist-src/middleware/on-unhandled-request-default.js
 function onUnhandledRequestDefault(request) {
   return {
     status: 404,
-    headers: {
-      "content-type": "application/json"
-    },
+    headers: { "content-type": "application/json" },
     text: JSON.stringify({
       error: `Unknown route: ${request.method} ${request.url}`
     })
   };
 }
 
+// pkg/dist-src/middleware/node/index.js
 function onUnhandledRequestDefaultNode(request, response) {
   const octokitRequest = parseRequest(request);
   const octokitResponse = onUnhandledRequestDefault(octokitRequest);
@@ -6816,14 +7293,18 @@ function createNodeMiddleware(app, {
   onUnhandledRequest
 } = {}) {
   if (onUnhandledRequest) {
-    app.octokit.log.warn("[@octokit/oauth-app] `onUnhandledRequest` is deprecated and will be removed from the next major version.");
+    app.octokit.log.warn(
+      "[@octokit/oauth-app] `onUnhandledRequest` is deprecated and will be removed from the next major version."
+    );
   }
   onUnhandledRequest ?? (onUnhandledRequest = onUnhandledRequestDefaultNode);
-  return async function (request, response, next) {
+  return async function(request, response, next) {
     const octokitRequest = parseRequest(request);
-    const octokitResponse = await handleRequest(app, {
-      pathPrefix
-    }, octokitRequest);
+    const octokitResponse = await handleRequest(
+      app,
+      { pathPrefix },
+      octokitRequest
+    );
     if (octokitResponse) {
       sendResponse(octokitResponse, response);
     } else if (typeof next === "function") {
@@ -6834,8 +7315,8 @@ function createNodeMiddleware(app, {
   };
 }
 
-function parseRequest$1(request) {
-  // @ts-ignore Worker environment supports fromEntries/entries.
+// pkg/dist-src/middleware/web-worker/parse-request.js
+function parseRequest2(request) {
   const headers = Object.fromEntries(request.headers.entries());
   return {
     method: request.method,
@@ -6845,61 +7326,63 @@ function parseRequest$1(request) {
   };
 }
 
-function sendResponse$1(octokitResponse) {
+// pkg/dist-src/middleware/web-worker/send-response.js
+function sendResponse2(octokitResponse) {
   return new Response(octokitResponse.text, {
     status: octokitResponse.status,
     headers: octokitResponse.headers
   });
 }
 
+// pkg/dist-src/middleware/web-worker/index.js
 async function onUnhandledRequestDefaultWebWorker(request) {
-  const octokitRequest = parseRequest$1(request);
+  const octokitRequest = parseRequest2(request);
   const octokitResponse = onUnhandledRequestDefault(octokitRequest);
-  return sendResponse$1(octokitResponse);
+  return sendResponse2(octokitResponse);
 }
 function createWebWorkerHandler(app, {
   pathPrefix,
   onUnhandledRequest
 } = {}) {
   if (onUnhandledRequest) {
-    app.octokit.log.warn("[@octokit/oauth-app] `onUnhandledRequest` is deprecated and will be removed from the next major version.");
+    app.octokit.log.warn(
+      "[@octokit/oauth-app] `onUnhandledRequest` is deprecated and will be removed from the next major version."
+    );
   }
   onUnhandledRequest ?? (onUnhandledRequest = onUnhandledRequestDefaultWebWorker);
-  return async function (request) {
-    const octokitRequest = parseRequest$1(request);
-    const octokitResponse = await handleRequest(app, {
-      pathPrefix
-    }, octokitRequest);
-    return octokitResponse ? sendResponse$1(octokitResponse) : await onUnhandledRequest(request);
+  return async function(request) {
+    const octokitRequest = parseRequest2(request);
+    const octokitResponse = await handleRequest(
+      app,
+      { pathPrefix },
+      octokitRequest
+    );
+    return octokitResponse ? sendResponse2(octokitResponse) : await onUnhandledRequest(request);
   };
 }
-/** @deprecated */
 function createCloudflareHandler(...args) {
-  args[0].octokit.log.warn("[@octokit/oauth-app] `createCloudflareHandler` is deprecated, use `createWebWorkerHandler` instead");
+  args[0].octokit.log.warn(
+    "[@octokit/oauth-app] `createCloudflareHandler` is deprecated, use `createWebWorkerHandler` instead"
+  );
   return createWebWorkerHandler(...args);
 }
 
-function parseRequest$2(request) {
-  const {
-    method
-  } = request.requestContext.http;
+// pkg/dist-src/middleware/aws-lambda/api-gateway-v2-parse-request.js
+function parseRequest3(request) {
+  const { method } = request.requestContext.http;
   let url = request.rawPath;
-  const {
-    stage
-  } = request.requestContext;
-  if (url.startsWith("/" + stage)) url = url.substring(stage.length + 1);
-  if (request.rawQueryString) url += "?" + request.rawQueryString;
+  const { stage } = request.requestContext;
+  if (url.startsWith("/" + stage))
+    url = url.substring(stage.length + 1);
+  if (request.rawQueryString)
+    url += "?" + request.rawQueryString;
   const headers = request.headers;
   const text = async () => request.body || "";
-  return {
-    method,
-    url,
-    headers,
-    text
-  };
+  return { method, url, headers, text };
 }
 
-function sendResponse$2(octokitResponse) {
+// pkg/dist-src/middleware/aws-lambda/api-gateway-v2-send-response.js
+function sendResponse3(octokitResponse) {
   return {
     statusCode: octokitResponse.status,
     headers: octokitResponse.headers,
@@ -6907,29 +7390,31 @@ function sendResponse$2(octokitResponse) {
   };
 }
 
+// pkg/dist-src/middleware/aws-lambda/api-gateway-v2.js
 async function onUnhandledRequestDefaultAWSAPIGatewayV2(event) {
-  const request = parseRequest$2(event);
+  const request = parseRequest3(event);
   const response = onUnhandledRequestDefault(request);
-  return sendResponse$2(response);
+  return sendResponse3(response);
 }
 function createAWSLambdaAPIGatewayV2Handler(app, {
   pathPrefix,
   onUnhandledRequest
 } = {}) {
   if (onUnhandledRequest) {
-    app.octokit.log.warn("[@octokit/oauth-app] `onUnhandledRequest` is deprecated and will be removed from the next major version.");
+    app.octokit.log.warn(
+      "[@octokit/oauth-app] `onUnhandledRequest` is deprecated and will be removed from the next major version."
+    );
   }
   onUnhandledRequest ?? (onUnhandledRequest = onUnhandledRequestDefaultAWSAPIGatewayV2);
-  return async function (event) {
-    const request = parseRequest$2(event);
-    const response = await handleRequest(app, {
-      pathPrefix
-    }, request);
-    return response ? sendResponse$2(response) : onUnhandledRequest(event);
+  return async function(event) {
+    const request = parseRequest3(event);
+    const response = await handleRequest(app, { pathPrefix }, request);
+    return response ? sendResponse3(response) : onUnhandledRequest(event);
   };
 }
 
-class OAuthApp {
+// pkg/dist-src/index.js
+var OAuthApp = class {
   static defaults(defaults) {
     const OAuthAppWithDefaults = class extends this {
       constructor(...args) {
@@ -6942,10 +7427,10 @@ class OAuthApp {
     return OAuthAppWithDefaults;
   }
   constructor(options) {
-    const Octokit = options.Octokit || OAuthAppOctokit;
+    const Octokit2 = options.Octokit || OAuthAppOctokit;
     this.type = options.clientType || "oauth-app";
-    const octokit = new Octokit({
-      authStrategy: OAuthAppAuth.createOAuthAppAuth,
+    const octokit = new Octokit2({
+      authStrategy: import_auth_oauth_app.createOAuthAppAuth,
       auth: {
         clientType: this.type,
         clientId: options.clientId,
@@ -6962,33 +7447,44 @@ class OAuthApp {
       baseUrl: options.baseUrl,
       redirectUrl: options.redirectUrl,
       log: options.log,
-      Octokit,
+      Octokit: Octokit2,
       octokit,
       eventHandlers: {}
     };
     this.on = addEventHandler.bind(null, state);
-    // @ts-expect-error TODO: figure this out
     this.octokit = octokit;
     this.getUserOctokit = getUserOctokitWithState.bind(null, state);
-    this.getWebFlowAuthorizationUrl = getWebFlowAuthorizationUrlWithState.bind(null, state);
-    this.createToken = createTokenWithState.bind(null, state);
-    this.checkToken = checkTokenWithState.bind(null, state);
-    this.resetToken = resetTokenWithState.bind(null, state);
-    this.refreshToken = refreshTokenWithState.bind(null, state);
-    this.scopeToken = scopeTokenWithState.bind(null, state);
+    this.getWebFlowAuthorizationUrl = getWebFlowAuthorizationUrlWithState.bind(
+      null,
+      state
+    );
+    this.createToken = createTokenWithState.bind(
+      null,
+      state
+    );
+    this.checkToken = checkTokenWithState.bind(
+      null,
+      state
+    );
+    this.resetToken = resetTokenWithState.bind(
+      null,
+      state
+    );
+    this.refreshToken = refreshTokenWithState.bind(
+      null,
+      state
+    );
+    this.scopeToken = scopeTokenWithState.bind(
+      null,
+      state
+    );
     this.deleteToken = deleteTokenWithState.bind(null, state);
     this.deleteAuthorization = deleteAuthorizationWithState.bind(null, state);
   }
-}
+};
 OAuthApp.VERSION = VERSION;
-
-exports.OAuthApp = OAuthApp;
-exports.createAWSLambdaAPIGatewayV2Handler = createAWSLambdaAPIGatewayV2Handler;
-exports.createCloudflareHandler = createCloudflareHandler;
-exports.createNodeMiddleware = createNodeMiddleware;
-exports.createWebWorkerHandler = createWebWorkerHandler;
-exports.handleRequest = handleRequest;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -7056,22 +7552,64 @@ exports.oauthAuthorizationUrl = oauthAuthorizationUrl;
 /***/ }),
 
 /***/ 8445:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  VERSION: () => VERSION,
+  checkToken: () => checkToken,
+  createDeviceCode: () => createDeviceCode,
+  deleteAuthorization: () => deleteAuthorization,
+  deleteToken: () => deleteToken,
+  exchangeDeviceCode: () => exchangeDeviceCode,
+  exchangeWebFlowCode: () => exchangeWebFlowCode,
+  getWebFlowAuthorizationUrl: () => getWebFlowAuthorizationUrl,
+  refreshToken: () => refreshToken,
+  resetToken: () => resetToken,
+  scopeToken: () => scopeToken
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+// pkg/dist-src/version.js
+var VERSION = "2.0.6";
 
-var oauthAuthorizationUrl = __nccwpck_require__(2272);
-var request = __nccwpck_require__(6234);
-var requestError = __nccwpck_require__(2434);
-var btoa = _interopDefault(__nccwpck_require__(2358));
+// pkg/dist-src/get-web-flow-authorization-url.js
+var import_oauth_authorization_url = __nccwpck_require__(2272);
+var import_request = __nccwpck_require__(6234);
 
-const VERSION = "2.0.4";
-
+// pkg/dist-src/utils.js
+var import_request_error = __nccwpck_require__(2434);
 function requestToOAuthBaseUrl(request) {
   const endpointDefaults = request.endpoint.DEFAULTS;
   return /^https:\/\/(api\.)?github\.com$/.test(endpointDefaults.baseUrl) ? "https://github.com" : endpointDefaults.baseUrl.replace("/api/v3", "");
@@ -7086,38 +7624,50 @@ async function oauthRequest(request, route, parameters) {
   };
   const response = await request(route, withOAuthParameters);
   if ("error" in response.data) {
-    const error = new requestError.RequestError(`${response.data.error_description} (${response.data.error}, ${response.data.error_uri})`, 400, {
-      request: request.endpoint.merge(route, withOAuthParameters),
-      headers: response.headers
-    });
-    // @ts-ignore add custom response property until https://github.com/octokit/request-error.js/issues/169 is resolved
+    const error = new import_request_error.RequestError(
+      `${response.data.error_description} (${response.data.error}, ${response.data.error_uri})`,
+      400,
+      {
+        request: request.endpoint.merge(
+          route,
+          withOAuthParameters
+        ),
+        headers: response.headers
+      }
+    );
     error.response = response;
     throw error;
   }
   return response;
 }
 
+// pkg/dist-src/get-web-flow-authorization-url.js
 function getWebFlowAuthorizationUrl({
-  request: request$1 = request.request,
+  request = import_request.request,
   ...options
 }) {
-  const baseUrl = requestToOAuthBaseUrl(request$1);
-  // @ts-expect-error TypeScript wants `clientType` to be set explicitly ¯\_(ツ)_/¯
-  return oauthAuthorizationUrl.oauthAuthorizationUrl({
+  const baseUrl = requestToOAuthBaseUrl(request);
+  return (0, import_oauth_authorization_url.oauthAuthorizationUrl)({
     ...options,
     baseUrl
   });
 }
 
+// pkg/dist-src/exchange-web-flow-code.js
+var import_request2 = __nccwpck_require__(6234);
 async function exchangeWebFlowCode(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await oauthRequest(request$1, "POST /login/oauth/access_token", {
-    client_id: options.clientId,
-    client_secret: options.clientSecret,
-    code: options.code,
-    redirect_uri: options.redirectUrl
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request2.request;
+  const response = await oauthRequest(
+    request,
+    "POST /login/oauth/access_token",
+    {
+      client_id: options.clientId,
+      client_secret: options.clientSecret,
+      code: options.code,
+      redirect_uri: options.redirectUrl
+    }
+  );
   const authentication = {
     clientType: options.clientType,
     clientId: options.clientId,
@@ -7128,39 +7678,50 @@ async function exchangeWebFlowCode(options) {
   if (options.clientType === "github-app") {
     if ("refresh_token" in response.data) {
       const apiTimeInMs = new Date(response.headers.date).getTime();
-      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp(apiTimeInMs, response.data.refresh_token_expires_in);
+      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp(
+        apiTimeInMs,
+        response.data.expires_in
+      ), authentication.refreshTokenExpiresAt = toTimestamp(
+        apiTimeInMs,
+        response.data.refresh_token_expires_in
+      );
     }
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 function toTimestamp(apiTimeInMs, expirationInSeconds) {
-  return new Date(apiTimeInMs + expirationInSeconds * 1000).toISOString();
+  return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
 }
 
+// pkg/dist-src/create-device-code.js
+var import_request3 = __nccwpck_require__(6234);
 async function createDeviceCode(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request3.request;
   const parameters = {
     client_id: options.clientId
   };
   if ("scopes" in options && Array.isArray(options.scopes)) {
     parameters.scope = options.scopes.join(" ");
   }
-  return oauthRequest(request$1, "POST /login/device/code", parameters);
+  return oauthRequest(request, "POST /login/device/code", parameters);
 }
 
+// pkg/dist-src/exchange-device-code.js
+var import_request4 = __nccwpck_require__(6234);
 async function exchangeDeviceCode(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await oauthRequest(request$1, "POST /login/oauth/access_token", {
-    client_id: options.clientId,
-    device_code: options.code,
-    grant_type: "urn:ietf:params:oauth:grant-type:device_code"
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request4.request;
+  const response = await oauthRequest(
+    request,
+    "POST /login/oauth/access_token",
+    {
+      client_id: options.clientId,
+      device_code: options.code,
+      grant_type: "urn:ietf:params:oauth:grant-type:device_code"
+    }
+  );
   const authentication = {
     clientType: options.clientType,
     clientId: options.clientId,
@@ -7173,25 +7734,33 @@ async function exchangeDeviceCode(options) {
   if (options.clientType === "github-app") {
     if ("refresh_token" in response.data) {
       const apiTimeInMs = new Date(response.headers.date).getTime();
-      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp$1(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp$1(apiTimeInMs, response.data.refresh_token_expires_in);
+      authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp2(
+        apiTimeInMs,
+        response.data.expires_in
+      ), authentication.refreshTokenExpiresAt = toTimestamp2(
+        apiTimeInMs,
+        response.data.refresh_token_expires_in
+      );
     }
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
-function toTimestamp$1(apiTimeInMs, expirationInSeconds) {
-  return new Date(apiTimeInMs + expirationInSeconds * 1000).toISOString();
+function toTimestamp2(apiTimeInMs, expirationInSeconds) {
+  return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
 }
 
+// pkg/dist-src/check-token.js
+var import_request5 = __nccwpck_require__(6234);
+var import_btoa_lite = __toESM(__nccwpck_require__(2358));
 async function checkToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await request$1("POST /applications/{client_id}/token", {
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request5.request;
+  const response = await request("POST /applications/{client_id}/token", {
     headers: {
-      authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}`
+      authorization: `basic ${(0, import_btoa_lite.default)(
+        `${options.clientId}:${options.clientSecret}`
+      )}`
     },
     client_id: options.clientId,
     access_token: options.token
@@ -7203,25 +7772,29 @@ async function checkToken(options) {
     token: options.token,
     scopes: response.data.scopes
   };
-  if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
+  if (response.data.expires_at)
+    authentication.expiresAt = response.data.expires_at;
   if (options.clientType === "github-app") {
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/refresh-token.js
+var import_request6 = __nccwpck_require__(6234);
 async function refreshToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await oauthRequest(request$1, "POST /login/oauth/access_token", {
-    client_id: options.clientId,
-    client_secret: options.clientSecret,
-    grant_type: "refresh_token",
-    refresh_token: options.refreshToken
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request6.request;
+  const response = await oauthRequest(
+    request,
+    "POST /login/oauth/access_token",
+    {
+      client_id: options.clientId,
+      client_secret: options.clientSecret,
+      grant_type: "refresh_token",
+      refresh_token: options.refreshToken
+    }
+  );
   const apiTimeInMs = new Date(response.headers.date).getTime();
   const authentication = {
     clientType: "github-app",
@@ -7229,18 +7802,21 @@ async function refreshToken(options) {
     clientSecret: options.clientSecret,
     token: response.data.access_token,
     refreshToken: response.data.refresh_token,
-    expiresAt: toTimestamp$2(apiTimeInMs, response.data.expires_in),
-    refreshTokenExpiresAt: toTimestamp$2(apiTimeInMs, response.data.refresh_token_expires_in)
+    expiresAt: toTimestamp3(apiTimeInMs, response.data.expires_in),
+    refreshTokenExpiresAt: toTimestamp3(
+      apiTimeInMs,
+      response.data.refresh_token_expires_in
+    )
   };
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
-function toTimestamp$2(apiTimeInMs, expirationInSeconds) {
-  return new Date(apiTimeInMs + expirationInSeconds * 1000).toISOString();
+function toTimestamp3(apiTimeInMs, expirationInSeconds) {
+  return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
 }
 
+// pkg/dist-src/scope-token.js
+var import_request7 = __nccwpck_require__(6234);
+var import_btoa_lite2 = __toESM(__nccwpck_require__(2358));
 async function scopeToken(options) {
   const {
     request: optionsRequest,
@@ -7250,41 +7826,48 @@ async function scopeToken(options) {
     token,
     ...requestOptions
   } = options;
-  const request$1 = optionsRequest || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const response = await request$1("POST /applications/{client_id}/token/scoped", {
-    headers: {
-      authorization: `basic ${btoa(`${clientId}:${clientSecret}`)}`
+  const request = optionsRequest || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request7.request;
+  const response = await request(
+    "POST /applications/{client_id}/token/scoped",
+    {
+      headers: {
+        authorization: `basic ${(0, import_btoa_lite2.default)(`${clientId}:${clientSecret}`)}`
+      },
+      client_id: clientId,
+      access_token: token,
+      ...requestOptions
+    }
+  );
+  const authentication = Object.assign(
+    {
+      clientType,
+      clientId,
+      clientSecret,
+      token: response.data.token
     },
-    client_id: clientId,
-    access_token: token,
-    ...requestOptions
-  });
-  const authentication = Object.assign({
-    clientType,
-    clientId,
-    clientSecret,
-    token: response.data.token
-  }, response.data.expires_at ? {
-    expiresAt: response.data.expires_at
-  } : {});
-  return {
-    ...response,
-    authentication
-  };
+    response.data.expires_at ? { expiresAt: response.data.expires_at } : {}
+  );
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/reset-token.js
+var import_request8 = __nccwpck_require__(6234);
+var import_btoa_lite3 = __toESM(__nccwpck_require__(2358));
 async function resetToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const auth = btoa(`${options.clientId}:${options.clientSecret}`);
-  const response = await request$1("PATCH /applications/{client_id}/token", {
-    headers: {
-      authorization: `basic ${auth}`
-    },
-    client_id: options.clientId,
-    access_token: options.token
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request8.request;
+  const auth = (0, import_btoa_lite3.default)(`${options.clientId}:${options.clientSecret}`);
+  const response = await request(
+    "PATCH /applications/{client_id}/token",
+    {
+      headers: {
+        authorization: `basic ${auth}`
+      },
+      client_id: options.clientId,
+      access_token: options.token
+    }
+  );
   const authentication = {
     clientType: options.clientType,
     clientId: options.clientId,
@@ -7292,54 +7875,53 @@ async function resetToken(options) {
     token: response.data.token,
     scopes: response.data.scopes
   };
-  if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
+  if (response.data.expires_at)
+    authentication.expiresAt = response.data.expires_at;
   if (options.clientType === "github-app") {
     delete authentication.scopes;
   }
-  return {
-    ...response,
-    authentication
-  };
+  return { ...response, authentication };
 }
 
+// pkg/dist-src/delete-token.js
+var import_request9 = __nccwpck_require__(6234);
+var import_btoa_lite4 = __toESM(__nccwpck_require__(2358));
 async function deleteToken(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const auth = btoa(`${options.clientId}:${options.clientSecret}`);
-  return request$1("DELETE /applications/{client_id}/token", {
-    headers: {
-      authorization: `basic ${auth}`
-    },
-    client_id: options.clientId,
-    access_token: options.token
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request9.request;
+  const auth = (0, import_btoa_lite4.default)(`${options.clientId}:${options.clientSecret}`);
+  return request(
+    "DELETE /applications/{client_id}/token",
+    {
+      headers: {
+        authorization: `basic ${auth}`
+      },
+      client_id: options.clientId,
+      access_token: options.token
+    }
+  );
 }
 
+// pkg/dist-src/delete-authorization.js
+var import_request10 = __nccwpck_require__(6234);
+var import_btoa_lite5 = __toESM(__nccwpck_require__(2358));
 async function deleteAuthorization(options) {
-  const request$1 = options.request || /* istanbul ignore next: we always pass a custom request in tests */
-  request.request;
-  const auth = btoa(`${options.clientId}:${options.clientSecret}`);
-  return request$1("DELETE /applications/{client_id}/grant", {
-    headers: {
-      authorization: `basic ${auth}`
-    },
-    client_id: options.clientId,
-    access_token: options.token
-  });
+  const request = options.request || /* istanbul ignore next: we always pass a custom request in tests */
+  import_request10.request;
+  const auth = (0, import_btoa_lite5.default)(`${options.clientId}:${options.clientSecret}`);
+  return request(
+    "DELETE /applications/{client_id}/grant",
+    {
+      headers: {
+        authorization: `basic ${auth}`
+      },
+      client_id: options.clientId,
+      access_token: options.token
+    }
+  );
 }
-
-exports.VERSION = VERSION;
-exports.checkToken = checkToken;
-exports.createDeviceCode = createDeviceCode;
-exports.deleteAuthorization = deleteAuthorization;
-exports.deleteToken = deleteToken;
-exports.exchangeDeviceCode = exchangeDeviceCode;
-exports.exchangeWebFlowCode = exchangeWebFlowCode;
-exports.getWebFlowAuthorizationUrl = getWebFlowAuthorizationUrl;
-exports.refreshToken = refreshToken;
-exports.resetToken = resetToken;
-exports.scopeToken = scopeToken;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -7362,62 +7944,53 @@ const logOnceHeaders = once(deprecation => console.warn(deprecation));
 /**
  * Error with extra properties to help with debugging
  */
-
 class RequestError extends Error {
   constructor(message, statusCode, options) {
-    super(message); // Maintains proper stack trace (only available on V8)
-
+    super(message);
+    // Maintains proper stack trace (only available on V8)
     /* istanbul ignore next */
-
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, this.constructor);
     }
-
     this.name = "HttpError";
     this.status = statusCode;
     let headers;
-
     if ("headers" in options && typeof options.headers !== "undefined") {
       headers = options.headers;
     }
-
     if ("response" in options) {
       this.response = options.response;
       headers = options.response.headers;
-    } // redact request credentials without mutating original request options
-
-
+    }
+    // redact request credentials without mutating original request options
     const requestCopy = Object.assign({}, options.request);
-
     if (options.request.headers.authorization) {
       requestCopy.headers = Object.assign({}, options.request.headers, {
         authorization: options.request.headers.authorization.replace(/ .*$/, " [REDACTED]")
       });
     }
-
-    requestCopy.url = requestCopy.url // client_id & client_secret can be passed as URL query parameters to increase rate limit
+    requestCopy.url = requestCopy.url
+    // client_id & client_secret can be passed as URL query parameters to increase rate limit
     // see https://developer.github.com/v3/#increasing-the-unauthenticated-rate-limit-for-oauth-applications
-    .replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]") // OAuth tokens can be passed as URL query parameters, although it is not recommended
+    .replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]")
+    // OAuth tokens can be passed as URL query parameters, although it is not recommended
     // see https://developer.github.com/v3/#oauth2-token-sent-in-a-header
     .replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
-    this.request = requestCopy; // deprecations
-
+    this.request = requestCopy;
+    // deprecations
     Object.defineProperty(this, "code", {
       get() {
         logOnceCode(new deprecation.Deprecation("[@octokit/request-error] `error.code` is deprecated, use `error.status`."));
         return statusCode;
       }
-
     });
     Object.defineProperty(this, "headers", {
       get() {
         logOnceHeaders(new deprecation.Deprecation("[@octokit/request-error] `error.headers` is deprecated, use `error.response.headers`."));
         return headers || {};
       }
-
     });
   }
-
 }
 
 exports.RequestError = RequestError;
@@ -8755,83 +9328,113 @@ exports.restEndpointMethods = restEndpointMethods;
 /***/ }),
 
 /***/ 6298:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  VERSION: () => VERSION,
+  retry: () => retry
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var Bottleneck = _interopDefault(__nccwpck_require__(1174));
-var requestError = __nccwpck_require__(537);
-
-// @ts-ignore
-async function errorRequest(octokit, state, error, options) {
+// pkg/dist-src/error-request.js
+async function errorRequest(state, octokit, error, options) {
   if (!error.request || !error.request.request) {
-    // address https://github.com/octokit/plugin-retry.js/issues/8
     throw error;
   }
-  // retry all >= 400 && not doNotRetry
   if (error.status >= 400 && !state.doNotRetry.includes(error.status)) {
     const retries = options.request.retries != null ? options.request.retries : state.retries;
     const retryAfter = Math.pow((options.request.retryCount || 0) + 1, 2);
     throw octokit.retry.retryRequest(error, retries, retryAfter);
   }
-  // Maybe eventually there will be more cases here
   throw error;
 }
 
-// @ts-ignore
-// @ts-ignore
-async function wrapRequest(state, request, options) {
-  const limiter = new Bottleneck();
-  // @ts-ignore
-  limiter.on("failed", function (error, info) {
+// pkg/dist-src/wrap-request.js
+var import_light = __toESM(__nccwpck_require__(1174));
+var import_request_error = __nccwpck_require__(537);
+async function wrapRequest(state, octokit, request, options) {
+  const limiter = new import_light.default();
+  limiter.on("failed", function(error, info) {
     const maxRetries = ~~error.request.request.retries;
     const after = ~~error.request.request.retryAfter;
     options.request.retryCount = info.retryCount + 1;
     if (maxRetries > info.retryCount) {
-      // Returning a number instructs the limiter to retry
-      // the request after that number of milliseconds have passed
       return after * state.retryAfterBaseValue;
     }
   });
-  return limiter.schedule(requestWithGraphqlErrorHandling.bind(null, request), options);
+  return limiter.schedule(
+    requestWithGraphqlErrorHandling.bind(null, state, octokit, request),
+    options
+  );
 }
-// @ts-ignore
-async function requestWithGraphqlErrorHandling(request, options) {
+async function requestWithGraphqlErrorHandling(state, octokit, request, options) {
   const response = await request(request, options);
-  if (response.data && response.data.errors && /Something went wrong while executing your query/.test(response.data.errors[0].message)) {
-    // simulate 500 request error for retry handling
-    const error = new requestError.RequestError(response.data.errors[0].message, 500, {
+  if (response.data && response.data.errors && /Something went wrong while executing your query/.test(
+    response.data.errors[0].message
+  )) {
+    const error = new import_request_error.RequestError(response.data.errors[0].message, 500, {
       request: options,
       response
     });
-    throw error;
+    return errorRequest(state, octokit, error, options);
   }
   return response;
 }
 
-const VERSION = "4.1.1";
+// pkg/dist-src/index.js
+var VERSION = "5.0.2";
 function retry(octokit, octokitOptions) {
-  const state = Object.assign({
-    enabled: true,
-    retryAfterBaseValue: 1000,
-    doNotRetry: [400, 401, 403, 404, 422],
-    retries: 3
-  }, octokitOptions.retry);
+  const state = Object.assign(
+    {
+      enabled: true,
+      retryAfterBaseValue: 1e3,
+      doNotRetry: [400, 401, 403, 404, 422],
+      retries: 3
+    },
+    octokitOptions.retry
+  );
   if (state.enabled) {
-    octokit.hook.error("request", errorRequest.bind(null, octokit, state));
-    octokit.hook.wrap("request", wrapRequest.bind(null, state));
+    octokit.hook.error("request", errorRequest.bind(null, state, octokit));
+    octokit.hook.wrap("request", wrapRequest.bind(null, state, octokit));
   }
   return {
     retry: {
       retryRequest: (error, retries, retryAfter) => {
         error.request.request = Object.assign({}, error.request.request, {
-          retries: retries,
-          retryAfter: retryAfter
+          retries,
+          retryAfter
         });
         return error;
       }
@@ -8839,10 +9442,8 @@ function retry(octokit, octokitOptions) {
   };
 }
 retry.VERSION = VERSION;
-
-exports.VERSION = VERSION;
-exports.retry = retry;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -8859,7 +9460,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var BottleneckLight = _interopDefault(__nccwpck_require__(1174));
 
-const VERSION = "5.0.1";
+const VERSION = "5.2.3";
 
 const noop = () => Promise.resolve();
 // @ts-expect-error
@@ -8988,17 +9589,28 @@ function throttling(octokit, octokitOptions) {
   if (groups.global == null) {
     createGroups(Bottleneck, common);
   }
+  if (octokitOptions.throttle && octokitOptions.throttle.minimalSecondaryRateRetryAfter) {
+    octokit.log.warn("[@octokit/plugin-throttling] `options.throttle.minimalSecondaryRateRetryAfter` is deprecated, please use `options.throttle.fallbackSecondaryRateRetryAfter` instead");
+    octokitOptions.throttle.fallbackSecondaryRateRetryAfter = octokitOptions.throttle.minimalSecondaryRateRetryAfter;
+    delete octokitOptions.throttle.minimalSecondaryRateRetryAfter;
+  }
+  if (octokitOptions.throttle && octokitOptions.throttle.onAbuseLimit) {
+    octokit.log.warn("[@octokit/plugin-throttling] `onAbuseLimit()` is deprecated and will be removed in a future release of `@octokit/plugin-throttling`, please use the `onSecondaryRateLimit` handler instead");
+    // @ts-ignore types don't allow for both properties to be set
+    octokitOptions.throttle.onSecondaryRateLimit = octokitOptions.throttle.onAbuseLimit;
+    // @ts-ignore
+    delete octokitOptions.throttle.onAbuseLimit;
+  }
   const state = Object.assign({
     clustering: connection != null,
     triggersNotification,
-    minimumSecondaryRateRetryAfter: 5,
+    fallbackSecondaryRateRetryAfter: 60,
     retryAfterBaseValue: 1000,
     retryLimiter: new Bottleneck(),
     id,
     ...groups
   }, octokitOptions.throttle);
-  const isUsingDeprecatedOnAbuseLimitHandler = typeof state.onAbuseLimit === "function" && state.onAbuseLimit;
-  if (typeof (isUsingDeprecatedOnAbuseLimitHandler ? state.onAbuseLimit : state.onSecondaryRateLimit) !== "function" || typeof state.onRateLimit !== "function") {
+  if (typeof state.onSecondaryRateLimit !== "function" || typeof state.onRateLimit !== "function") {
     throw new Error(`octokit/plugin-throttling error:
         You must pass the onSecondaryRateLimit and onRateLimit error handlers.
         See https://octokit.github.io/rest.js/#throttling
@@ -9014,11 +9626,7 @@ function throttling(octokit, octokitOptions) {
   const events = {};
   const emitter = new Bottleneck.Events(events);
   // @ts-expect-error
-  events.on("secondary-limit", isUsingDeprecatedOnAbuseLimitHandler ? function (...args) {
-    octokit.log.warn("[@octokit/plugin-throttling] `onAbuseLimit()` is deprecated and will be removed in a future release of `@octokit/plugin-throttling`, please use the `onSecondaryRateLimit` handler instead");
-    // @ts-expect-error
-    return state.onAbuseLimit(...args);
-  } : state.onSecondaryRateLimit);
+  events.on("secondary-limit", state.onSecondaryRateLimit);
   // @ts-expect-error
   events.on("rate-limit", state.onRateLimit);
   // @ts-expect-error
@@ -9046,7 +9654,7 @@ function throttling(octokit, octokitOptions) {
         // https://docs.github.com/en/rest/overview/resources-in-the-rest-api#secondary-rate-limits
         // The Retry-After header can sometimes be blank when hitting a secondary rate limit,
         // but is always present after 2-3s, so make sure to set `retryAfter` to at least 5s by default.
-        const retryAfter = Math.max(~~error.response.headers["retry-after"], state.minimumSecondaryRateRetryAfter);
+        const retryAfter = Number(error.response.headers["retry-after"]) || state.fallbackSecondaryRateRetryAfter;
         const wantRetry = await emitter.trigger("secondary-limit", retryAfter, options, octokit, retryCount);
         return {
           wantRetry,
@@ -9167,84 +9775,119 @@ exports.RequestError = RequestError;
 /***/ }),
 
 /***/ 6234:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  request: () => request
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_endpoint = __nccwpck_require__(9440);
+var import_universal_user_agent = __nccwpck_require__(5030);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+// pkg/dist-src/version.js
+var VERSION = "6.2.5";
 
-var endpoint = __nccwpck_require__(9440);
-var universalUserAgent = __nccwpck_require__(5030);
-var isPlainObject = __nccwpck_require__(3287);
-var nodeFetch = _interopDefault(__nccwpck_require__(467));
-var requestError = __nccwpck_require__(13);
+// pkg/dist-src/fetch-wrapper.js
+var import_is_plain_object = __nccwpck_require__(3287);
+var import_node_fetch = __toESM(__nccwpck_require__(467));
+var import_request_error = __nccwpck_require__(13);
 
-const VERSION = "6.2.2";
-
+// pkg/dist-src/get-buffer-response.js
 function getBufferResponse(response) {
   return response.arrayBuffer();
 }
 
+// pkg/dist-src/fetch-wrapper.js
 function fetchWrapper(requestOptions) {
   const log = requestOptions.request && requestOptions.request.log ? requestOptions.request.log : console;
-
-  if (isPlainObject.isPlainObject(requestOptions.body) || Array.isArray(requestOptions.body)) {
+  if ((0, import_is_plain_object.isPlainObject)(requestOptions.body) || Array.isArray(requestOptions.body)) {
     requestOptions.body = JSON.stringify(requestOptions.body);
   }
-
   let headers = {};
   let status;
   let url;
-  const fetch = requestOptions.request && requestOptions.request.fetch || globalThis.fetch ||
-  /* istanbul ignore next */
-  nodeFetch;
-  return fetch(requestOptions.url, Object.assign({
-    method: requestOptions.method,
-    body: requestOptions.body,
-    headers: requestOptions.headers,
-    redirect: requestOptions.redirect
-  }, // `requestOptions.request.agent` type is incompatible
-  // see https://github.com/octokit/types.ts/pull/264
-  requestOptions.request)).then(async response => {
+  const fetch = requestOptions.request && requestOptions.request.fetch || globalThis.fetch || /* istanbul ignore next */
+  import_node_fetch.default;
+  return fetch(
+    requestOptions.url,
+    Object.assign(
+      {
+        method: requestOptions.method,
+        body: requestOptions.body,
+        headers: requestOptions.headers,
+        redirect: requestOptions.redirect,
+        // duplex must be set if request.body is ReadableStream or Async Iterables.
+        // See https://fetch.spec.whatwg.org/#dom-requestinit-duplex.
+        ...requestOptions.body && { duplex: "half" }
+      },
+      // `requestOptions.request.agent` type is incompatible
+      // see https://github.com/octokit/types.ts/pull/264
+      requestOptions.request
+    )
+  ).then(async (response) => {
     url = response.url;
     status = response.status;
-
     for (const keyAndValue of response.headers) {
       headers[keyAndValue[0]] = keyAndValue[1];
     }
-
     if ("deprecation" in headers) {
       const matches = headers.link && headers.link.match(/<([^>]+)>; rel="deprecation"/);
       const deprecationLink = matches && matches.pop();
-      log.warn(`[@octokit/request] "${requestOptions.method} ${requestOptions.url}" is deprecated. It is scheduled to be removed on ${headers.sunset}${deprecationLink ? `. See ${deprecationLink}` : ""}`);
+      log.warn(
+        `[@octokit/request] "${requestOptions.method} ${requestOptions.url}" is deprecated. It is scheduled to be removed on ${headers.sunset}${deprecationLink ? `. See ${deprecationLink}` : ""}`
+      );
     }
-
     if (status === 204 || status === 205) {
       return;
-    } // GitHub API returns 200 for HEAD requests
-
-
+    }
     if (requestOptions.method === "HEAD") {
       if (status < 400) {
         return;
       }
-
-      throw new requestError.RequestError(response.statusText, status, {
+      throw new import_request_error.RequestError(response.statusText, status, {
         response: {
           url,
           status,
           headers,
-          data: undefined
+          data: void 0
         },
         request: requestOptions
       });
     }
-
     if (status === 304) {
-      throw new requestError.RequestError("Not modified", status, {
+      throw new import_request_error.RequestError("Not modified", status, {
         response: {
           url,
           status,
@@ -9254,10 +9897,9 @@ function fetchWrapper(requestOptions) {
         request: requestOptions
       });
     }
-
     if (status >= 400) {
       const data = await getResponseData(response);
-      const error = new requestError.RequestError(toErrorMessage(data), status, {
+      const error = new import_request_error.RequestError(toErrorMessage(data), status, {
         response: {
           url,
           status,
@@ -9268,87 +9910,79 @@ function fetchWrapper(requestOptions) {
       });
       throw error;
     }
-
     return getResponseData(response);
-  }).then(data => {
+  }).then((data) => {
     return {
       status,
       url,
       headers,
       data
     };
-  }).catch(error => {
-    if (error instanceof requestError.RequestError) throw error;else if (error.name === "AbortError") throw error;
-    throw new requestError.RequestError(error.message, 500, {
+  }).catch((error) => {
+    if (error instanceof import_request_error.RequestError)
+      throw error;
+    else if (error.name === "AbortError")
+      throw error;
+    throw new import_request_error.RequestError(error.message, 500, {
       request: requestOptions
     });
   });
 }
-
 async function getResponseData(response) {
   const contentType = response.headers.get("content-type");
-
   if (/application\/json/.test(contentType)) {
     return response.json();
   }
-
   if (!contentType || /^text\/|charset=utf-8$/.test(contentType)) {
     return response.text();
   }
-
   return getBufferResponse(response);
 }
-
 function toErrorMessage(data) {
-  if (typeof data === "string") return data; // istanbul ignore else - just in case
-
+  if (typeof data === "string")
+    return data;
   if ("message" in data) {
     if (Array.isArray(data.errors)) {
       return `${data.message}: ${data.errors.map(JSON.stringify).join(", ")}`;
     }
-
     return data.message;
-  } // istanbul ignore next - just in case
-
-
+  }
   return `Unknown error: ${JSON.stringify(data)}`;
 }
 
+// pkg/dist-src/with-defaults.js
 function withDefaults(oldEndpoint, newDefaults) {
-  const endpoint = oldEndpoint.defaults(newDefaults);
-
-  const newApi = function (route, parameters) {
-    const endpointOptions = endpoint.merge(route, parameters);
-
+  const endpoint2 = oldEndpoint.defaults(newDefaults);
+  const newApi = function(route, parameters) {
+    const endpointOptions = endpoint2.merge(route, parameters);
     if (!endpointOptions.request || !endpointOptions.request.hook) {
-      return fetchWrapper(endpoint.parse(endpointOptions));
+      return fetchWrapper(endpoint2.parse(endpointOptions));
     }
-
-    const request = (route, parameters) => {
-      return fetchWrapper(endpoint.parse(endpoint.merge(route, parameters)));
+    const request2 = (route2, parameters2) => {
+      return fetchWrapper(
+        endpoint2.parse(endpoint2.merge(route2, parameters2))
+      );
     };
-
-    Object.assign(request, {
-      endpoint,
-      defaults: withDefaults.bind(null, endpoint)
+    Object.assign(request2, {
+      endpoint: endpoint2,
+      defaults: withDefaults.bind(null, endpoint2)
     });
-    return endpointOptions.request.hook(request, endpointOptions);
+    return endpointOptions.request.hook(request2, endpointOptions);
   };
-
   return Object.assign(newApi, {
-    endpoint,
-    defaults: withDefaults.bind(null, endpoint)
+    endpoint: endpoint2,
+    defaults: withDefaults.bind(null, endpoint2)
   });
 }
 
-const request = withDefaults(endpoint.endpoint, {
+// pkg/dist-src/index.js
+var request = withDefaults(import_endpoint.endpoint, {
   headers: {
-    "user-agent": `octokit-request.js/${VERSION} ${universalUserAgent.getUserAgent()}`
+    "user-agent": `octokit-request.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`
   }
 });
-
-exports.request = request;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -9436,101 +10070,437 @@ exports.RequestError = RequestError;
 /***/ }),
 
 /***/ 9768:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  sign: () => sign,
+  verify: () => verify,
+  verifyWithFallback: () => verifyWithFallback
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-var crypto = __nccwpck_require__(6113);
-var buffer = __nccwpck_require__(4300);
+// pkg/dist-src/node/sign.js
+var import_crypto = __nccwpck_require__(6113);
 
-var Algorithm;
-(function (Algorithm) {
-  Algorithm["SHA1"] = "sha1";
-  Algorithm["SHA256"] = "sha256";
-})(Algorithm || (Algorithm = {}));
+// pkg/dist-src/types.js
+var Algorithm = /* @__PURE__ */ ((Algorithm2) => {
+  Algorithm2["SHA1"] = "sha1";
+  Algorithm2["SHA256"] = "sha256";
+  return Algorithm2;
+})(Algorithm || {});
 
-const VERSION = "3.0.2";
+// pkg/dist-src/version.js
+var VERSION = "3.0.3";
 
+// pkg/dist-src/node/sign.js
 async function sign(options, payload) {
-  const {
-    secret,
-    algorithm
-  } = typeof options === "object" ? {
+  const { secret, algorithm } = typeof options === "object" ? {
     secret: options.secret,
     algorithm: options.algorithm || Algorithm.SHA256
-  } : {
-    secret: options,
-    algorithm: Algorithm.SHA256
-  };
+  } : { secret: options, algorithm: Algorithm.SHA256 };
   if (!secret || !payload) {
-    throw new TypeError("[@octokit/webhooks-methods] secret & payload required for sign()");
+    throw new TypeError(
+      "[@octokit/webhooks-methods] secret & payload required for sign()"
+    );
   }
   if (!Object.values(Algorithm).includes(algorithm)) {
-    throw new TypeError(`[@octokit/webhooks] Algorithm ${algorithm} is not supported. Must be  'sha1' or 'sha256'`);
+    throw new TypeError(
+      `[@octokit/webhooks] Algorithm ${algorithm} is not supported. Must be  'sha1' or 'sha256'`
+    );
   }
-  return `${algorithm}=${crypto.createHmac(algorithm, secret).update(payload).digest("hex")}`;
+  return `${algorithm}=${(0, import_crypto.createHmac)(algorithm, secret).update(payload).digest("hex")}`;
 }
 sign.VERSION = VERSION;
 
-const getAlgorithm = signature => {
+// pkg/dist-src/node/verify.js
+var import_crypto2 = __nccwpck_require__(6113);
+var import_buffer = __nccwpck_require__(4300);
+
+// pkg/dist-src/utils.js
+var getAlgorithm = (signature) => {
   return signature.startsWith("sha256=") ? "sha256" : "sha1";
 };
 
+// pkg/dist-src/node/verify.js
 async function verify(secret, eventPayload, signature) {
   if (!secret || !eventPayload || !signature) {
-    throw new TypeError("[@octokit/webhooks-methods] secret, eventPayload & signature required");
+    throw new TypeError(
+      "[@octokit/webhooks-methods] secret, eventPayload & signature required"
+    );
   }
-  const signatureBuffer = buffer.Buffer.from(signature);
+  const signatureBuffer = import_buffer.Buffer.from(signature);
   const algorithm = getAlgorithm(signature);
-  const verificationBuffer = buffer.Buffer.from(await sign({
-    secret,
-    algorithm
-  }, eventPayload));
+  const verificationBuffer = import_buffer.Buffer.from(
+    await sign({ secret, algorithm }, eventPayload)
+  );
   if (signatureBuffer.length !== verificationBuffer.length) {
     return false;
   }
-  // constant time comparison to prevent timing attachs
-  // https://stackoverflow.com/a/31096242/206879
-  // https://en.wikipedia.org/wiki/Timing_attack
-  return crypto.timingSafeEqual(signatureBuffer, verificationBuffer);
+  return (0, import_crypto2.timingSafeEqual)(signatureBuffer, verificationBuffer);
 }
 verify.VERSION = VERSION;
 
-exports.sign = sign;
-exports.verify = verify;
-//# sourceMappingURL=index.js.map
+// pkg/dist-src/index.js
+async function verifyWithFallback(secret, payload, signature, additionalSecrets) {
+  const firstPass = await verify(secret, payload, signature);
+  if (firstPass) {
+    return true;
+  }
+  if (additionalSecrets !== void 0) {
+    for (const s of additionalSecrets) {
+      const v = await verify(s, payload, signature);
+      if (v) {
+        return v;
+      }
+    }
+  }
+  return false;
+}
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 8513:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  Webhooks: () => Webhooks,
+  createEventHandler: () => createEventHandler,
+  createNodeMiddleware: () => createNodeMiddleware,
+  emitterEventNames: () => emitterEventNames
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var AggregateError = _interopDefault(__nccwpck_require__(1231));
-var webhooksMethods = __nccwpck_require__(9768);
-
-const createLogger = logger => ({
-  debug: () => {},
-  info: () => {},
+// pkg/dist-src/createLogger.js
+var createLogger = (logger) => ({
+  debug: () => {
+  },
+  info: () => {
+  },
   warn: console.warn.bind(console),
   error: console.error.bind(console),
   ...logger
 });
 
-// THIS FILE IS GENERATED - DO NOT EDIT DIRECTLY
-// make edits in scripts/generate-types.ts
-const emitterEventNames = ["branch_protection_rule", "branch_protection_rule.created", "branch_protection_rule.deleted", "branch_protection_rule.edited", "check_run", "check_run.completed", "check_run.created", "check_run.requested_action", "check_run.rerequested", "check_suite", "check_suite.completed", "check_suite.requested", "check_suite.rerequested", "code_scanning_alert", "code_scanning_alert.appeared_in_branch", "code_scanning_alert.closed_by_user", "code_scanning_alert.created", "code_scanning_alert.fixed", "code_scanning_alert.reopened", "code_scanning_alert.reopened_by_user", "commit_comment", "commit_comment.created", "create", "delete", "dependabot_alert", "dependabot_alert.created", "dependabot_alert.dismissed", "dependabot_alert.fixed", "dependabot_alert.reintroduced", "dependabot_alert.reopened", "deploy_key", "deploy_key.created", "deploy_key.deleted", "deployment", "deployment.created", "deployment_status", "deployment_status.created", "discussion", "discussion.answered", "discussion.category_changed", "discussion.created", "discussion.deleted", "discussion.edited", "discussion.labeled", "discussion.locked", "discussion.pinned", "discussion.transferred", "discussion.unanswered", "discussion.unlabeled", "discussion.unlocked", "discussion.unpinned", "discussion_comment", "discussion_comment.created", "discussion_comment.deleted", "discussion_comment.edited", "fork", "github_app_authorization", "github_app_authorization.revoked", "gollum", "installation", "installation.created", "installation.deleted", "installation.new_permissions_accepted", "installation.suspend", "installation.unsuspend", "installation_repositories", "installation_repositories.added", "installation_repositories.removed", "issue_comment", "issue_comment.created", "issue_comment.deleted", "issue_comment.edited", "issues", "issues.assigned", "issues.closed", "issues.deleted", "issues.demilestoned", "issues.edited", "issues.labeled", "issues.locked", "issues.milestoned", "issues.opened", "issues.pinned", "issues.reopened", "issues.transferred", "issues.unassigned", "issues.unlabeled", "issues.unlocked", "issues.unpinned", "label", "label.created", "label.deleted", "label.edited", "marketplace_purchase", "marketplace_purchase.cancelled", "marketplace_purchase.changed", "marketplace_purchase.pending_change", "marketplace_purchase.pending_change_cancelled", "marketplace_purchase.purchased", "member", "member.added", "member.edited", "member.removed", "membership", "membership.added", "membership.removed", "merge_group", "merge_group.checks_requested", "meta", "meta.deleted", "milestone", "milestone.closed", "milestone.created", "milestone.deleted", "milestone.edited", "milestone.opened", "org_block", "org_block.blocked", "org_block.unblocked", "organization", "organization.deleted", "organization.member_added", "organization.member_invited", "organization.member_removed", "organization.renamed", "package", "package.published", "package.updated", "page_build", "ping", "project", "project.closed", "project.created", "project.deleted", "project.edited", "project.reopened", "project_card", "project_card.converted", "project_card.created", "project_card.deleted", "project_card.edited", "project_card.moved", "project_column", "project_column.created", "project_column.deleted", "project_column.edited", "project_column.moved", "projects_v2_item", "projects_v2_item.archived", "projects_v2_item.converted", "projects_v2_item.created", "projects_v2_item.deleted", "projects_v2_item.edited", "projects_v2_item.reordered", "projects_v2_item.restored", "public", "pull_request", "pull_request.assigned", "pull_request.auto_merge_disabled", "pull_request.auto_merge_enabled", "pull_request.closed", "pull_request.converted_to_draft", "pull_request.dequeued", "pull_request.edited", "pull_request.labeled", "pull_request.locked", "pull_request.opened", "pull_request.queued", "pull_request.ready_for_review", "pull_request.reopened", "pull_request.review_request_removed", "pull_request.review_requested", "pull_request.synchronize", "pull_request.unassigned", "pull_request.unlabeled", "pull_request.unlocked", "pull_request_review", "pull_request_review.dismissed", "pull_request_review.edited", "pull_request_review.submitted", "pull_request_review_comment", "pull_request_review_comment.created", "pull_request_review_comment.deleted", "pull_request_review_comment.edited", "pull_request_review_thread", "pull_request_review_thread.resolved", "pull_request_review_thread.unresolved", "push", "registry_package", "registry_package.published", "registry_package.updated", "release", "release.created", "release.deleted", "release.edited", "release.prereleased", "release.published", "release.released", "release.unpublished", "repository", "repository.archived", "repository.created", "repository.deleted", "repository.edited", "repository.privatized", "repository.publicized", "repository.renamed", "repository.transferred", "repository.unarchived", "repository_dispatch", "repository_import", "repository_vulnerability_alert", "repository_vulnerability_alert.create", "repository_vulnerability_alert.dismiss", "repository_vulnerability_alert.reopen", "repository_vulnerability_alert.resolve", "secret_scanning_alert", "secret_scanning_alert.created", "secret_scanning_alert.reopened", "secret_scanning_alert.resolved", "security_advisory", "security_advisory.performed", "security_advisory.published", "security_advisory.updated", "security_advisory.withdrawn", "sponsorship", "sponsorship.cancelled", "sponsorship.created", "sponsorship.edited", "sponsorship.pending_cancellation", "sponsorship.pending_tier_change", "sponsorship.tier_changed", "star", "star.created", "star.deleted", "status", "team", "team.added_to_repository", "team.created", "team.deleted", "team.edited", "team.removed_from_repository", "team_add", "watch", "watch.started", "workflow_dispatch", "workflow_job", "workflow_job.completed", "workflow_job.in_progress", "workflow_job.queued", "workflow_run", "workflow_run.completed", "workflow_run.in_progress", "workflow_run.requested"];
+// pkg/dist-src/generated/webhook-names.js
+var emitterEventNames = [
+  "branch_protection_rule",
+  "branch_protection_rule.created",
+  "branch_protection_rule.deleted",
+  "branch_protection_rule.edited",
+  "check_run",
+  "check_run.completed",
+  "check_run.created",
+  "check_run.requested_action",
+  "check_run.rerequested",
+  "check_suite",
+  "check_suite.completed",
+  "check_suite.requested",
+  "check_suite.rerequested",
+  "code_scanning_alert",
+  "code_scanning_alert.appeared_in_branch",
+  "code_scanning_alert.closed_by_user",
+  "code_scanning_alert.created",
+  "code_scanning_alert.fixed",
+  "code_scanning_alert.reopened",
+  "code_scanning_alert.reopened_by_user",
+  "commit_comment",
+  "commit_comment.created",
+  "create",
+  "delete",
+  "dependabot_alert",
+  "dependabot_alert.created",
+  "dependabot_alert.dismissed",
+  "dependabot_alert.fixed",
+  "dependabot_alert.reintroduced",
+  "dependabot_alert.reopened",
+  "deploy_key",
+  "deploy_key.created",
+  "deploy_key.deleted",
+  "deployment",
+  "deployment.created",
+  "deployment_status",
+  "deployment_status.created",
+  "discussion",
+  "discussion.answered",
+  "discussion.category_changed",
+  "discussion.created",
+  "discussion.deleted",
+  "discussion.edited",
+  "discussion.labeled",
+  "discussion.locked",
+  "discussion.pinned",
+  "discussion.transferred",
+  "discussion.unanswered",
+  "discussion.unlabeled",
+  "discussion.unlocked",
+  "discussion.unpinned",
+  "discussion_comment",
+  "discussion_comment.created",
+  "discussion_comment.deleted",
+  "discussion_comment.edited",
+  "fork",
+  "github_app_authorization",
+  "github_app_authorization.revoked",
+  "gollum",
+  "installation",
+  "installation.created",
+  "installation.deleted",
+  "installation.new_permissions_accepted",
+  "installation.suspend",
+  "installation.unsuspend",
+  "installation_repositories",
+  "installation_repositories.added",
+  "installation_repositories.removed",
+  "installation_target",
+  "installation_target.renamed",
+  "issue_comment",
+  "issue_comment.created",
+  "issue_comment.deleted",
+  "issue_comment.edited",
+  "issues",
+  "issues.assigned",
+  "issues.closed",
+  "issues.deleted",
+  "issues.demilestoned",
+  "issues.edited",
+  "issues.labeled",
+  "issues.locked",
+  "issues.milestoned",
+  "issues.opened",
+  "issues.pinned",
+  "issues.reopened",
+  "issues.transferred",
+  "issues.unassigned",
+  "issues.unlabeled",
+  "issues.unlocked",
+  "issues.unpinned",
+  "label",
+  "label.created",
+  "label.deleted",
+  "label.edited",
+  "marketplace_purchase",
+  "marketplace_purchase.cancelled",
+  "marketplace_purchase.changed",
+  "marketplace_purchase.pending_change",
+  "marketplace_purchase.pending_change_cancelled",
+  "marketplace_purchase.purchased",
+  "member",
+  "member.added",
+  "member.edited",
+  "member.removed",
+  "membership",
+  "membership.added",
+  "membership.removed",
+  "merge_group",
+  "merge_group.checks_requested",
+  "meta",
+  "meta.deleted",
+  "milestone",
+  "milestone.closed",
+  "milestone.created",
+  "milestone.deleted",
+  "milestone.edited",
+  "milestone.opened",
+  "org_block",
+  "org_block.blocked",
+  "org_block.unblocked",
+  "organization",
+  "organization.deleted",
+  "organization.member_added",
+  "organization.member_invited",
+  "organization.member_removed",
+  "organization.renamed",
+  "package",
+  "package.published",
+  "package.updated",
+  "page_build",
+  "ping",
+  "project",
+  "project.closed",
+  "project.created",
+  "project.deleted",
+  "project.edited",
+  "project.reopened",
+  "project_card",
+  "project_card.converted",
+  "project_card.created",
+  "project_card.deleted",
+  "project_card.edited",
+  "project_card.moved",
+  "project_column",
+  "project_column.created",
+  "project_column.deleted",
+  "project_column.edited",
+  "project_column.moved",
+  "projects_v2_item",
+  "projects_v2_item.archived",
+  "projects_v2_item.converted",
+  "projects_v2_item.created",
+  "projects_v2_item.deleted",
+  "projects_v2_item.edited",
+  "projects_v2_item.reordered",
+  "projects_v2_item.restored",
+  "public",
+  "pull_request",
+  "pull_request.assigned",
+  "pull_request.auto_merge_disabled",
+  "pull_request.auto_merge_enabled",
+  "pull_request.closed",
+  "pull_request.converted_to_draft",
+  "pull_request.demilestoned",
+  "pull_request.dequeued",
+  "pull_request.edited",
+  "pull_request.labeled",
+  "pull_request.locked",
+  "pull_request.milestoned",
+  "pull_request.opened",
+  "pull_request.queued",
+  "pull_request.ready_for_review",
+  "pull_request.reopened",
+  "pull_request.review_request_removed",
+  "pull_request.review_requested",
+  "pull_request.synchronize",
+  "pull_request.unassigned",
+  "pull_request.unlabeled",
+  "pull_request.unlocked",
+  "pull_request_review",
+  "pull_request_review.dismissed",
+  "pull_request_review.edited",
+  "pull_request_review.submitted",
+  "pull_request_review_comment",
+  "pull_request_review_comment.created",
+  "pull_request_review_comment.deleted",
+  "pull_request_review_comment.edited",
+  "pull_request_review_thread",
+  "pull_request_review_thread.resolved",
+  "pull_request_review_thread.unresolved",
+  "push",
+  "registry_package",
+  "registry_package.published",
+  "registry_package.updated",
+  "release",
+  "release.created",
+  "release.deleted",
+  "release.edited",
+  "release.prereleased",
+  "release.published",
+  "release.released",
+  "release.unpublished",
+  "repository",
+  "repository.archived",
+  "repository.created",
+  "repository.deleted",
+  "repository.edited",
+  "repository.privatized",
+  "repository.publicized",
+  "repository.renamed",
+  "repository.transferred",
+  "repository.unarchived",
+  "repository_dispatch",
+  "repository_import",
+  "repository_vulnerability_alert",
+  "repository_vulnerability_alert.create",
+  "repository_vulnerability_alert.dismiss",
+  "repository_vulnerability_alert.reopen",
+  "repository_vulnerability_alert.resolve",
+  "secret_scanning_alert",
+  "secret_scanning_alert.created",
+  "secret_scanning_alert.reopened",
+  "secret_scanning_alert.resolved",
+  "security_advisory",
+  "security_advisory.performed",
+  "security_advisory.published",
+  "security_advisory.updated",
+  "security_advisory.withdrawn",
+  "sponsorship",
+  "sponsorship.cancelled",
+  "sponsorship.created",
+  "sponsorship.edited",
+  "sponsorship.pending_cancellation",
+  "sponsorship.pending_tier_change",
+  "sponsorship.tier_changed",
+  "star",
+  "star.created",
+  "star.deleted",
+  "status",
+  "team",
+  "team.added_to_repository",
+  "team.created",
+  "team.deleted",
+  "team.edited",
+  "team.removed_from_repository",
+  "team_add",
+  "watch",
+  "watch.started",
+  "workflow_dispatch",
+  "workflow_job",
+  "workflow_job.completed",
+  "workflow_job.in_progress",
+  "workflow_job.queued",
+  "workflow_run",
+  "workflow_run.completed",
+  "workflow_run.in_progress",
+  "workflow_run.requested"
+];
 
+// pkg/dist-src/event-handler/on.js
 function handleEventHandlers(state, webhookName, handler) {
   if (!state.hooks[webhookName]) {
     state.hooks[webhookName] = [];
@@ -9539,7 +10509,9 @@ function handleEventHandlers(state, webhookName, handler) {
 }
 function receiverOn(state, webhookNameOrNames, handler) {
   if (Array.isArray(webhookNameOrNames)) {
-    webhookNameOrNames.forEach(webhookName => receiverOn(state, webhookName, handler));
+    webhookNameOrNames.forEach(
+      (webhookName) => receiverOn(state, webhookName, handler)
+    );
     return;
   }
   if (["*", "error"].includes(webhookNameOrNames)) {
@@ -9548,7 +10520,9 @@ function receiverOn(state, webhookNameOrNames, handler) {
     throw new Error(message);
   }
   if (!emitterEventNames.includes(webhookNameOrNames)) {
-    state.log.warn(`"${webhookNameOrNames}" is not a known webhook name (https://developer.github.com/v3/activity/events/types/)`);
+    state.log.warn(
+      `"${webhookNameOrNames}" is not a known webhook name (https://developer.github.com/v3/activity/events/types/)`
+    );
   }
   handleEventHandlers(state, webhookNameOrNames, handler);
 }
@@ -9559,26 +10533,27 @@ function receiverOnError(state, handler) {
   handleEventHandlers(state, "error", handler);
 }
 
-// Errors thrown or rejected Promises in "error" event handlers are not handled
-// as they are in the webhook event handlers. If errors occur, we log a
-// "Fatal: Error occurred" message to stdout
+// pkg/dist-src/event-handler/receive.js
+var import_aggregate_error = __toESM(__nccwpck_require__(1231));
+
+// pkg/dist-src/event-handler/wrap-error-handler.js
 function wrapErrorHandler(handler, error) {
   let returnValue;
   try {
     returnValue = handler(error);
-  } catch (error) {
+  } catch (error2) {
     console.log('FATAL: Error occurred in "error" event handler');
-    console.log(error);
+    console.log(error2);
   }
   if (returnValue && returnValue.catch) {
-    returnValue.catch(error => {
+    returnValue.catch((error2) => {
       console.log('FATAL: Error occurred in "error" event handler');
-      console.log(error);
+      console.log(error2);
     });
   }
 }
 
-// @ts-ignore to address #245
+// pkg/dist-src/event-handler/receive.js
 function getHooks(state, eventPayloadAction, eventName) {
   const hooks = [state.hooks[eventName], state.hooks["*"]];
   if (eventPayloadAction) {
@@ -9586,64 +10561,65 @@ function getHooks(state, eventPayloadAction, eventName) {
   }
   return [].concat(...hooks.filter(Boolean));
 }
-// main handler function
 function receiverHandle(state, event) {
   const errorHandlers = state.hooks.error || [];
   if (event instanceof Error) {
-    const error = Object.assign(new AggregateError([event]), {
+    const error = Object.assign(new import_aggregate_error.default([event]), {
       event,
       errors: [event]
     });
-    errorHandlers.forEach(handler => wrapErrorHandler(handler, error));
+    errorHandlers.forEach((handler) => wrapErrorHandler(handler, error));
     return Promise.reject(error);
   }
   if (!event || !event.name) {
-    throw new AggregateError(["Event name not passed"]);
+    throw new import_aggregate_error.default(["Event name not passed"]);
   }
   if (!event.payload) {
-    throw new AggregateError(["Event payload not passed"]);
+    throw new import_aggregate_error.default(["Event payload not passed"]);
   }
-  // flatten arrays of event listeners and remove undefined values
-  const hooks = getHooks(state, "action" in event.payload ? event.payload.action : null, event.name);
+  const hooks = getHooks(
+    state,
+    "action" in event.payload ? event.payload.action : null,
+    event.name
+  );
   if (hooks.length === 0) {
     return Promise.resolve();
   }
   const errors = [];
-  const promises = hooks.map(handler => {
+  const promises = hooks.map((handler) => {
     let promise = Promise.resolve(event);
     if (state.transform) {
       promise = promise.then(state.transform);
     }
-    return promise.then(event => {
-      return handler(event);
-    }).catch(error => errors.push(Object.assign(error, {
-      event
-    })));
+    return promise.then((event2) => {
+      return handler(event2);
+    }).catch((error) => errors.push(Object.assign(error, { event })));
   });
   return Promise.all(promises).then(() => {
     if (errors.length === 0) {
       return;
     }
-    const error = new AggregateError(errors);
+    const error = new import_aggregate_error.default(errors);
     Object.assign(error, {
       event,
       errors
     });
-    errorHandlers.forEach(handler => wrapErrorHandler(handler, error));
+    errorHandlers.forEach((handler) => wrapErrorHandler(handler, error));
     throw error;
   });
 }
 
+// pkg/dist-src/event-handler/remove-listener.js
 function removeListener(state, webhookNameOrNames, handler) {
   if (Array.isArray(webhookNameOrNames)) {
-    webhookNameOrNames.forEach(webhookName => removeListener(state, webhookName, handler));
+    webhookNameOrNames.forEach(
+      (webhookName) => removeListener(state, webhookName, handler)
+    );
     return;
   }
   if (!state.hooks[webhookNameOrNames]) {
     return;
   }
-  // remove last hook that has been added, that way
-  // it behaves the same as removeListener
   for (let i = state.hooks[webhookNameOrNames].length - 1; i >= 0; i--) {
     if (state.hooks[webhookNameOrNames][i] === handler) {
       state.hooks[webhookNameOrNames].splice(i, 1);
@@ -9652,6 +10628,7 @@ function removeListener(state, webhookNameOrNames, handler) {
   }
 }
 
+// pkg/dist-src/event-handler/index.js
 function createEventHandler(options) {
   const state = {
     hooks: {},
@@ -9669,33 +10646,50 @@ function createEventHandler(options) {
   };
 }
 
-/**
- * GitHub sends its JSON with no indentation and no line break at the end
- */
+// pkg/dist-src/sign.js
+var import_webhooks_methods = __nccwpck_require__(9768);
+
+// pkg/dist-src/to-normalized-json-string.js
 function toNormalizedJsonString(payload) {
   const payloadString = JSON.stringify(payload);
-  return payloadString.replace(/[^\\]\\u[\da-f]{4}/g, s => {
+  return payloadString.replace(/[^\\]\\u[\da-f]{4}/g, (s) => {
     return s.substr(0, 3) + s.substr(3).toUpperCase();
   });
 }
 
+// pkg/dist-src/sign.js
 async function sign(secret, payload) {
-  return webhooksMethods.sign(secret, typeof payload === "string" ? payload : toNormalizedJsonString(payload));
+  return (0, import_webhooks_methods.sign)(
+    secret,
+    typeof payload === "string" ? payload : toNormalizedJsonString(payload)
+  );
 }
 
+// pkg/dist-src/verify.js
+var import_webhooks_methods2 = __nccwpck_require__(9768);
 async function verify(secret, payload, signature) {
-  return webhooksMethods.verify(secret, typeof payload === "string" ? payload : toNormalizedJsonString(payload), signature);
+  return (0, import_webhooks_methods2.verify)(
+    secret,
+    typeof payload === "string" ? payload : toNormalizedJsonString(payload),
+    signature
+  );
 }
 
+// pkg/dist-src/verify-and-receive.js
+var import_webhooks_methods3 = __nccwpck_require__(9768);
 async function verifyAndReceive(state, event) {
-  // verify will validate that the secret is not undefined
-  const matchesSignature = await webhooksMethods.verify(state.secret, typeof event.payload === "object" ? toNormalizedJsonString(event.payload) : event.payload, event.signature);
+  const matchesSignature = await (0, import_webhooks_methods3.verify)(
+    state.secret,
+    typeof event.payload === "object" ? toNormalizedJsonString(event.payload) : event.payload,
+    event.signature
+  );
   if (!matchesSignature) {
-    const error = new Error("[@octokit/webhooks] signature does not match event payload and secret");
-    return state.eventHandler.receive(Object.assign(error, {
-      event,
-      status: 400
-    }));
+    const error = new Error(
+      "[@octokit/webhooks] signature does not match event payload and secret"
+    );
+    return state.eventHandler.receive(
+      Object.assign(error, { event, status: 400 })
+    );
   }
   return state.eventHandler.receive({
     id: event.id,
@@ -9704,35 +10698,46 @@ async function verifyAndReceive(state, event) {
   });
 }
 
-const WEBHOOK_HEADERS = ["x-github-event", "x-hub-signature-256", "x-github-delivery"];
-// https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#delivery-headers
+// pkg/dist-src/middleware/node/get-missing-headers.js
+var WEBHOOK_HEADERS = [
+  "x-github-event",
+  "x-hub-signature-256",
+  "x-github-delivery"
+];
 function getMissingHeaders(request) {
-  return WEBHOOK_HEADERS.filter(header => !(header in request.headers));
+  return WEBHOOK_HEADERS.filter((header) => !(header in request.headers));
 }
 
-// @ts-ignore to address #245
+// pkg/dist-src/middleware/node/get-payload.js
+var import_aggregate_error2 = __toESM(__nccwpck_require__(1231));
 function getPayload(request) {
-  // If request.body already exists we can stop here
-  // See https://github.com/octokit/webhooks.js/pull/23
-  if (request.body) return Promise.resolve(request.body);
+  if (request.body) {
+    if (typeof request.body !== "string") {
+      console.warn(
+        "[@octokit/webhooks] Passing the payload as a JSON object in `request.body` is deprecated and will be removed in a future release of `@octokit/webhooks`, please pass it as a a `string` instead."
+      );
+    }
+    return Promise.resolve(request.body);
+  }
   return new Promise((resolve, reject) => {
     let data = "";
     request.setEncoding("utf8");
-    // istanbul ignore next
-    request.on("error", error => reject(new AggregateError([error])));
-    request.on("data", chunk => data += chunk);
+    request.on("error", (error) => reject(new import_aggregate_error2.default([error])));
+    request.on("data", (chunk) => data += chunk);
     request.on("end", () => {
       try {
-        resolve(JSON.parse(data));
+        JSON.parse(data);
+        resolve(data);
       } catch (error) {
         error.message = "Invalid JSON";
         error.status = 400;
-        reject(new AggregateError([error]));
+        reject(new import_aggregate_error2.default([error]));
       }
     });
   });
 }
 
+// pkg/dist-src/middleware/node/middleware.js
 async function middleware(webhooks, options, request, response, next) {
   let pathname;
   try {
@@ -9741,9 +10746,11 @@ async function middleware(webhooks, options, request, response, next) {
     response.writeHead(422, {
       "content-type": "application/json"
     });
-    response.end(JSON.stringify({
-      error: `Request URL could not be parsed: ${request.url}`
-    }));
+    response.end(
+      JSON.stringify({
+        error: `Request URL could not be parsed: ${request.url}`
+      })
+    );
     return;
   }
   const isUnknownRoute = request.method !== "POST" || pathname !== options.path;
@@ -9755,68 +10762,90 @@ async function middleware(webhooks, options, request, response, next) {
       return options.onUnhandledRequest(request, response);
     }
   }
+  if (!request.headers["content-type"] || !request.headers["content-type"].startsWith("application/json")) {
+    response.writeHead(415, {
+      "content-type": "application/json",
+      accept: "application/json"
+    });
+    response.end(
+      JSON.stringify({
+        error: `Unsupported "Content-Type" header value. Must be "application/json"`
+      })
+    );
+    return;
+  }
   const missingHeaders = getMissingHeaders(request).join(", ");
   if (missingHeaders) {
     response.writeHead(400, {
       "content-type": "application/json"
     });
-    response.end(JSON.stringify({
-      error: `Required headers missing: ${missingHeaders}`
-    }));
+    response.end(
+      JSON.stringify({
+        error: `Required headers missing: ${missingHeaders}`
+      })
+    );
     return;
   }
   const eventName = request.headers["x-github-event"];
   const signatureSHA256 = request.headers["x-hub-signature-256"];
   const id = request.headers["x-github-delivery"];
   options.log.debug(`${eventName} event received (id: ${id})`);
-  // GitHub will abort the request if it does not receive a response within 10s
-  // See https://github.com/octokit/webhooks.js/issues/185
   let didTimeout = false;
   const timeout = setTimeout(() => {
     didTimeout = true;
     response.statusCode = 202;
     response.end("still processing\n");
-  }, 9000).unref();
+  }, 9e3).unref();
   try {
     const payload = await getPayload(request);
     await webhooks.verifyAndReceive({
-      id: id,
+      id,
       name: eventName,
-      payload: payload,
+      payload,
       signature: signatureSHA256
     });
     clearTimeout(timeout);
-    if (didTimeout) return;
+    if (didTimeout)
+      return;
     response.end("ok\n");
   } catch (error) {
     clearTimeout(timeout);
-    if (didTimeout) return;
+    if (didTimeout)
+      return;
     const err = Array.from(error)[0];
     const errorMessage = err.message ? `${err.name}: ${err.message}` : "Error: An Unspecified error occurred";
     response.statusCode = typeof err.status !== "undefined" ? err.status : 500;
     options.log.error(error);
-    response.end(JSON.stringify({
-      error: errorMessage
-    }));
+    response.end(
+      JSON.stringify({
+        error: errorMessage
+      })
+    );
   }
 }
 
+// pkg/dist-src/middleware/node/on-unhandled-request-default.js
 function onUnhandledRequestDefault(request, response) {
   response.writeHead(404, {
     "content-type": "application/json"
   });
-  response.end(JSON.stringify({
-    error: `Unknown route: ${request.method} ${request.url}`
-  }));
+  response.end(
+    JSON.stringify({
+      error: `Unknown route: ${request.method} ${request.url}`
+    })
+  );
 }
 
+// pkg/dist-src/middleware/node/index.js
 function createNodeMiddleware(webhooks, {
   path = "/api/github/webhooks",
   onUnhandledRequest = onUnhandledRequestDefault,
   log = createLogger()
 } = {}) {
   const deprecateOnUnhandledRequest = (request, response) => {
-    console.error("[@octokit/webhooks] `onUnhandledRequest()` is deprecated and will be removed in a future release of `@octokit/webhooks`");
+    console.warn(
+      "[@octokit/webhooks] `onUnhandledRequest()` is deprecated and will be removed in a future release of `@octokit/webhooks`"
+    );
     return onUnhandledRequest(request, response);
   };
   return middleware.bind(null, webhooks, {
@@ -9826,8 +10855,8 @@ function createNodeMiddleware(webhooks, {
   });
 }
 
-// U holds the return value of `transform` function in Options
-class Webhooks {
+// pkg/dist-src/index.js
+var Webhooks = class {
   constructor(options) {
     if (!options || !options.secret) {
       throw new Error("[@octokit/webhooks] options.secret required");
@@ -9841,7 +10870,9 @@ class Webhooks {
     this.sign = sign.bind(null, options.secret);
     this.verify = (eventPayload, signature) => {
       if (typeof eventPayload === "object") {
-        console.error("[@octokit/webhooks] Passing a JSON payload object to `verify()` is deprecated and the functionality will be removed in a future release of `@octokit/webhooks`");
+        console.warn(
+          "[@octokit/webhooks] Passing a JSON payload object to `verify()` is deprecated and the functionality will be removed in a future release of `@octokit/webhooks`"
+        );
       }
       return verify(options.secret, eventPayload, signature);
     };
@@ -9850,20 +10881,18 @@ class Webhooks {
     this.onError = state.eventHandler.onError;
     this.removeListener = state.eventHandler.removeListener;
     this.receive = state.eventHandler.receive;
-    this.verifyAndReceive = options => {
-      if (typeof options.payload === "object") {
-        console.error("[@octokit/webhooks] Passing a JSON payload object to `verifyAndReceive()` is deprecated and the functionality will be removed in a future release of `@octokit/webhooks`");
+    this.verifyAndReceive = (options2) => {
+      if (typeof options2.payload === "object") {
+        console.warn(
+          "[@octokit/webhooks] Passing a JSON payload object to `verifyAndReceive()` is deprecated and the functionality will be removed in a future release of `@octokit/webhooks`"
+        );
       }
-      return verifyAndReceive(state, options);
+      return verifyAndReceive(state, options2);
     };
   }
-}
-
-exports.Webhooks = Webhooks;
-exports.createEventHandler = createEventHandler;
-exports.createNodeMiddleware = createNodeMiddleware;
-exports.emitterEventNames = emitterEventNames;
-//# sourceMappingURL=index.js.map
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -35072,98 +36101,130 @@ module.exports.implForWrapper = function (wrapper) {
 /***/ }),
 
 /***/ 7467:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  App: () => App,
+  OAuthApp: () => OAuthApp,
+  Octokit: () => Octokit,
+  createNodeMiddleware: () => import_app2.createNodeMiddleware
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-var core = __nccwpck_require__(6762);
-var pluginPaginateRest = __nccwpck_require__(3932);
-var pluginRestEndpointMethods = __nccwpck_require__(3779);
-var pluginRetry = __nccwpck_require__(6298);
-var pluginThrottling = __nccwpck_require__(9968);
-var app = __nccwpck_require__(4389);
-var oauthApp = __nccwpck_require__(3493);
+// pkg/dist-src/octokit.js
+var import_core = __nccwpck_require__(6762);
+var import_plugin_paginate_rest = __nccwpck_require__(3932);
+var import_plugin_rest_endpoint_methods = __nccwpck_require__(3779);
+var import_plugin_retry = __nccwpck_require__(8519);
+var import_plugin_throttling = __nccwpck_require__(9968);
 
-const VERSION = "2.0.14";
+// pkg/dist-src/version.js
+var VERSION = "2.0.19";
 
-const Octokit = core.Octokit.plugin(pluginRestEndpointMethods.restEndpointMethods, pluginPaginateRest.paginateRest, pluginRetry.retry, pluginThrottling.throttling).defaults({
+// pkg/dist-src/octokit.js
+var Octokit = import_core.Octokit.plugin(
+  import_plugin_rest_endpoint_methods.restEndpointMethods,
+  import_plugin_paginate_rest.paginateRest,
+  import_plugin_retry.retry,
+  import_plugin_throttling.throttling
+).defaults({
   userAgent: `octokit.js/${VERSION}`,
   throttle: {
     onRateLimit,
     onSecondaryRateLimit
   }
 });
-// istanbul ignore next no need to test internals of the throttle plugin
 function onRateLimit(retryAfter, options, octokit) {
-  octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
+  octokit.log.warn(
+    `Request quota exhausted for request ${options.method} ${options.url}`
+  );
   if (options.request.retryCount === 0) {
-    // only retries once
     octokit.log.info(`Retrying after ${retryAfter} seconds!`);
     return true;
   }
 }
-// istanbul ignore next no need to test internals of the throttle plugin
 function onSecondaryRateLimit(retryAfter, options, octokit) {
-  octokit.log.warn(`SecondaryRateLimit detected for request ${options.method} ${options.url}`);
+  octokit.log.warn(
+    `SecondaryRateLimit detected for request ${options.method} ${options.url}`
+  );
   if (options.request.retryCount === 0) {
-    // only retries once
     octokit.log.info(`Retrying after ${retryAfter} seconds!`);
     return true;
   }
 }
 
-const App = app.App.defaults({
-  Octokit
-});
-const OAuthApp = oauthApp.OAuthApp.defaults({
-  Octokit
-});
-
-Object.defineProperty(exports, "createNodeMiddleware", ({
-    enumerable: true,
-    get: function () {
-        return app.createNodeMiddleware;
-    }
-}));
-exports.App = App;
-exports.OAuthApp = OAuthApp;
-exports.Octokit = Octokit;
-//# sourceMappingURL=index.js.map
+// pkg/dist-src/app.js
+var import_app = __nccwpck_require__(4389);
+var import_oauth_app = __nccwpck_require__(3493);
+var import_app2 = __nccwpck_require__(4389);
+var App = import_app.App.defaults({ Octokit });
+var OAuthApp = import_oauth_app.OAuthApp.defaults({ Octokit });
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
 
 /***/ 3932:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((module) => {
 
 "use strict";
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-Object.defineProperty(exports, "__esModule", ({ value: true }));
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  composePaginateRest: () => composePaginateRest,
+  isPaginatingEndpoint: () => isPaginatingEndpoint,
+  paginateRest: () => paginateRest,
+  paginatingEndpoints: () => paginatingEndpoints
+});
+module.exports = __toCommonJS(dist_src_exports);
 
-const VERSION = "6.0.0";
+// pkg/dist-src/version.js
+var VERSION = "6.1.2";
 
-/**
- * Some “list” response that can be paginated have a different response structure
- *
- * They have a `total_count` key in the response (search also has `incomplete_results`,
- * /installation/repositories also has `repository_selection`), as well as a key with
- * the list of the items which name varies from endpoint to endpoint.
- *
- * Octokit normalizes these responses so that paginated results are always returned following
- * the same structure. One challenge is that if the list response has only one page, no Link
- * header is provided, so this header alone is not sufficient to check wether a response is
- * paginated or not.
- *
- * We check if a "total_count" key is present in the response data, but also make sure that
- * a "url" property is not, as the "Get the combined status for a specific ref" endpoint would
- * otherwise match: https://developer.github.com/v3/repos/statuses/#get-the-combined-status-for-a-specific-ref
- */
+// pkg/dist-src/normalize-paginated-list-response.js
 function normalizePaginatedListResponse(response) {
-  // endpoints can respond with 204 if repository is empty
   if (!response.data) {
     return {
       ...response,
@@ -35171,9 +36232,8 @@ function normalizePaginatedListResponse(response) {
     };
   }
   const responseNeedsNormalization = "total_count" in response.data && !("url" in response.data);
-  if (!responseNeedsNormalization) return response;
-  // keep the additional properties intact as there is currently no other way
-  // to retrieve the same information.
+  if (!responseNeedsNormalization)
+    return response;
   const incompleteResults = response.data.incomplete_results;
   const repositorySelection = response.data.repository_selection;
   const totalCount = response.data.total_count;
@@ -35193,6 +36253,7 @@ function normalizePaginatedListResponse(response) {
   return response;
 }
 
+// pkg/dist-src/iterator.js
 function iterator(octokit, route, parameters) {
   const options = typeof route === "function" ? route.endpoint(parameters) : octokit.request.endpoint(route, parameters);
   const requestMethod = typeof route === "function" ? route : octokit.request;
@@ -35202,25 +36263,18 @@ function iterator(octokit, route, parameters) {
   return {
     [Symbol.asyncIterator]: () => ({
       async next() {
-        if (!url) return {
-          done: true
-        };
+        if (!url)
+          return { done: true };
         try {
-          const response = await requestMethod({
-            method,
-            url,
-            headers
-          });
+          const response = await requestMethod({ method, url, headers });
           const normalizedResponse = normalizePaginatedListResponse(response);
-          // `response.headers.link` format:
-          // '<https://api.github.com/users/aseemk/followers?page=2>; rel="next", <https://api.github.com/users/aseemk/followers?page=2>; rel="last"'
-          // sets `url` to undefined if "next" URL is not present or `link` header is not set
-          url = ((normalizedResponse.headers.link || "").match(/<([^>]+)>;\s*rel="next"/) || [])[1];
-          return {
-            value: normalizedResponse
-          };
+          url = ((normalizedResponse.headers.link || "").match(
+            /<([^>]+)>;\s*rel="next"/
+          ) || [])[1];
+          return { value: normalizedResponse };
         } catch (error) {
-          if (error.status !== 409) throw error;
+          if (error.status !== 409)
+            throw error;
           url = "";
           return {
             value: {
@@ -35235,15 +36289,21 @@ function iterator(octokit, route, parameters) {
   };
 }
 
+// pkg/dist-src/paginate.js
 function paginate(octokit, route, parameters, mapFn) {
   if (typeof parameters === "function") {
     mapFn = parameters;
-    parameters = undefined;
+    parameters = void 0;
   }
-  return gather(octokit, [], iterator(octokit, route, parameters)[Symbol.asyncIterator](), mapFn);
+  return gather(
+    octokit,
+    [],
+    iterator(octokit, route, parameters)[Symbol.asyncIterator](),
+    mapFn
+  );
 }
-function gather(octokit, results, iterator, mapFn) {
-  return iterator.next().then(result => {
+function gather(octokit, results, iterator2, mapFn) {
+  return iterator2.next().then((result) => {
     if (result.done) {
       return results;
     }
@@ -35251,20 +36311,248 @@ function gather(octokit, results, iterator, mapFn) {
     function done() {
       earlyExit = true;
     }
-    results = results.concat(mapFn ? mapFn(result.value, done) : result.value.data);
+    results = results.concat(
+      mapFn ? mapFn(result.value, done) : result.value.data
+    );
     if (earlyExit) {
       return results;
     }
-    return gather(octokit, results, iterator, mapFn);
+    return gather(octokit, results, iterator2, mapFn);
   });
 }
 
-const composePaginateRest = Object.assign(paginate, {
+// pkg/dist-src/compose-paginate.js
+var composePaginateRest = Object.assign(paginate, {
   iterator
 });
 
-const paginatingEndpoints = ["GET /app/hook/deliveries", "GET /app/installations", "GET /enterprises/{enterprise}/actions/runner-groups", "GET /enterprises/{enterprise}/dependabot/alerts", "GET /enterprises/{enterprise}/secret-scanning/alerts", "GET /events", "GET /gists", "GET /gists/public", "GET /gists/starred", "GET /gists/{gist_id}/comments", "GET /gists/{gist_id}/commits", "GET /gists/{gist_id}/forks", "GET /installation/repositories", "GET /issues", "GET /licenses", "GET /marketplace_listing/plans", "GET /marketplace_listing/plans/{plan_id}/accounts", "GET /marketplace_listing/stubbed/plans", "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts", "GET /networks/{owner}/{repo}/events", "GET /notifications", "GET /organizations", "GET /orgs/{org}/actions/cache/usage-by-repository", "GET /orgs/{org}/actions/permissions/repositories", "GET /orgs/{org}/actions/required_workflows", "GET /orgs/{org}/actions/runner-groups", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/runners", "GET /orgs/{org}/actions/runners", "GET /orgs/{org}/actions/secrets", "GET /orgs/{org}/actions/secrets/{secret_name}/repositories", "GET /orgs/{org}/actions/variables", "GET /orgs/{org}/actions/variables/{name}/repositories", "GET /orgs/{org}/blocks", "GET /orgs/{org}/code-scanning/alerts", "GET /orgs/{org}/codespaces", "GET /orgs/{org}/codespaces/secrets", "GET /orgs/{org}/codespaces/secrets/{secret_name}/repositories", "GET /orgs/{org}/dependabot/alerts", "GET /orgs/{org}/dependabot/secrets", "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories", "GET /orgs/{org}/events", "GET /orgs/{org}/failed_invitations", "GET /orgs/{org}/hooks", "GET /orgs/{org}/hooks/{hook_id}/deliveries", "GET /orgs/{org}/installations", "GET /orgs/{org}/invitations", "GET /orgs/{org}/invitations/{invitation_id}/teams", "GET /orgs/{org}/issues", "GET /orgs/{org}/members", "GET /orgs/{org}/members/{username}/codespaces", "GET /orgs/{org}/migrations", "GET /orgs/{org}/migrations/{migration_id}/repositories", "GET /orgs/{org}/outside_collaborators", "GET /orgs/{org}/packages", "GET /orgs/{org}/packages/{package_type}/{package_name}/versions", "GET /orgs/{org}/projects", "GET /orgs/{org}/public_members", "GET /orgs/{org}/repos", "GET /orgs/{org}/secret-scanning/alerts", "GET /orgs/{org}/teams", "GET /orgs/{org}/teams/{team_slug}/discussions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/invitations", "GET /orgs/{org}/teams/{team_slug}/members", "GET /orgs/{org}/teams/{team_slug}/projects", "GET /orgs/{org}/teams/{team_slug}/repos", "GET /orgs/{org}/teams/{team_slug}/teams", "GET /projects/columns/{column_id}/cards", "GET /projects/{project_id}/collaborators", "GET /projects/{project_id}/columns", "GET /repos/{org}/{repo}/actions/required_workflows", "GET /repos/{owner}/{repo}/actions/artifacts", "GET /repos/{owner}/{repo}/actions/caches", "GET /repos/{owner}/{repo}/actions/required_workflows/{required_workflow_id_for_repo}/runs", "GET /repos/{owner}/{repo}/actions/runners", "GET /repos/{owner}/{repo}/actions/runs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs", "GET /repos/{owner}/{repo}/actions/secrets", "GET /repos/{owner}/{repo}/actions/variables", "GET /repos/{owner}/{repo}/actions/workflows", "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs", "GET /repos/{owner}/{repo}/assignees", "GET /repos/{owner}/{repo}/branches", "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations", "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs", "GET /repos/{owner}/{repo}/code-scanning/alerts", "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances", "GET /repos/{owner}/{repo}/code-scanning/analyses", "GET /repos/{owner}/{repo}/codespaces", "GET /repos/{owner}/{repo}/codespaces/devcontainers", "GET /repos/{owner}/{repo}/codespaces/secrets", "GET /repos/{owner}/{repo}/collaborators", "GET /repos/{owner}/{repo}/comments", "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/commits", "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments", "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls", "GET /repos/{owner}/{repo}/commits/{ref}/check-runs", "GET /repos/{owner}/{repo}/commits/{ref}/check-suites", "GET /repos/{owner}/{repo}/commits/{ref}/status", "GET /repos/{owner}/{repo}/commits/{ref}/statuses", "GET /repos/{owner}/{repo}/contributors", "GET /repos/{owner}/{repo}/dependabot/alerts", "GET /repos/{owner}/{repo}/dependabot/secrets", "GET /repos/{owner}/{repo}/deployments", "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses", "GET /repos/{owner}/{repo}/environments", "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies", "GET /repos/{owner}/{repo}/events", "GET /repos/{owner}/{repo}/forks", "GET /repos/{owner}/{repo}/hooks", "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries", "GET /repos/{owner}/{repo}/invitations", "GET /repos/{owner}/{repo}/issues", "GET /repos/{owner}/{repo}/issues/comments", "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/issues/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/comments", "GET /repos/{owner}/{repo}/issues/{issue_number}/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/labels", "GET /repos/{owner}/{repo}/issues/{issue_number}/reactions", "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline", "GET /repos/{owner}/{repo}/keys", "GET /repos/{owner}/{repo}/labels", "GET /repos/{owner}/{repo}/milestones", "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels", "GET /repos/{owner}/{repo}/notifications", "GET /repos/{owner}/{repo}/pages/builds", "GET /repos/{owner}/{repo}/projects", "GET /repos/{owner}/{repo}/pulls", "GET /repos/{owner}/{repo}/pulls/comments", "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments", "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", "GET /repos/{owner}/{repo}/pulls/{pull_number}/files", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments", "GET /repos/{owner}/{repo}/releases", "GET /repos/{owner}/{repo}/releases/{release_id}/assets", "GET /repos/{owner}/{repo}/releases/{release_id}/reactions", "GET /repos/{owner}/{repo}/secret-scanning/alerts", "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations", "GET /repos/{owner}/{repo}/stargazers", "GET /repos/{owner}/{repo}/subscribers", "GET /repos/{owner}/{repo}/tags", "GET /repos/{owner}/{repo}/teams", "GET /repos/{owner}/{repo}/topics", "GET /repositories", "GET /repositories/{repository_id}/environments/{environment_name}/secrets", "GET /repositories/{repository_id}/environments/{environment_name}/variables", "GET /search/code", "GET /search/commits", "GET /search/issues", "GET /search/labels", "GET /search/repositories", "GET /search/topics", "GET /search/users", "GET /teams/{team_id}/discussions", "GET /teams/{team_id}/discussions/{discussion_number}/comments", "GET /teams/{team_id}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /teams/{team_id}/discussions/{discussion_number}/reactions", "GET /teams/{team_id}/invitations", "GET /teams/{team_id}/members", "GET /teams/{team_id}/projects", "GET /teams/{team_id}/repos", "GET /teams/{team_id}/teams", "GET /user/blocks", "GET /user/codespaces", "GET /user/codespaces/secrets", "GET /user/emails", "GET /user/followers", "GET /user/following", "GET /user/gpg_keys", "GET /user/installations", "GET /user/installations/{installation_id}/repositories", "GET /user/issues", "GET /user/keys", "GET /user/marketplace_purchases", "GET /user/marketplace_purchases/stubbed", "GET /user/memberships/orgs", "GET /user/migrations", "GET /user/migrations/{migration_id}/repositories", "GET /user/orgs", "GET /user/packages", "GET /user/packages/{package_type}/{package_name}/versions", "GET /user/public_emails", "GET /user/repos", "GET /user/repository_invitations", "GET /user/ssh_signing_keys", "GET /user/starred", "GET /user/subscriptions", "GET /user/teams", "GET /users", "GET /users/{username}/events", "GET /users/{username}/events/orgs/{org}", "GET /users/{username}/events/public", "GET /users/{username}/followers", "GET /users/{username}/following", "GET /users/{username}/gists", "GET /users/{username}/gpg_keys", "GET /users/{username}/keys", "GET /users/{username}/orgs", "GET /users/{username}/packages", "GET /users/{username}/projects", "GET /users/{username}/received_events", "GET /users/{username}/received_events/public", "GET /users/{username}/repos", "GET /users/{username}/ssh_signing_keys", "GET /users/{username}/starred", "GET /users/{username}/subscriptions"];
+// pkg/dist-src/generated/paginating-endpoints.js
+var paginatingEndpoints = [
+  "GET /app/hook/deliveries",
+  "GET /app/installation-requests",
+  "GET /app/installations",
+  "GET /enterprises/{enterprise}/dependabot/alerts",
+  "GET /enterprises/{enterprise}/secret-scanning/alerts",
+  "GET /events",
+  "GET /gists",
+  "GET /gists/public",
+  "GET /gists/starred",
+  "GET /gists/{gist_id}/comments",
+  "GET /gists/{gist_id}/commits",
+  "GET /gists/{gist_id}/forks",
+  "GET /installation/repositories",
+  "GET /issues",
+  "GET /licenses",
+  "GET /marketplace_listing/plans",
+  "GET /marketplace_listing/plans/{plan_id}/accounts",
+  "GET /marketplace_listing/stubbed/plans",
+  "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts",
+  "GET /networks/{owner}/{repo}/events",
+  "GET /notifications",
+  "GET /organizations",
+  "GET /organizations/{org}/personal-access-token-requests",
+  "GET /organizations/{org}/personal-access-token-requests/{pat_request_id}/repositories",
+  "GET /organizations/{org}/personal-access-tokens",
+  "GET /organizations/{org}/personal-access-tokens/{pat_id}/repositories",
+  "GET /orgs/{org}/actions/cache/usage-by-repository",
+  "GET /orgs/{org}/actions/permissions/repositories",
+  "GET /orgs/{org}/actions/required_workflows",
+  "GET /orgs/{org}/actions/runners",
+  "GET /orgs/{org}/actions/secrets",
+  "GET /orgs/{org}/actions/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/actions/variables",
+  "GET /orgs/{org}/actions/variables/{name}/repositories",
+  "GET /orgs/{org}/blocks",
+  "GET /orgs/{org}/code-scanning/alerts",
+  "GET /orgs/{org}/codespaces",
+  "GET /orgs/{org}/codespaces/secrets",
+  "GET /orgs/{org}/codespaces/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/dependabot/alerts",
+  "GET /orgs/{org}/dependabot/secrets",
+  "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories",
+  "GET /orgs/{org}/events",
+  "GET /orgs/{org}/failed_invitations",
+  "GET /orgs/{org}/hooks",
+  "GET /orgs/{org}/hooks/{hook_id}/deliveries",
+  "GET /orgs/{org}/installations",
+  "GET /orgs/{org}/invitations",
+  "GET /orgs/{org}/invitations/{invitation_id}/teams",
+  "GET /orgs/{org}/issues",
+  "GET /orgs/{org}/members",
+  "GET /orgs/{org}/members/{username}/codespaces",
+  "GET /orgs/{org}/migrations",
+  "GET /orgs/{org}/migrations/{migration_id}/repositories",
+  "GET /orgs/{org}/outside_collaborators",
+  "GET /orgs/{org}/packages",
+  "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
+  "GET /orgs/{org}/projects",
+  "GET /orgs/{org}/public_members",
+  "GET /orgs/{org}/repos",
+  "GET /orgs/{org}/secret-scanning/alerts",
+  "GET /orgs/{org}/teams",
+  "GET /orgs/{org}/teams/{team_slug}/discussions",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions",
+  "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions",
+  "GET /orgs/{org}/teams/{team_slug}/invitations",
+  "GET /orgs/{org}/teams/{team_slug}/members",
+  "GET /orgs/{org}/teams/{team_slug}/projects",
+  "GET /orgs/{org}/teams/{team_slug}/repos",
+  "GET /orgs/{org}/teams/{team_slug}/teams",
+  "GET /projects/columns/{column_id}/cards",
+  "GET /projects/{project_id}/collaborators",
+  "GET /projects/{project_id}/columns",
+  "GET /repos/{org}/{repo}/actions/required_workflows",
+  "GET /repos/{owner}/{repo}/actions/artifacts",
+  "GET /repos/{owner}/{repo}/actions/caches",
+  "GET /repos/{owner}/{repo}/actions/organization-secrets",
+  "GET /repos/{owner}/{repo}/actions/organization-variables",
+  "GET /repos/{owner}/{repo}/actions/required_workflows/{required_workflow_id_for_repo}/runs",
+  "GET /repos/{owner}/{repo}/actions/runners",
+  "GET /repos/{owner}/{repo}/actions/runs",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs",
+  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs",
+  "GET /repos/{owner}/{repo}/actions/secrets",
+  "GET /repos/{owner}/{repo}/actions/variables",
+  "GET /repos/{owner}/{repo}/actions/workflows",
+  "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs",
+  "GET /repos/{owner}/{repo}/assignees",
+  "GET /repos/{owner}/{repo}/branches",
+  "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations",
+  "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs",
+  "GET /repos/{owner}/{repo}/code-scanning/alerts",
+  "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances",
+  "GET /repos/{owner}/{repo}/code-scanning/analyses",
+  "GET /repos/{owner}/{repo}/codespaces",
+  "GET /repos/{owner}/{repo}/codespaces/devcontainers",
+  "GET /repos/{owner}/{repo}/codespaces/secrets",
+  "GET /repos/{owner}/{repo}/collaborators",
+  "GET /repos/{owner}/{repo}/comments",
+  "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/commits",
+  "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments",
+  "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls",
+  "GET /repos/{owner}/{repo}/commits/{ref}/check-runs",
+  "GET /repos/{owner}/{repo}/commits/{ref}/check-suites",
+  "GET /repos/{owner}/{repo}/commits/{ref}/status",
+  "GET /repos/{owner}/{repo}/commits/{ref}/statuses",
+  "GET /repos/{owner}/{repo}/contributors",
+  "GET /repos/{owner}/{repo}/dependabot/alerts",
+  "GET /repos/{owner}/{repo}/dependabot/secrets",
+  "GET /repos/{owner}/{repo}/deployments",
+  "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses",
+  "GET /repos/{owner}/{repo}/environments",
+  "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies",
+  "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps",
+  "GET /repos/{owner}/{repo}/events",
+  "GET /repos/{owner}/{repo}/forks",
+  "GET /repos/{owner}/{repo}/hooks",
+  "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries",
+  "GET /repos/{owner}/{repo}/invitations",
+  "GET /repos/{owner}/{repo}/issues",
+  "GET /repos/{owner}/{repo}/issues/comments",
+  "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/issues/events",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/events",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/labels",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/reactions",
+  "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline",
+  "GET /repos/{owner}/{repo}/keys",
+  "GET /repos/{owner}/{repo}/labels",
+  "GET /repos/{owner}/{repo}/milestones",
+  "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels",
+  "GET /repos/{owner}/{repo}/notifications",
+  "GET /repos/{owner}/{repo}/pages/builds",
+  "GET /repos/{owner}/{repo}/projects",
+  "GET /repos/{owner}/{repo}/pulls",
+  "GET /repos/{owner}/{repo}/pulls/comments",
+  "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+  "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments",
+  "GET /repos/{owner}/{repo}/releases",
+  "GET /repos/{owner}/{repo}/releases/{release_id}/assets",
+  "GET /repos/{owner}/{repo}/releases/{release_id}/reactions",
+  "GET /repos/{owner}/{repo}/secret-scanning/alerts",
+  "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations",
+  "GET /repos/{owner}/{repo}/security-advisories",
+  "GET /repos/{owner}/{repo}/stargazers",
+  "GET /repos/{owner}/{repo}/subscribers",
+  "GET /repos/{owner}/{repo}/tags",
+  "GET /repos/{owner}/{repo}/teams",
+  "GET /repos/{owner}/{repo}/topics",
+  "GET /repositories",
+  "GET /repositories/{repository_id}/environments/{environment_name}/secrets",
+  "GET /repositories/{repository_id}/environments/{environment_name}/variables",
+  "GET /search/code",
+  "GET /search/commits",
+  "GET /search/issues",
+  "GET /search/labels",
+  "GET /search/repositories",
+  "GET /search/topics",
+  "GET /search/users",
+  "GET /teams/{team_id}/discussions",
+  "GET /teams/{team_id}/discussions/{discussion_number}/comments",
+  "GET /teams/{team_id}/discussions/{discussion_number}/comments/{comment_number}/reactions",
+  "GET /teams/{team_id}/discussions/{discussion_number}/reactions",
+  "GET /teams/{team_id}/invitations",
+  "GET /teams/{team_id}/members",
+  "GET /teams/{team_id}/projects",
+  "GET /teams/{team_id}/repos",
+  "GET /teams/{team_id}/teams",
+  "GET /user/blocks",
+  "GET /user/codespaces",
+  "GET /user/codespaces/secrets",
+  "GET /user/emails",
+  "GET /user/followers",
+  "GET /user/following",
+  "GET /user/gpg_keys",
+  "GET /user/installations",
+  "GET /user/installations/{installation_id}/repositories",
+  "GET /user/issues",
+  "GET /user/keys",
+  "GET /user/marketplace_purchases",
+  "GET /user/marketplace_purchases/stubbed",
+  "GET /user/memberships/orgs",
+  "GET /user/migrations",
+  "GET /user/migrations/{migration_id}/repositories",
+  "GET /user/orgs",
+  "GET /user/packages",
+  "GET /user/packages/{package_type}/{package_name}/versions",
+  "GET /user/public_emails",
+  "GET /user/repos",
+  "GET /user/repository_invitations",
+  "GET /user/social_accounts",
+  "GET /user/ssh_signing_keys",
+  "GET /user/starred",
+  "GET /user/subscriptions",
+  "GET /user/teams",
+  "GET /users",
+  "GET /users/{username}/events",
+  "GET /users/{username}/events/orgs/{org}",
+  "GET /users/{username}/events/public",
+  "GET /users/{username}/followers",
+  "GET /users/{username}/following",
+  "GET /users/{username}/gists",
+  "GET /users/{username}/gpg_keys",
+  "GET /users/{username}/keys",
+  "GET /users/{username}/orgs",
+  "GET /users/{username}/packages",
+  "GET /users/{username}/projects",
+  "GET /users/{username}/received_events",
+  "GET /users/{username}/received_events/public",
+  "GET /users/{username}/repos",
+  "GET /users/{username}/social_accounts",
+  "GET /users/{username}/ssh_signing_keys",
+  "GET /users/{username}/starred",
+  "GET /users/{username}/subscriptions"
+];
 
+// pkg/dist-src/paginating-endpoints.js
 function isPaginatingEndpoint(arg) {
   if (typeof arg === "string") {
     return paginatingEndpoints.includes(arg);
@@ -35273,10 +36561,7 @@ function isPaginatingEndpoint(arg) {
   }
 }
 
-/**
- * @param octokit Octokit instance
- * @param options Options passed to Octokit constructor
- */
+// pkg/dist-src/index.js
 function paginateRest(octokit) {
   return {
     paginate: Object.assign(paginate.bind(null, octokit), {
@@ -35285,12 +36570,8 @@ function paginateRest(octokit) {
   };
 }
 paginateRest.VERSION = VERSION;
-
-exports.composePaginateRest = composePaginateRest;
-exports.isPaginatingEndpoint = isPaginatingEndpoint;
-exports.paginateRest = paginateRest;
-exports.paginatingEndpoints = paginatingEndpoints;
-//# sourceMappingURL=index.js.map
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
 
 
 /***/ }),
@@ -35392,6 +36673,8 @@ const Endpoints = {
     listLabelsForSelfHostedRunnerForRepo: ["GET /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"],
     listOrgSecrets: ["GET /orgs/{org}/actions/secrets"],
     listOrgVariables: ["GET /orgs/{org}/actions/variables"],
+    listRepoOrganizationSecrets: ["GET /repos/{owner}/{repo}/actions/organization-secrets"],
+    listRepoOrganizationVariables: ["GET /repos/{owner}/{repo}/actions/organization-variables"],
     listRepoRequiredWorkflows: ["GET /repos/{org}/{repo}/actions/required_workflows"],
     listRepoSecrets: ["GET /repos/{owner}/{repo}/actions/secrets"],
     listRepoVariables: ["GET /repos/{owner}/{repo}/actions/variables"],
@@ -35419,6 +36702,7 @@ const Endpoints = {
     removeSelectedRepoFromOrgSecret: ["DELETE /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"],
     removeSelectedRepoFromOrgVariable: ["DELETE /orgs/{org}/actions/variables/{name}/repositories/{repository_id}"],
     removeSelectedRepoFromRequiredWorkflow: ["DELETE /orgs/{org}/actions/required_workflows/{required_workflow_id}/repositories/{repository_id}"],
+    reviewCustomGatesForRun: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/deployment_protection_rule"],
     reviewPendingDeploymentsForRun: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"],
     setAllowedActionsOrganization: ["PUT /orgs/{org}/actions/permissions/selected-actions"],
     setAllowedActionsRepository: ["PUT /repos/{owner}/{repo}/actions/permissions/selected-actions"],
@@ -35495,6 +36779,7 @@ const Endpoints = {
     listAccountsForPlan: ["GET /marketplace_listing/plans/{plan_id}/accounts"],
     listAccountsForPlanStubbed: ["GET /marketplace_listing/stubbed/plans/{plan_id}/accounts"],
     listInstallationReposForAuthenticatedUser: ["GET /user/installations/{installation_id}/repositories"],
+    listInstallationRequestsForAuthenticatedApp: ["GET /app/installation-requests"],
     listInstallations: ["GET /app/installations"],
     listInstallationsForAuthenticatedUser: ["GET /user/installations"],
     listPlans: ["GET /marketplace_listing/plans"],
@@ -35546,6 +36831,7 @@ const Endpoints = {
     }],
     getAnalysis: ["GET /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}"],
     getCodeqlDatabase: ["GET /repos/{owner}/{repo}/code-scanning/codeql/databases/{language}"],
+    getDefaultSetup: ["GET /repos/{owner}/{repo}/code-scanning/default-setup"],
     getSarif: ["GET /repos/{owner}/{repo}/code-scanning/sarifs/{sarif_id}"],
     listAlertInstances: ["GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances"],
     listAlertsForOrg: ["GET /orgs/{org}/code-scanning/alerts"],
@@ -35556,6 +36842,7 @@ const Endpoints = {
     listCodeqlDatabases: ["GET /repos/{owner}/{repo}/code-scanning/codeql/databases"],
     listRecentAnalyses: ["GET /repos/{owner}/{repo}/code-scanning/analyses"],
     updateAlert: ["PATCH /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}"],
+    updateDefaultSetup: ["PATCH /repos/{owner}/{repo}/code-scanning/default-setup"],
     uploadSarif: ["POST /repos/{owner}/{repo}/code-scanning/sarifs"]
   },
   codesOfConduct: {
@@ -35572,6 +36859,7 @@ const Endpoints = {
     createOrUpdateSecretForAuthenticatedUser: ["PUT /user/codespaces/secrets/{secret_name}"],
     createWithPrForAuthenticatedUser: ["POST /repos/{owner}/{repo}/pulls/{pull_number}/codespaces"],
     createWithRepoForAuthenticatedUser: ["POST /repos/{owner}/{repo}/codespaces"],
+    deleteCodespacesBillingUsers: ["DELETE /orgs/{org}/codespaces/billing/selected_users"],
     deleteForAuthenticatedUser: ["DELETE /user/codespaces/{codespace_name}"],
     deleteFromOrganization: ["DELETE /orgs/{org}/members/{username}/codespaces/{codespace_name}"],
     deleteOrgSecret: ["DELETE /orgs/{org}/codespaces/secrets/{secret_name}"],
@@ -35606,6 +36894,7 @@ const Endpoints = {
     removeSelectedRepoFromOrgSecret: ["DELETE /orgs/{org}/codespaces/secrets/{secret_name}/repositories/{repository_id}"],
     repoMachinesForAuthenticatedUser: ["GET /repos/{owner}/{repo}/codespaces/machines"],
     setCodespacesBilling: ["PUT /orgs/{org}/codespaces/billing"],
+    setCodespacesBillingUsers: ["POST /orgs/{org}/codespaces/billing/selected_users"],
     setRepositoriesForSecretForAuthenticatedUser: ["PUT /user/codespaces/secrets/{secret_name}/repositories"],
     setSelectedReposForOrgSecret: ["PUT /orgs/{org}/codespaces/secrets/{secret_name}/repositories"],
     startForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/start"],
@@ -35636,15 +36925,11 @@ const Endpoints = {
   },
   dependencyGraph: {
     createRepositorySnapshot: ["POST /repos/{owner}/{repo}/dependency-graph/snapshots"],
-    diffRange: ["GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}"]
+    diffRange: ["GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}"],
+    exportSbom: ["GET /repos/{owner}/{repo}/dependency-graph/sbom"]
   },
   emojis: {
     get: ["GET /emojis"]
-  },
-  enterpriseAdmin: {
-    addCustomLabelsToSelfHostedRunnerForEnterprise: ["POST /enterprises/{enterprise}/actions/runners/{runner_id}/labels"],
-    enableSelectedOrganizationGithubActionsEnterprise: ["PUT /enterprises/{enterprise}/actions/permissions/organizations/{org_id}"],
-    listLabelsForSelfHostedRunnerForEnterprise: ["GET /enterprises/{enterprise}/actions/runners/{runner_id}/labels"]
   },
   gists: {
     checkIsStarred: ["GET /gists/{gist_id}/star"],
@@ -35806,6 +37091,7 @@ const Endpoints = {
     convertMemberToOutsideCollaborator: ["PUT /orgs/{org}/outside_collaborators/{username}"],
     createInvitation: ["POST /orgs/{org}/invitations"],
     createWebhook: ["POST /orgs/{org}/hooks"],
+    delete: ["DELETE /orgs/{org}"],
     deleteWebhook: ["DELETE /orgs/{org}/hooks/{hook_id}"],
     enableOrDisableSecurityProductOnAllOrgRepos: ["POST /orgs/{org}/{security_product}/{enablement}"],
     get: ["GET /orgs/{org}"],
@@ -35824,6 +37110,10 @@ const Endpoints = {
     listMembers: ["GET /orgs/{org}/members"],
     listMembershipsForAuthenticatedUser: ["GET /user/memberships/orgs"],
     listOutsideCollaborators: ["GET /orgs/{org}/outside_collaborators"],
+    listPatGrantRepositories: ["GET /organizations/{org}/personal-access-tokens/{pat_id}/repositories"],
+    listPatGrantRequestRepositories: ["GET /organizations/{org}/personal-access-token-requests/{pat_request_id}/repositories"],
+    listPatGrantRequests: ["GET /organizations/{org}/personal-access-token-requests"],
+    listPatGrants: ["GET /organizations/{org}/personal-access-tokens"],
     listPendingInvitations: ["GET /orgs/{org}/invitations"],
     listPublicMembers: ["GET /orgs/{org}/public_members"],
     listSecurityManagerTeams: ["GET /orgs/{org}/security-managers"],
@@ -35836,11 +37126,15 @@ const Endpoints = {
     removeOutsideCollaborator: ["DELETE /orgs/{org}/outside_collaborators/{username}"],
     removePublicMembershipForAuthenticatedUser: ["DELETE /orgs/{org}/public_members/{username}"],
     removeSecurityManagerTeam: ["DELETE /orgs/{org}/security-managers/teams/{team_slug}"],
+    reviewPatGrantRequest: ["POST /organizations/{org}/personal-access-token-requests/{pat_request_id}"],
+    reviewPatGrantRequestsInBulk: ["POST /organizations/{org}/personal-access-token-requests"],
     setMembershipForUser: ["PUT /orgs/{org}/memberships/{username}"],
     setPublicMembershipForAuthenticatedUser: ["PUT /orgs/{org}/public_members/{username}"],
     unblockUser: ["DELETE /orgs/{org}/blocks/{username}"],
     update: ["PATCH /orgs/{org}"],
     updateMembershipForAuthenticatedUser: ["PATCH /user/memberships/orgs/{org}"],
+    updatePatAccess: ["POST /organizations/{org}/personal-access-tokens/{pat_id}"],
+    updatePatAccesses: ["POST /organizations/{org}/personal-access-tokens"],
     updateWebhook: ["PATCH /orgs/{org}/hooks/{hook_id}"],
     updateWebhookConfigForOrg: ["PATCH /orgs/{org}/hooks/{hook_id}/config"]
   },
@@ -35866,6 +37160,9 @@ const Endpoints = {
     getPackageVersionForAuthenticatedUser: ["GET /user/packages/{package_type}/{package_name}/versions/{package_version_id}"],
     getPackageVersionForOrganization: ["GET /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}"],
     getPackageVersionForUser: ["GET /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}"],
+    listDockerMigrationConflictingPackagesForAuthenticatedUser: ["GET /user/docker/conflicts"],
+    listDockerMigrationConflictingPackagesForOrganization: ["GET /orgs/{org}/docker/conflicts"],
+    listDockerMigrationConflictingPackagesForUser: ["GET /users/{username}/docker/conflicts"],
     listPackagesForAuthenticatedUser: ["GET /user/packages"],
     listPackagesForOrganization: ["GET /orgs/{org}/packages"],
     listPackagesForUser: ["GET /users/{username}/packages"],
@@ -35988,6 +37285,7 @@ const Endpoints = {
     createDeployKey: ["POST /repos/{owner}/{repo}/keys"],
     createDeployment: ["POST /repos/{owner}/{repo}/deployments"],
     createDeploymentBranchPolicy: ["POST /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"],
+    createDeploymentProtectionRule: ["POST /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"],
     createDeploymentStatus: ["POST /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"],
     createDispatchEvent: ["POST /repos/{owner}/{repo}/dispatches"],
     createForAuthenticatedUser: ["POST /user/repos"],
@@ -35995,9 +37293,11 @@ const Endpoints = {
     createInOrg: ["POST /orgs/{org}/repos"],
     createOrUpdateEnvironment: ["PUT /repos/{owner}/{repo}/environments/{environment_name}"],
     createOrUpdateFileContents: ["PUT /repos/{owner}/{repo}/contents/{path}"],
+    createOrgRuleset: ["POST /orgs/{org}/rulesets"],
     createPagesDeployment: ["POST /repos/{owner}/{repo}/pages/deployment"],
     createPagesSite: ["POST /repos/{owner}/{repo}/pages"],
     createRelease: ["POST /repos/{owner}/{repo}/releases"],
+    createRepoRuleset: ["POST /repos/{owner}/{repo}/rulesets"],
     createTagProtection: ["POST /repos/{owner}/{repo}/tags/protection"],
     createUsingTemplate: ["POST /repos/{template_owner}/{template_repo}/generate"],
     createWebhook: ["POST /repos/{owner}/{repo}/hooks"],
@@ -36018,13 +37318,16 @@ const Endpoints = {
     deleteDeploymentBranchPolicy: ["DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"],
     deleteFile: ["DELETE /repos/{owner}/{repo}/contents/{path}"],
     deleteInvitation: ["DELETE /repos/{owner}/{repo}/invitations/{invitation_id}"],
+    deleteOrgRuleset: ["DELETE /orgs/{org}/rulesets/{ruleset_id}"],
     deletePagesSite: ["DELETE /repos/{owner}/{repo}/pages"],
     deletePullRequestReviewProtection: ["DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"],
     deleteRelease: ["DELETE /repos/{owner}/{repo}/releases/{release_id}"],
     deleteReleaseAsset: ["DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}"],
+    deleteRepoRuleset: ["DELETE /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
     deleteTagProtection: ["DELETE /repos/{owner}/{repo}/tags/protection/{tag_protection_id}"],
     deleteWebhook: ["DELETE /repos/{owner}/{repo}/hooks/{hook_id}"],
     disableAutomatedSecurityFixes: ["DELETE /repos/{owner}/{repo}/automated-security-fixes"],
+    disableDeploymentProtectionRule: ["DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"],
     disableLfsForRepo: ["DELETE /repos/{owner}/{repo}/lfs"],
     disableVulnerabilityAlerts: ["DELETE /repos/{owner}/{repo}/vulnerability-alerts"],
     downloadArchive: ["GET /repos/{owner}/{repo}/zipball/{ref}", {}, {
@@ -36039,6 +37342,7 @@ const Endpoints = {
     get: ["GET /repos/{owner}/{repo}"],
     getAccessRestrictions: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions"],
     getAdminBranchProtection: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"],
+    getAllDeploymentProtectionRules: ["GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"],
     getAllEnvironments: ["GET /repos/{owner}/{repo}/environments"],
     getAllStatusCheckContexts: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts"],
     getAllTopics: ["GET /repos/{owner}/{repo}/topics"],
@@ -36046,6 +37350,7 @@ const Endpoints = {
     getAutolink: ["GET /repos/{owner}/{repo}/autolinks/{autolink_id}"],
     getBranch: ["GET /repos/{owner}/{repo}/branches/{branch}"],
     getBranchProtection: ["GET /repos/{owner}/{repo}/branches/{branch}/protection"],
+    getBranchRules: ["GET /repos/{owner}/{repo}/rules/branches/{branch}"],
     getClones: ["GET /repos/{owner}/{repo}/traffic/clones"],
     getCodeFrequencyStats: ["GET /repos/{owner}/{repo}/stats/code_frequency"],
     getCollaboratorPermissionLevel: ["GET /repos/{owner}/{repo}/collaborators/{username}/permission"],
@@ -36057,6 +37362,7 @@ const Endpoints = {
     getCommunityProfileMetrics: ["GET /repos/{owner}/{repo}/community/profile"],
     getContent: ["GET /repos/{owner}/{repo}/contents/{path}"],
     getContributorsStats: ["GET /repos/{owner}/{repo}/stats/contributors"],
+    getCustomDeploymentProtectionRule: ["GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"],
     getDeployKey: ["GET /repos/{owner}/{repo}/keys/{key_id}"],
     getDeployment: ["GET /repos/{owner}/{repo}/deployments/{deployment_id}"],
     getDeploymentBranchPolicy: ["GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"],
@@ -36064,6 +37370,8 @@ const Endpoints = {
     getEnvironment: ["GET /repos/{owner}/{repo}/environments/{environment_name}"],
     getLatestPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/latest"],
     getLatestRelease: ["GET /repos/{owner}/{repo}/releases/latest"],
+    getOrgRuleset: ["GET /orgs/{org}/rulesets/{ruleset_id}"],
+    getOrgRulesets: ["GET /orgs/{org}/rulesets"],
     getPages: ["GET /repos/{owner}/{repo}/pages"],
     getPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/{build_id}"],
     getPagesHealthCheck: ["GET /repos/{owner}/{repo}/pages/health"],
@@ -36075,6 +37383,8 @@ const Endpoints = {
     getRelease: ["GET /repos/{owner}/{repo}/releases/{release_id}"],
     getReleaseAsset: ["GET /repos/{owner}/{repo}/releases/assets/{asset_id}"],
     getReleaseByTag: ["GET /repos/{owner}/{repo}/releases/tags/{tag}"],
+    getRepoRuleset: ["GET /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
+    getRepoRulesets: ["GET /repos/{owner}/{repo}/rulesets"],
     getStatusChecksProtection: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"],
     getTeamsWithAccessToProtectedBranch: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams"],
     getTopPaths: ["GET /repos/{owner}/{repo}/traffic/popular/paths"],
@@ -36093,6 +37403,7 @@ const Endpoints = {
     listCommitStatusesForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/statuses"],
     listCommits: ["GET /repos/{owner}/{repo}/commits"],
     listContributors: ["GET /repos/{owner}/{repo}/contributors"],
+    listCustomDeploymentRuleIntegrations: ["GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps"],
     listDeployKeys: ["GET /repos/{owner}/{repo}/keys"],
     listDeploymentBranchPolicies: ["GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"],
     listDeploymentStatuses: ["GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"],
@@ -36156,9 +37467,11 @@ const Endpoints = {
     updateDeploymentBranchPolicy: ["PUT /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"],
     updateInformationAboutPagesSite: ["PUT /repos/{owner}/{repo}/pages"],
     updateInvitation: ["PATCH /repos/{owner}/{repo}/invitations/{invitation_id}"],
+    updateOrgRuleset: ["PUT /orgs/{org}/rulesets/{ruleset_id}"],
     updatePullRequestReviewProtection: ["PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"],
     updateRelease: ["PATCH /repos/{owner}/{repo}/releases/{release_id}"],
     updateReleaseAsset: ["PATCH /repos/{owner}/{repo}/releases/assets/{asset_id}"],
+    updateRepoRuleset: ["PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
     updateStatusCheckPotection: ["PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks", {}, {
       renamed: ["repos", "updateStatusCheckProtection"]
     }],
@@ -36180,14 +37493,18 @@ const Endpoints = {
   },
   secretScanning: {
     getAlert: ["GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"],
-    getSecurityAnalysisSettingsForEnterprise: ["GET /enterprises/{enterprise}/code_security_and_analysis"],
     listAlertsForEnterprise: ["GET /enterprises/{enterprise}/secret-scanning/alerts"],
     listAlertsForOrg: ["GET /orgs/{org}/secret-scanning/alerts"],
     listAlertsForRepo: ["GET /repos/{owner}/{repo}/secret-scanning/alerts"],
     listLocationsForAlert: ["GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations"],
-    patchSecurityAnalysisSettingsForEnterprise: ["PATCH /enterprises/{enterprise}/code_security_and_analysis"],
-    postSecurityProductEnablementForEnterprise: ["POST /enterprises/{enterprise}/{security_product}/{enablement}"],
     updateAlert: ["PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"]
+  },
+  securityAdvisories: {
+    createPrivateVulnerabilityReport: ["POST /repos/{owner}/{repo}/security-advisories/reports"],
+    createRepositoryAdvisory: ["POST /repos/{owner}/{repo}/security-advisories"],
+    getRepositoryAdvisory: ["GET /repos/{owner}/{repo}/security-advisories/{ghsa_id}"],
+    listRepositoryAdvisories: ["GET /repos/{owner}/{repo}/security-advisories"],
+    updateRepositoryAdvisory: ["PATCH /repos/{owner}/{repo}/security-advisories/{ghsa_id}"]
   },
   teams: {
     addOrUpdateMembershipForUserInOrg: ["PUT /orgs/{org}/teams/{team_slug}/memberships/{username}"],
@@ -36226,6 +37543,7 @@ const Endpoints = {
       renamed: ["users", "addEmailForAuthenticatedUser"]
     }],
     addEmailForAuthenticatedUser: ["POST /user/emails"],
+    addSocialAccountForAuthenticatedUser: ["POST /user/social_accounts"],
     block: ["PUT /user/blocks/{username}"],
     checkBlocked: ["GET /user/blocks/{username}"],
     checkFollowingForUser: ["GET /users/{username}/following/{target_user}"],
@@ -36251,6 +37569,7 @@ const Endpoints = {
       renamed: ["users", "deletePublicSshKeyForAuthenticatedUser"]
     }],
     deletePublicSshKeyForAuthenticatedUser: ["DELETE /user/keys/{key_id}"],
+    deleteSocialAccountForAuthenticatedUser: ["DELETE /user/social_accounts"],
     deleteSshSigningKeyForAuthenticatedUser: ["DELETE /user/ssh_signing_keys/{ssh_signing_key_id}"],
     follow: ["PUT /user/following/{username}"],
     getAuthenticated: ["GET /user"],
@@ -36295,6 +37614,8 @@ const Endpoints = {
       renamed: ["users", "listPublicSshKeysForAuthenticatedUser"]
     }],
     listPublicSshKeysForAuthenticatedUser: ["GET /user/keys"],
+    listSocialAccountsForAuthenticatedUser: ["GET /user/social_accounts"],
+    listSocialAccountsForUser: ["GET /users/{username}/social_accounts"],
     listSshSigningKeysForAuthenticatedUser: ["GET /user/ssh_signing_keys"],
     listSshSigningKeysForUser: ["GET /users/{username}/ssh_signing_keys"],
     setPrimaryEmailVisibilityForAuthenticated: ["PATCH /user/email/visibility", {}, {
@@ -36307,7 +37628,7 @@ const Endpoints = {
   }
 };
 
-const VERSION = "7.0.1";
+const VERSION = "7.1.2";
 
 function endpointsToMethods(octokit, endpointsMap) {
   const newMethods = {};
@@ -36396,6 +37717,127 @@ exports.restEndpointMethods = restEndpointMethods;
 
 /***/ }),
 
+/***/ 8519:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  VERSION: () => VERSION,
+  retry: () => retry
+});
+module.exports = __toCommonJS(dist_src_exports);
+
+// pkg/dist-src/error-request.js
+async function errorRequest(state, octokit, error, options) {
+  if (!error.request || !error.request.request) {
+    throw error;
+  }
+  if (error.status >= 400 && !state.doNotRetry.includes(error.status)) {
+    const retries = options.request.retries != null ? options.request.retries : state.retries;
+    const retryAfter = Math.pow((options.request.retryCount || 0) + 1, 2);
+    throw octokit.retry.retryRequest(error, retries, retryAfter);
+  }
+  throw error;
+}
+
+// pkg/dist-src/wrap-request.js
+var import_light = __toESM(__nccwpck_require__(1174));
+var import_request_error = __nccwpck_require__(537);
+async function wrapRequest(state, octokit, request, options) {
+  const limiter = new import_light.default();
+  limiter.on("failed", function(error, info) {
+    const maxRetries = ~~error.request.request.retries;
+    const after = ~~error.request.request.retryAfter;
+    options.request.retryCount = info.retryCount + 1;
+    if (maxRetries > info.retryCount) {
+      return after * state.retryAfterBaseValue;
+    }
+  });
+  return limiter.schedule(
+    requestWithGraphqlErrorHandling.bind(null, state, octokit, request),
+    options
+  );
+}
+async function requestWithGraphqlErrorHandling(state, octokit, request, options) {
+  const response = await request(request, options);
+  if (response.data && response.data.errors && /Something went wrong while executing your query/.test(
+    response.data.errors[0].message
+  )) {
+    const error = new import_request_error.RequestError(response.data.errors[0].message, 500, {
+      request: options,
+      response
+    });
+    return errorRequest(state, octokit, error, options);
+  }
+  return response;
+}
+
+// pkg/dist-src/index.js
+var VERSION = "4.1.6";
+function retry(octokit, octokitOptions) {
+  const state = Object.assign(
+    {
+      enabled: true,
+      retryAfterBaseValue: 1e3,
+      doNotRetry: [400, 401, 403, 404, 422],
+      retries: 3
+    },
+    octokitOptions.retry
+  );
+  if (state.enabled) {
+    octokit.hook.error("request", errorRequest.bind(null, state, octokit));
+    octokit.hook.wrap("request", wrapRequest.bind(null, state, octokit));
+  }
+  return {
+    retry: {
+      retryRequest: (error, retries, retryAfter) => {
+        error.request.request = Object.assign({}, error.request.request, {
+          retries,
+          retryAfter
+        });
+        return error;
+      }
+    }
+  };
+}
+retry.VERSION = VERSION;
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
+
+/***/ }),
+
 /***/ 1223:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -36441,6 +37883,251 @@ function onceStrict (fn) {
   f.called = false
   return f
 }
+
+
+/***/ }),
+
+/***/ 8915:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/*!
+Copyright (c) the purl authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+const PackageURL = __nccwpck_require__(8749);
+
+module.exports = {
+  PackageURL
+};
+
+
+/***/ }),
+
+/***/ 8749:
+/***/ ((module) => {
+
+/*!
+Copyright (c) the purl authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+const KnownQualifierNames = Object.freeze({
+  // known qualifiers as defined here:
+  // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
+  RepositoryUrl: 'repository_url',
+  DownloadUrl: 'download_url',
+  VcsUrl: 'vcs_url',
+  FileName: 'file_name',
+  Checksum: 'checksum'
+});
+
+class PackageURL {
+
+  static get KnownQualifierNames() {
+    return KnownQualifierNames;
+  }
+
+  constructor(type, namespace, name, version, qualifiers, subpath) {
+    let required = { 'type': type, 'name': name };
+    Object.keys(required).forEach(key => {
+      if (!required[key]) {
+        throw new Error('Invalid purl: "' + key + '" is a required field.');
+      }
+    });
+
+    let strings = { 'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath };
+    Object.keys(strings).forEach(key => {
+      if (strings[key] && typeof strings[key] === 'string' || !strings[key]) {
+        return;
+      }
+      throw new Error('Invalid purl: "' + key + '" argument must be a string.');
+    });
+
+    if (qualifiers) {
+      if (typeof qualifiers !== 'object') {
+        throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
+      }
+      Object.keys(qualifiers).forEach(key => {
+        if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
+          throw new Error('Invalid purl: qualifier "' + key + '" contains an illegal character.');
+        }
+      });
+    }
+
+    this.type = type;
+    this.name = name;
+    this.namespace = namespace;
+    this.version = version;
+    this.qualifiers = qualifiers;
+    this.subpath = subpath;
+  }
+
+  _handlePyPi() {
+    this.name = this.name.toLowerCase().replace(/_/g, '-');
+  }
+
+  toString() {
+    var purl = ['pkg:', encodeURIComponent(this.type), '/'];
+
+    if (this.type === 'pypi') {
+      this._handlePyPi();
+    }
+
+    if (this.namespace) {
+      purl.push(
+        encodeURIComponent(this.namespace)
+          .replace(/%3A/g, ':')
+          .replace(/%2F/g, '/')
+        );
+      purl.push('/');
+    }
+
+    purl.push(encodeURIComponent(this.name).replace(/%3A/g, ':'));
+
+    if (this.version) {
+      purl.push('@');
+      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':'));
+    }
+
+    if (this.qualifiers) {
+      purl.push('?');
+
+      let qualifiers = this.qualifiers;
+      let qualifierString = [];
+      Object.keys(qualifiers).sort().forEach(key => {
+        qualifierString.push(
+          encodeURIComponent(key).replace(/%3A/g, ':')
+          + '='
+          + encodeURIComponent(qualifiers[key]).replace(/%2F/g, '/')
+        );
+      });
+
+      purl.push(qualifierString.join('&'));
+    }
+
+    if (this.subpath) {
+      purl.push('#');
+      purl.push(encodeURIComponent(this.subpath)
+        .replace(/%3A/g, ':')
+        .replace(/%2F/g, '/'));
+    }
+
+    return purl.join('');
+  }
+
+  static fromString(purl) {
+    if (!purl || typeof purl !== 'string' || !purl.trim()) {
+      throw new Error('A purl string argument is required.');
+    }
+
+    let [scheme, remainder] = purl.split(':', 2);
+    if (scheme !== 'pkg') {
+      throw new Error('purl is missing the required "pkg" scheme component.');
+    }
+    // this strip '/, // and /// as possible in :// or :///
+    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
+    remainder = remainder.trim().replace(/^\/+/g, '');
+
+    let type
+    [type, remainder] = remainder.split('/', 2);
+    if (!type || !remainder) {
+      throw new Error('purl is missing the required "type" component.');
+    }
+    type = decodeURIComponent(type)
+
+    let url = new URL(purl);
+
+    let qualifiers = null;
+    url.searchParams.forEach((value, key) => {
+      if (!qualifiers) {
+        qualifiers = {};
+      }
+      qualifiers[key] = value;
+    });
+    let subpath = url.hash;
+    if (subpath.indexOf('#') === 0) {
+      subpath = subpath.substring(1);
+    }
+    subpath = subpath.length === 0
+      ? null
+      : decodeURIComponent(subpath)
+
+    if (url.username !== '' || url.password !== '') {
+      throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
+    }
+
+    // this strip '/, // and /// as possible in :// or :///
+    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
+    let path = url.pathname.trim().replace(/^\/+/g, '');
+
+    // version is optional - check for existence
+    let version = null;
+    if (path.includes('@')) {
+      let index = path.indexOf('@');
+      version = decodeURIComponent(path.substring(index + 1));
+      remainder = path.substring(0, index);
+    } else {
+      remainder = path;
+    }
+
+    // The 'remainder' should now consist of an optional namespace and the name
+    let remaining = remainder.split('/').slice(1);
+    let name = null;
+    let namespace = null;
+    if (remaining.length > 1) {
+      let nameIndex = remaining.length - 1;
+      let namespaceComponents = remaining.slice(0, nameIndex);
+      name = decodeURIComponent(remaining[nameIndex]);
+      namespace = decodeURIComponent(namespaceComponents.join('/'));
+    } else if (remaining.length === 1) {
+      name = decodeURIComponent(remaining[0]);
+    }
+
+    if (name === '') {
+      throw new Error('purl is missing the required "name" component.');
+    }
+
+    return new PackageURL(type, namespace, name, version, qualifiers, subpath);
+  }
+
+};
+
+module.exports = PackageURL;
 
 
 /***/ }),
@@ -44845,6 +46532,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
+const packageurl_js_1 = __nccwpck_require__(8915);
 function readConfig() {
     return __awaiter(this, void 0, void 0, function* () {
         const inlineConfig = readInlineConfig();
@@ -44862,12 +46550,14 @@ function readInlineConfig() {
     const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'));
     const allow_licenses = parseList(getOptionalInput('allow-licenses'));
     const deny_licenses = parseList(getOptionalInput('deny-licenses'));
+    const allow_dependencies_licenses = parseList(getOptionalInput('allow-dependencies-licenses'));
     const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
     const license_check = getOptionalBoolean('license-check');
     const vulnerability_check = getOptionalBoolean('vulnerability-check');
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
     const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr');
+    validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const keys = {
@@ -44875,6 +46565,7 @@ function readInlineConfig() {
         fail_on_scopes,
         allow_licenses,
         deny_licenses,
+        allow_dependencies_licenses,
         allow_ghsas,
         license_check,
         vulnerability_check,
@@ -44943,7 +46634,8 @@ function parseConfigFile(configData) {
             'allow-licenses',
             'deny-licenses',
             'fail-on-scopes',
-            'allow-ghsas'
+            'allow-ghsas',
+            'allow-dependencies-licenses'
         ];
         for (const key of Object.keys(data)) {
             // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
@@ -44957,6 +46649,10 @@ function parseConfigFile(configData) {
             // perform SPDX validation
             if (key === 'allow-licenses' || key === 'deny-licenses') {
                 validateLicenses(key, data[key]);
+            }
+            // validate purls from the allow-dependencies-licenses
+            if (key === 'allow-dependencies-licenses') {
+                validatePURL(data[key]);
             }
             // get rid of the ugly dashes from the actions conventions
             if (key.includes('-')) {
@@ -44992,6 +46688,17 @@ function getRemoteConfig(configOpts) {
             throw new Error('Error fetching remote config file');
         }
     });
+}
+function validatePURL(allow_dependencies_licenses) {
+    //validate that the provided elements of the string are in valid purl format
+    if (allow_dependencies_licenses === undefined) {
+        return;
+    }
+    const invalid_purls = allow_dependencies_licenses.filter(purl => !packageurl_js_1.PackageURL.fromString(purl));
+    if (invalid_purls.length > 0) {
+        throw new Error(`Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`);
+    }
+    return;
 }
 
 
@@ -45104,7 +46811,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+<<<<<<< HEAD
 exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.FailOnSeveritySchema = exports.SCOPES = exports.SEVERITIES = exports.FAIL_ON_SEVERITIES = void 0;
+=======
+exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+>>>>>>> main
 const z = __importStar(__nccwpck_require__(3301));
 exports.FAIL_ON_SEVERITIES = ['critical', 'high', 'moderate', 'low', 'none'];
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -45142,6 +46853,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
@@ -45172,6 +46884,10 @@ exports.ConfigurationOptionsSchema = z
     }
 });
 exports.ChangesSchema = z.array(exports.ChangeSchema);
+exports.ComparisonResponseSchema = z.object({
+    changes: z.array(exports.ChangeSchema),
+    snapshot_warnings: z.string()
+});
 
 
 /***/ }),
@@ -45216,7 +46932,9 @@ function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
     for (const change of changes) {
-        const manifestName = change.manifest;
+        // If the manifest is null or empty, give it a name now to avoid
+        // breaking the HTML rendering later
+        const manifestName = change.manifest || 'Unnamed Manifest';
         if (dependencies.get(manifestName) === undefined) {
             dependencies.set(manifestName, []);
         }
@@ -45409,47 +47127,1461 @@ module.exports = require("zlib");
 
 /***/ }),
 
+/***/ 6820:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/**
+ * @module LRUCache
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.LRUCache = void 0;
+const perf = typeof performance === 'object' &&
+    performance &&
+    typeof performance.now === 'function'
+    ? performance
+    : Date;
+const warned = new Set();
+/* c8 ignore start */
+const PROCESS = (typeof process === 'object' && !!process ? process : {});
+/* c8 ignore start */
+const emitWarning = (msg, type, code, fn) => {
+    typeof PROCESS.emitWarning === 'function'
+        ? PROCESS.emitWarning(msg, type, code, fn)
+        : console.error(`[${code}] ${type}: ${msg}`);
+};
+let AC = globalThis.AbortController;
+let AS = globalThis.AbortSignal;
+/* c8 ignore start */
+if (typeof AC === 'undefined') {
+    //@ts-ignore
+    AS = class AbortSignal {
+        onabort;
+        _onabort = [];
+        reason;
+        aborted = false;
+        addEventListener(_, fn) {
+            this._onabort.push(fn);
+        }
+    };
+    //@ts-ignore
+    AC = class AbortController {
+        constructor() {
+            warnACPolyfill();
+        }
+        signal = new AS();
+        abort(reason) {
+            if (this.signal.aborted)
+                return;
+            //@ts-ignore
+            this.signal.reason = reason;
+            //@ts-ignore
+            this.signal.aborted = true;
+            //@ts-ignore
+            for (const fn of this.signal._onabort) {
+                fn(reason);
+            }
+            this.signal.onabort?.(reason);
+        }
+    };
+    let printACPolyfillWarning = PROCESS.env?.LRU_CACHE_IGNORE_AC_WARNING !== '1';
+    const warnACPolyfill = () => {
+        if (!printACPolyfillWarning)
+            return;
+        printACPolyfillWarning = false;
+        emitWarning('AbortController is not defined. If using lru-cache in ' +
+            'node 14, load an AbortController polyfill from the ' +
+            '`node-abort-controller` package. A minimal polyfill is ' +
+            'provided for use by LRUCache.fetch(), but it should not be ' +
+            'relied upon in other contexts (eg, passing it to other APIs that ' +
+            'use AbortController/AbortSignal might have undesirable effects). ' +
+            'You may disable this with LRU_CACHE_IGNORE_AC_WARNING=1 in the env.', 'NO_ABORT_CONTROLLER', 'ENOTSUP', warnACPolyfill);
+    };
+}
+/* c8 ignore stop */
+const shouldWarn = (code) => !warned.has(code);
+const TYPE = Symbol('type');
+const isPosInt = (n) => n && n === Math.floor(n) && n > 0 && isFinite(n);
+/* c8 ignore start */
+// This is a little bit ridiculous, tbh.
+// The maximum array length is 2^32-1 or thereabouts on most JS impls.
+// And well before that point, you're caching the entire world, I mean,
+// that's ~32GB of just integers for the next/prev links, plus whatever
+// else to hold that many keys and values.  Just filling the memory with
+// zeroes at init time is brutal when you get that big.
+// But why not be complete?
+// Maybe in the future, these limits will have expanded.
+const getUintArray = (max) => !isPosInt(max)
+    ? null
+    : max <= Math.pow(2, 8)
+        ? Uint8Array
+        : max <= Math.pow(2, 16)
+            ? Uint16Array
+            : max <= Math.pow(2, 32)
+                ? Uint32Array
+                : max <= Number.MAX_SAFE_INTEGER
+                    ? ZeroArray
+                    : null;
+/* c8 ignore stop */
+class ZeroArray extends Array {
+    constructor(size) {
+        super(size);
+        this.fill(0);
+    }
+}
+class Stack {
+    heap;
+    length;
+    // private constructor
+    static #constructing = false;
+    static create(max) {
+        const HeapCls = getUintArray(max);
+        if (!HeapCls)
+            return [];
+        Stack.#constructing = true;
+        const s = new Stack(max, HeapCls);
+        Stack.#constructing = false;
+        return s;
+    }
+    constructor(max, HeapCls) {
+        /* c8 ignore start */
+        if (!Stack.#constructing) {
+            throw new TypeError('instantiate Stack using Stack.create(n)');
+        }
+        /* c8 ignore stop */
+        this.heap = new HeapCls(max);
+        this.length = 0;
+    }
+    push(n) {
+        this.heap[this.length++] = n;
+    }
+    pop() {
+        return this.heap[--this.length];
+    }
+}
+/**
+ * Default export, the thing you're using this module to get.
+ *
+ * All properties from the options object (with the exception of
+ * {@link OptionsBase.max} and {@link OptionsBase.maxSize}) are added as
+ * normal public members. (`max` and `maxBase` are read-only getters.)
+ * Changing any of these will alter the defaults for subsequent method calls,
+ * but is otherwise safe.
+ */
+class LRUCache {
+    // properties coming in from the options of these, only max and maxSize
+    // really *need* to be protected. The rest can be modified, as they just
+    // set defaults for various methods.
+    #max;
+    #maxSize;
+    #dispose;
+    #disposeAfter;
+    #fetchMethod;
+    /**
+     * {@link LRUCache.OptionsBase.ttl}
+     */
+    ttl;
+    /**
+     * {@link LRUCache.OptionsBase.ttlResolution}
+     */
+    ttlResolution;
+    /**
+     * {@link LRUCache.OptionsBase.ttlAutopurge}
+     */
+    ttlAutopurge;
+    /**
+     * {@link LRUCache.OptionsBase.updateAgeOnGet}
+     */
+    updateAgeOnGet;
+    /**
+     * {@link LRUCache.OptionsBase.updateAgeOnHas}
+     */
+    updateAgeOnHas;
+    /**
+     * {@link LRUCache.OptionsBase.allowStale}
+     */
+    allowStale;
+    /**
+     * {@link LRUCache.OptionsBase.noDisposeOnSet}
+     */
+    noDisposeOnSet;
+    /**
+     * {@link LRUCache.OptionsBase.noUpdateTTL}
+     */
+    noUpdateTTL;
+    /**
+     * {@link LRUCache.OptionsBase.maxEntrySize}
+     */
+    maxEntrySize;
+    /**
+     * {@link LRUCache.OptionsBase.sizeCalculation}
+     */
+    sizeCalculation;
+    /**
+     * {@link LRUCache.OptionsBase.noDeleteOnFetchRejection}
+     */
+    noDeleteOnFetchRejection;
+    /**
+     * {@link LRUCache.OptionsBase.noDeleteOnStaleGet}
+     */
+    noDeleteOnStaleGet;
+    /**
+     * {@link LRUCache.OptionsBase.allowStaleOnFetchAbort}
+     */
+    allowStaleOnFetchAbort;
+    /**
+     * {@link LRUCache.OptionsBase.allowStaleOnFetchRejection}
+     */
+    allowStaleOnFetchRejection;
+    /**
+     * {@link LRUCache.OptionsBase.ignoreFetchAbort}
+     */
+    ignoreFetchAbort;
+    // computed properties
+    #size;
+    #calculatedSize;
+    #keyMap;
+    #keyList;
+    #valList;
+    #next;
+    #prev;
+    #head;
+    #tail;
+    #free;
+    #disposed;
+    #sizes;
+    #starts;
+    #ttls;
+    #hasDispose;
+    #hasFetchMethod;
+    #hasDisposeAfter;
+    /**
+     * Do not call this method unless you need to inspect the
+     * inner workings of the cache.  If anything returned by this
+     * object is modified in any way, strange breakage may occur.
+     *
+     * These fields are private for a reason!
+     *
+     * @internal
+     */
+    static unsafeExposeInternals(c) {
+        return {
+            // properties
+            starts: c.#starts,
+            ttls: c.#ttls,
+            sizes: c.#sizes,
+            keyMap: c.#keyMap,
+            keyList: c.#keyList,
+            valList: c.#valList,
+            next: c.#next,
+            prev: c.#prev,
+            get head() {
+                return c.#head;
+            },
+            get tail() {
+                return c.#tail;
+            },
+            free: c.#free,
+            // methods
+            isBackgroundFetch: (p) => c.#isBackgroundFetch(p),
+            backgroundFetch: (k, index, options, context) => c.#backgroundFetch(k, index, options, context),
+            moveToTail: (index) => c.#moveToTail(index),
+            indexes: (options) => c.#indexes(options),
+            rindexes: (options) => c.#rindexes(options),
+            isStale: (index) => c.#isStale(index),
+        };
+    }
+    // Protected read-only members
+    /**
+     * {@link LRUCache.OptionsBase.max} (read-only)
+     */
+    get max() {
+        return this.#max;
+    }
+    /**
+     * {@link LRUCache.OptionsBase.maxSize} (read-only)
+     */
+    get maxSize() {
+        return this.#maxSize;
+    }
+    /**
+     * The total computed size of items in the cache (read-only)
+     */
+    get calculatedSize() {
+        return this.#calculatedSize;
+    }
+    /**
+     * The number of items stored in the cache (read-only)
+     */
+    get size() {
+        return this.#size;
+    }
+    /**
+     * {@link LRUCache.OptionsBase.fetchMethod} (read-only)
+     */
+    get fetchMethod() {
+        return this.#fetchMethod;
+    }
+    /**
+     * {@link LRUCache.OptionsBase.dispose} (read-only)
+     */
+    get dispose() {
+        return this.#dispose;
+    }
+    /**
+     * {@link LRUCache.OptionsBase.disposeAfter} (read-only)
+     */
+    get disposeAfter() {
+        return this.#disposeAfter;
+    }
+    constructor(options) {
+        const { max = 0, ttl, ttlResolution = 1, ttlAutopurge, updateAgeOnGet, updateAgeOnHas, allowStale, dispose, disposeAfter, noDisposeOnSet, noUpdateTTL, maxSize = 0, maxEntrySize = 0, sizeCalculation, fetchMethod, noDeleteOnFetchRejection, noDeleteOnStaleGet, allowStaleOnFetchRejection, allowStaleOnFetchAbort, ignoreFetchAbort, } = options;
+        if (max !== 0 && !isPosInt(max)) {
+            throw new TypeError('max option must be a nonnegative integer');
+        }
+        const UintArray = max ? getUintArray(max) : Array;
+        if (!UintArray) {
+            throw new Error('invalid max value: ' + max);
+        }
+        this.#max = max;
+        this.#maxSize = maxSize;
+        this.maxEntrySize = maxEntrySize || this.#maxSize;
+        this.sizeCalculation = sizeCalculation;
+        if (this.sizeCalculation) {
+            if (!this.#maxSize && !this.maxEntrySize) {
+                throw new TypeError('cannot set sizeCalculation without setting maxSize or maxEntrySize');
+            }
+            if (typeof this.sizeCalculation !== 'function') {
+                throw new TypeError('sizeCalculation set to non-function');
+            }
+        }
+        if (fetchMethod !== undefined &&
+            typeof fetchMethod !== 'function') {
+            throw new TypeError('fetchMethod must be a function if specified');
+        }
+        this.#fetchMethod = fetchMethod;
+        this.#hasFetchMethod = !!fetchMethod;
+        this.#keyMap = new Map();
+        this.#keyList = new Array(max).fill(undefined);
+        this.#valList = new Array(max).fill(undefined);
+        this.#next = new UintArray(max);
+        this.#prev = new UintArray(max);
+        this.#head = 0;
+        this.#tail = 0;
+        this.#free = Stack.create(max);
+        this.#size = 0;
+        this.#calculatedSize = 0;
+        if (typeof dispose === 'function') {
+            this.#dispose = dispose;
+        }
+        if (typeof disposeAfter === 'function') {
+            this.#disposeAfter = disposeAfter;
+            this.#disposed = [];
+        }
+        else {
+            this.#disposeAfter = undefined;
+            this.#disposed = undefined;
+        }
+        this.#hasDispose = !!this.#dispose;
+        this.#hasDisposeAfter = !!this.#disposeAfter;
+        this.noDisposeOnSet = !!noDisposeOnSet;
+        this.noUpdateTTL = !!noUpdateTTL;
+        this.noDeleteOnFetchRejection = !!noDeleteOnFetchRejection;
+        this.allowStaleOnFetchRejection = !!allowStaleOnFetchRejection;
+        this.allowStaleOnFetchAbort = !!allowStaleOnFetchAbort;
+        this.ignoreFetchAbort = !!ignoreFetchAbort;
+        // NB: maxEntrySize is set to maxSize if it's set
+        if (this.maxEntrySize !== 0) {
+            if (this.#maxSize !== 0) {
+                if (!isPosInt(this.#maxSize)) {
+                    throw new TypeError('maxSize must be a positive integer if specified');
+                }
+            }
+            if (!isPosInt(this.maxEntrySize)) {
+                throw new TypeError('maxEntrySize must be a positive integer if specified');
+            }
+            this.#initializeSizeTracking();
+        }
+        this.allowStale = !!allowStale;
+        this.noDeleteOnStaleGet = !!noDeleteOnStaleGet;
+        this.updateAgeOnGet = !!updateAgeOnGet;
+        this.updateAgeOnHas = !!updateAgeOnHas;
+        this.ttlResolution =
+            isPosInt(ttlResolution) || ttlResolution === 0
+                ? ttlResolution
+                : 1;
+        this.ttlAutopurge = !!ttlAutopurge;
+        this.ttl = ttl || 0;
+        if (this.ttl) {
+            if (!isPosInt(this.ttl)) {
+                throw new TypeError('ttl must be a positive integer if specified');
+            }
+            this.#initializeTTLTracking();
+        }
+        // do not allow completely unbounded caches
+        if (this.#max === 0 && this.ttl === 0 && this.#maxSize === 0) {
+            throw new TypeError('At least one of max, maxSize, or ttl is required');
+        }
+        if (!this.ttlAutopurge && !this.#max && !this.#maxSize) {
+            const code = 'LRU_CACHE_UNBOUNDED';
+            if (shouldWarn(code)) {
+                warned.add(code);
+                const msg = 'TTL caching without ttlAutopurge, max, or maxSize can ' +
+                    'result in unbounded memory consumption.';
+                emitWarning(msg, 'UnboundedCacheWarning', code, LRUCache);
+            }
+        }
+    }
+    /**
+     * Return the remaining TTL time for a given entry key
+     */
+    getRemainingTTL(key) {
+        return this.#keyMap.has(key) ? Infinity : 0;
+    }
+    #initializeTTLTracking() {
+        const ttls = new ZeroArray(this.#max);
+        const starts = new ZeroArray(this.#max);
+        this.#ttls = ttls;
+        this.#starts = starts;
+        this.#setItemTTL = (index, ttl, start = perf.now()) => {
+            starts[index] = ttl !== 0 ? start : 0;
+            ttls[index] = ttl;
+            if (ttl !== 0 && this.ttlAutopurge) {
+                const t = setTimeout(() => {
+                    if (this.#isStale(index)) {
+                        this.delete(this.#keyList[index]);
+                    }
+                }, ttl + 1);
+                // unref() not supported on all platforms
+                /* c8 ignore start */
+                if (t.unref) {
+                    t.unref();
+                }
+                /* c8 ignore stop */
+            }
+        };
+        this.#updateItemAge = index => {
+            starts[index] = ttls[index] !== 0 ? perf.now() : 0;
+        };
+        this.#statusTTL = (status, index) => {
+            if (ttls[index]) {
+                const ttl = ttls[index];
+                const start = starts[index];
+                status.ttl = ttl;
+                status.start = start;
+                status.now = cachedNow || getNow();
+                const age = status.now - start;
+                status.remainingTTL = ttl - age;
+            }
+        };
+        // debounce calls to perf.now() to 1s so we're not hitting
+        // that costly call repeatedly.
+        let cachedNow = 0;
+        const getNow = () => {
+            const n = perf.now();
+            if (this.ttlResolution > 0) {
+                cachedNow = n;
+                const t = setTimeout(() => (cachedNow = 0), this.ttlResolution);
+                // not available on all platforms
+                /* c8 ignore start */
+                if (t.unref) {
+                    t.unref();
+                }
+                /* c8 ignore stop */
+            }
+            return n;
+        };
+        this.getRemainingTTL = key => {
+            const index = this.#keyMap.get(key);
+            if (index === undefined) {
+                return 0;
+            }
+            const ttl = ttls[index];
+            const start = starts[index];
+            if (ttl === 0 || start === 0) {
+                return Infinity;
+            }
+            const age = (cachedNow || getNow()) - start;
+            return ttl - age;
+        };
+        this.#isStale = index => {
+            return (ttls[index] !== 0 &&
+                starts[index] !== 0 &&
+                (cachedNow || getNow()) - starts[index] > ttls[index]);
+        };
+    }
+    // conditionally set private methods related to TTL
+    #updateItemAge = () => { };
+    #statusTTL = () => { };
+    #setItemTTL = () => { };
+    /* c8 ignore stop */
+    #isStale = () => false;
+    #initializeSizeTracking() {
+        const sizes = new ZeroArray(this.#max);
+        this.#calculatedSize = 0;
+        this.#sizes = sizes;
+        this.#removeItemSize = index => {
+            this.#calculatedSize -= sizes[index];
+            sizes[index] = 0;
+        };
+        this.#requireSize = (k, v, size, sizeCalculation) => {
+            // provisionally accept background fetches.
+            // actual value size will be checked when they return.
+            if (this.#isBackgroundFetch(v)) {
+                return 0;
+            }
+            if (!isPosInt(size)) {
+                if (sizeCalculation) {
+                    if (typeof sizeCalculation !== 'function') {
+                        throw new TypeError('sizeCalculation must be a function');
+                    }
+                    size = sizeCalculation(v, k);
+                    if (!isPosInt(size)) {
+                        throw new TypeError('sizeCalculation return invalid (expect positive integer)');
+                    }
+                }
+                else {
+                    throw new TypeError('invalid size value (must be positive integer). ' +
+                        'When maxSize or maxEntrySize is used, sizeCalculation ' +
+                        'or size must be set.');
+                }
+            }
+            return size;
+        };
+        this.#addItemSize = (index, size, status) => {
+            sizes[index] = size;
+            if (this.#maxSize) {
+                const maxSize = this.#maxSize - sizes[index];
+                while (this.#calculatedSize > maxSize) {
+                    this.#evict(true);
+                }
+            }
+            this.#calculatedSize += sizes[index];
+            if (status) {
+                status.entrySize = size;
+                status.totalCalculatedSize = this.#calculatedSize;
+            }
+        };
+    }
+    #removeItemSize = _i => { };
+    #addItemSize = (_i, _s, _st) => { };
+    #requireSize = (_k, _v, size, sizeCalculation) => {
+        if (size || sizeCalculation) {
+            throw new TypeError('cannot set size without setting maxSize or maxEntrySize on cache');
+        }
+        return 0;
+    };
+    *#indexes({ allowStale = this.allowStale } = {}) {
+        if (this.#size) {
+            for (let i = this.#tail; true;) {
+                if (!this.#isValidIndex(i)) {
+                    break;
+                }
+                if (allowStale || !this.#isStale(i)) {
+                    yield i;
+                }
+                if (i === this.#head) {
+                    break;
+                }
+                else {
+                    i = this.#prev[i];
+                }
+            }
+        }
+    }
+    *#rindexes({ allowStale = this.allowStale } = {}) {
+        if (this.#size) {
+            for (let i = this.#head; true;) {
+                if (!this.#isValidIndex(i)) {
+                    break;
+                }
+                if (allowStale || !this.#isStale(i)) {
+                    yield i;
+                }
+                if (i === this.#tail) {
+                    break;
+                }
+                else {
+                    i = this.#next[i];
+                }
+            }
+        }
+    }
+    #isValidIndex(index) {
+        return (index !== undefined &&
+            this.#keyMap.get(this.#keyList[index]) === index);
+    }
+    /**
+     * Return a generator yielding `[key, value]` pairs,
+     * in order from most recently used to least recently used.
+     */
+    *entries() {
+        for (const i of this.#indexes()) {
+            if (this.#valList[i] !== undefined &&
+                this.#keyList[i] !== undefined &&
+                !this.#isBackgroundFetch(this.#valList[i])) {
+                yield [this.#keyList[i], this.#valList[i]];
+            }
+        }
+    }
+    /**
+     * Inverse order version of {@link LRUCache.entries}
+     *
+     * Return a generator yielding `[key, value]` pairs,
+     * in order from least recently used to most recently used.
+     */
+    *rentries() {
+        for (const i of this.#rindexes()) {
+            if (this.#valList[i] !== undefined &&
+                this.#keyList[i] !== undefined &&
+                !this.#isBackgroundFetch(this.#valList[i])) {
+                yield [this.#keyList[i], this.#valList[i]];
+            }
+        }
+    }
+    /**
+     * Return a generator yielding the keys in the cache,
+     * in order from most recently used to least recently used.
+     */
+    *keys() {
+        for (const i of this.#indexes()) {
+            const k = this.#keyList[i];
+            if (k !== undefined &&
+                !this.#isBackgroundFetch(this.#valList[i])) {
+                yield k;
+            }
+        }
+    }
+    /**
+     * Inverse order version of {@link LRUCache.keys}
+     *
+     * Return a generator yielding the keys in the cache,
+     * in order from least recently used to most recently used.
+     */
+    *rkeys() {
+        for (const i of this.#rindexes()) {
+            const k = this.#keyList[i];
+            if (k !== undefined &&
+                !this.#isBackgroundFetch(this.#valList[i])) {
+                yield k;
+            }
+        }
+    }
+    /**
+     * Return a generator yielding the values in the cache,
+     * in order from most recently used to least recently used.
+     */
+    *values() {
+        for (const i of this.#indexes()) {
+            const v = this.#valList[i];
+            if (v !== undefined &&
+                !this.#isBackgroundFetch(this.#valList[i])) {
+                yield this.#valList[i];
+            }
+        }
+    }
+    /**
+     * Inverse order version of {@link LRUCache.values}
+     *
+     * Return a generator yielding the values in the cache,
+     * in order from least recently used to most recently used.
+     */
+    *rvalues() {
+        for (const i of this.#rindexes()) {
+            const v = this.#valList[i];
+            if (v !== undefined &&
+                !this.#isBackgroundFetch(this.#valList[i])) {
+                yield this.#valList[i];
+            }
+        }
+    }
+    /**
+     * Iterating over the cache itself yields the same results as
+     * {@link LRUCache.entries}
+     */
+    [Symbol.iterator]() {
+        return this.entries();
+    }
+    /**
+     * Find a value for which the supplied fn method returns a truthy value,
+     * similar to Array.find().  fn is called as fn(value, key, cache).
+     */
+    find(fn, getOptions = {}) {
+        for (const i of this.#indexes()) {
+            const v = this.#valList[i];
+            const value = this.#isBackgroundFetch(v)
+                ? v.__staleWhileFetching
+                : v;
+            if (value === undefined)
+                continue;
+            if (fn(value, this.#keyList[i], this)) {
+                return this.get(this.#keyList[i], getOptions);
+            }
+        }
+    }
+    /**
+     * Call the supplied function on each item in the cache, in order from
+     * most recently used to least recently used.  fn is called as
+     * fn(value, key, cache).  Does not update age or recenty of use.
+     * Does not iterate over stale values.
+     */
+    forEach(fn, thisp = this) {
+        for (const i of this.#indexes()) {
+            const v = this.#valList[i];
+            const value = this.#isBackgroundFetch(v)
+                ? v.__staleWhileFetching
+                : v;
+            if (value === undefined)
+                continue;
+            fn.call(thisp, value, this.#keyList[i], this);
+        }
+    }
+    /**
+     * The same as {@link LRUCache.forEach} but items are iterated over in
+     * reverse order.  (ie, less recently used items are iterated over first.)
+     */
+    rforEach(fn, thisp = this) {
+        for (const i of this.#rindexes()) {
+            const v = this.#valList[i];
+            const value = this.#isBackgroundFetch(v)
+                ? v.__staleWhileFetching
+                : v;
+            if (value === undefined)
+                continue;
+            fn.call(thisp, value, this.#keyList[i], this);
+        }
+    }
+    /**
+     * Delete any stale entries. Returns true if anything was removed,
+     * false otherwise.
+     */
+    purgeStale() {
+        let deleted = false;
+        for (const i of this.#rindexes({ allowStale: true })) {
+            if (this.#isStale(i)) {
+                this.delete(this.#keyList[i]);
+                deleted = true;
+            }
+        }
+        return deleted;
+    }
+    /**
+     * Return an array of [key, {@link LRUCache.Entry}] tuples which can be
+     * passed to cache.load()
+     */
+    dump() {
+        const arr = [];
+        for (const i of this.#indexes({ allowStale: true })) {
+            const key = this.#keyList[i];
+            const v = this.#valList[i];
+            const value = this.#isBackgroundFetch(v)
+                ? v.__staleWhileFetching
+                : v;
+            if (value === undefined || key === undefined)
+                continue;
+            const entry = { value };
+            if (this.#ttls && this.#starts) {
+                entry.ttl = this.#ttls[i];
+                // always dump the start relative to a portable timestamp
+                // it's ok for this to be a bit slow, it's a rare operation.
+                const age = perf.now() - this.#starts[i];
+                entry.start = Math.floor(Date.now() - age);
+            }
+            if (this.#sizes) {
+                entry.size = this.#sizes[i];
+            }
+            arr.unshift([key, entry]);
+        }
+        return arr;
+    }
+    /**
+     * Reset the cache and load in the items in entries in the order listed.
+     * Note that the shape of the resulting cache may be different if the
+     * same options are not used in both caches.
+     */
+    load(arr) {
+        this.clear();
+        for (const [key, entry] of arr) {
+            if (entry.start) {
+                // entry.start is a portable timestamp, but we may be using
+                // node's performance.now(), so calculate the offset, so that
+                // we get the intended remaining TTL, no matter how long it's
+                // been on ice.
+                //
+                // it's ok for this to be a bit slow, it's a rare operation.
+                const age = Date.now() - entry.start;
+                entry.start = perf.now() - age;
+            }
+            this.set(key, entry.value, entry);
+        }
+    }
+    /**
+     * Add a value to the cache.
+     *
+     * Note: if `undefined` is specified as a value, this is an alias for
+     * {@link LRUCache#delete}
+     */
+    set(k, v, setOptions = {}) {
+        if (v === undefined) {
+            this.delete(k);
+            return this;
+        }
+        const { ttl = this.ttl, start, noDisposeOnSet = this.noDisposeOnSet, sizeCalculation = this.sizeCalculation, status, } = setOptions;
+        let { noUpdateTTL = this.noUpdateTTL } = setOptions;
+        const size = this.#requireSize(k, v, setOptions.size || 0, sizeCalculation);
+        // if the item doesn't fit, don't do anything
+        // NB: maxEntrySize set to maxSize by default
+        if (this.maxEntrySize && size > this.maxEntrySize) {
+            if (status) {
+                status.set = 'miss';
+                status.maxEntrySizeExceeded = true;
+            }
+            // have to delete, in case something is there already.
+            this.delete(k);
+            return this;
+        }
+        let index = this.#size === 0 ? undefined : this.#keyMap.get(k);
+        if (index === undefined) {
+            // addition
+            index = (this.#size === 0
+                ? this.#tail
+                : this.#free.length !== 0
+                    ? this.#free.pop()
+                    : this.#size === this.#max
+                        ? this.#evict(false)
+                        : this.#size);
+            this.#keyList[index] = k;
+            this.#valList[index] = v;
+            this.#keyMap.set(k, index);
+            this.#next[this.#tail] = index;
+            this.#prev[index] = this.#tail;
+            this.#tail = index;
+            this.#size++;
+            this.#addItemSize(index, size, status);
+            if (status)
+                status.set = 'add';
+            noUpdateTTL = false;
+        }
+        else {
+            // update
+            this.#moveToTail(index);
+            const oldVal = this.#valList[index];
+            if (v !== oldVal) {
+                if (this.#hasFetchMethod && this.#isBackgroundFetch(oldVal)) {
+                    oldVal.__abortController.abort(new Error('replaced'));
+                }
+                else if (!noDisposeOnSet) {
+                    if (this.#hasDispose) {
+                        this.#dispose?.(oldVal, k, 'set');
+                    }
+                    if (this.#hasDisposeAfter) {
+                        this.#disposed?.push([oldVal, k, 'set']);
+                    }
+                }
+                this.#removeItemSize(index);
+                this.#addItemSize(index, size, status);
+                this.#valList[index] = v;
+                if (status) {
+                    status.set = 'replace';
+                    const oldValue = oldVal && this.#isBackgroundFetch(oldVal)
+                        ? oldVal.__staleWhileFetching
+                        : oldVal;
+                    if (oldValue !== undefined)
+                        status.oldValue = oldValue;
+                }
+            }
+            else if (status) {
+                status.set = 'update';
+            }
+        }
+        if (ttl !== 0 && !this.#ttls) {
+            this.#initializeTTLTracking();
+        }
+        if (this.#ttls) {
+            if (!noUpdateTTL) {
+                this.#setItemTTL(index, ttl, start);
+            }
+            if (status)
+                this.#statusTTL(status, index);
+        }
+        if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed) {
+            const dt = this.#disposed;
+            let task;
+            while ((task = dt?.shift())) {
+                this.#disposeAfter?.(...task);
+            }
+        }
+        return this;
+    }
+    /**
+     * Evict the least recently used item, returning its value or
+     * `undefined` if cache is empty.
+     */
+    pop() {
+        try {
+            while (this.#size) {
+                const val = this.#valList[this.#head];
+                this.#evict(true);
+                if (this.#isBackgroundFetch(val)) {
+                    if (val.__staleWhileFetching) {
+                        return val.__staleWhileFetching;
+                    }
+                }
+                else if (val !== undefined) {
+                    return val;
+                }
+            }
+        }
+        finally {
+            if (this.#hasDisposeAfter && this.#disposed) {
+                const dt = this.#disposed;
+                let task;
+                while ((task = dt?.shift())) {
+                    this.#disposeAfter?.(...task);
+                }
+            }
+        }
+    }
+    #evict(free) {
+        const head = this.#head;
+        const k = this.#keyList[head];
+        const v = this.#valList[head];
+        if (this.#hasFetchMethod && this.#isBackgroundFetch(v)) {
+            v.__abortController.abort(new Error('evicted'));
+        }
+        else if (this.#hasDispose || this.#hasDisposeAfter) {
+            if (this.#hasDispose) {
+                this.#dispose?.(v, k, 'evict');
+            }
+            if (this.#hasDisposeAfter) {
+                this.#disposed?.push([v, k, 'evict']);
+            }
+        }
+        this.#removeItemSize(head);
+        // if we aren't about to use the index, then null these out
+        if (free) {
+            this.#keyList[head] = undefined;
+            this.#valList[head] = undefined;
+            this.#free.push(head);
+        }
+        if (this.#size === 1) {
+            this.#head = this.#tail = 0;
+            this.#free.length = 0;
+        }
+        else {
+            this.#head = this.#next[head];
+        }
+        this.#keyMap.delete(k);
+        this.#size--;
+        return head;
+    }
+    /**
+     * Check if a key is in the cache, without updating the recency of use.
+     * Will return false if the item is stale, even though it is technically
+     * in the cache.
+     *
+     * Will not update item age unless
+     * {@link LRUCache.OptionsBase.updateAgeOnHas} is set.
+     */
+    has(k, hasOptions = {}) {
+        const { updateAgeOnHas = this.updateAgeOnHas, status } = hasOptions;
+        const index = this.#keyMap.get(k);
+        if (index !== undefined) {
+            const v = this.#valList[index];
+            if (this.#isBackgroundFetch(v) &&
+                v.__staleWhileFetching === undefined) {
+                return false;
+            }
+            if (!this.#isStale(index)) {
+                if (updateAgeOnHas) {
+                    this.#updateItemAge(index);
+                }
+                if (status) {
+                    status.has = 'hit';
+                    this.#statusTTL(status, index);
+                }
+                return true;
+            }
+            else if (status) {
+                status.has = 'stale';
+                this.#statusTTL(status, index);
+            }
+        }
+        else if (status) {
+            status.has = 'miss';
+        }
+        return false;
+    }
+    /**
+     * Like {@link LRUCache#get} but doesn't update recency or delete stale
+     * items.
+     *
+     * Returns `undefined` if the item is stale, unless
+     * {@link LRUCache.OptionsBase.allowStale} is set.
+     */
+    peek(k, peekOptions = {}) {
+        const { allowStale = this.allowStale } = peekOptions;
+        const index = this.#keyMap.get(k);
+        if (index !== undefined &&
+            (allowStale || !this.#isStale(index))) {
+            const v = this.#valList[index];
+            // either stale and allowed, or forcing a refresh of non-stale value
+            return this.#isBackgroundFetch(v) ? v.__staleWhileFetching : v;
+        }
+    }
+    #backgroundFetch(k, index, options, context) {
+        const v = index === undefined ? undefined : this.#valList[index];
+        if (this.#isBackgroundFetch(v)) {
+            return v;
+        }
+        const ac = new AC();
+        const { signal } = options;
+        // when/if our AC signals, then stop listening to theirs.
+        signal?.addEventListener('abort', () => ac.abort(signal.reason), {
+            signal: ac.signal,
+        });
+        const fetchOpts = {
+            signal: ac.signal,
+            options,
+            context,
+        };
+        const cb = (v, updateCache = false) => {
+            const { aborted } = ac.signal;
+            const ignoreAbort = options.ignoreFetchAbort && v !== undefined;
+            if (options.status) {
+                if (aborted && !updateCache) {
+                    options.status.fetchAborted = true;
+                    options.status.fetchError = ac.signal.reason;
+                    if (ignoreAbort)
+                        options.status.fetchAbortIgnored = true;
+                }
+                else {
+                    options.status.fetchResolved = true;
+                }
+            }
+            if (aborted && !ignoreAbort && !updateCache) {
+                return fetchFail(ac.signal.reason);
+            }
+            // either we didn't abort, and are still here, or we did, and ignored
+            const bf = p;
+            if (this.#valList[index] === p) {
+                if (v === undefined) {
+                    if (bf.__staleWhileFetching) {
+                        this.#valList[index] = bf.__staleWhileFetching;
+                    }
+                    else {
+                        this.delete(k);
+                    }
+                }
+                else {
+                    if (options.status)
+                        options.status.fetchUpdated = true;
+                    this.set(k, v, fetchOpts.options);
+                }
+            }
+            return v;
+        };
+        const eb = (er) => {
+            if (options.status) {
+                options.status.fetchRejected = true;
+                options.status.fetchError = er;
+            }
+            return fetchFail(er);
+        };
+        const fetchFail = (er) => {
+            const { aborted } = ac.signal;
+            const allowStaleAborted = aborted && options.allowStaleOnFetchAbort;
+            const allowStale = allowStaleAborted || options.allowStaleOnFetchRejection;
+            const noDelete = allowStale || options.noDeleteOnFetchRejection;
+            const bf = p;
+            if (this.#valList[index] === p) {
+                // if we allow stale on fetch rejections, then we need to ensure that
+                // the stale value is not removed from the cache when the fetch fails.
+                const del = !noDelete || bf.__staleWhileFetching === undefined;
+                if (del) {
+                    this.delete(k);
+                }
+                else if (!allowStaleAborted) {
+                    // still replace the *promise* with the stale value,
+                    // since we are done with the promise at this point.
+                    // leave it untouched if we're still waiting for an
+                    // aborted background fetch that hasn't yet returned.
+                    this.#valList[index] = bf.__staleWhileFetching;
+                }
+            }
+            if (allowStale) {
+                if (options.status && bf.__staleWhileFetching !== undefined) {
+                    options.status.returnedStale = true;
+                }
+                return bf.__staleWhileFetching;
+            }
+            else if (bf.__returned === bf) {
+                throw er;
+            }
+        };
+        const pcall = (res, rej) => {
+            const fmp = this.#fetchMethod?.(k, v, fetchOpts);
+            if (fmp && fmp instanceof Promise) {
+                fmp.then(v => res(v), rej);
+            }
+            // ignored, we go until we finish, regardless.
+            // defer check until we are actually aborting,
+            // so fetchMethod can override.
+            ac.signal.addEventListener('abort', () => {
+                if (!options.ignoreFetchAbort ||
+                    options.allowStaleOnFetchAbort) {
+                    res();
+                    // when it eventually resolves, update the cache.
+                    if (options.allowStaleOnFetchAbort) {
+                        res = v => cb(v, true);
+                    }
+                }
+            });
+        };
+        if (options.status)
+            options.status.fetchDispatched = true;
+        const p = new Promise(pcall).then(cb, eb);
+        const bf = Object.assign(p, {
+            __abortController: ac,
+            __staleWhileFetching: v,
+            __returned: undefined,
+        });
+        if (index === undefined) {
+            // internal, don't expose status.
+            this.set(k, bf, { ...fetchOpts.options, status: undefined });
+            index = this.#keyMap.get(k);
+        }
+        else {
+            this.#valList[index] = bf;
+        }
+        return bf;
+    }
+    #isBackgroundFetch(p) {
+        if (!this.#hasFetchMethod)
+            return false;
+        const b = p;
+        return (!!b &&
+            b instanceof Promise &&
+            b.hasOwnProperty('__staleWhileFetching') &&
+            b.__abortController instanceof AC);
+    }
+    async fetch(k, fetchOptions = {}) {
+        const { 
+        // get options
+        allowStale = this.allowStale, updateAgeOnGet = this.updateAgeOnGet, noDeleteOnStaleGet = this.noDeleteOnStaleGet, 
+        // set options
+        ttl = this.ttl, noDisposeOnSet = this.noDisposeOnSet, size = 0, sizeCalculation = this.sizeCalculation, noUpdateTTL = this.noUpdateTTL, 
+        // fetch exclusive options
+        noDeleteOnFetchRejection = this.noDeleteOnFetchRejection, allowStaleOnFetchRejection = this.allowStaleOnFetchRejection, ignoreFetchAbort = this.ignoreFetchAbort, allowStaleOnFetchAbort = this.allowStaleOnFetchAbort, context, forceRefresh = false, status, signal, } = fetchOptions;
+        if (!this.#hasFetchMethod) {
+            if (status)
+                status.fetch = 'get';
+            return this.get(k, {
+                allowStale,
+                updateAgeOnGet,
+                noDeleteOnStaleGet,
+                status,
+            });
+        }
+        const options = {
+            allowStale,
+            updateAgeOnGet,
+            noDeleteOnStaleGet,
+            ttl,
+            noDisposeOnSet,
+            size,
+            sizeCalculation,
+            noUpdateTTL,
+            noDeleteOnFetchRejection,
+            allowStaleOnFetchRejection,
+            allowStaleOnFetchAbort,
+            ignoreFetchAbort,
+            status,
+            signal,
+        };
+        let index = this.#keyMap.get(k);
+        if (index === undefined) {
+            if (status)
+                status.fetch = 'miss';
+            const p = this.#backgroundFetch(k, index, options, context);
+            return (p.__returned = p);
+        }
+        else {
+            // in cache, maybe already fetching
+            const v = this.#valList[index];
+            if (this.#isBackgroundFetch(v)) {
+                const stale = allowStale && v.__staleWhileFetching !== undefined;
+                if (status) {
+                    status.fetch = 'inflight';
+                    if (stale)
+                        status.returnedStale = true;
+                }
+                return stale ? v.__staleWhileFetching : (v.__returned = v);
+            }
+            // if we force a refresh, that means do NOT serve the cached value,
+            // unless we are already in the process of refreshing the cache.
+            const isStale = this.#isStale(index);
+            if (!forceRefresh && !isStale) {
+                if (status)
+                    status.fetch = 'hit';
+                this.#moveToTail(index);
+                if (updateAgeOnGet) {
+                    this.#updateItemAge(index);
+                }
+                if (status)
+                    this.#statusTTL(status, index);
+                return v;
+            }
+            // ok, it is stale or a forced refresh, and not already fetching.
+            // refresh the cache.
+            const p = this.#backgroundFetch(k, index, options, context);
+            const hasStale = p.__staleWhileFetching !== undefined;
+            const staleVal = hasStale && allowStale;
+            if (status) {
+                status.fetch = isStale ? 'stale' : 'refresh';
+                if (staleVal && isStale)
+                    status.returnedStale = true;
+            }
+            return staleVal ? p.__staleWhileFetching : (p.__returned = p);
+        }
+    }
+    /**
+     * Return a value from the cache. Will update the recency of the cache
+     * entry found.
+     *
+     * If the key is not found, get() will return `undefined`.
+     */
+    get(k, getOptions = {}) {
+        const { allowStale = this.allowStale, updateAgeOnGet = this.updateAgeOnGet, noDeleteOnStaleGet = this.noDeleteOnStaleGet, status, } = getOptions;
+        const index = this.#keyMap.get(k);
+        if (index !== undefined) {
+            const value = this.#valList[index];
+            const fetching = this.#isBackgroundFetch(value);
+            if (status)
+                this.#statusTTL(status, index);
+            if (this.#isStale(index)) {
+                if (status)
+                    status.get = 'stale';
+                // delete only if not an in-flight background fetch
+                if (!fetching) {
+                    if (!noDeleteOnStaleGet) {
+                        this.delete(k);
+                    }
+                    if (status && allowStale)
+                        status.returnedStale = true;
+                    return allowStale ? value : undefined;
+                }
+                else {
+                    if (status &&
+                        allowStale &&
+                        value.__staleWhileFetching !== undefined) {
+                        status.returnedStale = true;
+                    }
+                    return allowStale ? value.__staleWhileFetching : undefined;
+                }
+            }
+            else {
+                if (status)
+                    status.get = 'hit';
+                // if we're currently fetching it, we don't actually have it yet
+                // it's not stale, which means this isn't a staleWhileRefetching.
+                // If it's not stale, and fetching, AND has a __staleWhileFetching
+                // value, then that means the user fetched with {forceRefresh:true},
+                // so it's safe to return that value.
+                if (fetching) {
+                    return value.__staleWhileFetching;
+                }
+                this.#moveToTail(index);
+                if (updateAgeOnGet) {
+                    this.#updateItemAge(index);
+                }
+                return value;
+            }
+        }
+        else if (status) {
+            status.get = 'miss';
+        }
+    }
+    #connect(p, n) {
+        this.#prev[n] = p;
+        this.#next[p] = n;
+    }
+    #moveToTail(index) {
+        // if tail already, nothing to do
+        // if head, move head to next[index]
+        // else
+        //   move next[prev[index]] to next[index] (head has no prev)
+        //   move prev[next[index]] to prev[index]
+        // prev[index] = tail
+        // next[tail] = index
+        // tail = index
+        if (index !== this.#tail) {
+            if (index === this.#head) {
+                this.#head = this.#next[index];
+            }
+            else {
+                this.#connect(this.#prev[index], this.#next[index]);
+            }
+            this.#connect(this.#tail, index);
+            this.#tail = index;
+        }
+    }
+    /**
+     * Deletes a key out of the cache.
+     * Returns true if the key was deleted, false otherwise.
+     */
+    delete(k) {
+        let deleted = false;
+        if (this.#size !== 0) {
+            const index = this.#keyMap.get(k);
+            if (index !== undefined) {
+                deleted = true;
+                if (this.#size === 1) {
+                    this.clear();
+                }
+                else {
+                    this.#removeItemSize(index);
+                    const v = this.#valList[index];
+                    if (this.#isBackgroundFetch(v)) {
+                        v.__abortController.abort(new Error('deleted'));
+                    }
+                    else if (this.#hasDispose || this.#hasDisposeAfter) {
+                        if (this.#hasDispose) {
+                            this.#dispose?.(v, k, 'delete');
+                        }
+                        if (this.#hasDisposeAfter) {
+                            this.#disposed?.push([v, k, 'delete']);
+                        }
+                    }
+                    this.#keyMap.delete(k);
+                    this.#keyList[index] = undefined;
+                    this.#valList[index] = undefined;
+                    if (index === this.#tail) {
+                        this.#tail = this.#prev[index];
+                    }
+                    else if (index === this.#head) {
+                        this.#head = this.#next[index];
+                    }
+                    else {
+                        this.#next[this.#prev[index]] = this.#next[index];
+                        this.#prev[this.#next[index]] = this.#prev[index];
+                    }
+                    this.#size--;
+                    this.#free.push(index);
+                }
+            }
+        }
+        if (this.#hasDisposeAfter && this.#disposed?.length) {
+            const dt = this.#disposed;
+            let task;
+            while ((task = dt?.shift())) {
+                this.#disposeAfter?.(...task);
+            }
+        }
+        return deleted;
+    }
+    /**
+     * Clear the cache entirely, throwing away all values.
+     */
+    clear() {
+        for (const index of this.#rindexes({ allowStale: true })) {
+            const v = this.#valList[index];
+            if (this.#isBackgroundFetch(v)) {
+                v.__abortController.abort(new Error('deleted'));
+            }
+            else {
+                const k = this.#keyList[index];
+                if (this.#hasDispose) {
+                    this.#dispose?.(v, k, 'delete');
+                }
+                if (this.#hasDisposeAfter) {
+                    this.#disposed?.push([v, k, 'delete']);
+                }
+            }
+        }
+        this.#keyMap.clear();
+        this.#valList.fill(undefined);
+        this.#keyList.fill(undefined);
+        if (this.#ttls && this.#starts) {
+            this.#ttls.fill(0);
+            this.#starts.fill(0);
+        }
+        if (this.#sizes) {
+            this.#sizes.fill(0);
+        }
+        this.#head = 0;
+        this.#tail = 0;
+        this.#free.length = 0;
+        this.#calculatedSize = 0;
+        this.#size = 0;
+        if (this.#hasDisposeAfter && this.#disposed) {
+            const dt = this.#disposed;
+            let task;
+            while ((task = dt?.shift())) {
+                this.#disposeAfter?.(...task);
+            }
+        }
+    }
+}
+exports.LRUCache = LRUCache;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
 /***/ 8109:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
+var YAMLMap = __nccwpck_require__(6011);
+var YAMLSeq = __nccwpck_require__(5161);
 var resolveBlockMap = __nccwpck_require__(2986);
 var resolveBlockSeq = __nccwpck_require__(2289);
 var resolveFlowCollection = __nccwpck_require__(45);
 
-function composeCollection(CN, ctx, token, tagToken, onError) {
-    let coll;
-    switch (token.type) {
-        case 'block-map': {
-            coll = resolveBlockMap.resolveBlockMap(CN, ctx, token, onError);
-            break;
-        }
-        case 'block-seq': {
-            coll = resolveBlockSeq.resolveBlockSeq(CN, ctx, token, onError);
-            break;
-        }
-        case 'flow-collection': {
-            coll = resolveFlowCollection.resolveFlowCollection(CN, ctx, token, onError);
-            break;
-        }
-    }
-    if (!tagToken)
-        return coll;
-    const tagName = ctx.directives.tagName(tagToken.source, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg));
-    if (!tagName)
-        return coll;
-    // Cast needed due to: https://github.com/Microsoft/TypeScript/issues/3841
+function resolveCollection(CN, ctx, token, onError, tagName, tag) {
+    const coll = token.type === 'block-map'
+        ? resolveBlockMap.resolveBlockMap(CN, ctx, token, onError, tag)
+        : token.type === 'block-seq'
+            ? resolveBlockSeq.resolveBlockSeq(CN, ctx, token, onError, tag)
+            : resolveFlowCollection.resolveFlowCollection(CN, ctx, token, onError, tag);
     const Coll = coll.constructor;
+    // If we got a tagName matching the class, or the tag name is '!',
+    // then use the tagName from the node class used to create it.
     if (tagName === '!' || tagName === Coll.tagName) {
         coll.tag = Coll.tagName;
         return coll;
     }
-    const expType = Node.isMap(coll) ? 'map' : 'seq';
-    let tag = ctx.schema.tags.find(t => t.collection === expType && t.tag === tagName);
+    if (tagName)
+        coll.tag = tagName;
+    return coll;
+}
+function composeCollection(CN, ctx, token, tagToken, onError) {
+    const tagName = !tagToken
+        ? null
+        : ctx.directives.tagName(tagToken.source, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg));
+    const expType = token.type === 'block-map'
+        ? 'map'
+        : token.type === 'block-seq'
+            ? 'seq'
+            : token.start.source === '{'
+                ? 'map'
+                : 'seq';
+    // shortcut: check if it's a generic YAMLMap or YAMLSeq
+    // before jumping into the custom tag logic.
+    if (!tagToken ||
+        !tagName ||
+        tagName === '!' ||
+        (tagName === YAMLMap.YAMLMap.tagName && expType === 'map') ||
+        (tagName === YAMLSeq.YAMLSeq.tagName && expType === 'seq') ||
+        !expType) {
+        return resolveCollection(CN, ctx, token, onError, tagName);
+    }
+    let tag = ctx.schema.tags.find(t => t.tag === tagName && t.collection === expType);
     if (!tag) {
         const kt = ctx.schema.knownTags[tagName];
         if (kt && kt.collection === expType) {
@@ -45457,13 +48589,18 @@ function composeCollection(CN, ctx, token, tagToken, onError) {
             tag = kt;
         }
         else {
-            onError(tagToken, 'TAG_RESOLVE_FAILED', `Unresolved tag: ${tagName}`, true);
-            coll.tag = tagName;
-            return coll;
+            if (kt?.collection) {
+                onError(tagToken, 'BAD_COLLECTION_TYPE', `${kt.tag} used for ${expType} collection, but expects ${kt.collection}`, true);
+            }
+            else {
+                onError(tagToken, 'TAG_RESOLVE_FAILED', `Unresolved tag: ${tagName}`, true);
+            }
+            return resolveCollection(CN, ctx, token, onError, tagName);
         }
     }
-    const res = tag.resolve(coll, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg), ctx.options);
-    const node = Node.isNode(res)
+    const coll = resolveCollection(CN, ctx, token, onError, tagName, tag);
+    const res = tag.resolve?.(coll, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg), ctx.options) ?? coll;
+    const node = identity.isNode(res)
         ? res
         : new Scalar.Scalar(res);
     node.range = coll.range;
@@ -45512,6 +48649,7 @@ function composeDoc(options, directives, { offset, start, value, end }, onError)
             !props.hasNewline)
             onError(props.end, 'MISSING_CHAR', 'Block collection cannot start on same line with directives-end marker');
     }
+    // @ts-expect-error If Contents is set, let's trust the user
     doc.contents = value
         ? composeNode.composeNode(ctx, value, props, onError)
         : composeNode.composeEmptyNode(ctx, props.end, start, null, props, onError);
@@ -45637,7 +48775,7 @@ exports.composeNode = composeNode;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
 var resolveBlockScalar = __nccwpck_require__(9485);
 var resolveFlowScalar = __nccwpck_require__(7578);
@@ -45653,11 +48791,11 @@ function composeScalar(ctx, token, tagToken, onError) {
         ? findScalarTagByName(ctx.schema, value, tagName, tagToken, onError)
         : token.type === 'scalar'
             ? findScalarTagByTest(ctx, value, token, onError)
-            : ctx.schema[Node.SCALAR];
+            : ctx.schema[identity.SCALAR];
     let scalar;
     try {
         const res = tag.resolve(value, msg => onError(tagToken ?? token, 'TAG_RESOLVE_FAILED', msg), ctx.options);
-        scalar = Node.isScalar(res) ? res : new Scalar.Scalar(res);
+        scalar = identity.isScalar(res) ? res : new Scalar.Scalar(res);
     }
     catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -45678,7 +48816,7 @@ function composeScalar(ctx, token, tagToken, onError) {
 }
 function findScalarTagByName(schema, value, tagName, tagToken, onError) {
     if (tagName === '!')
-        return schema[Node.SCALAR]; // non-specific tag
+        return schema[identity.SCALAR]; // non-specific tag
     const matchWithTest = [];
     for (const tag of schema.tags) {
         if (!tag.collection && tag.tag === tagName) {
@@ -45699,13 +48837,13 @@ function findScalarTagByName(schema, value, tagName, tagToken, onError) {
         return kt;
     }
     onError(tagToken, 'TAG_RESOLVE_FAILED', `Unresolved tag: ${tagName}`, tagName !== 'tag:yaml.org,2002:str');
-    return schema[Node.SCALAR];
+    return schema[identity.SCALAR];
 }
 function findScalarTagByTest({ directives, schema }, value, token, onError) {
-    const tag = schema.tags.find(tag => tag.default && tag.test?.test(value)) || schema[Node.SCALAR];
+    const tag = schema.tags.find(tag => tag.default && tag.test?.test(value)) || schema[identity.SCALAR];
     if (schema.compat) {
         const compat = schema.compat.find(tag => tag.default && tag.test?.test(value)) ??
-            schema[Node.SCALAR];
+            schema[identity.SCALAR];
         if (tag.tag !== compat.tag) {
             const ts = directives.tagString(tag.tag);
             const cs = directives.tagString(compat.tag);
@@ -45730,7 +48868,7 @@ exports.composeScalar = composeScalar;
 var directives = __nccwpck_require__(5400);
 var Document = __nccwpck_require__(42);
 var errors = __nccwpck_require__(4236);
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var composeDoc = __nccwpck_require__(5050);
 var resolveEnd = __nccwpck_require__(1250);
 
@@ -45810,9 +48948,9 @@ class Composer {
             else if (afterEmptyLine || doc.directives.docStart || !dc) {
                 doc.commentBefore = comment;
             }
-            else if (Node.isCollection(dc) && !dc.flow && dc.items.length > 0) {
+            else if (identity.isCollection(dc) && !dc.flow && dc.items.length > 0) {
                 let it = dc.items[0];
-                if (Node.isPair(it))
+                if (identity.isPair(it))
                     it = it.key;
                 const cb = it.commentBefore;
                 it.commentBefore = cb ? `${comment}\n${cb}` : comment;
@@ -45964,8 +49102,9 @@ var utilFlowIndentCheck = __nccwpck_require__(3669);
 var utilMapIncludes = __nccwpck_require__(6899);
 
 const startColMsg = 'All mapping items must start at the same column';
-function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError) {
-    const map = new YAMLMap.YAMLMap(ctx.schema);
+function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError, tag) {
+    const NodeClass = tag?.nodeClass ?? YAMLMap.YAMLMap;
+    const map = new NodeClass(ctx.schema);
     if (ctx.atRoot)
         ctx.atRoot = false;
     let offset = bm.offset;
@@ -46284,8 +49423,9 @@ var YAMLSeq = __nccwpck_require__(5161);
 var resolveProps = __nccwpck_require__(6985);
 var utilFlowIndentCheck = __nccwpck_require__(3669);
 
-function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError) {
-    const seq = new YAMLSeq.YAMLSeq(ctx.schema);
+function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError, tag) {
+    const NodeClass = tag?.nodeClass ?? YAMLSeq.YAMLSeq;
+    const seq = new NodeClass(ctx.schema);
     if (ctx.atRoot)
         ctx.atRoot = false;
     let offset = bs.offset;
@@ -46382,7 +49522,7 @@ exports.resolveEnd = resolveEnd;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
 var YAMLMap = __nccwpck_require__(6011);
 var YAMLSeq = __nccwpck_require__(5161);
@@ -46393,12 +49533,11 @@ var utilMapIncludes = __nccwpck_require__(6899);
 
 const blockMsg = 'Block collections are not allowed within flow collections';
 const isBlock = (token) => token && (token.type === 'block-map' || token.type === 'block-seq');
-function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError) {
+function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag) {
     const isMap = fc.start.source === '{';
     const fcName = isMap ? 'flow map' : 'flow sequence';
-    const coll = isMap
-        ? new YAMLMap.YAMLMap(ctx.schema)
-        : new YAMLSeq.YAMLSeq(ctx.schema);
+    const NodeClass = (tag?.nodeClass ?? (isMap ? YAMLMap.YAMLMap : YAMLSeq.YAMLSeq));
+    const coll = new NodeClass(ctx.schema);
     coll.flow = true;
     const atRoot = ctx.atRoot;
     if (atRoot)
@@ -46457,7 +49596,7 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
                 }
                 if (prevItemComment) {
                     let prev = coll.items[coll.items.length - 1];
-                    if (Node.isPair(prev))
+                    if (identity.isPair(prev))
                         prev = prev.value ?? prev.key;
                     if (prev.comment)
                         prev.comment += '\n' + prevItemComment;
@@ -47075,7 +50214,7 @@ exports.flowIndentCheck = flowIndentCheck;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 
 function mapIncludes(ctx, items, search) {
     const { uniqueKeys } = ctx.options;
@@ -47084,8 +50223,8 @@ function mapIncludes(ctx, items, search) {
     const isEqual = typeof uniqueKeys === 'function'
         ? uniqueKeys
         : (a, b) => a === b ||
-            (Node.isScalar(a) &&
-                Node.isScalar(b) &&
+            (identity.isScalar(a) &&
+                identity.isScalar(b) &&
                 a.value === b.value &&
                 !(a.value === '<<' && ctx.schema.merge));
     return items.some(pair => isEqual(pair.key, search));
@@ -47104,11 +50243,10 @@ exports.mapIncludes = mapIncludes;
 
 var Alias = __nccwpck_require__(5639);
 var Collection = __nccwpck_require__(3466);
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
 var toJS = __nccwpck_require__(2463);
 var Schema = __nccwpck_require__(6831);
-var stringify = __nccwpck_require__(8409);
 var stringifyDocument = __nccwpck_require__(5225);
 var anchors = __nccwpck_require__(8459);
 var applyReviver = __nccwpck_require__(3412);
@@ -47125,7 +50263,7 @@ class Document {
         this.errors = [];
         /** Warnings encountered during parsing. */
         this.warnings = [];
-        Object.defineProperty(this, Node.NODE_TYPE, { value: Node.DOC });
+        Object.defineProperty(this, identity.NODE_TYPE, { value: identity.DOC });
         let _replacer = null;
         if (typeof replacer === 'function' || Array.isArray(replacer)) {
             _replacer = replacer;
@@ -47153,11 +50291,9 @@ class Document {
         else
             this.directives = new directives.Directives({ version });
         this.setSchema(version, options);
-        if (value === undefined)
-            this.contents = null;
-        else {
-            this.contents = this.createNode(value, _replacer, options);
-        }
+        // @ts-expect-error We can't really know that this matches Contents.
+        this.contents =
+            value === undefined ? null : this.createNode(value, _replacer, options);
     }
     /**
      * Create a deep copy of this Document and its contents.
@@ -47166,7 +50302,7 @@ class Document {
      */
     clone() {
         const copy = Object.create(Document.prototype, {
-            [Node.NODE_TYPE]: { value: Node.DOC }
+            [identity.NODE_TYPE]: { value: identity.DOC }
         });
         copy.commentBefore = this.commentBefore;
         copy.comment = this.comment;
@@ -47176,7 +50312,8 @@ class Document {
         if (this.directives)
             copy.directives = this.directives.clone();
         copy.schema = this.schema.clone();
-        copy.contents = Node.isNode(this.contents)
+        // @ts-expect-error We can't really know that this matches Contents.
+        copy.contents = identity.isNode(this.contents)
             ? this.contents.clone(copy.schema)
             : this.contents;
         if (this.range)
@@ -47242,7 +50379,7 @@ class Document {
             sourceObjects
         };
         const node = createNode.createNode(value, tag, ctx);
-        if (flow && Node.isCollection(node))
+        if (flow && identity.isCollection(node))
             node.flow = true;
         setAnchors();
         return node;
@@ -47271,6 +50408,7 @@ class Document {
         if (Collection.isEmptyPath(path)) {
             if (this.contents == null)
                 return false;
+            // @ts-expect-error Presumed impossible if Strict extends false
             this.contents = null;
             return true;
         }
@@ -47284,7 +50422,7 @@ class Document {
      * `true` (collections are always returned intact).
      */
     get(key, keepScalar) {
-        return Node.isCollection(this.contents)
+        return identity.isCollection(this.contents)
             ? this.contents.get(key, keepScalar)
             : undefined;
     }
@@ -47295,10 +50433,10 @@ class Document {
      */
     getIn(path, keepScalar) {
         if (Collection.isEmptyPath(path))
-            return !keepScalar && Node.isScalar(this.contents)
+            return !keepScalar && identity.isScalar(this.contents)
                 ? this.contents.value
                 : this.contents;
-        return Node.isCollection(this.contents)
+        return identity.isCollection(this.contents)
             ? this.contents.getIn(path, keepScalar)
             : undefined;
     }
@@ -47306,7 +50444,7 @@ class Document {
      * Checks if the document includes a value with the key `key`.
      */
     has(key) {
-        return Node.isCollection(this.contents) ? this.contents.has(key) : false;
+        return identity.isCollection(this.contents) ? this.contents.has(key) : false;
     }
     /**
      * Checks if the document includes a value at `path`.
@@ -47314,7 +50452,7 @@ class Document {
     hasIn(path) {
         if (Collection.isEmptyPath(path))
             return this.contents !== undefined;
-        return Node.isCollection(this.contents) ? this.contents.hasIn(path) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path) : false;
     }
     /**
      * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -47322,6 +50460,7 @@ class Document {
      */
     set(key, value) {
         if (this.contents == null) {
+            // @ts-expect-error We can't really know that this matches Contents.
             this.contents = Collection.collectionFromPath(this.schema, [key], value);
         }
         else if (assertCollection(this.contents)) {
@@ -47333,9 +50472,12 @@ class Document {
      * boolean to add/remove the item from the set.
      */
     setIn(path, value) {
-        if (Collection.isEmptyPath(path))
+        if (Collection.isEmptyPath(path)) {
+            // @ts-expect-error We can't really know that this matches Contents.
             this.contents = value;
+        }
         else if (this.contents == null) {
+            // @ts-expect-error We can't really know that this matches Contents.
             this.contents = Collection.collectionFromPath(this.schema, Array.from(path), value);
         }
         else if (assertCollection(this.contents)) {
@@ -47395,8 +50537,7 @@ class Document {
             keep: !json,
             mapAsMap: mapAsMap === true,
             mapKeyWarned: false,
-            maxAliasCount: typeof maxAliasCount === 'number' ? maxAliasCount : 100,
-            stringify: stringify.stringify
+            maxAliasCount: typeof maxAliasCount === 'number' ? maxAliasCount : 100
         };
         const res = toJS.toJS(this.contents, jsonArg ?? '', ctx);
         if (typeof onAnchor === 'function')
@@ -47428,7 +50569,7 @@ class Document {
     }
 }
 function assertCollection(contents) {
-    if (Node.isCollection(contents))
+    if (identity.isCollection(contents))
         return true;
     throw new Error('Expected a YAML collection as document contents');
 }
@@ -47444,7 +50585,7 @@ exports.Document = Document;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var visit = __nccwpck_require__(6796);
 
 /**
@@ -47501,7 +50642,7 @@ function createNodeAnchors(doc, prefix) {
                 const ref = sourceObjects.get(source);
                 if (typeof ref === 'object' &&
                     ref.anchor &&
-                    (Node.isScalar(ref.node) || Node.isCollection(ref.node))) {
+                    (identity.isScalar(ref.node) || identity.isCollection(ref.node))) {
                     ref.node.anchor = ref.anchor;
                 }
                 else {
@@ -47594,7 +50735,7 @@ exports.applyReviver = applyReviver;
 
 
 var Alias = __nccwpck_require__(5639);
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
 
 const defaultTagPrefix = 'tag:yaml.org,2002:';
@@ -47609,12 +50750,12 @@ function findTagObject(value, tagName, tags) {
     return tags.find(t => t.identify?.(value) && !t.format);
 }
 function createNode(value, tagName, ctx) {
-    if (Node.isDocument(value))
+    if (identity.isDocument(value))
         value = value.contents;
-    if (Node.isNode(value))
+    if (identity.isNode(value))
         return value;
-    if (Node.isPair(value)) {
-        const map = ctx.schema[Node.MAP].createNode?.(ctx.schema, null, ctx);
+    if (identity.isPair(value)) {
+        const map = ctx.schema[identity.MAP].createNode?.(ctx.schema, null, ctx);
         map.items.push(value);
         return map;
     }
@@ -47658,10 +50799,10 @@ function createNode(value, tagName, ctx) {
         }
         tagObj =
             value instanceof Map
-                ? schema[Node.MAP]
+                ? schema[identity.MAP]
                 : Symbol.iterator in Object(value)
-                    ? schema[Node.SEQ]
-                    : schema[Node.MAP];
+                    ? schema[identity.SEQ]
+                    : schema[identity.MAP];
     }
     if (onTagObj) {
         onTagObj(tagObj);
@@ -47669,9 +50810,13 @@ function createNode(value, tagName, ctx) {
     }
     const node = tagObj?.createNode
         ? tagObj.createNode(ctx.schema, value, ctx)
-        : new Scalar.Scalar(value);
+        : typeof tagObj?.nodeClass?.from === 'function'
+            ? tagObj.nodeClass.from(ctx.schema, value, ctx)
+            : new Scalar.Scalar(value);
     if (tagName)
         node.tag = tagName;
+    else if (!tagObj.default)
+        node.tag = tagObj.tag;
     if (ref)
         ref.node = node;
     return node;
@@ -47688,7 +50833,7 @@ exports.createNode = createNode;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var visit = __nccwpck_require__(6796);
 
 const escapeChars = {
@@ -47834,10 +50979,10 @@ class Directives {
             : [];
         const tagEntries = Object.entries(this.tags);
         let tagNames;
-        if (doc && tagEntries.length > 0 && Node.isNode(doc.contents)) {
+        if (doc && tagEntries.length > 0 && identity.isNode(doc.contents)) {
             const tags = {};
             visit.visit(doc.contents, (_key, node) => {
-                if (Node.isNode(node) && node.tag)
+                if (identity.isNode(node) && node.tag)
                     tags[node.tag] = true;
             });
             tagNames = Object.keys(tags);
@@ -47916,7 +51061,7 @@ const prettifyError = (src, lc) => (error) => {
         let count = 1;
         const end = error.linePos[1];
         if (end && end.line === line && end.col > col) {
-            count = Math.min(end.col - col, 80 - ci);
+            count = Math.max(1, Math.min(end.col - col, 80 - ci));
         }
         const pointer = ' '.repeat(ci) + '^'.repeat(count);
         error.message += `:\n\n${lineStr}\n${pointer}\n`;
@@ -47942,7 +51087,7 @@ var Document = __nccwpck_require__(42);
 var Schema = __nccwpck_require__(6831);
 var errors = __nccwpck_require__(4236);
 var Alias = __nccwpck_require__(5639);
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
 var Scalar = __nccwpck_require__(9338);
 var YAMLMap = __nccwpck_require__(6011);
@@ -47963,14 +51108,14 @@ exports.YAMLError = errors.YAMLError;
 exports.YAMLParseError = errors.YAMLParseError;
 exports.YAMLWarning = errors.YAMLWarning;
 exports.Alias = Alias.Alias;
-exports.isAlias = Node.isAlias;
-exports.isCollection = Node.isCollection;
-exports.isDocument = Node.isDocument;
-exports.isMap = Node.isMap;
-exports.isNode = Node.isNode;
-exports.isPair = Node.isPair;
-exports.isScalar = Node.isScalar;
-exports.isSeq = Node.isSeq;
+exports.isAlias = identity.isAlias;
+exports.isCollection = identity.isCollection;
+exports.isDocument = identity.isDocument;
+exports.isMap = identity.isMap;
+exports.isNode = identity.isNode;
+exports.isPair = identity.isPair;
+exports.isScalar = identity.isScalar;
+exports.isSeq = identity.isSeq;
 exports.Pair = Pair.Pair;
 exports.Scalar = Scalar.Scalar;
 exports.YAMLMap = YAMLMap.YAMLMap;
@@ -48022,11 +51167,13 @@ exports.warn = warn;
 
 var anchors = __nccwpck_require__(8459);
 var visit = __nccwpck_require__(6796);
+var identity = __nccwpck_require__(5589);
 var Node = __nccwpck_require__(1399);
+var toJS = __nccwpck_require__(2463);
 
 class Alias extends Node.NodeBase {
     constructor(source) {
-        super(Node.ALIAS);
+        super(identity.ALIAS);
         this.source = source;
         Object.defineProperty(this, 'tag', {
             set() {
@@ -48059,7 +51206,12 @@ class Alias extends Node.NodeBase {
             const msg = `Unresolved alias (the anchor must be set before the alias): ${this.source}`;
             throw new ReferenceError(msg);
         }
-        const data = anchors.get(source);
+        let data = anchors.get(source);
+        if (!data) {
+            // Resolve anchors for Node.prototype.toJS()
+            toJS.toJS(source, null, ctx);
+            data = anchors.get(source);
+        }
         /* istanbul ignore if */
         if (!data || data.res === undefined) {
             const msg = 'This should not happen: Alias anchor was not resolved?';
@@ -48091,12 +51243,12 @@ class Alias extends Node.NodeBase {
     }
 }
 function getAliasCount(doc, node, anchors) {
-    if (Node.isAlias(node)) {
+    if (identity.isAlias(node)) {
         const source = node.resolve(doc);
         const anchor = anchors && source && anchors.get(source);
         return anchor ? anchor.count * anchor.aliasCount : 0;
     }
-    else if (Node.isCollection(node)) {
+    else if (identity.isCollection(node)) {
         let count = 0;
         for (const item of node.items) {
             const c = getAliasCount(doc, item, anchors);
@@ -48105,7 +51257,7 @@ function getAliasCount(doc, node, anchors) {
         }
         return count;
     }
-    else if (Node.isPair(node)) {
+    else if (identity.isPair(node)) {
         const kc = getAliasCount(doc, node.key, anchors);
         const vc = getAliasCount(doc, node.value, anchors);
         return Math.max(kc, vc);
@@ -48125,6 +51277,7 @@ exports.Alias = Alias;
 
 
 var createNode = __nccwpck_require__(9652);
+var identity = __nccwpck_require__(5589);
 var Node = __nccwpck_require__(1399);
 
 function collectionFromPath(schema, path, value) {
@@ -48173,7 +51326,7 @@ class Collection extends Node.NodeBase {
         const copy = Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
         if (schema)
             copy.schema = schema;
-        copy.items = copy.items.map(it => Node.isNode(it) || Node.isPair(it) ? it.clone(schema) : it);
+        copy.items = copy.items.map(it => identity.isNode(it) || identity.isPair(it) ? it.clone(schema) : it);
         if (this.range)
             copy.range = this.range.slice();
         return copy;
@@ -48189,7 +51342,7 @@ class Collection extends Node.NodeBase {
         else {
             const [key, ...rest] = path;
             const node = this.get(key, true);
-            if (Node.isCollection(node))
+            if (identity.isCollection(node))
                 node.addIn(rest, value);
             else if (node === undefined && this.schema)
                 this.set(key, collectionFromPath(this.schema, rest, value));
@@ -48206,7 +51359,7 @@ class Collection extends Node.NodeBase {
         if (rest.length === 0)
             return this.delete(key);
         const node = this.get(key, true);
-        if (Node.isCollection(node))
+        if (identity.isCollection(node))
             return node.deleteIn(rest);
         else
             throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
@@ -48220,18 +51373,18 @@ class Collection extends Node.NodeBase {
         const [key, ...rest] = path;
         const node = this.get(key, true);
         if (rest.length === 0)
-            return !keepScalar && Node.isScalar(node) ? node.value : node;
+            return !keepScalar && identity.isScalar(node) ? node.value : node;
         else
-            return Node.isCollection(node) ? node.getIn(rest, keepScalar) : undefined;
+            return identity.isCollection(node) ? node.getIn(rest, keepScalar) : undefined;
     }
     hasAllNullValues(allowScalar) {
         return this.items.every(node => {
-            if (!Node.isPair(node))
+            if (!identity.isPair(node))
                 return false;
             const n = node.value;
             return (n == null ||
                 (allowScalar &&
-                    Node.isScalar(n) &&
+                    identity.isScalar(n) &&
                     n.value == null &&
                     !n.commentBefore &&
                     !n.comment &&
@@ -48246,7 +51399,7 @@ class Collection extends Node.NodeBase {
         if (rest.length === 0)
             return this.has(key);
         const node = this.get(key, true);
-        return Node.isCollection(node) ? node.hasIn(rest) : false;
+        return identity.isCollection(node) ? node.hasIn(rest) : false;
     }
     /**
      * Sets a value in this collection. For `!!set`, `value` needs to be a
@@ -48259,7 +51412,7 @@ class Collection extends Node.NodeBase {
         }
         else {
             const node = this.get(key, true);
-            if (Node.isCollection(node))
+            if (identity.isCollection(node))
                 node.setIn(rest, value);
             else if (node === undefined && this.schema)
                 this.set(key, collectionFromPath(this.schema, rest, value));
@@ -48278,6 +51431,528 @@ exports.isEmptyPath = isEmptyPath;
 /***/ }),
 
 /***/ 1399:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var applyReviver = __nccwpck_require__(3412);
+var identity = __nccwpck_require__(5589);
+var toJS = __nccwpck_require__(2463);
+
+class NodeBase {
+    constructor(type) {
+        Object.defineProperty(this, identity.NODE_TYPE, { value: type });
+    }
+    /** Create a copy of this node.  */
+    clone() {
+        const copy = Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
+        if (this.range)
+            copy.range = this.range.slice();
+        return copy;
+    }
+    /** A plain JavaScript representation of this node. */
+    toJS(doc, { mapAsMap, maxAliasCount, onAnchor, reviver } = {}) {
+        if (!identity.isDocument(doc))
+            throw new TypeError('A document argument is required');
+        const ctx = {
+            anchors: new Map(),
+            doc,
+            keep: true,
+            mapAsMap: mapAsMap === true,
+            mapKeyWarned: false,
+            maxAliasCount: typeof maxAliasCount === 'number' ? maxAliasCount : 100
+        };
+        const res = toJS.toJS(this, '', ctx);
+        if (typeof onAnchor === 'function')
+            for (const { count, res } of ctx.anchors.values())
+                onAnchor(res, count);
+        return typeof reviver === 'function'
+            ? applyReviver.applyReviver(reviver, { '': res }, '', res)
+            : res;
+    }
+}
+
+exports.NodeBase = NodeBase;
+
+
+/***/ }),
+
+/***/ 246:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var createNode = __nccwpck_require__(9652);
+var stringifyPair = __nccwpck_require__(4875);
+var addPairToJSMap = __nccwpck_require__(4676);
+var identity = __nccwpck_require__(5589);
+
+function createPair(key, value, ctx) {
+    const k = createNode.createNode(key, undefined, ctx);
+    const v = createNode.createNode(value, undefined, ctx);
+    return new Pair(k, v);
+}
+class Pair {
+    constructor(key, value = null) {
+        Object.defineProperty(this, identity.NODE_TYPE, { value: identity.PAIR });
+        this.key = key;
+        this.value = value;
+    }
+    clone(schema) {
+        let { key, value } = this;
+        if (identity.isNode(key))
+            key = key.clone(schema);
+        if (identity.isNode(value))
+            value = value.clone(schema);
+        return new Pair(key, value);
+    }
+    toJSON(_, ctx) {
+        const pair = ctx?.mapAsMap ? new Map() : {};
+        return addPairToJSMap.addPairToJSMap(ctx, pair, this);
+    }
+    toString(ctx, onComment, onChompKeep) {
+        return ctx?.doc
+            ? stringifyPair.stringifyPair(this, ctx, onComment, onChompKeep)
+            : JSON.stringify(this);
+    }
+}
+
+exports.Pair = Pair;
+exports.createPair = createPair;
+
+
+/***/ }),
+
+/***/ 9338:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var identity = __nccwpck_require__(5589);
+var Node = __nccwpck_require__(1399);
+var toJS = __nccwpck_require__(2463);
+
+const isScalarValue = (value) => !value || (typeof value !== 'function' && typeof value !== 'object');
+class Scalar extends Node.NodeBase {
+    constructor(value) {
+        super(identity.SCALAR);
+        this.value = value;
+    }
+    toJSON(arg, ctx) {
+        return ctx?.keep ? this.value : toJS.toJS(this.value, arg, ctx);
+    }
+    toString() {
+        return String(this.value);
+    }
+}
+Scalar.BLOCK_FOLDED = 'BLOCK_FOLDED';
+Scalar.BLOCK_LITERAL = 'BLOCK_LITERAL';
+Scalar.PLAIN = 'PLAIN';
+Scalar.QUOTE_DOUBLE = 'QUOTE_DOUBLE';
+Scalar.QUOTE_SINGLE = 'QUOTE_SINGLE';
+
+exports.Scalar = Scalar;
+exports.isScalarValue = isScalarValue;
+
+
+/***/ }),
+
+/***/ 6011:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var stringifyCollection = __nccwpck_require__(2466);
+var addPairToJSMap = __nccwpck_require__(4676);
+var Collection = __nccwpck_require__(3466);
+var identity = __nccwpck_require__(5589);
+var Pair = __nccwpck_require__(246);
+var Scalar = __nccwpck_require__(9338);
+
+function findPair(items, key) {
+    const k = identity.isScalar(key) ? key.value : key;
+    for (const it of items) {
+        if (identity.isPair(it)) {
+            if (it.key === key || it.key === k)
+                return it;
+            if (identity.isScalar(it.key) && it.key.value === k)
+                return it;
+        }
+    }
+    return undefined;
+}
+class YAMLMap extends Collection.Collection {
+    static get tagName() {
+        return 'tag:yaml.org,2002:map';
+    }
+    constructor(schema) {
+        super(identity.MAP, schema);
+        this.items = [];
+    }
+    /**
+     * A generic collection parsing method that can be extended
+     * to other node classes that inherit from YAMLMap
+     */
+    static from(schema, obj, ctx) {
+        const { keepUndefined, replacer } = ctx;
+        const map = new this(schema);
+        const add = (key, value) => {
+            if (typeof replacer === 'function')
+                value = replacer.call(obj, key, value);
+            else if (Array.isArray(replacer) && !replacer.includes(key))
+                return;
+            if (value !== undefined || keepUndefined)
+                map.items.push(Pair.createPair(key, value, ctx));
+        };
+        if (obj instanceof Map) {
+            for (const [key, value] of obj)
+                add(key, value);
+        }
+        else if (obj && typeof obj === 'object') {
+            for (const key of Object.keys(obj))
+                add(key, obj[key]);
+        }
+        if (typeof schema.sortMapEntries === 'function') {
+            map.items.sort(schema.sortMapEntries);
+        }
+        return map;
+    }
+    /**
+     * Adds a value to the collection.
+     *
+     * @param overwrite - If not set `true`, using a key that is already in the
+     *   collection will throw. Otherwise, overwrites the previous value.
+     */
+    add(pair, overwrite) {
+        let _pair;
+        if (identity.isPair(pair))
+            _pair = pair;
+        else if (!pair || typeof pair !== 'object' || !('key' in pair)) {
+            // In TypeScript, this never happens.
+            _pair = new Pair.Pair(pair, pair?.value);
+        }
+        else
+            _pair = new Pair.Pair(pair.key, pair.value);
+        const prev = findPair(this.items, _pair.key);
+        const sortEntries = this.schema?.sortMapEntries;
+        if (prev) {
+            if (!overwrite)
+                throw new Error(`Key ${_pair.key} already set`);
+            // For scalars, keep the old node & its comments and anchors
+            if (identity.isScalar(prev.value) && Scalar.isScalarValue(_pair.value))
+                prev.value.value = _pair.value;
+            else
+                prev.value = _pair.value;
+        }
+        else if (sortEntries) {
+            const i = this.items.findIndex(item => sortEntries(_pair, item) < 0);
+            if (i === -1)
+                this.items.push(_pair);
+            else
+                this.items.splice(i, 0, _pair);
+        }
+        else {
+            this.items.push(_pair);
+        }
+    }
+    delete(key) {
+        const it = findPair(this.items, key);
+        if (!it)
+            return false;
+        const del = this.items.splice(this.items.indexOf(it), 1);
+        return del.length > 0;
+    }
+    get(key, keepScalar) {
+        const it = findPair(this.items, key);
+        const node = it?.value;
+        return (!keepScalar && identity.isScalar(node) ? node.value : node) ?? undefined;
+    }
+    has(key) {
+        return !!findPair(this.items, key);
+    }
+    set(key, value) {
+        this.add(new Pair.Pair(key, value), true);
+    }
+    /**
+     * @param ctx - Conversion context, originally set in Document#toJS()
+     * @param {Class} Type - If set, forces the returned collection type
+     * @returns Instance of Type, Map, or Object
+     */
+    toJSON(_, ctx, Type) {
+        const map = Type ? new Type() : ctx?.mapAsMap ? new Map() : {};
+        if (ctx?.onCreate)
+            ctx.onCreate(map);
+        for (const item of this.items)
+            addPairToJSMap.addPairToJSMap(ctx, map, item);
+        return map;
+    }
+    toString(ctx, onComment, onChompKeep) {
+        if (!ctx)
+            return JSON.stringify(this);
+        for (const item of this.items) {
+            if (!identity.isPair(item))
+                throw new Error(`Map items must all be pairs; found ${JSON.stringify(item)} instead`);
+        }
+        if (!ctx.allNullValues && this.hasAllNullValues(false))
+            ctx = Object.assign({}, ctx, { allNullValues: true });
+        return stringifyCollection.stringifyCollection(this, ctx, {
+            blockItemPrefix: '',
+            flowChars: { start: '{', end: '}' },
+            itemIndent: ctx.indent || '',
+            onChompKeep,
+            onComment
+        });
+    }
+}
+
+exports.YAMLMap = YAMLMap;
+exports.findPair = findPair;
+
+
+/***/ }),
+
+/***/ 5161:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var createNode = __nccwpck_require__(9652);
+var stringifyCollection = __nccwpck_require__(2466);
+var Collection = __nccwpck_require__(3466);
+var identity = __nccwpck_require__(5589);
+var Scalar = __nccwpck_require__(9338);
+var toJS = __nccwpck_require__(2463);
+
+class YAMLSeq extends Collection.Collection {
+    static get tagName() {
+        return 'tag:yaml.org,2002:seq';
+    }
+    constructor(schema) {
+        super(identity.SEQ, schema);
+        this.items = [];
+    }
+    add(value) {
+        this.items.push(value);
+    }
+    /**
+     * Removes a value from the collection.
+     *
+     * `key` must contain a representation of an integer for this to succeed.
+     * It may be wrapped in a `Scalar`.
+     *
+     * @returns `true` if the item was found and removed.
+     */
+    delete(key) {
+        const idx = asItemIndex(key);
+        if (typeof idx !== 'number')
+            return false;
+        const del = this.items.splice(idx, 1);
+        return del.length > 0;
+    }
+    get(key, keepScalar) {
+        const idx = asItemIndex(key);
+        if (typeof idx !== 'number')
+            return undefined;
+        const it = this.items[idx];
+        return !keepScalar && identity.isScalar(it) ? it.value : it;
+    }
+    /**
+     * Checks if the collection includes a value with the key `key`.
+     *
+     * `key` must contain a representation of an integer for this to succeed.
+     * It may be wrapped in a `Scalar`.
+     */
+    has(key) {
+        const idx = asItemIndex(key);
+        return typeof idx === 'number' && idx < this.items.length;
+    }
+    /**
+     * Sets a value in this collection. For `!!set`, `value` needs to be a
+     * boolean to add/remove the item from the set.
+     *
+     * If `key` does not contain a representation of an integer, this will throw.
+     * It may be wrapped in a `Scalar`.
+     */
+    set(key, value) {
+        const idx = asItemIndex(key);
+        if (typeof idx !== 'number')
+            throw new Error(`Expected a valid index, not ${key}.`);
+        const prev = this.items[idx];
+        if (identity.isScalar(prev) && Scalar.isScalarValue(value))
+            prev.value = value;
+        else
+            this.items[idx] = value;
+    }
+    toJSON(_, ctx) {
+        const seq = [];
+        if (ctx?.onCreate)
+            ctx.onCreate(seq);
+        let i = 0;
+        for (const item of this.items)
+            seq.push(toJS.toJS(item, String(i++), ctx));
+        return seq;
+    }
+    toString(ctx, onComment, onChompKeep) {
+        if (!ctx)
+            return JSON.stringify(this);
+        return stringifyCollection.stringifyCollection(this, ctx, {
+            blockItemPrefix: '- ',
+            flowChars: { start: '[', end: ']' },
+            itemIndent: (ctx.indent || '') + '  ',
+            onChompKeep,
+            onComment
+        });
+    }
+    static from(schema, obj, ctx) {
+        const { replacer } = ctx;
+        const seq = new this(schema);
+        if (obj && Symbol.iterator in Object(obj)) {
+            let i = 0;
+            for (let it of obj) {
+                if (typeof replacer === 'function') {
+                    const key = obj instanceof Set ? it : String(i++);
+                    it = replacer.call(obj, key, it);
+                }
+                seq.items.push(createNode.createNode(it, undefined, ctx));
+            }
+        }
+        return seq;
+    }
+}
+function asItemIndex(key) {
+    let idx = identity.isScalar(key) ? key.value : key;
+    if (idx && typeof idx === 'string')
+        idx = Number(idx);
+    return typeof idx === 'number' && Number.isInteger(idx) && idx >= 0
+        ? idx
+        : null;
+}
+
+exports.YAMLSeq = YAMLSeq;
+
+
+/***/ }),
+
+/***/ 4676:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var log = __nccwpck_require__(6909);
+var stringify = __nccwpck_require__(8409);
+var identity = __nccwpck_require__(5589);
+var Scalar = __nccwpck_require__(9338);
+var toJS = __nccwpck_require__(2463);
+
+const MERGE_KEY = '<<';
+function addPairToJSMap(ctx, map, { key, value }) {
+    if (ctx?.doc.schema.merge && isMergeKey(key)) {
+        value = identity.isAlias(value) ? value.resolve(ctx.doc) : value;
+        if (identity.isSeq(value))
+            for (const it of value.items)
+                mergeToJSMap(ctx, map, it);
+        else if (Array.isArray(value))
+            for (const it of value)
+                mergeToJSMap(ctx, map, it);
+        else
+            mergeToJSMap(ctx, map, value);
+    }
+    else {
+        const jsKey = toJS.toJS(key, '', ctx);
+        if (map instanceof Map) {
+            map.set(jsKey, toJS.toJS(value, jsKey, ctx));
+        }
+        else if (map instanceof Set) {
+            map.add(jsKey);
+        }
+        else {
+            const stringKey = stringifyKey(key, jsKey, ctx);
+            const jsValue = toJS.toJS(value, stringKey, ctx);
+            if (stringKey in map)
+                Object.defineProperty(map, stringKey, {
+                    value: jsValue,
+                    writable: true,
+                    enumerable: true,
+                    configurable: true
+                });
+            else
+                map[stringKey] = jsValue;
+        }
+    }
+    return map;
+}
+const isMergeKey = (key) => key === MERGE_KEY ||
+    (identity.isScalar(key) &&
+        key.value === MERGE_KEY &&
+        (!key.type || key.type === Scalar.Scalar.PLAIN));
+// If the value associated with a merge key is a single mapping node, each of
+// its key/value pairs is inserted into the current mapping, unless the key
+// already exists in it. If the value associated with the merge key is a
+// sequence, then this sequence is expected to contain mapping nodes and each
+// of these nodes is merged in turn according to its order in the sequence.
+// Keys in mapping nodes earlier in the sequence override keys specified in
+// later mapping nodes. -- http://yaml.org/type/merge.html
+function mergeToJSMap(ctx, map, value) {
+    const source = ctx && identity.isAlias(value) ? value.resolve(ctx.doc) : value;
+    if (!identity.isMap(source))
+        throw new Error('Merge sources must be maps or map aliases');
+    const srcMap = source.toJSON(null, ctx, Map);
+    for (const [key, value] of srcMap) {
+        if (map instanceof Map) {
+            if (!map.has(key))
+                map.set(key, value);
+        }
+        else if (map instanceof Set) {
+            map.add(key);
+        }
+        else if (!Object.prototype.hasOwnProperty.call(map, key)) {
+            Object.defineProperty(map, key, {
+                value,
+                writable: true,
+                enumerable: true,
+                configurable: true
+            });
+        }
+    }
+    return map;
+}
+function stringifyKey(key, jsKey, ctx) {
+    if (jsKey === null)
+        return '';
+    if (typeof jsKey !== 'object')
+        return String(jsKey);
+    if (identity.isNode(key) && ctx && ctx.doc) {
+        const strCtx = stringify.createStringifyContext(ctx.doc, {});
+        strCtx.anchors = new Set();
+        for (const node of ctx.anchors.keys())
+            strCtx.anchors.add(node.anchor);
+        strCtx.inFlow = true;
+        strCtx.inStringifyKey = true;
+        const strKey = key.toString(strCtx);
+        if (!ctx.mapKeyWarned) {
+            let jsonStr = JSON.stringify(strKey);
+            if (jsonStr.length > 40)
+                jsonStr = jsonStr.substring(0, 36) + '..."';
+            log.warn(ctx.doc.options.logLevel, `Keys with collection values will be stringified due to JS Object restrictions: ${jsonStr}. Set mapAsMap: true to use object keys.`);
+            ctx.mapKeyWarned = true;
+        }
+        return strKey;
+    }
+    return JSON.stringify(jsKey);
+}
+
+exports.addPairToJSMap = addPairToJSMap;
+
+
+/***/ }),
+
+/***/ 5589:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -48317,24 +51992,11 @@ function isNode(node) {
     return false;
 }
 const hasAnchor = (node) => (isScalar(node) || isCollection(node)) && !!node.anchor;
-class NodeBase {
-    constructor(type) {
-        Object.defineProperty(this, NODE_TYPE, { value: type });
-    }
-    /** Create a copy of this node.  */
-    clone() {
-        const copy = Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
-        if (this.range)
-            copy.range = this.range.slice();
-        return copy;
-    }
-}
 
 exports.ALIAS = ALIAS;
 exports.DOC = DOC;
 exports.MAP = MAP;
 exports.NODE_TYPE = NODE_TYPE;
-exports.NodeBase = NodeBase;
 exports.PAIR = PAIR;
 exports.SCALAR = SCALAR;
 exports.SEQ = SEQ;
@@ -48351,442 +52013,13 @@ exports.isSeq = isSeq;
 
 /***/ }),
 
-/***/ 246:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var createNode = __nccwpck_require__(9652);
-var stringifyPair = __nccwpck_require__(4875);
-var addPairToJSMap = __nccwpck_require__(4676);
-var Node = __nccwpck_require__(1399);
-
-function createPair(key, value, ctx) {
-    const k = createNode.createNode(key, undefined, ctx);
-    const v = createNode.createNode(value, undefined, ctx);
-    return new Pair(k, v);
-}
-class Pair {
-    constructor(key, value = null) {
-        Object.defineProperty(this, Node.NODE_TYPE, { value: Node.PAIR });
-        this.key = key;
-        this.value = value;
-    }
-    clone(schema) {
-        let { key, value } = this;
-        if (Node.isNode(key))
-            key = key.clone(schema);
-        if (Node.isNode(value))
-            value = value.clone(schema);
-        return new Pair(key, value);
-    }
-    toJSON(_, ctx) {
-        const pair = ctx?.mapAsMap ? new Map() : {};
-        return addPairToJSMap.addPairToJSMap(ctx, pair, this);
-    }
-    toString(ctx, onComment, onChompKeep) {
-        return ctx?.doc
-            ? stringifyPair.stringifyPair(this, ctx, onComment, onChompKeep)
-            : JSON.stringify(this);
-    }
-}
-
-exports.Pair = Pair;
-exports.createPair = createPair;
-
-
-/***/ }),
-
-/***/ 9338:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var Node = __nccwpck_require__(1399);
-var toJS = __nccwpck_require__(2463);
-
-const isScalarValue = (value) => !value || (typeof value !== 'function' && typeof value !== 'object');
-class Scalar extends Node.NodeBase {
-    constructor(value) {
-        super(Node.SCALAR);
-        this.value = value;
-    }
-    toJSON(arg, ctx) {
-        return ctx?.keep ? this.value : toJS.toJS(this.value, arg, ctx);
-    }
-    toString() {
-        return String(this.value);
-    }
-}
-Scalar.BLOCK_FOLDED = 'BLOCK_FOLDED';
-Scalar.BLOCK_LITERAL = 'BLOCK_LITERAL';
-Scalar.PLAIN = 'PLAIN';
-Scalar.QUOTE_DOUBLE = 'QUOTE_DOUBLE';
-Scalar.QUOTE_SINGLE = 'QUOTE_SINGLE';
-
-exports.Scalar = Scalar;
-exports.isScalarValue = isScalarValue;
-
-
-/***/ }),
-
-/***/ 6011:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var stringifyCollection = __nccwpck_require__(2466);
-var addPairToJSMap = __nccwpck_require__(4676);
-var Collection = __nccwpck_require__(3466);
-var Node = __nccwpck_require__(1399);
-var Pair = __nccwpck_require__(246);
-var Scalar = __nccwpck_require__(9338);
-
-function findPair(items, key) {
-    const k = Node.isScalar(key) ? key.value : key;
-    for (const it of items) {
-        if (Node.isPair(it)) {
-            if (it.key === key || it.key === k)
-                return it;
-            if (Node.isScalar(it.key) && it.key.value === k)
-                return it;
-        }
-    }
-    return undefined;
-}
-class YAMLMap extends Collection.Collection {
-    static get tagName() {
-        return 'tag:yaml.org,2002:map';
-    }
-    constructor(schema) {
-        super(Node.MAP, schema);
-        this.items = [];
-    }
-    /**
-     * Adds a value to the collection.
-     *
-     * @param overwrite - If not set `true`, using a key that is already in the
-     *   collection will throw. Otherwise, overwrites the previous value.
-     */
-    add(pair, overwrite) {
-        let _pair;
-        if (Node.isPair(pair))
-            _pair = pair;
-        else if (!pair || typeof pair !== 'object' || !('key' in pair)) {
-            // In TypeScript, this never happens.
-            _pair = new Pair.Pair(pair, pair?.value);
-        }
-        else
-            _pair = new Pair.Pair(pair.key, pair.value);
-        const prev = findPair(this.items, _pair.key);
-        const sortEntries = this.schema?.sortMapEntries;
-        if (prev) {
-            if (!overwrite)
-                throw new Error(`Key ${_pair.key} already set`);
-            // For scalars, keep the old node & its comments and anchors
-            if (Node.isScalar(prev.value) && Scalar.isScalarValue(_pair.value))
-                prev.value.value = _pair.value;
-            else
-                prev.value = _pair.value;
-        }
-        else if (sortEntries) {
-            const i = this.items.findIndex(item => sortEntries(_pair, item) < 0);
-            if (i === -1)
-                this.items.push(_pair);
-            else
-                this.items.splice(i, 0, _pair);
-        }
-        else {
-            this.items.push(_pair);
-        }
-    }
-    delete(key) {
-        const it = findPair(this.items, key);
-        if (!it)
-            return false;
-        const del = this.items.splice(this.items.indexOf(it), 1);
-        return del.length > 0;
-    }
-    get(key, keepScalar) {
-        const it = findPair(this.items, key);
-        const node = it?.value;
-        return (!keepScalar && Node.isScalar(node) ? node.value : node) ?? undefined;
-    }
-    has(key) {
-        return !!findPair(this.items, key);
-    }
-    set(key, value) {
-        this.add(new Pair.Pair(key, value), true);
-    }
-    /**
-     * @param ctx - Conversion context, originally set in Document#toJS()
-     * @param {Class} Type - If set, forces the returned collection type
-     * @returns Instance of Type, Map, or Object
-     */
-    toJSON(_, ctx, Type) {
-        const map = Type ? new Type() : ctx?.mapAsMap ? new Map() : {};
-        if (ctx?.onCreate)
-            ctx.onCreate(map);
-        for (const item of this.items)
-            addPairToJSMap.addPairToJSMap(ctx, map, item);
-        return map;
-    }
-    toString(ctx, onComment, onChompKeep) {
-        if (!ctx)
-            return JSON.stringify(this);
-        for (const item of this.items) {
-            if (!Node.isPair(item))
-                throw new Error(`Map items must all be pairs; found ${JSON.stringify(item)} instead`);
-        }
-        if (!ctx.allNullValues && this.hasAllNullValues(false))
-            ctx = Object.assign({}, ctx, { allNullValues: true });
-        return stringifyCollection.stringifyCollection(this, ctx, {
-            blockItemPrefix: '',
-            flowChars: { start: '{', end: '}' },
-            itemIndent: ctx.indent || '',
-            onChompKeep,
-            onComment
-        });
-    }
-}
-
-exports.YAMLMap = YAMLMap;
-exports.findPair = findPair;
-
-
-/***/ }),
-
-/***/ 5161:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var stringifyCollection = __nccwpck_require__(2466);
-var Collection = __nccwpck_require__(3466);
-var Node = __nccwpck_require__(1399);
-var Scalar = __nccwpck_require__(9338);
-var toJS = __nccwpck_require__(2463);
-
-class YAMLSeq extends Collection.Collection {
-    static get tagName() {
-        return 'tag:yaml.org,2002:seq';
-    }
-    constructor(schema) {
-        super(Node.SEQ, schema);
-        this.items = [];
-    }
-    add(value) {
-        this.items.push(value);
-    }
-    /**
-     * Removes a value from the collection.
-     *
-     * `key` must contain a representation of an integer for this to succeed.
-     * It may be wrapped in a `Scalar`.
-     *
-     * @returns `true` if the item was found and removed.
-     */
-    delete(key) {
-        const idx = asItemIndex(key);
-        if (typeof idx !== 'number')
-            return false;
-        const del = this.items.splice(idx, 1);
-        return del.length > 0;
-    }
-    get(key, keepScalar) {
-        const idx = asItemIndex(key);
-        if (typeof idx !== 'number')
-            return undefined;
-        const it = this.items[idx];
-        return !keepScalar && Node.isScalar(it) ? it.value : it;
-    }
-    /**
-     * Checks if the collection includes a value with the key `key`.
-     *
-     * `key` must contain a representation of an integer for this to succeed.
-     * It may be wrapped in a `Scalar`.
-     */
-    has(key) {
-        const idx = asItemIndex(key);
-        return typeof idx === 'number' && idx < this.items.length;
-    }
-    /**
-     * Sets a value in this collection. For `!!set`, `value` needs to be a
-     * boolean to add/remove the item from the set.
-     *
-     * If `key` does not contain a representation of an integer, this will throw.
-     * It may be wrapped in a `Scalar`.
-     */
-    set(key, value) {
-        const idx = asItemIndex(key);
-        if (typeof idx !== 'number')
-            throw new Error(`Expected a valid index, not ${key}.`);
-        const prev = this.items[idx];
-        if (Node.isScalar(prev) && Scalar.isScalarValue(value))
-            prev.value = value;
-        else
-            this.items[idx] = value;
-    }
-    toJSON(_, ctx) {
-        const seq = [];
-        if (ctx?.onCreate)
-            ctx.onCreate(seq);
-        let i = 0;
-        for (const item of this.items)
-            seq.push(toJS.toJS(item, String(i++), ctx));
-        return seq;
-    }
-    toString(ctx, onComment, onChompKeep) {
-        if (!ctx)
-            return JSON.stringify(this);
-        return stringifyCollection.stringifyCollection(this, ctx, {
-            blockItemPrefix: '- ',
-            flowChars: { start: '[', end: ']' },
-            itemIndent: (ctx.indent || '') + '  ',
-            onChompKeep,
-            onComment
-        });
-    }
-}
-function asItemIndex(key) {
-    let idx = Node.isScalar(key) ? key.value : key;
-    if (idx && typeof idx === 'string')
-        idx = Number(idx);
-    return typeof idx === 'number' && Number.isInteger(idx) && idx >= 0
-        ? idx
-        : null;
-}
-
-exports.YAMLSeq = YAMLSeq;
-
-
-/***/ }),
-
-/***/ 4676:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var log = __nccwpck_require__(6909);
-var stringify = __nccwpck_require__(8409);
-var Node = __nccwpck_require__(1399);
-var Scalar = __nccwpck_require__(9338);
-var toJS = __nccwpck_require__(2463);
-
-const MERGE_KEY = '<<';
-function addPairToJSMap(ctx, map, { key, value }) {
-    if (ctx?.doc.schema.merge && isMergeKey(key)) {
-        value = Node.isAlias(value) ? value.resolve(ctx.doc) : value;
-        if (Node.isSeq(value))
-            for (const it of value.items)
-                mergeToJSMap(ctx, map, it);
-        else if (Array.isArray(value))
-            for (const it of value)
-                mergeToJSMap(ctx, map, it);
-        else
-            mergeToJSMap(ctx, map, value);
-    }
-    else {
-        const jsKey = toJS.toJS(key, '', ctx);
-        if (map instanceof Map) {
-            map.set(jsKey, toJS.toJS(value, jsKey, ctx));
-        }
-        else if (map instanceof Set) {
-            map.add(jsKey);
-        }
-        else {
-            const stringKey = stringifyKey(key, jsKey, ctx);
-            const jsValue = toJS.toJS(value, stringKey, ctx);
-            if (stringKey in map)
-                Object.defineProperty(map, stringKey, {
-                    value: jsValue,
-                    writable: true,
-                    enumerable: true,
-                    configurable: true
-                });
-            else
-                map[stringKey] = jsValue;
-        }
-    }
-    return map;
-}
-const isMergeKey = (key) => key === MERGE_KEY ||
-    (Node.isScalar(key) &&
-        key.value === MERGE_KEY &&
-        (!key.type || key.type === Scalar.Scalar.PLAIN));
-// If the value associated with a merge key is a single mapping node, each of
-// its key/value pairs is inserted into the current mapping, unless the key
-// already exists in it. If the value associated with the merge key is a
-// sequence, then this sequence is expected to contain mapping nodes and each
-// of these nodes is merged in turn according to its order in the sequence.
-// Keys in mapping nodes earlier in the sequence override keys specified in
-// later mapping nodes. -- http://yaml.org/type/merge.html
-function mergeToJSMap(ctx, map, value) {
-    const source = ctx && Node.isAlias(value) ? value.resolve(ctx.doc) : value;
-    if (!Node.isMap(source))
-        throw new Error('Merge sources must be maps or map aliases');
-    const srcMap = source.toJSON(null, ctx, Map);
-    for (const [key, value] of srcMap) {
-        if (map instanceof Map) {
-            if (!map.has(key))
-                map.set(key, value);
-        }
-        else if (map instanceof Set) {
-            map.add(key);
-        }
-        else if (!Object.prototype.hasOwnProperty.call(map, key)) {
-            Object.defineProperty(map, key, {
-                value,
-                writable: true,
-                enumerable: true,
-                configurable: true
-            });
-        }
-    }
-    return map;
-}
-function stringifyKey(key, jsKey, ctx) {
-    if (jsKey === null)
-        return '';
-    if (typeof jsKey !== 'object')
-        return String(jsKey);
-    if (Node.isNode(key) && ctx && ctx.doc) {
-        const strCtx = stringify.createStringifyContext(ctx.doc, {});
-        strCtx.anchors = new Set();
-        for (const node of ctx.anchors.keys())
-            strCtx.anchors.add(node.anchor);
-        strCtx.inFlow = true;
-        strCtx.inStringifyKey = true;
-        const strKey = key.toString(strCtx);
-        if (!ctx.mapKeyWarned) {
-            let jsonStr = JSON.stringify(strKey);
-            if (jsonStr.length > 40)
-                jsonStr = jsonStr.substring(0, 36) + '..."';
-            log.warn(ctx.doc.options.logLevel, `Keys with collection values will be stringified due to JS Object restrictions: ${jsonStr}. Set mapAsMap: true to use object keys.`);
-            ctx.mapKeyWarned = true;
-        }
-        return strKey;
-    }
-    return JSON.stringify(jsKey);
-}
-
-exports.addPairToJSMap = addPairToJSMap;
-
-
-/***/ }),
-
 /***/ 2463:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 
 /**
  * Recursively convert any node or its contents to native JavaScript
@@ -48804,7 +52037,7 @@ function toJS(value, arg, ctx) {
         return value.map((v, i) => toJS(v, String(i), ctx));
     if (value && typeof value.toJSON === 'function') {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        if (!ctx || !Node.hasAnchor(value))
+        if (!ctx || !identity.hasAnchor(value))
             return value.toJSON(arg, ctx);
         const data = { aliasCount: 0, count: 1, res: undefined };
         ctx.anchors.set(value, data);
@@ -51191,7 +54424,7 @@ exports.stringify = stringify;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var map = __nccwpck_require__(83);
 var seq = __nccwpck_require__(1693);
 var string = __nccwpck_require__(2201);
@@ -51210,9 +54443,9 @@ class Schema {
         this.knownTags = resolveKnownTags ? tags.coreKnownTags : {};
         this.tags = tags.getTags(customTags, this.name);
         this.toStringOptions = toStringDefaults ?? null;
-        Object.defineProperty(this, Node.MAP, { value: map.map });
-        Object.defineProperty(this, Node.SCALAR, { value: string.string });
-        Object.defineProperty(this, Node.SEQ, { value: seq.seq });
+        Object.defineProperty(this, identity.MAP, { value: map.map });
+        Object.defineProperty(this, identity.SCALAR, { value: string.string });
+        Object.defineProperty(this, identity.SEQ, { value: seq.seq });
         // Used by createMap()
         this.sortMapEntries =
             typeof sortMapEntries === 'function'
@@ -51239,45 +54472,20 @@ exports.Schema = Schema;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
-var Pair = __nccwpck_require__(246);
+var identity = __nccwpck_require__(5589);
 var YAMLMap = __nccwpck_require__(6011);
 
-function createMap(schema, obj, ctx) {
-    const { keepUndefined, replacer } = ctx;
-    const map = new YAMLMap.YAMLMap(schema);
-    const add = (key, value) => {
-        if (typeof replacer === 'function')
-            value = replacer.call(obj, key, value);
-        else if (Array.isArray(replacer) && !replacer.includes(key))
-            return;
-        if (value !== undefined || keepUndefined)
-            map.items.push(Pair.createPair(key, value, ctx));
-    };
-    if (obj instanceof Map) {
-        for (const [key, value] of obj)
-            add(key, value);
-    }
-    else if (obj && typeof obj === 'object') {
-        for (const key of Object.keys(obj))
-            add(key, obj[key]);
-    }
-    if (typeof schema.sortMapEntries === 'function') {
-        map.items.sort(schema.sortMapEntries);
-    }
-    return map;
-}
 const map = {
     collection: 'map',
-    createNode: createMap,
     default: true,
     nodeClass: YAMLMap.YAMLMap,
     tag: 'tag:yaml.org,2002:map',
     resolve(map, onError) {
-        if (!Node.isMap(map))
+        if (!identity.isMap(map))
             onError('Expected a mapping for this tag');
         return map;
-    }
+    },
+    createNode: (schema, obj, ctx) => YAMLMap.YAMLMap.from(schema, obj, ctx)
 };
 
 exports.map = map;
@@ -51316,36 +54524,20 @@ exports.nullTag = nullTag;
 "use strict";
 
 
-var createNode = __nccwpck_require__(9652);
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var YAMLSeq = __nccwpck_require__(5161);
 
-function createSeq(schema, obj, ctx) {
-    const { replacer } = ctx;
-    const seq = new YAMLSeq.YAMLSeq(schema);
-    if (obj && Symbol.iterator in Object(obj)) {
-        let i = 0;
-        for (let it of obj) {
-            if (typeof replacer === 'function') {
-                const key = obj instanceof Set ? it : String(i++);
-                it = replacer.call(obj, key, it);
-            }
-            seq.items.push(createNode.createNode(it, undefined, ctx));
-        }
-    }
-    return seq;
-}
 const seq = {
     collection: 'seq',
-    createNode: createSeq,
     default: true,
     nodeClass: YAMLSeq.YAMLSeq,
     tag: 'tag:yaml.org,2002:seq',
     resolve(seq, onError) {
-        if (!Node.isSeq(seq))
+        if (!identity.isSeq(seq))
             onError('Expected a sequence for this tag');
         return seq;
-    }
+    },
+    createNode: (schema, obj, ctx) => YAMLSeq.YAMLSeq.from(schema, obj, ctx)
 };
 
 exports.seq = seq;
@@ -51971,10 +55163,10 @@ exports.intOct = intOct;
 "use strict";
 
 
-var YAMLSeq = __nccwpck_require__(5161);
+var identity = __nccwpck_require__(5589);
 var toJS = __nccwpck_require__(2463);
-var Node = __nccwpck_require__(1399);
 var YAMLMap = __nccwpck_require__(6011);
+var YAMLSeq = __nccwpck_require__(5161);
 var pairs = __nccwpck_require__(9841);
 
 class YAMLOMap extends YAMLSeq.YAMLSeq {
@@ -51999,7 +55191,7 @@ class YAMLOMap extends YAMLSeq.YAMLSeq {
             ctx.onCreate(map);
         for (const pair of this.items) {
             let key, value;
-            if (Node.isPair(pair)) {
+            if (identity.isPair(pair)) {
                 key = toJS.toJS(pair.key, '', ctx);
                 value = toJS.toJS(pair.value, key, ctx);
             }
@@ -52011,6 +55203,12 @@ class YAMLOMap extends YAMLSeq.YAMLSeq {
             map.set(key, value);
         }
         return map;
+    }
+    static from(schema, iterable, ctx) {
+        const pairs$1 = pairs.createPairs(schema, iterable, ctx);
+        const omap = new this();
+        omap.items = pairs$1.items;
+        return omap;
     }
 }
 YAMLOMap.tag = 'tag:yaml.org,2002:omap';
@@ -52024,7 +55222,7 @@ const omap = {
         const pairs$1 = pairs.resolvePairs(seq, onError);
         const seenKeys = [];
         for (const { key } of pairs$1.items) {
-            if (Node.isScalar(key)) {
+            if (identity.isScalar(key)) {
                 if (seenKeys.includes(key.value)) {
                     onError(`Ordered maps must not include duplicate keys: ${key.value}`);
                 }
@@ -52035,12 +55233,7 @@ const omap = {
         }
         return Object.assign(new YAMLOMap(), pairs$1);
     },
-    createNode(schema, iterable, ctx) {
-        const pairs$1 = pairs.createPairs(schema, iterable, ctx);
-        const omap = new YAMLOMap();
-        omap.items = pairs$1.items;
-        return omap;
-    }
+    createNode: (schema, iterable, ctx) => YAMLOMap.from(schema, iterable, ctx)
 };
 
 exports.YAMLOMap = YAMLOMap;
@@ -52055,18 +55248,18 @@ exports.omap = omap;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
 var Scalar = __nccwpck_require__(9338);
 var YAMLSeq = __nccwpck_require__(5161);
 
 function resolvePairs(seq, onError) {
-    if (Node.isSeq(seq)) {
+    if (identity.isSeq(seq)) {
         for (let i = 0; i < seq.items.length; ++i) {
             let item = seq.items[i];
-            if (Node.isPair(item))
+            if (identity.isPair(item))
                 continue;
-            else if (Node.isMap(item)) {
+            else if (identity.isMap(item)) {
                 if (item.items.length > 1)
                     onError('Each pair must have its own sequence indicator');
                 const pair = item.items[0] || new Pair.Pair(new Scalar.Scalar(null));
@@ -52082,7 +55275,7 @@ function resolvePairs(seq, onError) {
                 }
                 item = pair;
             }
-            seq.items[i] = Node.isPair(item) ? item : new Pair.Pair(item);
+            seq.items[i] = identity.isPair(item) ? item : new Pair.Pair(item);
         }
     }
     else
@@ -52191,7 +55384,7 @@ exports.schema = schema;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
 var YAMLMap = __nccwpck_require__(6011);
 
@@ -52202,7 +55395,7 @@ class YAMLSet extends YAMLMap.YAMLMap {
     }
     add(key) {
         let pair;
-        if (Node.isPair(key))
+        if (identity.isPair(key))
             pair = key;
         else if (key &&
             typeof key === 'object' &&
@@ -52222,8 +55415,8 @@ class YAMLSet extends YAMLMap.YAMLMap {
      */
     get(key, keepPair) {
         const pair = YAMLMap.findPair(this.items, key);
-        return !keepPair && Node.isPair(pair)
-            ? Node.isScalar(pair.key)
+        return !keepPair && identity.isPair(pair)
+            ? identity.isScalar(pair.key)
                 ? pair.key.value
                 : pair.key
             : pair;
@@ -52250,6 +55443,17 @@ class YAMLSet extends YAMLMap.YAMLMap {
         else
             throw new Error('Set items must all have null values');
     }
+    static from(schema, iterable, ctx) {
+        const { replacer } = ctx;
+        const set = new this(schema);
+        if (iterable && Symbol.iterator in Object(iterable))
+            for (let value of iterable) {
+                if (typeof replacer === 'function')
+                    value = replacer.call(iterable, value, value);
+                set.items.push(Pair.createPair(value, null, ctx));
+            }
+        return set;
+    }
 }
 YAMLSet.tag = 'tag:yaml.org,2002:set';
 const set = {
@@ -52258,8 +55462,9 @@ const set = {
     nodeClass: YAMLSet,
     default: false,
     tag: 'tag:yaml.org,2002:set',
+    createNode: (schema, iterable, ctx) => YAMLSet.from(schema, iterable, ctx),
     resolve(map, onError) {
-        if (Node.isMap(map)) {
+        if (identity.isMap(map)) {
             if (map.hasAllNullValues(true))
                 return Object.assign(new YAMLSet(), map);
             else
@@ -52268,17 +55473,6 @@ const set = {
         else
             onError('Expected a mapping for this tag');
         return map;
-    },
-    createNode(schema, iterable, ctx) {
-        const { replacer } = ctx;
-        const set = new YAMLSet(schema);
-        if (iterable && Symbol.iterator in Object(iterable))
-            for (let value of iterable) {
-                if (typeof replacer === 'function')
-                    value = replacer.call(iterable, value, value);
-                set.items.push(Pair.createPair(value, null, ctx));
-            }
-        return set;
     }
 };
 
@@ -52339,7 +55533,7 @@ function stringifySexagesimal(node) {
     }
     return (sign +
         parts
-            .map(n => (n < 10 ? '0' + String(n) : String(n)))
+            .map(n => String(n).padStart(2, '0'))
             .join(':')
             .replace(/000000\d*$/, '') // % 60 may introduce error
     );
@@ -52556,7 +55750,7 @@ exports.foldFlowLines = foldFlowLines;
 
 
 var anchors = __nccwpck_require__(8459);
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var stringifyComment = __nccwpck_require__(5182);
 var stringifyString = __nccwpck_require__(6226);
 
@@ -52609,7 +55803,7 @@ function getTagObject(tags, item) {
     }
     let tagObj = undefined;
     let obj;
-    if (Node.isScalar(item)) {
+    if (identity.isScalar(item)) {
         obj = item.value;
         const match = tags.filter(t => t.identify?.(obj));
         tagObj =
@@ -52630,7 +55824,7 @@ function stringifyProps(node, tagObj, { anchors: anchors$1, doc }) {
     if (!doc.directives)
         return '';
     const props = [];
-    const anchor = (Node.isScalar(node) || Node.isCollection(node)) && node.anchor;
+    const anchor = (identity.isScalar(node) || identity.isCollection(node)) && node.anchor;
     if (anchor && anchors.anchorIsValid(anchor)) {
         anchors$1.add(anchor);
         props.push(`&${anchor}`);
@@ -52641,9 +55835,9 @@ function stringifyProps(node, tagObj, { anchors: anchors$1, doc }) {
     return props.join(' ');
 }
 function stringify(item, ctx, onComment, onChompKeep) {
-    if (Node.isPair(item))
+    if (identity.isPair(item))
         return item.toString(ctx, onComment, onChompKeep);
-    if (Node.isAlias(item)) {
+    if (identity.isAlias(item)) {
         if (ctx.doc.directives)
             return item.toString(ctx);
         if (ctx.resolvedAliases?.has(item)) {
@@ -52658,7 +55852,7 @@ function stringify(item, ctx, onComment, onChompKeep) {
         }
     }
     let tagObj = undefined;
-    const node = Node.isNode(item)
+    const node = identity.isNode(item)
         ? item
         : ctx.doc.createNode(item, { onTagObj: o => (tagObj = o) });
     if (!tagObj)
@@ -52668,12 +55862,12 @@ function stringify(item, ctx, onComment, onChompKeep) {
         ctx.indentAtStart = (ctx.indentAtStart ?? 0) + props.length + 1;
     const str = typeof tagObj.stringify === 'function'
         ? tagObj.stringify(node, ctx, onComment, onChompKeep)
-        : Node.isScalar(node)
+        : identity.isScalar(node)
             ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep)
             : node.toString(ctx, onComment, onChompKeep);
     if (!props)
         return str;
-    return Node.isScalar(node) || str[0] === '{' || str[0] === '['
+    return identity.isScalar(node) || str[0] === '{' || str[0] === '['
         ? `${props} ${str}`
         : `${props}\n${ctx.indent}${str}`;
 }
@@ -52691,7 +55885,7 @@ exports.stringify = stringify;
 
 
 var Collection = __nccwpck_require__(3466);
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var stringify = __nccwpck_require__(8409);
 var stringifyComment = __nccwpck_require__(5182);
 
@@ -52708,15 +55902,15 @@ function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, fl
     for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment = null;
-        if (Node.isNode(item)) {
+        if (identity.isNode(item)) {
             if (!chompKeep && item.spaceBefore)
                 lines.push('');
             addCommentBefore(ctx, lines, item.commentBefore, chompKeep);
             if (item.comment)
                 comment = item.comment;
         }
-        else if (Node.isPair(item)) {
-            const ik = Node.isNode(item.key) ? item.key : null;
+        else if (identity.isPair(item)) {
+            const ik = identity.isNode(item.key) ? item.key : null;
             if (ik) {
                 if (!chompKeep && ik.spaceBefore)
                     lines.push('');
@@ -52765,15 +55959,15 @@ function stringifyFlowCollection({ comment, items }, ctx, { flowChars, itemInden
     for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment = null;
-        if (Node.isNode(item)) {
+        if (identity.isNode(item)) {
             if (item.spaceBefore)
                 lines.push('');
             addCommentBefore(ctx, lines, item.commentBefore, false);
             if (item.comment)
                 comment = item.comment;
         }
-        else if (Node.isPair(item)) {
-            const ik = Node.isNode(item.key) ? item.key : null;
+        else if (identity.isPair(item)) {
+            const ik = identity.isNode(item.key) ? item.key : null;
             if (ik) {
                 if (ik.spaceBefore)
                     lines.push('');
@@ -52781,7 +55975,7 @@ function stringifyFlowCollection({ comment, items }, ctx, { flowChars, itemInden
                 if (ik.comment)
                     reqNewline = true;
             }
-            const iv = Node.isNode(item.value) ? item.value : null;
+            const iv = identity.isNode(item.value) ? item.value : null;
             if (iv) {
                 if (iv.comment)
                     comment = iv.comment;
@@ -52825,7 +56019,7 @@ function stringifyFlowCollection({ comment, items }, ctx, { flowChars, itemInden
         }
     }
     if (comment) {
-        str += stringifyComment.lineComment(str, commentString(comment), indent);
+        str += stringifyComment.lineComment(str, indent, commentString(comment));
         if (onComment)
             onComment();
     }
@@ -52883,7 +56077,7 @@ exports.stringifyComment = stringifyComment;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var stringify = __nccwpck_require__(8409);
 var stringifyComment = __nccwpck_require__(5182);
 
@@ -52912,7 +56106,7 @@ function stringifyDocument(doc, options) {
     let chompKeep = false;
     let contentComment = null;
     if (doc.contents) {
-        if (Node.isNode(doc.contents)) {
+        if (identity.isNode(doc.contents)) {
             if (doc.contents.spaceBefore && hasDirectives)
                 lines.push('');
             if (doc.contents.commentBefore) {
@@ -53012,19 +56206,19 @@ exports.stringifyNumber = stringifyNumber;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
 var stringify = __nccwpck_require__(8409);
 var stringifyComment = __nccwpck_require__(5182);
 
 function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
     const { allNullValues, doc, indent, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
-    let keyComment = (Node.isNode(key) && key.comment) || null;
+    let keyComment = (identity.isNode(key) && key.comment) || null;
     if (simpleKeys) {
         if (keyComment) {
             throw new Error('With simple keys, key nodes cannot have comments');
         }
-        if (Node.isCollection(key)) {
+        if (identity.isCollection(key)) {
             const msg = 'With simple keys, collection cannot be used as a key value';
             throw new Error(msg);
         }
@@ -53032,8 +56226,8 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
     let explicitKey = !simpleKeys &&
         (!key ||
             (keyComment && value == null && !ctx.inFlow) ||
-            Node.isCollection(key) ||
-            (Node.isScalar(key)
+            identity.isCollection(key) ||
+            (identity.isScalar(key)
                 ? key.type === Scalar.Scalar.BLOCK_FOLDED || key.type === Scalar.Scalar.BLOCK_LITERAL
                 : typeof key === 'object'));
     ctx = Object.assign({}, ctx, {
@@ -53078,7 +56272,7 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
             str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
     }
     let vsb, vcb, valueComment;
-    if (Node.isNode(value)) {
+    if (identity.isNode(value)) {
         vsb = !!value.spaceBefore;
         vcb = value.commentBefore;
         valueComment = value.comment;
@@ -53091,14 +56285,14 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
             value = doc.createNode(value);
     }
     ctx.implicitKey = false;
-    if (!explicitKey && !keyComment && Node.isScalar(value))
+    if (!explicitKey && !keyComment && identity.isScalar(value))
         ctx.indentAtStart = str.length + 1;
     chompKeep = false;
     if (!indentSeq &&
         indentStep.length >= 2 &&
         !ctx.inFlow &&
         !explicitKey &&
-        Node.isSeq(value) &&
+        identity.isSeq(value) &&
         !value.flow &&
         !value.tag &&
         !value.anchor) {
@@ -53122,7 +56316,7 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
             ws += `\n${ctx.indent}`;
         }
     }
-    else if (!explicitKey && Node.isCollection(value)) {
+    else if (!explicitKey && identity.isCollection(value)) {
         const vs0 = valueStr[0];
         const nl0 = valueStr.indexOf('\n');
         const hasNewline = nl0 !== -1;
@@ -53175,8 +56369,8 @@ exports.stringifyPair = stringifyPair;
 var Scalar = __nccwpck_require__(9338);
 var foldFlowLines = __nccwpck_require__(2889);
 
-const getFoldOptions = (ctx) => ({
-    indentAtStart: ctx.indentAtStart,
+const getFoldOptions = (ctx, isBlock) => ({
+    indentAtStart: isBlock ? ctx.indent.length : ctx.indentAtStart,
     lineWidth: ctx.options.lineWidth,
     minContentWidth: ctx.options.minContentWidth
 });
@@ -53289,7 +56483,7 @@ function doubleQuotedString(value, ctx) {
     str = start ? str + json.slice(start) : json;
     return implicitKey
         ? str
-        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx));
+        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
 }
 function singleQuotedString(value, ctx) {
     if (ctx.options.singleQuote === false ||
@@ -53301,7 +56495,7 @@ function singleQuotedString(value, ctx) {
     const res = "'" + value.replace(/'/g, "''").replace(/\n+/g, `$&\n${indent}`) + "'";
     return ctx.implicitKey
         ? res
-        : foldFlowLines.foldFlowLines(res, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx));
+        : foldFlowLines.foldFlowLines(res, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
 }
 function quotedString(value, ctx) {
     const { singleQuote } = ctx.options;
@@ -53319,6 +56513,15 @@ function quotedString(value, ctx) {
             qs = singleQuote ? singleQuotedString : doubleQuotedString;
     }
     return qs(value, ctx);
+}
+// The negative lookbehind avoids a polynomial search,
+// but isn't supported yet on Safari: https://caniuse.com/js-regexp-lookbehind
+let blockEndNewlines;
+try {
+    blockEndNewlines = new RegExp('(^|(?<!\n))\n+(?!\n|$)', 'g');
+}
+catch {
+    blockEndNewlines = /\n+(?!\n|$)/g;
 }
 function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
     const { blockQuote, commentString, lineWidth } = ctx.options;
@@ -53363,7 +56566,7 @@ function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
         value = value.slice(0, -end.length);
         if (end[end.length - 1] === '\n')
             end = end.slice(0, -1);
-        end = end.replace(/\n+(?!\n|$)/g, `$&${indent}`);
+        end = end.replace(blockEndNewlines, `$&${indent}`);
     }
     // determine indent indicator from whitespace at value start
     let startWithSpace = false;
@@ -53399,7 +56602,7 @@ function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
         .replace(/(?:^|\n)([\t ].*)(?:([\n\t ]*)\n(?![\n\t ]))?/g, '$1$2') // more-indented lines aren't folded
         //                ^ more-ind. ^ empty     ^ capture next empty lines only at end of indent
         .replace(/\n+/g, `$&${indent}`);
-    const body = foldFlowLines.foldFlowLines(`${start}${value}${end}`, indent, foldFlowLines.FOLD_BLOCK, getFoldOptions(ctx));
+    const body = foldFlowLines.foldFlowLines(`${start}${value}${end}`, indent, foldFlowLines.FOLD_BLOCK, getFoldOptions(ctx, true));
     return `${header}\n${indent}${body}`;
 }
 function plainString(item, ctx, onComment, onChompKeep) {
@@ -53449,7 +56652,7 @@ function plainString(item, ctx, onComment, onChompKeep) {
     }
     return implicitKey
         ? str
-        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx));
+        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
 }
 function stringifyString(item, ctx, onComment, onChompKeep) {
     const { implicitKey, inFlow } = ctx;
@@ -53501,7 +56704,7 @@ exports.stringifyString = stringifyString;
 "use strict";
 
 
-var Node = __nccwpck_require__(1399);
+var identity = __nccwpck_require__(5589);
 
 const BREAK = Symbol('break visit');
 const SKIP = Symbol('skip children');
@@ -53538,7 +56741,7 @@ const REMOVE = Symbol('remove node');
  */
 function visit(node, visitor) {
     const visitor_ = initVisitor(visitor);
-    if (Node.isDocument(node)) {
+    if (identity.isDocument(node)) {
         const cd = visit_(null, node.contents, visitor_, Object.freeze([node]));
         if (cd === REMOVE)
             node.contents = null;
@@ -53557,12 +56760,12 @@ visit.SKIP = SKIP;
 visit.REMOVE = REMOVE;
 function visit_(key, node, visitor, path) {
     const ctrl = callVisitor(key, node, visitor, path);
-    if (Node.isNode(ctrl) || Node.isPair(ctrl)) {
+    if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
         replaceNode(key, path, ctrl);
         return visit_(key, ctrl, visitor, path);
     }
     if (typeof ctrl !== 'symbol') {
-        if (Node.isCollection(node)) {
+        if (identity.isCollection(node)) {
             path = Object.freeze(path.concat(node));
             for (let i = 0; i < node.items.length; ++i) {
                 const ci = visit_(i, node.items[i], visitor, path);
@@ -53576,7 +56779,7 @@ function visit_(key, node, visitor, path) {
                 }
             }
         }
-        else if (Node.isPair(node)) {
+        else if (identity.isPair(node)) {
             path = Object.freeze(path.concat(node));
             const ck = visit_('key', node.key, visitor, path);
             if (ck === BREAK)
@@ -53625,7 +56828,7 @@ function visit_(key, node, visitor, path) {
  */
 async function visitAsync(node, visitor) {
     const visitor_ = initVisitor(visitor);
-    if (Node.isDocument(node)) {
+    if (identity.isDocument(node)) {
         const cd = await visitAsync_(null, node.contents, visitor_, Object.freeze([node]));
         if (cd === REMOVE)
             node.contents = null;
@@ -53644,12 +56847,12 @@ visitAsync.SKIP = SKIP;
 visitAsync.REMOVE = REMOVE;
 async function visitAsync_(key, node, visitor, path) {
     const ctrl = await callVisitor(key, node, visitor, path);
-    if (Node.isNode(ctrl) || Node.isPair(ctrl)) {
+    if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
         replaceNode(key, path, ctrl);
         return visitAsync_(key, ctrl, visitor, path);
     }
     if (typeof ctrl !== 'symbol') {
-        if (Node.isCollection(node)) {
+        if (identity.isCollection(node)) {
             path = Object.freeze(path.concat(node));
             for (let i = 0; i < node.items.length; ++i) {
                 const ci = await visitAsync_(i, node.items[i], visitor, path);
@@ -53663,7 +56866,7 @@ async function visitAsync_(key, node, visitor, path) {
                 }
             }
         }
-        else if (Node.isPair(node)) {
+        else if (identity.isPair(node)) {
             path = Object.freeze(path.concat(node));
             const ck = await visitAsync_('key', node.key, visitor, path);
             if (ck === BREAK)
@@ -53701,34 +56904,34 @@ function initVisitor(visitor) {
 function callVisitor(key, node, visitor, path) {
     if (typeof visitor === 'function')
         return visitor(key, node, path);
-    if (Node.isMap(node))
+    if (identity.isMap(node))
         return visitor.Map?.(key, node, path);
-    if (Node.isSeq(node))
+    if (identity.isSeq(node))
         return visitor.Seq?.(key, node, path);
-    if (Node.isPair(node))
+    if (identity.isPair(node))
         return visitor.Pair?.(key, node, path);
-    if (Node.isScalar(node))
+    if (identity.isScalar(node))
         return visitor.Scalar?.(key, node, path);
-    if (Node.isAlias(node))
+    if (identity.isAlias(node))
         return visitor.Alias?.(key, node, path);
     return undefined;
 }
 function replaceNode(key, path, node) {
     const parent = path[path.length - 1];
-    if (Node.isCollection(parent)) {
+    if (identity.isCollection(parent)) {
         parent.items[key] = node;
     }
-    else if (Node.isPair(parent)) {
+    else if (identity.isPair(parent)) {
         if (key === 'key')
             parent.key = node;
         else
             parent.value = node;
     }
-    else if (Node.isDocument(parent)) {
+    else if (identity.isDocument(parent)) {
         parent.contents = node;
     }
     else {
-        const pt = Node.isAlias(parent) ? 'alias' : 'scalar';
+        const pt = identity.isAlias(parent) ? 'alias' : 'scalar';
         throw new Error(`Cannot replace node with ${pt} parent`);
     }
 }

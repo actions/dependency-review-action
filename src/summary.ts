@@ -143,6 +143,13 @@ export function addLicensesToSummary(
       `<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`
     )
   }
+  if (config.allow_dependencies_licenses) {
+    core.summary.addQuote(
+      `<strong>Excluded from license check</strong>: ${config.allow_dependencies_licenses.join(
+        ', '
+      )}`
+    )
+  }
 
   core.debug(
     `found ${invalidLicenseChanges.unlicensed.length} unknown licenses`
@@ -213,6 +220,23 @@ export function addScannedDependencies(changes: Changes): void {
       summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`)
     }
   }
+}
+
+export function addSnapshotWarnings(warnings: string): void {
+  // For now, we want to ignore warnings that just complain
+  // about missing snapshots on the head SHA. This is a product
+  // decision to avoid presenting warnings to users who simply
+  // don't use snapshots.
+  const ignore_regex = new RegExp(/No.*snapshot.*found.*head.*/, 'i')
+  if (ignore_regex.test(warnings)) {
+    return
+  }
+
+  core.summary.addHeading('Snapshot Warnings', 2)
+  core.summary.addQuote(`${icons.warning}: ${warnings}`)
+  core.summary.addRaw(
+    'Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.'
+  )
 }
 
 function countLicenseIssues(

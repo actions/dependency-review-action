@@ -49,6 +49,32 @@ const rubyChange: Change = {
   ]
 }
 
+const pipChange: Change = {
+  change_type: 'added',
+  manifest: 'requirements.txt',
+  ecosystem: 'pip',
+  name: 'package-1',
+  version: '1.1.1',
+  package_url: 'pkg:pip/package-1@1.1.1',
+  license: 'MIT',
+  source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
+  vulnerabilities: [
+    {
+      severity: 'moderate',
+      advisory_ghsa_id: 'second-random_string',
+      advisory_summary: 'not so dangerous',
+      advisory_url: 'github.com/future-funk'
+    },
+    {
+      severity: 'low',
+      advisory_ghsa_id: 'third-random_string',
+      advisory_summary: 'dont page me',
+      advisory_url: 'github.com/future-funk'
+    }
+  ]
+}
+
 jest.mock('@actions/core')
 
 const mockOctokit = {
@@ -151,6 +177,51 @@ test('it adds all licenses to unresolved if it is unable to determine the validi
   expect(invalidLicenses.forbidden.length).toEqual(0)
   expect(invalidLicenses.unlicensed.length).toEqual(0)
   expect(invalidLicenses.unresolved.length).toEqual(2)
+})
+
+test('it does not filter out changes that are on the exclusions list', async () => {
+  const changes: Changes = [pipChange, npmChange, rubyChange]
+  const licensesConfig = {
+    allow: ['BSD'],
+    licenseExclusions: ['pkg:pip/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
+  }
+  const invalidLicenses = await getInvalidLicenseChanges(
+    changes,
+    licensesConfig
+  )
+  expect(invalidLicenses.forbidden.length).toEqual(0)
+})
+
+test('it does not fail when the packages dont have a valid PURL', async () => {
+  const emptyPurlChange = pipChange
+  emptyPurlChange.package_url = ''
+
+  const changes: Changes = [emptyPurlChange, npmChange, rubyChange]
+  const licensesConfig = {
+    allow: ['BSD'],
+    licenseExclusions: ['pkg:pip/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
+  }
+
+  const invalidLicenses = await getInvalidLicenseChanges(
+    changes,
+    licensesConfig
+  )
+  expect(invalidLicenses.forbidden.length).toEqual(1)
+})
+
+test('it does filters out changes if they are not on the exclusions list', async () => {
+  const changes: Changes = [pipChange, npmChange, rubyChange]
+  const licensesConfig = {
+    allow: ['BSD'],
+    licenseExclusions: ['pkg:pip/notmypackage-1@1.1.1', 'pkg:npm/alsonot@1.0.2']
+  }
+  const invalidLicenses = await getInvalidLicenseChanges(
+    changes,
+    licensesConfig
+  )
+  expect(invalidLicenses.forbidden.length).toEqual(2)
+  expect(invalidLicenses.forbidden[0]).toBe(pipChange)
+  expect(invalidLicenses.forbidden[1]).toBe(npmChange)
 })
 
 describe('GH License API fallback', () => {

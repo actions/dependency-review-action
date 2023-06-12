@@ -66,21 +66,21 @@ jobs:
 
 Configure this action by either inlining these options in your workflow file, or by using an external configuration file. All configuration options are optional.
 
-| Option                  | Usage                                                                                                                                                                             | Possible values                                                              | Default value |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------- |
-| `fail-on-severity`      | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`, `none`+                               | `low`         |
-| `allow-licenses`*       | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
-| `deny-licenses`*        | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
-| `fail-on-scopes`†       | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                          | `runtime`     |
-| `allow-ghsas`           | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories) | none          |
-| `license-check`         | Enable or disable the license check performed by the action.                                                                                                                      | `true`, `false`                                                              | `true`        |
-| `vulnerability-check`   | Enable or disable the vulnerability check performed by the action.                                                                                                                | `true`, `false`                                                              | `true`        |
-| `base-ref`/`head-ref`   | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                         | none          |
-| `comment-summary-in-pr` | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `true`, `false`                                                              | `false`       |
+| Option                          | Usage                                                                                                                                                                             | Possible values                                                              | Default value |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------- |
+| `fail-on-severity`              | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                        | `low`         |
+| `allow-licenses`\*              | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
+| `deny-licenses`\*               | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
+| `fail-on-scopes`†               | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                          | `runtime`     |
+| `allow-ghsas`                   | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories) | none          |
+| `license-check`                 | Enable or disable the license check performed by the action.                                                                                                                      | `true`, `false`                                                              | `true`        |
+| `vulnerability-check`           | Enable or disable the vulnerability check performed by the action.                                                                                                                | `true`, `false`                                                              | `true`        |
+| `allow-dependencies-licenses`\* | Contains a list of packages that will be excluded from license checks.                                                                                                            | Any package(s) in [purl](https://github.com/package-url/purl-spec) format    | none          |
+| `base-ref`/`head-ref`           | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                         | none          |
+| `comment-summary-in-pr`         | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `true`, `false`                                                              | `false`       |
+| `warn-only`                     | Enable or disable the action to fail, when set to `true` it will override the  `fail-on-severity` and action will not fail.                                                       | `true`, `false`                                                              | `false`       |
 
-+when `fail-on-severity` is set to `none`, the action will not fail on any vulnerabilities or invalid licenses. This is useful if you want to use the action to generate a report of vulnerabilities and invalid licenses, but not fail the workflow.
-
-*not supported for use with GitHub Enterprise Server
+\*not supported for use with GitHub Enterprise Server
 
 †will be supported with GitHub Enterprise Server 3.8
 
@@ -132,15 +132,18 @@ Start by specifying that you will be using an external configuration file:
     config-file: './.github/dependency-review-config.yml'
 ```
 
-And then create the file in the path you just specified:
+And then create the file in the path you just specified. Please note
+that the **option names in external files use underscores instead of dashes**:
 
 ```yaml
-fail-on-severity: 'critical'
-allow-licenses:
+fail_on_severity: 'critical'
+allow_licenses:
   - 'GPL-3.0'
   - 'BSD-3-Clause'
   - 'MIT'
 ```
+
+For more examples of how to use this action and its configuration options, see the [examples](docs/examples.md) page.
 
 ### Considerations
 

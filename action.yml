@@ -1,3 +1,5 @@
+# Avoid using default values for options here since they will
+# end up overriding external configurations.
 name: 'Dependency Review'
 description: 'Prevent the introduction of dependencies with known vulnerabilities'
 author: 'GitHub'
@@ -7,13 +9,11 @@ inputs:
     required: false
     default: ${{ github.token }}
   fail-on-severity:
-    description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`, `none`.
+    description: Don't block PRs below this severity. Possible values are `low`, `moderate`, `high`, `critical`.
     required: false
-    default: 'low'
   fail-on-scopes:
     description: Dependency scopes to block PRs on. Comma-separated list. Possible values are 'unknown', 'runtime', and 'development' (e.g. "runtime, development")
     required: false
-    default: 'runtime'
   base-ref:
     description: The base git ref to be used for this check. Has a default value when the workflow event is `pull_request` or `pull_request_target`. Must be provided otherwise.
     required: false
@@ -28,6 +28,9 @@ inputs:
     required: false
   deny-licenses:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
+    required: false
+  allow-dependencies-licenses:
+    description: Comma-separated list of dependencies in purl format (e.g. "pkg:npm/express, pkg:pip/pycrypto"). These dependencies will be permitted to use any license, no matter what license policy is enforced otherwise.
     required: false
   allow-ghsas:
     description: Comma-separated list of allowed GitHub Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
@@ -44,6 +47,11 @@ inputs:
   comment-summary-in-pr:
     description: A boolean to determine if the report should be posted as a comment in the PR itself. Setting this to true requires you to give the workflow the write permissions for pull-requests
     required: false
+  warn-only:
+    description: When set to `true` this action will not make the action to fail, this override the `fail-on-severity` parameter.
+    required: false
+    default: false  
+
 runs:
   using: 'node16'
   main: 'dist/index.js'

@@ -24,8 +24,48 @@ const defaultConfig: ConfigurationOptions = {
   allow_ghsas: [],
   allow_licenses: [],
   deny_licenses: [],
-  comment_summary_in_pr: true
+  comment_summary_in_pr: true,
+  warn_only: false
 }
+
+const changesWithEmptyManifests: Changes = [
+  {
+    change_type: 'added',
+    manifest: '',
+    ecosystem: 'unknown',
+    name: 'castore',
+    version: '0.1.17',
+    package_url: 'pkg:hex/castore@0.1.17',
+    license: null,
+    source_repository_url: null,
+    scope: 'runtime',
+    vulnerabilities: []
+  },
+  {
+    change_type: 'added',
+    manifest: '',
+    ecosystem: 'unknown',
+    name: 'connection',
+    version: '1.1.0',
+    package_url: 'pkg:hex/connection@1.1.0',
+    license: null,
+    source_repository_url: null,
+    scope: 'runtime',
+    vulnerabilities: []
+  },
+  {
+    change_type: 'added',
+    manifest: 'python/dist-info/METADATA',
+    ecosystem: 'pip',
+    name: 'pygments',
+    version: '2.6.1',
+    package_url: 'pkg:pypi/pygments@2.6.1',
+    license: 'BSD-2-Clause',
+    source_repository_url: 'https://github.com/pygments/pygments',
+    scope: 'runtime',
+    vulnerabilities: []
+  }
+]
 
 test('prints headline as h1', () => {
   summary.addSummaryToSummary(
@@ -63,6 +103,22 @@ test('only includes "No license issues found"-message if "vulnerability_check" i
   const text = core.summary.stringify()
 
   expect(text).toContain('✅ No license issues found.')
+})
+
+test('groups dependencies with empty manifest paths together', () => {
+  summary.addSummaryToSummary(
+    changesWithEmptyManifests,
+    emptyInvalidLicenseChanges,
+    defaultConfig
+  )
+  summary.addScannedDependencies(changesWithEmptyManifests)
+  const text = core.summary.stringify()
+
+  expect(text).toContain('<summary>Unnamed Manifest</summary>')
+  expect(text).toContain('castore')
+  expect(text).toContain('connection')
+  expect(text).toContain('<summary>python/dist-info/METADATA</summary>')
+  expect(text).toContain('pygments')
 })
 
 test('does not include status section if nothing was found', () => {

@@ -4,8 +4,7 @@ export const FAIL_ON_SEVERITIES = [
   'critical',
   'high',
   'moderate',
-  'low',
-  'none'
+  'low'
 ] as const
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
 export const SCOPES = ['unknown', 'runtime', 'development'] as const
@@ -48,13 +47,15 @@ export const ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.boolean().default(false)
+    comment_summary_in_pr: z.boolean().default(false),
+    warn_only: z.boolean().default(false)
   })
   .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {
@@ -81,9 +82,14 @@ export const ConfigurationOptionsSchema = z
   })
 
 export const ChangesSchema = z.array(ChangeSchema)
+export const ComparisonResponseSchema = z.object({
+  changes: z.array(ChangeSchema),
+  snapshot_warnings: z.string()
+})
 
 export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
+export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type FailOnSeverity = z.infer<typeof FailOnSeveritySchema>
 export type Severity = z.infer<typeof SeveritySchema>

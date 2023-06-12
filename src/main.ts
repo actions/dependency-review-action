@@ -16,28 +16,32 @@ import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
+import { warn } from 'console'
 
 async function run(): Promise<void> {
   try {
     const config = await readConfig()
+
     const refs = getRefs(config, github.context)
 
-    const changes = await dependencyGraph.compare({
+    const comparison = await dependencyGraph.compare({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
       baseRef: refs.base,
       headRef: refs.head
     })
+    const changes = comparison.changes
+    const snapshot_warnings = comparison.snapshot_warnings
 
     if (!changes) {
       core.info('No Dependency Changes found. Skipping Dependency Review.')
       return
     }
-    // config.fail_on_severity
+    config.fail_on_severity
     const failOnSeverityParams = config.fail_on_severity
-    const failOnVulnerability = config.fail_on_severity !== 'none'
+    const failOnVulnerability = !config.warn_only // if warn only is true the system should not fail on vulnerabilities
     let minSeverity: Severity = 'low'
-    if (failOnSeverityParams !== 'none') {
+    if (failOnSeverityParams) {
       minSeverity = failOnSeverityParams
     }
 
@@ -61,7 +65,8 @@ async function run(): Promise<void> {
       filteredChanges,
       {
         allow: config.allow_licenses,
-        deny: config.deny_licenses
+        deny: config.deny_licenses,
+        licenseExclusions: config.allow_dependencies_licenses
       }
     )
 
@@ -70,6 +75,10 @@ async function run(): Promise<void> {
       invalidLicenseChanges,
       config
     )
+
+    if (snapshot_warnings) {
+      summary.addSnapshotWarnings(snapshot_warnings)
+    }
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
