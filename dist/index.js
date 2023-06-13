@@ -508,6 +508,8 @@ function run() {
             if (failOnSeverityParams) {
                 minSeverity = failOnSeverityParams;
             }
+            // debug
+            core.debug(`Config: \n\t ${JSON.stringify(config, null, 2)}`);
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
             const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&

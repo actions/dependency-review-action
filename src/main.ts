@@ -44,6 +44,9 @@ async function run(): Promise<void> {
       minSeverity = failOnSeverityParams
     }
 
+    // debug
+    core.debug(`Config: \n\t ${JSON.stringify(config, null, 2)}`)
+
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
     const filteredChanges = filterAllowedAdvisories(
       config.allow_ghsas,
