@@ -36,9 +36,9 @@ async function run(): Promise<void> {
       core.info('No Dependency Changes found. Skipping Dependency Review.')
       return
     }
-    config.fail_on_severity
+
     const failOnSeverityParams = config.fail_on_severity
-    const failOnVulnerability = !config.warn_only // if warn only is true the system should not fail on vulnerabilities
+    const warnOnly = config.warn_only 
     let minSeverity: Severity = 'low'
     if (failOnSeverityParams) {
       minSeverity = failOnSeverityParams
@@ -84,12 +84,12 @@ async function run(): Promise<void> {
       printVulnerabilitiesBlock(
         vulnerableChanges,
         minSeverity,
-        failOnVulnerability
+        warnOnly
       )
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      printLicensesBlock(invalidLicenseChanges, failOnVulnerability)
+      printLicensesBlock(invalidLicenseChanges, warnOnly)
     }
 
     summary.addScannedDependencies(changes)
@@ -121,7 +121,7 @@ async function run(): Promise<void> {
 function printVulnerabilitiesBlock(
   addedChanges: Changes,
   minSeverity: Severity,
-  failOnVulnerability: boolean
+  warnOnly: boolean
 ): void {
   let vulFound = false
   core.group('Vulnerabilities', async () => {
@@ -134,10 +134,10 @@ function printVulnerabilitiesBlock(
 
     if (vulFound) {
       const msg = 'Dependency review detected vulnerable packages.'
-      if (failOnVulnerability) {
-        core.setFailed(msg)
-      } else {
+      if (warnOnly) {
         core.warning(msg)
+      } else {
+        core.setFailed(msg)
       }
     } else {
       core.info(
@@ -162,17 +162,17 @@ function printChangeVulnerabilities(change: Change): void {
 
 function printLicensesBlock(
   invalidLicenseChanges: Record<string, Changes>,
-  failOnVulnerability: boolean
+  warnOnly: boolean
 ): void {
   core.group('Licenses', async () => {
     if (invalidLicenseChanges.forbidden.length > 0) {
       core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
       const msg = 'Dependency review detected incompatible licenses.'
-      if (failOnVulnerability) {
-        core.setFailed(msg)
-      } else {
+      if (warnOnly) {
         core.warning(msg)
+      } else {
+        core.setFailed(msg)
       }
     }
     if (invalidLicenseChanges.unresolved.length > 0) {

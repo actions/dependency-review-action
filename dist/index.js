@@ -502,9 +502,8 @@ function run() {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;
             }
-            config.fail_on_severity;
             const failOnSeverityParams = config.fail_on_severity;
-            const failOnVulnerability = !config.warn_only; // if warn only is true the system should not fail on vulnerabilities
+            const warnOnly = config.warn_only;
             let minSeverity = 'low';
             if (failOnSeverityParams) {
                 minSeverity = failOnSeverityParams;
@@ -525,11 +524,11 @@ function run() {
             }
             if (config.vulnerability_check) {
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
-                printVulnerabilitiesBlock(vulnerableChanges, minSeverity, failOnVulnerability);
+                printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly);
             }
             if (config.license_check) {
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
-                printLicensesBlock(invalidLicenseChanges, failOnVulnerability);
+                printLicensesBlock(invalidLicenseChanges, warnOnly);
             }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
@@ -558,7 +557,7 @@ function run() {
         }
     });
 }
-function printVulnerabilitiesBlock(addedChanges, minSeverity, failOnVulnerability) {
+function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
     let vulFound = false;
     core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
         if (addedChanges.length > 0) {
@@ -569,11 +568,11 @@ function printVulnerabilitiesBlock(addedChanges, minSeverity, failOnVulnerabilit
         }
         if (vulFound) {
             const msg = 'Dependency review detected vulnerable packages.';
-            if (failOnVulnerability) {
-                core.setFailed(msg);
+            if (warnOnly) {
+                core.warning(msg);
             }
             else {
-                core.warning(msg);
+                core.setFailed(msg);
             }
         }
         else {
@@ -587,17 +586,17 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
-function printLicensesBlock(invalidLicenseChanges, failOnVulnerability) {
+function printLicensesBlock(invalidLicenseChanges, warnOnly) {
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
         if (invalidLicenseChanges.forbidden.length > 0) {
             core.info('\nThe following dependencies have incompatible licenses:');
             printLicensesError(invalidLicenseChanges.forbidden);
             const msg = 'Dependency review detected incompatible licenses.';
-            if (failOnVulnerability) {
-                core.setFailed(msg);
+            if (warnOnly) {
+                core.warning(msg);
             }
             else {
-                core.warning(msg);
+                core.setFailed(msg);
             }
         }
         if (invalidLicenseChanges.unresolved.length > 0) {
