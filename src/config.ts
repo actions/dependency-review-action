@@ -39,7 +39,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
   const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr')
-  const warn_only = getOptionalBoolean('comment-summary-in-pr')
+  const warn_only = getOptionalBoolean('warn-only')
 
   validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
