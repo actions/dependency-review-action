@@ -46402,7 +46402,7 @@ function readInlineConfig() {
 }
 function getOptionalNumber(name) {
     const value = core.getInput(name);
-    const parsed = z.number().safeParse(value);
+    const parsed = z.string().regex(/^\d+$/).transform(Number).safeParse(value);
     return parsed.success ? parsed.data : undefined;
 }
 function getOptionalBoolean(name) {
