@@ -505,7 +505,7 @@ function run() {
             const failOnSeverityParams = config.fail_on_severity;
             const warnOnly = config.warn_only;
             let minSeverity = 'low';
-            if (failOnSeverityParams) {
+            if (failOnSeverityParams && !warnOnly) {
                 minSeverity = failOnSeverityParams;
             }
             // debug

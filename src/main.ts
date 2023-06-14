@@ -40,7 +40,7 @@ async function run(): Promise<void> {
     const failOnSeverityParams = config.fail_on_severity
     const warnOnly = config.warn_only 
     let minSeverity: Severity = 'low'
-    if (failOnSeverityParams) {
+    if (failOnSeverityParams && !warnOnly) {
       minSeverity = failOnSeverityParams
     }
 
