@@ -18,7 +18,8 @@ export function clearInputs(): void {
     'CONFIG-FILE',
     'BASE-REF',
     'HEAD-REF',
-    'COMMENT-SUMMARY-IN-PR'
+    'COMMENT-SUMMARY-IN-PR',
+    'WARN-ONLY',
   ]
 
   // eslint-disable-next-line github/array-foreach

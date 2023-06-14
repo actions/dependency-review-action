@@ -38,14 +38,12 @@ async function run(): Promise<void> {
     }
 
     const failOnSeverityParams = config.fail_on_severity
-    const warnOnly = config.warn_only 
+    const warnOnly = config.warn_only
     let minSeverity: Severity = 'low'
+    // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
     if (failOnSeverityParams && !warnOnly) {
       minSeverity = failOnSeverityParams
     }
-
-    // debug
-    core.debug(`Config: \n\t ${JSON.stringify(config, null, 2)}`)
 
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
     const filteredChanges = filterAllowedAdvisories(
@@ -84,11 +82,7 @@ async function run(): Promise<void> {
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      printVulnerabilitiesBlock(
-        vulnerableChanges,
-        minSeverity,
-        warnOnly
-      )
+      printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly)
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
