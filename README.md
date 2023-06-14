@@ -78,7 +78,7 @@ Configure this action by either inlining these options in your workflow file, or
 | `allow-dependencies-licenses`\* | Contains a list of packages that will be excluded from license checks.                                                                                                            | Any package(s) in [purl](https://github.com/package-url/purl-spec) format    | none          |
 | `base-ref`/`head-ref`           | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                         | none          |
 | `comment-summary-in-pr`         | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `true`, `false`                                                              | `false`       |
-| `warn-only`+                   | Enable or disable the action to fail, when set to `true` it will override the  `fail-on-severity` and action will not fail.                                                       | `true`, `false`                                                              | `false`       |
+| `warn-only`+                   | Enable or disable the action to fail, when set to `true` the action will log all vulnarabilities as warning.                                                                       | `true`, `false`                                                              | `false`       |
 
 \*not supported for use with GitHub Enterprise Server
 
