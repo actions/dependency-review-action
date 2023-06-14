@@ -35,22 +35,21 @@ async function getComparison(
     baseRef,
     headRef
   })
-  if (retryOpts !== undefined && comparison.snapshot_warnings.trim() !== '') {
-    if (retryOpts.retryUntil < Date.now()) {
-      core.info(
-        `Retry timeout exceeded. Snapshot warnings still present: ${comparison.snapshot_warnings}.`
-      )
-      core.info('Proceeding...')
-      return comparison
-    } else {
-      core.info(comparison.snapshot_warnings)
-      core.info(
-        `Retrying in ${retryOpts.retryDelay} seconds... To disable retries on snapshot warnings, set retry-on-snapshot-warnings to false.`
-      )
-      await delay(retryOpts.retryDelay * 1000)
-      return getComparison(baseRef, headRef, retryOpts)
+
+  if (comparison.snapshot_warnings.trim() !== '') {
+    core.info(comparison.snapshot_warnings)
+    if (retryOpts !== undefined) {
+      if (retryOpts.retryUntil < Date.now()) {
+        core.info(`Retry timeout exceeded. Proceeding...`)
+        return comparison
+      } else {
+        core.info(`Retrying in ${retryOpts.retryDelay} seconds...`)
+        await delay(retryOpts.retryDelay * 1000)
+        return getComparison(baseRef, headRef, retryOpts)
+      }
     }
   }
+
   return comparison
 }
 
