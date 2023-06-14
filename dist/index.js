@@ -499,7 +499,7 @@ function getComparison(baseRef, headRef, retryOpts) {
             headRef
         });
         if (retryOpts !== undefined && comparison.snapshot_warnings.trim() !== '') {
-            if (retryOpts.retryUntil > Date.now()) {
+            if (retryOpts.retryUntil < Date.now()) {
                 core.info(`Retry timeout exceeded. Snapshot warnings still present: ${comparison.snapshot_warnings}.`);
                 core.info('Proceeding...');
                 return comparison;
