@@ -36104,6 +36104,7 @@ __export(dist_src_exports, {
   App: () => App,
   OAuthApp: () => OAuthApp,
   Octokit: () => Octokit,
+  RequestError: () => import_request_error.RequestError,
   createNodeMiddleware: () => import_app2.createNodeMiddleware
 });
 module.exports = __toCommonJS(dist_src_exports);
@@ -36116,9 +36117,10 @@ var import_plugin_retry = __nccwpck_require__(8519);
 var import_plugin_throttling = __nccwpck_require__(9968);
 
 // pkg/dist-src/version.js
-var VERSION = "2.0.19";
+var VERSION = "2.1.0";
 
 // pkg/dist-src/octokit.js
+var import_request_error = __nccwpck_require__(4991);
 var Octokit = import_core.Octokit.plugin(
   import_plugin_rest_endpoint_methods.restEndpointMethods,
   import_plugin_paginate_rest.paginateRest,
@@ -37748,7 +37750,7 @@ async function errorRequest(state, octokit, error, options) {
 
 // pkg/dist-src/wrap-request.js
 var import_light = __toESM(__nccwpck_require__(1174));
-var import_request_error = __nccwpck_require__(537);
+var import_request_error = __nccwpck_require__(4991);
 async function wrapRequest(state, octokit, request, options) {
   const limiter = new import_light.default();
   limiter.on("failed", function(error, info) {
@@ -37809,6 +37811,79 @@ function retry(octokit, octokitOptions) {
 retry.VERSION = VERSION;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (0);
+
+
+/***/ }),
+
+/***/ 4991:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
+var deprecation = __nccwpck_require__(8932);
+var once = _interopDefault(__nccwpck_require__(1223));
+
+const logOnceCode = once(deprecation => console.warn(deprecation));
+const logOnceHeaders = once(deprecation => console.warn(deprecation));
+/**
+ * Error with extra properties to help with debugging
+ */
+class RequestError extends Error {
+  constructor(message, statusCode, options) {
+    super(message);
+    // Maintains proper stack trace (only available on V8)
+    /* istanbul ignore next */
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+    this.name = "HttpError";
+    this.status = statusCode;
+    let headers;
+    if ("headers" in options && typeof options.headers !== "undefined") {
+      headers = options.headers;
+    }
+    if ("response" in options) {
+      this.response = options.response;
+      headers = options.response.headers;
+    }
+    // redact request credentials without mutating original request options
+    const requestCopy = Object.assign({}, options.request);
+    if (options.request.headers.authorization) {
+      requestCopy.headers = Object.assign({}, options.request.headers, {
+        authorization: options.request.headers.authorization.replace(/ .*$/, " [REDACTED]")
+      });
+    }
+    requestCopy.url = requestCopy.url
+    // client_id & client_secret can be passed as URL query parameters to increase rate limit
+    // see https://developer.github.com/v3/#increasing-the-unauthenticated-rate-limit-for-oauth-applications
+    .replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]")
+    // OAuth tokens can be passed as URL query parameters, although it is not recommended
+    // see https://developer.github.com/v3/#oauth2-token-sent-in-a-header
+    .replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
+    this.request = requestCopy;
+    // deprecations
+    Object.defineProperty(this, "code", {
+      get() {
+        logOnceCode(new deprecation.Deprecation("[@octokit/request-error] `error.code` is deprecated, use `error.status`."));
+        return statusCode;
+      }
+    });
+    Object.defineProperty(this, "headers", {
+      get() {
+        logOnceHeaders(new deprecation.Deprecation("[@octokit/request-error] `error.headers` is deprecated, use `error.response.headers`."));
+        return headers || {};
+      }
+    });
+  }
+}
+
+exports.RequestError = RequestError;
+//# sourceMappingURL=index.js.map
 
 
 /***/ }),
