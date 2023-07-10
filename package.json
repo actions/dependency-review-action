@@ -27,7 +27,7 @@
   "dependencies": {
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
-    "@octokit/plugin-retry": "^5.0.4",
+    "@octokit/plugin-retry": "^5.0.5",
     "@octokit/request-error": "^2.1.0",
     "ansi-styles": "^6.2.1",
     "got": "^13.0.0",
