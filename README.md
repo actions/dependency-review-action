@@ -43,7 +43,7 @@ This action is available in Enterprise Server starting with version 3.6. Make su
 Security](https://docs.github.com/en/enterprise-server@3.6/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
 and [GitHub
 Connect](https://docs.github.com/en/enterprise-server@3.6/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
-are enabled and that you sync the [dependency-review-action](https://github.com/actions/dependency-review-action) on to the server.
+are enabled, and that you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
 
 You can use the same workflow as above, replacing the `runs-on` value
 with the label of any of your runners (the default label
