@@ -1,4 +1,4 @@
- dependency-review-action
+ # dependency-review-action
 
 This action scans your pull requests for dependency changes, and will
 raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions on your default branch.
