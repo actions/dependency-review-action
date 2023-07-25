@@ -1,0 +1,161 @@
+ 
+
+Código
+Asuntos
+10
+Solicitudes de extracción
+7
+Comportamiento
+Proyectos
+Seguridad
+Perspectivas
+Una acción de GitHub para detectar dependencias vulnerables y licencias no válidas en sus PR
+
+Licencia
+ licencia MIT
+Código de conducta
+ Código de conducta
+Politica de seguridad
+ Politica de seguridad
+ 415 estrellas
+ 99 tenedores
+ 19 viendo
+ Actividad
+Repositorio público
+acciones/dependencia-revisión-acción
+Usa esta acción de GitHub con tu proyecto
+Agregue esta acción a un flujo de trabajo existente o cree uno nuevo.
+
+ Sucursales
+ Etiquetas
+Última confirmación
+@febuiles
+febriles
+…
+la semana pasada
+Estadísticas de Git
+archivos
+LÉAME.md
+acción-revisión-dependencia
+Esta acción analiza sus solicitudes de extracción en busca de cambios de dependencia y generará un error si se introducen vulnerabilidades o licencias no válidas. La acción está respaldada por un extremo de la API que diferencia las dependencias entre dos revisiones cualesquiera en su rama predeterminada.
+
+La acción está disponible para todos los repositorios públicos, así como para los repositorios privados que tienen licencia de GitHub Advanced Security.
+
+Puede ver los resultados en los registros de trabajo:
+
+Captura de pantalla 2022-03-31 a las 1 10 51 p. m.
+
+o en el resumen del trabajo:
+
+
+
+Instalación
+Tenga en cuenta que necesita una licencia de seguridad avanzada de GitHub si está ejecutando esta acción en repositorios privados.
+
+Agregue un nuevo flujo de trabajo YAML a su .github/workflowscarpeta:
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v3
+Servidor GitHub Enterprise
+Esta acción está disponible en Enterprise Server a partir de la versión 3.6. Asegúrese de que GitHub Advanced Security y GitHub Connect estén habilitados y que haya instalado la acción de revisión de dependencia en el servidor.
+
+Puede usar el mismo flujo de trabajo que el anterior, reemplazando el runs-onvalor con la etiqueta de cualquiera de sus corredores (la etiqueta predeterminada es self-hosted):
+
+# ...
+
+jobs:
+  dependency-review:
+    runs-on: self-hosted
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v3
+Opciones de configuración
+Configure esta acción incorporando estas opciones en su archivo de flujo de trabajo o utilizando un archivo de configuración externo. Todas las opciones de configuración son opcionales.
+
+Opción	Uso	Valores posibles	Valor por defecto
+fail-on-severity	Define el umbral para el nivel de gravedad. La acción fallará en cualquier solicitud de extracción que presente vulnerabilidades del nivel de gravedad especificado o superior.	low, moderate, high,critical	low
+allow-licenses*	Contiene una lista de licencias permitidas. La acción fallará en las solicitudes de incorporación de cambios que introduzcan dependencias con licencias que no coincidan con la lista.	Cualquier identificador compatible con SPDX	ninguno
+deny-licenses*	Contiene una lista de licencias prohibidas. La acción fallará en las solicitudes de incorporación de cambios que introduzcan dependencias con licencias que coincidan con la lista.	Cualquier identificador compatible con SPDX	ninguno
+fail-on-scopes†	Contiene una lista de cadenas de los entornos de compilación que desea admitir. La acción fallará en las solicitudes de incorporación de cambios que introduzcan vulnerabilidades en los ámbitos que coincidan con la lista.	runtime, development,unknown	runtime
+allow-ghsas	Contiene una lista de ID de bases de datos de asesoramiento de GitHub que se pueden omitir durante la detección.	Cualquier GHSA de la base de datos de asesoramiento de GitHub	ninguno
+license-check	Habilite o deshabilite la verificación de licencia realizada por la acción.	true,false	true
+vulnerability-check	Habilite o deshabilite la comprobación de vulnerabilidades realizada por la acción.	true,false	true
+allow-dependencies-licenses*	Contiene una lista de paquetes que se excluirán de las comprobaciones de licencia.	Cualquier paquete(s) en formato purl	ninguno
+base-ref/head-ref	Proporcione referencias de git personalizadas para la base/cabeza de git al realizar la verificación de comparación. Esto solo se usa para tipos de eventos que no sean pull_requesty pull_request_target.	Cualquier referencia de git válida en su proyecto	ninguno
+comment-summary-in-pr	Habilite o deshabilite informar el resumen de la revisión como un comentario en la solicitud de extracción. Si está habilitado, debe dar permiso al flujo de trabajo o al trabajo pull-requests: write.	true,false	false
+*no es compatible con el uso con GitHub Enterprise Server
+
+†será compatible con GitHub Enterprise Server 3.8
+
+Configuración en línea
+Puede pasar opciones a la acción GitHub de revisión de dependencia utilizando su archivo de flujo de trabajo.
+
+Ejemplo
+name: 'Dependency Review'
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: moderate
+
+          # Use comma-separated names to pass list arguments:
+          deny-licenses: LGPL-2.0, BSD-2-Clause
+Archivo de configuración
+Puede utilizar un archivo de configuración externo para especificar la configuración de esta acción. Puede ser un archivo local o un archivo en un repositorio externo. Consulte las siguientes opciones para la especificación.
+
+Opción	Uso	Valores posibles
+config-file	Una ruta a un archivo en el repositorio actual o en un repositorio externo. Utilice esta sintaxis para archivos externos:OWNER/REPOSITORY/FILENAME@BRANCH	Archivo local : ./.github/dependency-review-config.yml
+repositorio externo :github/octorepo/dependency-review-config.yml@main
+external-repo-token	Especifica un token para obtener el archivo de configuración. Se requiere si el archivo reside en un repositorio externo privado y para todos los repositorios de GitHub Enterprise Server. Cree un token en la configuración del desarrollador .	Cualquier token con readpermisos para el repositorio que aloja el archivo de configuración.
+Ejemplo
+Comience especificando que usará un archivo de configuración externo:
+
+- name: Dependency Review
+  uses: actions/dependency-review-action@v2
+  with:
+    config-file: './.github/dependency-review-config.yml'
+Y luego cree el archivo en la ruta que acaba de especificar. Tenga en cuenta que los nombres de las opciones en los archivos externos usan guiones bajos en lugar de guiones :
+
+fail_on_severity: 'critical'
+allow_licenses:
+  - 'GPL-3.0'
+  - 'BSD-3-Clause'
+  - 'MIT'
+Para obtener más ejemplos de cómo usar esta acción y sus opciones de configuración, consulte la página de ejemplos .
+
+Consideraciones
+La verificación de licencias no es compatible con Enterprise Server ya que la API no devuelve información de licencia.
+La acción solo aceptará uno de los dos licenseparámetros; se generará un error si proporciona ambos.
+No tenemos información de licencia para todos sus dependientes. Si no podemos detectar la licencia de una dependencia, se lo informaremos, pero la acción no fallará .
+Bloqueo de solicitudes de extracción
+La comprobación de la acción GitHub de revisión de dependencias solo bloqueará la fusión de una solicitud de extracción si el propietario del repositorio ha solicitado que se apruebe la comprobación antes de la fusión. Para obtener más información, consulte la documentación sobre sucursales protegidas .
+
+Obteniendo ayuda
+Si tiene informes de errores, preguntas o sugerencias, cree un nuevo problema .
+
+contribuyendo
+Agradecemos cualquier contribución hecha a este proyecto. Lea CONTRIBUTING.MD para comenzar.
+
+Licencia
+Este proyecto se publica bajo la licencia MIT .
