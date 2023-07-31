@@ -74,8 +74,8 @@ async function findCommentByMarker(
   )
 
   for await (const {data: comments} of commentsIterator) {
-    const existingComment = comments.find(comment =>
-      comment.body?.includes(commentBodyIncludes)
+    const existingComment = comments.find(
+      comment => comment.body?.includes(commentBodyIncludes)
     )
     if (existingComment) return existingComment.id
   }
