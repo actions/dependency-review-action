@@ -13,6 +13,7 @@ const icons = {
 export function addSummaryToSummary(
   vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
+  deniedChanges: Changes,
   config: ConfigurationOptions
 ): void {
   core.summary.addHeading('Dependency Review', 1)
@@ -33,6 +34,8 @@ export function addSummaryToSummary(
 
     return
   }
+
+  core.summary.addList(deniedChanges.map(change => `${change.name} is denied`))
 
   core.summary
     .addRaw('The following issues were found:')

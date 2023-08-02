@@ -16,6 +16,7 @@ import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
+import {getDeniedChanges} from './denylist'
 
 async function run(): Promise<void> {
   try {
@@ -63,9 +64,15 @@ async function run(): Promise<void> {
       }
     )
 
+    const deniedChanges = await getDeniedChanges(
+      filteredChanges,
+      config.deny_list
+    )
+
     summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
+      deniedChanges,
       config
     )
 

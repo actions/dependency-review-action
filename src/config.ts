@@ -33,6 +33,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const allow_dependencies_licenses = parseList(
     getOptionalInput('allow-dependencies-licenses')
   )
+  const deny_list = parseList(getOptionalInput('deny-dependencies'))
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
   const license_check = getOptionalBoolean('license-check')
   const vulnerability_check = getOptionalBoolean('vulnerability-check')
@@ -49,6 +50,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     fail_on_scopes,
     allow_licenses,
     deny_licenses,
+    deny_list,
     allow_dependencies_licenses,
     allow_ghsas,
     license_check,
