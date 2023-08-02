@@ -3,7 +3,7 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Changes} from './schemas'
+import {Change, Severity, Changes, ConfigurationOptions} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -69,6 +69,10 @@ async function run(): Promise<void> {
       config.deny_list
     )
 
+    core.debug(`config: ${JSON.stringify(config)}`)
+    core.debug(`filteredChanges: ${JSON.stringify(filteredChanges)}`)
+    core.debug(`deniedChanges: ${JSON.stringify(deniedChanges)}`)
+
     summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
@@ -87,6 +91,10 @@ async function run(): Promise<void> {
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
       printLicensesBlock(invalidLicenseChanges)
+    }
+    if (config.deny_list) {
+      summary.addDeniedToSummary(deniedChanges)
+      printDeniedDependencies(deniedChanges, config)
     }
 
     summary.addScannedDependencies(changes)
@@ -242,6 +250,22 @@ function printScannedDependencies(changes: Changes): void {
       for (const change of manifestChanges) {
         core.info(`${renderScannedDependency(change)}`)
       }
+    }
+  })
+}
+
+function printDeniedDependencies(
+  changes: Change[],
+  config: ConfigurationOptions
+): void {
+  core.group('Denied', async () => {
+    for (const denied of config.deny_list) {
+      core.info(`Config: ${denied}`)
+    }
+
+    for (const change of changes) {
+      core.info(`Change: ${change.name}@${change.version} is denied`)
+      core.info(`Change: ${change.package_url} is denied`)
     }
   })
 }

@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Changes} from './schemas'
+import {ConfigurationOptions, Changes, Change} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
@@ -20,7 +20,8 @@ export function addSummaryToSummary(
 
   if (
     vulnerableChanges.length === 0 &&
-    countLicenseIssues(invalidLicenseChanges) === 0
+    countLicenseIssues(invalidLicenseChanges) === 0 &&
+    deniedChanges.length === 0
   ) {
     if (!config.license_check) {
       core.summary.addRaw(`${icons.check} No vulnerabilities found.`)
@@ -34,8 +35,6 @@ export function addSummaryToSummary(
 
     return
   }
-
-  core.summary.addList(deniedChanges.map(change => `${change.name} is denied`))
 
   core.summary
     .addRaw('The following issues were found:')
@@ -58,6 +57,13 @@ export function addSummaryToSummary(
             `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
               invalidLicenseChanges.unlicensed.length
             } package(s) with unknown licenses.`
+          ]
+        : []),
+      ...(deniedChanges.length > 0
+        ? [
+            `${checkOrWarnIcon(deniedChanges.length)} ${
+              deniedChanges.length
+            } package(s) denied.`
           ]
         : [])
     ])
@@ -249,6 +255,25 @@ function countLicenseIssues(
     (acc, val) => acc + val.length,
     0
   )
+}
+
+export function addDeniedToSummary(deniedChanges: Change[]): void {
+  if (deniedChanges.length === 0) {
+    return
+  }
+
+  core.summary.addHeading('Denied dependencies', 2)
+  for (const change of deniedChanges) {
+    core.summary.addHeading(`<em>Denied dependencies</em>`, 4)
+    core.summary.addTable([
+      ['Package', 'Version', 'License'],
+      [
+        renderUrl(change.source_repository_url, change.name),
+        change.version,
+        change.license || ''
+      ]
+    ])
+  }
 }
 
 function checkOrFailIcon(count: number): string {
