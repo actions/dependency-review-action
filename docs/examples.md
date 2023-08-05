@@ -161,7 +161,7 @@ jobs:
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
-          comment-summary-in-pr: true
+          comment-summary-in-pr: always
 ```
 
 ## Exclude dependencies from the license check
@@ -189,7 +189,7 @@ jobs:
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
-          comment-summary-in-pr: true
+          comment-summary-in-pr: always
           allow-dependencies-licenses: 'pkg:npm/loadash, pkg:pip/requests'
 ```
 
@@ -227,6 +227,6 @@ jobs:
         uses: actions/dependency-review-action@v3
         with:
           fail-on-severity: critical
-          comment-summary-in-pr: true
+          comment-summary-in-pr: always
           license-check: false
 ```

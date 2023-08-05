@@ -24,7 +24,7 @@ const defaultConfig: ConfigurationOptions = {
   allow_ghsas: [],
   allow_licenses: [],
   deny_licenses: [],
-  comment_summary_in_pr: true
+  comment_summary_in_pr: 'never'
 }
 
 const changesWithEmptyManifests: Changes = [

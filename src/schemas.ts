@@ -47,7 +47,7 @@ export const ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.boolean().default(false)
+    comment_summary_in_pr: z.enum(['always', 'never', 'on-failure']).default('never'),
   })
   .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {
