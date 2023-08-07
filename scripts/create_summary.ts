@@ -22,7 +22,8 @@ const defaultConfig: ConfigurationOptions = {
   allow_ghsas: [],
   allow_licenses: ['MIT'],
   deny_licenses: [],
-  deny_list: [],
+  deny_packages: [],
+  deny_groups: [],
   allow_dependencies_licenses: [
     'pkg:npm/express@4.17.1',
     'pkg:pip/requests',

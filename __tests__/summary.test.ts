@@ -24,7 +24,8 @@ const defaultConfig: ConfigurationOptions = {
   allow_ghsas: [],
   allow_licenses: [],
   deny_licenses: [],
-  deny_list: [],
+  deny_packages: [],
+  deny_groups: [],
   comment_summary_in_pr: true
 }
 

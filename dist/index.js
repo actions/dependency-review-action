@@ -137,11 +137,34 @@ function findCommentByMarker(commentBodyIncludes) {
 
 /***/ }),
 
-/***/ 3491:
-/***/ (function(__unused_webpack_module, exports) {
+/***/ 2134:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -153,17 +176,36 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getDeniedChanges = void 0;
-function getDeniedChanges(changes, deniedList) {
+const core = __importStar(__nccwpck_require__(2186));
+function getDeniedChanges(changes, deniedPackages, deniedGroups) {
     return __awaiter(this, void 0, void 0, function* () {
         const changesDenied = [];
+        let failed = false;
         for (const change of changes) {
             change.name = change.name.toLowerCase();
             change.package_url = change.package_url.toLowerCase();
-            for (const denied of deniedList) {
-                if (change.name.includes(denied)) {
-                    changesDenied.push(change);
+            if (deniedPackages) {
+                for (const denied of deniedPackages) {
+                    if (change.name === denied.toLowerCase()) {
+                        changesDenied.push(change);
+                        failed = true;
+                    }
                 }
             }
+            if (deniedGroups) {
+                for (const denied of deniedGroups) {
+                    if (change.name.startsWith(denied.toLowerCase())) {
+                        changesDenied.push(change);
+                        failed = true;
+                    }
+                }
+            }
+        }
+        if (failed) {
+            core.setFailed('Dependency review detected denied packages.');
+        }
+        else {
+            core.info('Dependency review did not detect any denied packages');
         }
         return changesDenied;
     });
@@ -521,7 +563,7 @@ const summary = __importStar(__nccwpck_require__(8608));
 const git_refs_1 = __nccwpck_require__(1086);
 const utils_1 = __nccwpck_require__(918);
 const comment_pr_1 = __nccwpck_require__(5842);
-const denylist_1 = __nccwpck_require__(3491);
+const deny_1 = __nccwpck_require__(2134);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -550,10 +592,7 @@ function run() {
                 deny: config.deny_licenses,
                 licenseExclusions: config.allow_dependencies_licenses
             });
-            const deniedChanges = yield (0, denylist_1.getDeniedChanges)(filteredChanges, config.deny_list);
-            core.debug(`config: ${JSON.stringify(config)}`);
-            core.debug(`filteredChanges: ${JSON.stringify(filteredChanges)}`);
-            core.debug(`deniedChanges: ${JSON.stringify(deniedChanges)}`);
+            const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, config);
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(snapshot_warnings);
@@ -566,7 +605,7 @@ function run() {
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
                 printLicensesBlock(invalidLicenseChanges);
             }
-            if (config.deny_list) {
+            if (config.deny_packages || config.deny_groups) {
                 summary.addDeniedToSummary(deniedChanges);
                 printDeniedDependencies(deniedChanges, config);
             }
@@ -687,7 +726,7 @@ function printScannedDependencies(changes) {
 }
 function printDeniedDependencies(changes, config) {
     core.group('Denied', () => __awaiter(this, void 0, void 0, function* () {
-        for (const denied of config.deny_list) {
+        for (const denied of config.deny_packages) {
             core.info(`Config: ${denied}`);
         }
         for (const change of changes) {
@@ -768,7 +807,8 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).optional(),
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
-    deny_list: z.array(z.string()).default([]),
+    deny_packages: z.array(z.string()).default([]),
+    deny_groups: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
@@ -47902,7 +47942,8 @@ function readInlineConfig() {
     const allow_licenses = parseList(getOptionalInput('allow-licenses'));
     const deny_licenses = parseList(getOptionalInput('deny-licenses'));
     const allow_dependencies_licenses = parseList(getOptionalInput('allow-dependencies-licenses'));
-    const deny_list = parseList(getOptionalInput('deny-list'));
+    const deny_packages = parseList(getOptionalInput('deny-packages'));
+    const deny_groups = parseList(getOptionalInput('deny-groups'));
     const allow_ghsas = parseList(getOptionalInput('allow-ghsas'));
     const license_check = getOptionalBoolean('license-check');
     const vulnerability_check = getOptionalBoolean('vulnerability-check');
@@ -47917,7 +47958,8 @@ function readInlineConfig() {
         fail_on_scopes,
         allow_licenses,
         deny_licenses,
-        deny_list,
+        deny_packages,
+        deny_groups,
         allow_dependencies_licenses,
         allow_ghsas,
         license_check,
@@ -47988,7 +48030,9 @@ function parseConfigFile(configData) {
             'deny-licenses',
             'fail-on-scopes',
             'allow-ghsas',
-            'allow-dependencies-licenses'
+            'allow-dependencies-licenses',
+            'deny-packages',
+            'deny-groups'
         ];
         for (const key of Object.keys(data)) {
             // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
@@ -48202,7 +48246,8 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).optional(),
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
-    deny_list: z.array(z.string()).default([]),
+    deny_packages: z.array(z.string()).default([]),
+    deny_groups: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),

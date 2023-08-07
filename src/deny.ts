@@ -3,7 +3,8 @@ import * as core from '@actions/core'
 
 export async function getDeniedChanges(
   changes: Change[],
-  deniedList: string[]
+  deniedPackages: string[],
+  deniedGroups: string[]
 ): Promise<Change[]> {
   const changesDenied: Change[] = []
 
@@ -12,10 +13,21 @@ export async function getDeniedChanges(
     change.name = change.name.toLowerCase()
     change.package_url = change.package_url.toLowerCase()
 
-    for (const denied of deniedList) {
-      if (change.name.includes(denied)) {
-        changesDenied.push(change)
-        failed = true
+    if (deniedPackages) {
+      for (const denied of deniedPackages) {
+        if (change.name === denied.toLowerCase()) {
+          changesDenied.push(change)
+          failed = true
+        }
+      }
+    }
+
+    if (deniedGroups) {
+      for (const denied of deniedGroups) {
+        if (change.name.startsWith(denied.toLowerCase())) {
+          changesDenied.push(change)
+          failed = true
+        }
       }
     }
   }
