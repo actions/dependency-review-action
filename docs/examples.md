@@ -256,5 +256,5 @@ jobs:
         uses: actions/dependency-review-action@v3
         with:
           deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core'
-          deny-groups: 'pkg:maven/com.bazaarvoice.maven'
+          deny-groups: 'pkg:maven/com.bazaarvoice.jolt'
 ```
