@@ -230,3 +230,31 @@ jobs:
           comment-summary-in-pr: true
           license-check: false
 ```
+
+## Exclude dependencies from their name or groups
+
+Using the `deny-packages` you can exclude dependencies by their full name. You can add multiple values separated by a comma.
+Using the `deny-groups` you can exclude dependencies by their group name. You can add multiple values separated by a comma.
+
+In this example, we are excluding `log4j-api` and `log4j-code` from `maven` and `requests` from `pip` dependencies from the license check
+
+```yaml
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v3
+        with:
+          deny-packages: 'org.apache.logging.log4j:log4j-api,org.apache.logging.log4j:log4j-core'
+          deny-groups: 'com.bazaarvoice.maven'
+```
