@@ -81,7 +81,7 @@ const mvnChange: Change = {
   ecosystem: 'maven',
   name: 'org.apache.logging.log4j:log4j-core',
   version: '2.15.0',
-  package_url: 'pkg:org.apache.logging.log4j:log4j-core@1.1.1',
+  package_url: 'pkg:maven/org.apache.logging.log4j/log4j-core@2.14.7',
   license: 'Apache-2.0',
   source_repository_url:
     'https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core',
@@ -132,7 +132,11 @@ beforeEach(async () => {
 
 test('it adds packages in the deny packages list', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const deniedChanges = await getDeniedChanges(changes, ['actionsomething'], [])
+  const deniedChanges = await getDeniedChanges(
+    changes,
+    ['pkg:gem/actionsomething'],
+    []
+  )
 
   expect(deniedChanges[0]).toBe(rubyChange)
   expect(deniedChanges.length).toEqual(1)
@@ -143,7 +147,7 @@ test('it adds packages in the deny group list', async () => {
   const deniedChanges = await getDeniedChanges(
     changes,
     [],
-    ['org.apache.logging.log4j']
+    ['pkg:maven/org.apache.logging.log4j']
   )
 
   expect(deniedChanges[0]).toBe(mvnChange)
@@ -154,8 +158,8 @@ test('it adds packages outside of the deny lists', async () => {
   const changes: Changes = [npmChange, pipChange]
   const deniedChanges = await getDeniedChanges(
     changes,
-    ['actionsomething'],
-    ['org.apache.logging.log4j']
+    ['pkg:gem/actionsomething'],
+    ['pkg:maven:org.apache.logging.log4j']
   )
 
   expect(deniedChanges.length).toEqual(0)
