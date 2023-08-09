@@ -3,7 +3,7 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Changes} from './schemas'
+import {Change, Severity, Changes, ConfigurationOptions} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -16,6 +16,7 @@ import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
+import {getDeniedChanges} from './deny'
 
 async function run(): Promise<void> {
   try {
@@ -63,9 +64,19 @@ async function run(): Promise<void> {
       }
     )
 
+    core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
+    core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)
+
+    const deniedChanges = await getDeniedChanges(
+      filteredChanges,
+      config.deny_packages,
+      config.deny_groups
+    )
+
     summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
+      deniedChanges,
       config
     )
 
@@ -80,6 +91,10 @@ async function run(): Promise<void> {
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
       printLicensesBlock(invalidLicenseChanges)
+    }
+    if (config.deny_packages || config.deny_groups) {
+      summary.addDeniedToSummary(deniedChanges)
+      printDeniedDependencies(deniedChanges, config)
     }
 
     summary.addScannedDependencies(changes)
@@ -235,6 +250,22 @@ function printScannedDependencies(changes: Changes): void {
       for (const change of manifestChanges) {
         core.info(`${renderScannedDependency(change)}`)
       }
+    }
+  })
+}
+
+function printDeniedDependencies(
+  changes: Change[],
+  config: ConfigurationOptions
+): void {
+  core.group('Denied', async () => {
+    for (const denied of config.deny_packages) {
+      core.info(`Config: ${denied}`)
+    }
+
+    for (const change of changes) {
+      core.info(`Change: ${change.name}@${change.version} is denied`)
+      core.info(`Change: ${change.package_url} is denied`)
     }
   })
 }

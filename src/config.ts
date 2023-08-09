@@ -33,6 +33,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const allow_dependencies_licenses = parseList(
     getOptionalInput('allow-dependencies-licenses')
   )
+  const deny_packages = parseList(getOptionalInput('deny-packages'))
+  const deny_groups = parseList(getOptionalInput('deny-groups'))
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
   const license_check = getOptionalBoolean('license-check')
   const vulnerability_check = getOptionalBoolean('vulnerability-check')
@@ -49,6 +51,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     fail_on_scopes,
     allow_licenses,
     deny_licenses,
+    deny_packages,
+    deny_groups,
     allow_dependencies_licenses,
     allow_ghsas,
     license_check,
@@ -137,7 +141,9 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
       'deny-licenses',
       'fail-on-scopes',
       'allow-ghsas',
-      'allow-dependencies-licenses'
+      'allow-dependencies-licenses',
+      'deny-packages',
+      'deny-groups'
     ]
 
     for (const key of Object.keys(data)) {
