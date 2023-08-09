@@ -230,3 +230,31 @@ jobs:
           comment-summary-in-pr: always
           license-check: false
 ```
+
+## Exclude dependencies from their name or groups
+
+Using the `deny-packages` option you can exclude dependencies by their PURL. You can add multiple values separated by a commas.
+Using the `deny-groups` option you can exclude dependencies by their group name/namespace. You can add multiple values separated by a comma.
+
+In this example, we are excluding `pkg:maven/org.apache.logging.log4j:log4j-api` and `pkg:maven/org.apache.logging.log4j/log4j-core` from `maven` and all packages in the group `pkg:maven/com.bazaarvoice.maven`
+
+```yaml
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v3
+        with:
+          deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core'
+          deny-groups: 'pkg:maven/com.bazaarvoice.jolt'
+```

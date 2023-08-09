@@ -24,6 +24,8 @@ const defaultConfig: ConfigurationOptions = {
   allow_ghsas: [],
   allow_licenses: [],
   deny_licenses: [],
+  deny_packages: [],
+  deny_groups: [],
   comment_summary_in_pr: 'never'
 }
 
@@ -70,6 +72,7 @@ test('prints headline as h1', () => {
   summary.addSummaryToSummary(
     emptyChanges,
     emptyInvalidLicenseChanges,
+    emptyChanges,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -81,6 +84,7 @@ test('only includes "No vulnerabilities or license issues found"-message if both
   summary.addSummaryToSummary(
     emptyChanges,
     emptyInvalidLicenseChanges,
+    emptyChanges,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -90,7 +94,12 @@ test('only includes "No vulnerabilities or license issues found"-message if both
 
 test('only includes "No vulnerabilities found"-message if "license_check" is set to false and nothing was found', () => {
   const config = {...defaultConfig, license_check: false}
-  summary.addSummaryToSummary(emptyChanges, emptyInvalidLicenseChanges, config)
+  summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    config
+  )
   const text = core.summary.stringify()
 
   expect(text).toContain('✅ No vulnerabilities found.')
@@ -98,7 +107,12 @@ test('only includes "No vulnerabilities found"-message if "license_check" is set
 
 test('only includes "No license issues found"-message if "vulnerability_check" is set to false and nothing was found', () => {
   const config = {...defaultConfig, vulnerability_check: false}
-  summary.addSummaryToSummary(emptyChanges, emptyInvalidLicenseChanges, config)
+  summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    config
+  )
   const text = core.summary.stringify()
 
   expect(text).toContain('✅ No license issues found.')
@@ -108,6 +122,7 @@ test('groups dependencies with empty manifest paths together', () => {
   summary.addSummaryToSummary(
     changesWithEmptyManifests,
     emptyInvalidLicenseChanges,
+    emptyChanges,
     defaultConfig
   )
   summary.addScannedDependencies(changesWithEmptyManifests)
@@ -124,6 +139,7 @@ test('does not include status section if nothing was found', () => {
   summary.addSummaryToSummary(
     emptyChanges,
     emptyInvalidLicenseChanges,
+    emptyChanges,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -142,7 +158,12 @@ test('includes count and status icons for all findings', () => {
     unlicensed: [createTestChange(), createTestChange(), createTestChange()]
   }
 
-  summary.addSummaryToSummary(vulnerabilities, licenseIssues, defaultConfig)
+  summary.addSummaryToSummary(
+    vulnerabilities,
+    licenseIssues,
+    emptyChanges,
+    defaultConfig
+  )
 
   const text = core.summary.stringify()
   expect(text).toContain('❌ 2 vulnerable package(s)')
@@ -159,6 +180,7 @@ test('uses checkmarks for license issues if only vulnerabilities were found', ()
   summary.addSummaryToSummary(
     vulnerabilities,
     emptyInvalidLicenseChanges,
+    emptyChanges,
     defaultConfig
   )
 
@@ -178,7 +200,12 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
     unlicensed: []
   }
 
-  summary.addSummaryToSummary(emptyChanges, licenseIssues, defaultConfig)
+  summary.addSummaryToSummary(
+    emptyChanges,
+    licenseIssues,
+    emptyChanges,
+    defaultConfig
+  )
 
   const text = core.summary.stringify()
   expect(text).toContain('✅ 0 vulnerable package(s)')
