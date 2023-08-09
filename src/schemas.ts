@@ -2,6 +2,11 @@ import * as z from 'zod'
 
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
 export const SCOPES = ['unknown', 'runtime', 'development'] as const
+export const COMMENT_SUMMARY_OPTIONS = [
+  'always',
+  'never',
+  'on-failure'
+] as const
 
 export const SeveritySchema = z.enum(SEVERITIES).default('low')
 
@@ -47,7 +52,17 @@ export const ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.enum(['always', 'never', 'on-failure']).default('never'),
+    comment_summary_in_pr: z
+      .union([z.boolean(), z.enum(COMMENT_SUMMARY_OPTIONS)])
+      .default('never')
+  })
+  .transform(config => {
+    if (config.comment_summary_in_pr === true) {
+      config.comment_summary_in_pr = 'always'
+    } else if (config.comment_summary_in_pr === false) {
+      config.comment_summary_in_pr = 'never'
+    }
+    return config
   })
   .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {
