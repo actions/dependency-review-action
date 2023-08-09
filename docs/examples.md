@@ -233,8 +233,8 @@ jobs:
 
 ## Exclude dependencies from their name or groups
 
-Using the `deny-packages` you can exclude dependencies by their full package name. You can add multiple values separated by a comma.
-Using the `deny-groups` you can exclude dependencies by their package group name. You can add multiple values separated by a comma.
+Using the `deny-packages` option you can exclude dependencies by their PURL. You can add multiple values separated by a commas.
+Using the `deny-groups` option you can exclude dependencies by their group name/namespace. You can add multiple values separated by a comma.
 
 In this example, we are excluding `pkg:maven/org.apache.logging.log4j:log4j-api` and `pkg:maven/org.apache.logging.log4j/log4j-core` from `maven` and all packages in the group `pkg:maven/com.bazaarvoice.maven`
 
