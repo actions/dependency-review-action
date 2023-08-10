@@ -2,11 +2,6 @@ import * as z from 'zod'
 
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
 export const SCOPES = ['unknown', 'runtime', 'development'] as const
-export const COMMENT_SUMMARY_OPTIONS = [
-  'always',
-  'never',
-  'on-failure'
-] as const
 
 export const SeveritySchema = z.enum(SEVERITIES).default('low')
 
@@ -55,7 +50,13 @@ export const ConfigurationOptionsSchema = z
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
     comment_summary_in_pr: z
-      .union([z.boolean(), z.enum(COMMENT_SUMMARY_OPTIONS)])
+      .union([
+        z.preprocess(
+          val => (val === 'true' ? true : val === 'false' ? false : val),
+          z.boolean()
+        ),
+        z.enum(['always', 'never', 'on-failure'])
+      ])
       .default('never')
   })
   .transform(config => {

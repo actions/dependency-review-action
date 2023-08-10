@@ -26,7 +26,7 @@ const defaultConfig: ConfigurationOptions = {
   deny_licenses: [],
   deny_packages: [],
   deny_groups: [],
-  comment_summary_in_pr: 'never'
+  comment_summary_in_pr: true
 }
 
 const changesWithEmptyManifests: Changes = [

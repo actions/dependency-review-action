@@ -773,15 +773,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.COMMENT_SUMMARY_OPTIONS = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
-exports.COMMENT_SUMMARY_OPTIONS = [
-    'always',
-    'never',
-    'on-failure'
-];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -824,7 +819,10 @@ exports.ConfigurationOptionsSchema = z
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
     comment_summary_in_pr: z
-        .union([z.boolean(), z.enum(exports.COMMENT_SUMMARY_OPTIONS)])
+        .union([
+        z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
+        z.enum(['always', 'never', 'on-failure'])
+    ])
         .default('never')
 })
     .transform(config => {
@@ -48228,15 +48226,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.COMMENT_SUMMARY_OPTIONS = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
-exports.COMMENT_SUMMARY_OPTIONS = [
-    'always',
-    'never',
-    'on-failure'
-];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -48279,7 +48272,10 @@ exports.ConfigurationOptionsSchema = z
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
     comment_summary_in_pr: z
-        .union([z.boolean(), z.enum(exports.COMMENT_SUMMARY_OPTIONS)])
+        .union([
+        z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
+        z.enum(['always', 'never', 'on-failure'])
+    ])
         .default('never')
 })
     .transform(config => {
