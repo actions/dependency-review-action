@@ -613,7 +613,9 @@ function run() {
             }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
-            if (config.comment_summary_in_pr) {
+            if (config.comment_summary_in_pr === 'always' ||
+                (config.comment_summary_in_pr === 'on-failure' &&
+                    process.exitCode === core.ExitCode.Failure)) {
                 yield (0, comment_pr_1.commentPr)(core.summary);
             }
         }
@@ -816,7 +818,21 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.boolean().default(false)
+    comment_summary_in_pr: z
+        .union([
+        z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
+        z.enum(['always', 'never', 'on-failure'])
+    ])
+        .default('never')
+})
+    .transform(config => {
+    if (config.comment_summary_in_pr === true) {
+        config.comment_summary_in_pr = 'always';
+    }
+    else if (config.comment_summary_in_pr === false) {
+        config.comment_summary_in_pr = 'never';
+    }
+    return config;
 })
     .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {
@@ -47951,7 +47967,7 @@ function readInlineConfig() {
     const vulnerability_check = getOptionalBoolean('vulnerability-check');
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
-    const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr');
+    const comment_summary_in_pr = getOptionalInput('comment-summary-in-pr');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
@@ -48255,7 +48271,21 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.boolean().default(false)
+    comment_summary_in_pr: z
+        .union([
+        z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
+        z.enum(['always', 'never', 'on-failure'])
+    ])
+        .default('never')
+})
+    .transform(config => {
+    if (config.comment_summary_in_pr === true) {
+        config.comment_summary_in_pr = 'always';
+    }
+    else if (config.comment_summary_in_pr === false) {
+        config.comment_summary_in_pr = 'never';
+    }
+    return config;
 })
     .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {

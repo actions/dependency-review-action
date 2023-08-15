@@ -171,3 +171,29 @@ describe('licenses that are not valid SPDX licenses', () => {
     )
   })
 })
+
+test('it parses the comment-summary-in-pr input', async () => {
+  setInput('comment-summary-in-pr', 'true')
+  let config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('always')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'false')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('never')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'always')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('always')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'never')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('never')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'on-failure')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('on-failure')
+})
