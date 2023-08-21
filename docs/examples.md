@@ -135,7 +135,7 @@ jobs:
         uses: actions/dependency-review-action@v3
         with:
           config-file: 'github/octorepo-private/dependency-review-config.yml@main'
-          config-file-token: ${{ secrets.GITHUB_TOKEN }} # or a personal access token
+          external-repo-token: ${{ secrets.GITHUB_TOKEN }} # or a personal access token
 ```
 
 ## Getting the results of the action in the PR as a comment
