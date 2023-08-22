@@ -83,7 +83,7 @@ jobs:
           config-file: './.github/dependency-review-config.yml'
 ```
 
-## Using a configuration file from a external repository
+## Using a configuration file from an external repository
 
 The following example will use a configuration file from an external public GitHub repository to configure the action.
 
@@ -110,7 +110,7 @@ jobs:
           config-file: 'github/octorepo/dependency-review-config.yml@main'
 ```
 
-## Using a configuration file from a external repository with a personal access token
+## Using a configuration file from an external repository with a personal access token
 
 The following example will use a configuration file from an external private GtiHub repository to configure the action.
 
@@ -135,7 +135,7 @@ jobs:
         uses: actions/dependency-review-action@v3
         with:
           config-file: 'github/octorepo-private/dependency-review-config.yml@main'
-          config-file-token: ${{ secrets.GITHUB_TOKEN }} # or a personal access token
+          external-repo-token: ${{ secrets.GITHUB_TOKEN }} # or a personal access token
 ```
 
 ## Getting the results of the action in the PR as a comment
