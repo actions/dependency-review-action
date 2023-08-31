@@ -30,7 +30,9 @@ const defaultConfig: ConfigurationOptions = {
     'pkg:pip/certifi',
     'pkg:pip/pycrypto@2.6.1'
   ],
-  comment_summary_in_pr: 'never'
+  comment_summary_in_pr: true,
+  retry_on_snapshot_warnings: true,
+  retry_on_snapshot_warnings_timeout: 120
 }
 
 const tmpDir = path.resolve(__dirname, '../tmp')

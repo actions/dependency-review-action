@@ -18,18 +18,60 @@ import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
 import {getDeniedChanges} from './deny'
 
+async function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function getComparison(
+  baseRef: string,
+  headRef: string,
+  retryOpts?: {
+    retryUntil: number
+    retryDelay: number
+  }
+): ReturnType<typeof dependencyGraph.compare> {
+  const comparison = await dependencyGraph.compare({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    baseRef,
+    headRef
+  })
+
+  if (comparison.snapshot_warnings.trim() !== '') {
+    core.info(comparison.snapshot_warnings)
+    if (retryOpts !== undefined) {
+      if (retryOpts.retryUntil < Date.now()) {
+        core.info(`Retry timeout exceeded. Proceeding...`)
+        return comparison
+      } else {
+        core.info(`Retrying in ${retryOpts.retryDelay} seconds...`)
+        await delay(retryOpts.retryDelay * 1000)
+        return getComparison(baseRef, headRef, retryOpts)
+      }
+    }
+  }
+
+  return comparison
+}
+
 async function run(): Promise<void> {
   try {
     const config = await readConfig()
 
     const refs = getRefs(config, github.context)
 
-    const comparison = await dependencyGraph.compare({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      baseRef: refs.base,
-      headRef: refs.head
-    })
+    const comparison = await getComparison(
+      refs.base,
+      refs.head,
+      config.retry_on_snapshot_warnings
+        ? {
+            retryUntil:
+              Date.now() + config.retry_on_snapshot_warnings_timeout * 1000,
+            retryDelay: 10
+          }
+        : undefined
+    )
+
     const changes = comparison.changes
     const snapshot_warnings = comparison.snapshot_warnings
 

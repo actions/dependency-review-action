@@ -41,6 +41,12 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
   const comment_summary_in_pr = getOptionalInput('comment-summary-in-pr')
+  const retry_on_snapshot_warnings = getOptionalBoolean(
+    'retry-on-snapshot-warnings'
+  )
+  const retry_on_snapshot_warnings_timeout = getOptionalNumber(
+    'retry-on-snapshot-warnings-timeout'
+  )
 
   validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
@@ -59,12 +65,20 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     vulnerability_check,
     base_ref,
     head_ref,
-    comment_summary_in_pr
+    comment_summary_in_pr,
+    retry_on_snapshot_warnings,
+    retry_on_snapshot_warnings_timeout
   }
 
   return Object.fromEntries(
     Object.entries(keys).filter(([_, value]) => value !== undefined)
   )
+}
+
+function getOptionalNumber(name: string): number | undefined {
+  const value = core.getInput(name)
+  const parsed = z.string().regex(/^\d+$/).transform(Number).safeParse(value)
+  return parsed.success ? parsed.data : undefined
 }
 
 function getOptionalBoolean(name: string): boolean | undefined {
