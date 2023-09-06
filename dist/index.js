@@ -848,7 +848,7 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    retry_on_snapshot_warnings: z.boolean().default(true),
+    retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     comment_summary_in_pr: z
         .union([
@@ -48304,7 +48304,7 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    retry_on_snapshot_warnings: z.boolean().default(true),
+    retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     comment_summary_in_pr: z
         .union([

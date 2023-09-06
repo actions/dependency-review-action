@@ -27,7 +27,7 @@ const defaultConfig: ConfigurationOptions = {
   deny_packages: [],
   deny_groups: [],
   comment_summary_in_pr: true,
-  retry_on_snapshot_warnings: true,
+  retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120
 }
 
