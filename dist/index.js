@@ -1095,7 +1095,7 @@ exports.addScannedDependencies = addScannedDependencies;
 function addSnapshotWarnings(warnings) {
     core.summary.addHeading('Snapshot Warnings', 2);
     core.summary.addQuote(`${icons.warning}: ${warnings}`);
-    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.');
+    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.');
 }
 exports.addSnapshotWarnings = addSnapshotWarnings;
 function countLicenseIssues(invalidLicenseChanges) {
