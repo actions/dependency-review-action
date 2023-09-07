@@ -58,7 +58,7 @@ inputs:
     required: false
     default: true
   retry-on-snapshot-warnings-timeout:
-    description: How many seconds before bailing on retries
+    description: Number of seconds to wait before stopping snapshot retries.
     required: false
     default: 120
 runs:
