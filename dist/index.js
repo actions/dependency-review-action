@@ -266,7 +266,7 @@ function compare({ owner, repo, baseRef, headRef }) {
         let snapshot_warnings = '';
         const changes = yield octo.paginate({
             method: 'GET',
-            url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}?includes_dependency_snapshots=true',
+            url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}',
             owner,
             repo,
             basehead: `${baseRef}...${headRef}`
