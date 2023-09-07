@@ -53,6 +53,14 @@ inputs:
   deny-groups:
     description: A comma-separated list of package URLs for group(s)/namespace(s) to deny (e.g. "pkg:npm/express, pkg:pip/pycrypto")
     required: false
+  retry-on-snapshot-warnings:
+    description: Whether to retry on snapshot warnings
+    required: false
+    default: false
+  retry-on-snapshot-warnings-timeout:
+    description: Number of seconds to wait before stopping snapshot retries.
+    required: false
+    default: 120
 runs:
   using: 'node16'
   main: 'dist/index.js'

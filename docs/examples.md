@@ -258,3 +258,39 @@ jobs:
           deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core'
           deny-groups: 'pkg:maven/com.bazaarvoice.jolt'
 ```
+
+## Waiting for dependency submission jobs to complete
+
+When possible, this action will [include dependencies submitted through the dependency submission API][DSAPI]. In this case,
+it's important for the action not to complete until all of the relevant dependencies have been submitted for both the base
+and head commits.
+
+When this action runs before one or more of the dependency submission actions, there will be an unequal number of dependency
+snapshots between the base and head commits. For example, there may be one snapshot available for the tip of `main` and none
+for the PR branch. In that case, the API response will contain a "snapshot warning" explaining the discrepancy.
+
+In this example, when the action encounters one of these warnings it will retry every 10 seconds after that for 60 seconds
+or until there is no warning in the response.
+
+```yaml
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v3
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v3
+        with:
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 60
+```
+
+[DSAPI]: https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together

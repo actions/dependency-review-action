@@ -564,17 +564,47 @@ const git_refs_1 = __nccwpck_require__(1086);
 const utils_1 = __nccwpck_require__(918);
 const comment_pr_1 = __nccwpck_require__(5842);
 const deny_1 = __nccwpck_require__(2134);
+function delay(ms) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    });
+}
+function getComparison(baseRef, headRef, retryOpts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const comparison = yield dependencyGraph.compare({
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            baseRef,
+            headRef
+        });
+        if (comparison.snapshot_warnings.trim() !== '') {
+            core.info(comparison.snapshot_warnings);
+            if (retryOpts !== undefined) {
+                if (retryOpts.retryUntil < Date.now()) {
+                    core.info(`Retry timeout exceeded. Proceeding...`);
+                    return comparison;
+                }
+                else {
+                    core.info(`Retrying in ${retryOpts.retryDelay} seconds...`);
+                    yield delay(retryOpts.retryDelay * 1000);
+                    return getComparison(baseRef, headRef, retryOpts);
+                }
+            }
+        }
+        return comparison;
+    });
+}
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const config = yield (0, config_1.readConfig)();
             const refs = (0, git_refs_1.getRefs)(config, github.context);
-            const comparison = yield dependencyGraph.compare({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-                baseRef: refs.base,
-                headRef: refs.head
-            });
+            const comparison = yield getComparison(refs.base, refs.head, config.retry_on_snapshot_warnings
+                ? {
+                    retryUntil: Date.now() + config.retry_on_snapshot_warnings_timeout * 1000,
+                    retryDelay: 10
+                }
+                : undefined);
             const changes = comparison.changes;
             const snapshot_warnings = comparison.snapshot_warnings;
             if (!changes) {
@@ -818,6 +848,8 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
+    retry_on_snapshot_warnings: z.boolean().default(false),
+    retry_on_snapshot_warnings_timeout: z.number().default(120),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -1061,17 +1093,9 @@ function addScannedDependencies(changes) {
 }
 exports.addScannedDependencies = addScannedDependencies;
 function addSnapshotWarnings(warnings) {
-    // For now, we want to ignore warnings that just complain
-    // about missing snapshots on the head SHA. This is a product
-    // decision to avoid presenting warnings to users who simply
-    // don't use snapshots.
-    const ignore_regex = new RegExp(/No.*snapshot.*found.*head.*/, 'i');
-    if (ignore_regex.test(warnings)) {
-        return;
-    }
     core.summary.addHeading('Snapshot Warnings', 2);
     core.summary.addQuote(`${icons.warning}: ${warnings}`);
-    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.');
+    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.');
 }
 exports.addSnapshotWarnings = addSnapshotWarnings;
 function countLicenseIssues(invalidLicenseChanges) {
@@ -47968,6 +47992,8 @@ function readInlineConfig() {
     const base_ref = getOptionalInput('base-ref');
     const head_ref = getOptionalInput('head-ref');
     const comment_summary_in_pr = getOptionalInput('comment-summary-in-pr');
+    const retry_on_snapshot_warnings = getOptionalBoolean('retry-on-snapshot-warnings');
+    const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings-timeout');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
@@ -47984,9 +48010,16 @@ function readInlineConfig() {
         vulnerability_check,
         base_ref,
         head_ref,
-        comment_summary_in_pr
+        comment_summary_in_pr,
+        retry_on_snapshot_warnings,
+        retry_on_snapshot_warnings_timeout
     };
     return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
+}
+function getOptionalNumber(name) {
+    const value = core.getInput(name);
+    const parsed = z.string().regex(/^\d+$/).transform(Number).safeParse(value);
+    return parsed.success ? parsed.data : undefined;
 }
 function getOptionalBoolean(name) {
     const value = core.getInput(name);
@@ -48271,6 +48304,8 @@ exports.ConfigurationOptionsSchema = z
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
+    retry_on_snapshot_warnings: z.boolean().default(false),
+    retry_on_snapshot_warnings_timeout: z.number().default(120),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),

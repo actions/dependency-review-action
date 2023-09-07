@@ -232,19 +232,10 @@ export function addScannedDependencies(changes: Changes): void {
 }
 
 export function addSnapshotWarnings(warnings: string): void {
-  // For now, we want to ignore warnings that just complain
-  // about missing snapshots on the head SHA. This is a product
-  // decision to avoid presenting warnings to users who simply
-  // don't use snapshots.
-  const ignore_regex = new RegExp(/No.*snapshot.*found.*head.*/, 'i')
-  if (ignore_regex.test(warnings)) {
-    return
-  }
-
   core.summary.addHeading('Snapshot Warnings', 2)
   core.summary.addQuote(`${icons.warning}: ${warnings}`)
   core.summary.addRaw(
-    'Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.'
+    'Re-running this action after a short time may resolve the issue. See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.'
   )
 }
 
