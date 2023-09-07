@@ -56,7 +56,7 @@ inputs:
   retry-on-snapshot-warnings:
     description: Whether to retry on snapshot warnings
     required: false
-    default: true
+    default: false
   retry-on-snapshot-warnings-timeout:
     description: Number of seconds to wait before stopping snapshot retries.
     required: false
