@@ -231,12 +231,34 @@ export function addScannedDependencies(changes: Changes): void {
   }
 }
 
-export function addSnapshotWarnings(warnings: string): void {
+function snapshotWarningRecommendation(
+  config: ConfigurationOptions,
+  warnings: string
+): string {
+  const no_pr_snaps = warnings.includes(
+    'No snapshots were found for the head SHA'
+  )
+  const retries_disabled = !config.retry_on_snapshot_warnings
+  if (no_pr_snaps && retries_disabled) {
+    return 'Ensure that dependencies are being submitted on PR branches and consider enabling retry-on-snapshot-warnings.'
+  } else if (no_pr_snaps) {
+    return 'Ensure that dependencies are being submitted on PR branches. Re-running this action after a short time may resolve the issue.'
+  } else if (retries_disabled) {
+    return 'Consider enabling retry-on-snapshot-warnings.'
+  }
+  return 'Re-running this action after a short time may resolve the issue.'
+}
+
+export function addSnapshotWarnings(
+  config: ConfigurationOptions,
+  warnings: string
+): void {
   core.summary.addHeading('Snapshot Warnings', 2)
   core.summary.addQuote(`${icons.warning}: ${warnings}`)
-  core.summary.addRaw(
-    'Re-running this action after a short time may resolve the issue. See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.'
-  )
+  const recommendation = snapshotWarningRecommendation(config, warnings)
+  const docsLink =
+    'See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.'
+  core.summary.addRaw(`${recommendation} ${docsLink}}`)
 }
 
 function countLicenseIssues(

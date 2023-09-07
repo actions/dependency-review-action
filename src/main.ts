@@ -123,7 +123,7 @@ async function run(): Promise<void> {
     )
 
     if (snapshot_warnings) {
-      summary.addSnapshotWarnings(snapshot_warnings)
+      summary.addSnapshotWarnings(config, snapshot_warnings)
     }
 
     if (config.vulnerability_check) {

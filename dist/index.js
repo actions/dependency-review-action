@@ -627,7 +627,7 @@ function run() {
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, config);
             if (snapshot_warnings) {
-                summary.addSnapshotWarnings(snapshot_warnings);
+                summary.addSnapshotWarnings(config, snapshot_warnings);
             }
             if (config.vulnerability_check) {
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
@@ -1092,10 +1092,26 @@ function addScannedDependencies(changes) {
     }
 }
 exports.addScannedDependencies = addScannedDependencies;
-function addSnapshotWarnings(warnings) {
+function snapshotWarningRecommendation(config, warnings) {
+    const no_pr_snaps = warnings.includes('No snapshots were found for the head SHA');
+    const retries_disabled = !config.retry_on_snapshot_warnings;
+    if (no_pr_snaps && retries_disabled) {
+        return 'Ensure that dependencies are being submitted on PR branches and consider enabling retry-on-snapshot-warnings.';
+    }
+    else if (no_pr_snaps) {
+        return 'Ensure that dependencies are being submitted on PR branches. Re-running this action after a short time may resolve the issue.';
+    }
+    else if (retries_disabled) {
+        return 'Consider enabling retry-on-snapshot-warnings.';
+    }
+    return 'Re-running this action after a short time may resolve the issue.';
+}
+function addSnapshotWarnings(config, warnings) {
     core.summary.addHeading('Snapshot Warnings', 2);
     core.summary.addQuote(`${icons.warning}: ${warnings}`);
-    core.summary.addRaw('Re-running this action after a short time may resolve the issue. See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.');
+    const recommendation = snapshotWarningRecommendation(config, warnings);
+    const docsLink = 'See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.';
+    core.summary.addRaw(`${recommendation} ${docsLink}}`);
 }
 exports.addSnapshotWarnings = addSnapshotWarnings;
 function countLicenseIssues(invalidLicenseChanges) {
