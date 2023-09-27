@@ -128,7 +128,7 @@ Start by specifying that you will be using an external configuration file:
 
 ```yaml
 - name: Dependency Review
-  uses: actions/dependency-review-action@v2
+  uses: actions/dependency-review-action@v3
   with:
     config-file: './.github/dependency-review-config.yml'
 ```
