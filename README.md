@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v3
 ```
@@ -57,7 +57,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v3
 ```
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Dependency Review
         uses: actions/dependency-review-action@v3
         with:
@@ -128,7 +128,7 @@ Start by specifying that you will be using an external configuration file:
 
 ```yaml
 - name: Dependency Review
-  uses: actions/dependency-review-action@v2
+  uses: actions/dependency-review-action@v3
   with:
     config-file: './.github/dependency-review-config.yml'
 ```
