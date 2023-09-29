@@ -25,6 +25,9 @@ on: [pull_request]
 
 permissions:
   contents: read
+  # If using a dependency submission action such as advanced-security/maven-dependency-submission-action
+  # this permission must be set to:
+  # contents: write
 
 jobs:
   dependency-review:
@@ -98,6 +101,9 @@ name: 'Dependency Review'
 on: [pull_request]
 permissions:
   contents: read
+  # If using a dependency submission action such as advanced-security/maven-dependency-submission-action
+  # this permission must be set to:
+  # contents: write
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
