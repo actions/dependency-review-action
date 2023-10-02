@@ -45,7 +45,7 @@
     "@types/spdx-satisfies": "^0.1.0",
     "@typescript-eslint/eslint-plugin": "^6.7.2",
     "@typescript-eslint/parser": "^6.6.0",
-    "@vercel/ncc": "^0.36.1",
+    "@vercel/ncc": "^0.38.0",
     "esbuild-register": "^3.5.0",
     "eslint": "^8.48.0",
     "eslint-plugin-github": "^4.8.0",
