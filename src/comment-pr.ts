@@ -1,10 +1,11 @@
 import * as github from '@actions/github'
 import * as core from '@actions/core'
 import * as githubUtils from '@actions/github/lib/utils'
-import * as retry from '@octokit/plugin-retry'
+import {retry} from '@octokit/plugin-retry'
 import {RequestError} from '@octokit/request-error'
+import {Octokit} from '@octokit/rest'
 
-const retryingOctokit = githubUtils.GitHub.plugin(retry.retry)
+const retryingOctokit = Octokit.plugin(retry)
 const octo = new retryingOctokit(
   githubUtils.getOctokitOptions(core.getInput('repo-token', {required: true}))
 )
