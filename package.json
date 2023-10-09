@@ -31,7 +31,7 @@
     "@octokit/request-error": "^5.0.1",
     "ansi-styles": "^6.2.1",
     "got": "^13.0.0",
-    "octokit": "^2.1.0",
+    "octokit": "^3.1.1",
     "packageurl-js": "^1.0.2",
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^5.0.1",
