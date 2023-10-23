@@ -110,18 +110,13 @@ function findCommentByMarker(commentBodyIncludes) {
             issue_number: github.context.payload.pull_request.number
         });
         try {
-            for (var _d = true, commentsIterator_1 = __asyncValues(commentsIterator), commentsIterator_1_1; commentsIterator_1_1 = yield commentsIterator_1.next(), _a = commentsIterator_1_1.done, !_a;) {
+            for (var _d = true, commentsIterator_1 = __asyncValues(commentsIterator), commentsIterator_1_1; commentsIterator_1_1 = yield commentsIterator_1.next(), _a = commentsIterator_1_1.done, !_a; _d = true) {
                 _c = commentsIterator_1_1.value;
                 _d = false;
-                try {
-                    const { data: comments } = _c;
-                    const existingComment = comments.find(comment => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.includes(commentBodyIncludes); });
-                    if (existingComment)
-                        return existingComment.id;
-                }
-                finally {
-                    _d = true;
-                }
+                const { data: comments } = _c;
+                const existingComment = comments.find(comment => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.includes(commentBodyIncludes); });
+                if (existingComment)
+                    return existingComment.id;
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
