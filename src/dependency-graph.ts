@@ -1,16 +1,13 @@
 import * as core from '@actions/core'
 import * as githubUtils from '@actions/github/lib/utils'
-import {Octokit} from '@octokit/core'
-import {retry} from '@octokit/plugin-retry'
-import {paginateRest} from '@octokit/plugin-paginate-rest'
-
+import * as retry from '@octokit/plugin-retry'
 import {
   ChangesSchema,
   ComparisonResponse,
   ComparisonResponseSchema
 } from './schemas'
 
-const retryingOctokit = Octokit.plugin(retry, paginateRest)
+const retryingOctokit = githubUtils.GitHub.plugin(retry.retry)
 const SnapshotWarningsHeader = 'x-github-dependency-graph-snapshot-warnings'
 const octo = new retryingOctokit(
   githubUtils.getOctokitOptions(core.getInput('repo-token', {required: true}))
