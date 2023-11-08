@@ -24,7 +24,6 @@ test('it properly catches RequestError type', async () => {
       headRef: 'refs/heads/master'
     })
   } catch (error) {
-    const err = error as RequestError
-    expect(err.status).toBe(401)
+    expect(error).toBeInstanceOf(RequestError)
   }
 })

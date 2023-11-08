@@ -62,5 +62,5 @@ inputs:
     required: false
     default: 120
 runs:
-  using: 'node20'
+  using: 'node16'
   main: 'dist/index.js'
