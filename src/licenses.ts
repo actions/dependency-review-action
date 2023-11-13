@@ -1,7 +1,7 @@
 import spdxSatisfies from 'spdx-satisfies'
-import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
-import {PackageURL} from 'packageurl-js'
+import { Change, Changes } from './schemas'
+import { isSPDXValid, octokitClient } from './utils'
+import { PackageURL } from 'packageurl-js'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -29,10 +29,10 @@ export async function getInvalidLicenseChanges(
     licenseExclusions?: string[]
   }
 ): Promise<InvalidLicenseChanges> {
-  const {allow, deny} = licenses
+  const { allow, deny } = licenses
   const licenseExclusions = licenses.licenseExclusions?.map(
     (pkgUrl: string) => {
-      return PackageURL.fromString(pkgUrl)
+      return PackageURL.fromString(encodeURI(pkgUrl))
     }
   )
 
@@ -45,7 +45,9 @@ export async function getInvalidLicenseChanges(
       return true
     }
 
-    const changeAsPackageURL = PackageURL.fromString(change.package_url)
+    const changeAsPackageURL = PackageURL.fromString(
+      encodeURI(change.package_url)
+    )
 
     // We want to find if the licenseExclussion list contains the PackageURL of the Change
     // If it does, we want to filter it out and therefore return false
@@ -125,7 +127,7 @@ const fetchGHLicense = async (
   }
 }
 
-const parseGitHubURL = (url: string): {owner: string; repo: string} | null => {
+const parseGitHubURL = (url: string): { owner: string; repo: string } | null => {
   try {
     const parsed = new URL(url)
     if (parsed.host !== 'github.com') {
@@ -135,7 +137,7 @@ const parseGitHubURL = (url: string): {owner: string; repo: string} | null => {
     if (components.length < 3) {
       return null
     }
-    return {owner: components[1], repo: components[2]}
+    return { owner: components[1], repo: components[2] }
   } catch (_) {
     return null
   }

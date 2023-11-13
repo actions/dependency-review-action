@@ -351,7 +351,7 @@ function getInvalidLicenseChanges(changes, licenses) {
     return __awaiter(this, void 0, void 0, function* () {
         const { allow, deny } = licenses;
         const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
-            return packageurl_js_1.PackageURL.fromString(pkgUrl);
+            return packageurl_js_1.PackageURL.fromString(encodeURI(pkgUrl));
         });
         const groupedChanges = yield groupChanges(changes);
         // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
@@ -360,7 +360,7 @@ function getInvalidLicenseChanges(changes, licenses) {
             if (change.package_url.length === 0) {
                 return true;
             }
-            const changeAsPackageURL = packageurl_js_1.PackageURL.fromString(change.package_url);
+            const changeAsPackageURL = packageurl_js_1.PackageURL.fromString(encodeURI(change.package_url));
             // We want to find if the licenseExclussion list contains the PackageURL of the Change
             // If it does, we want to filter it out and therefore return false
             // If it doesn't, we want to keep it and therefore return true
