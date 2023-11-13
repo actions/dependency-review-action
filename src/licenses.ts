@@ -32,7 +32,7 @@ export async function getInvalidLicenseChanges(
   const {allow, deny} = licenses
   const licenseExclusions = licenses.licenseExclusions?.map(
     (pkgUrl: string) => {
-      return PackageURL.fromString(pkgUrl)
+      return PackageURL.fromString(encodeURI(pkgUrl))
     }
   )
 
@@ -45,7 +45,9 @@ export async function getInvalidLicenseChanges(
       return true
     }
 
-    const changeAsPackageURL = PackageURL.fromString(change.package_url)
+    const changeAsPackageURL = PackageURL.fromString(
+      encodeURI(change.package_url)
+    )
 
     // We want to find if the licenseExclussion list contains the PackageURL of the Change
     // If it does, we want to filter it out and therefore return false
