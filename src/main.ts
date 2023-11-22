@@ -105,12 +105,12 @@ async function run(): Promise<void> {
       }
     )
 
-    core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
+    core.debug(`Filtered Changes: ${JSON.stringify(vulnerableChanges)}`)
     core.debug('--------------------------')
     core.debug('--------------------------')
     core.debug('--------------------------')
     core.debug('--------------------------')
-    core.debug(`Vulnerable Changes----------------------------------: ${vulnerableChanges}`)
+    core.debug(`Vulnerable Changes----------------------------------: ${filteredChanges}`)
     core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)
     
 
