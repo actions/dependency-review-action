@@ -121,3 +121,12 @@ test('it properly filters changes with allowed vulnerabilities', async () => {
   result = filterAllowedAdvisories(['second-random_string'], changes)
   expect(result).toEqual([npmChange, rubyChange, noVulnNpmChange])
 })
+
+test('it properly filters by severity and also allowed vulnerabilities', async () => {
+  const changes - [rubyChange]
+
+  let tempResult = filterChangesBySeverity('high', changes)
+
+  let result = filterAllowedAdvisories(['second-random_string'], tempResult)
+  expect(result).toEqual([])
+}
