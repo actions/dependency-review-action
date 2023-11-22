@@ -612,7 +612,7 @@ function run() {
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
             const vulnerableChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, filteredChanges);
-            const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
+            const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(scopedChanges, {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses,
                 licenseExclusions: config.allow_dependencies_licenses
@@ -620,7 +620,7 @@ function run() {
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             core.debug(`Vulnerable Changes: ${JSON.stringify(vulnerableChanges)}`);
-            const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
+            const deniedChanges = yield (0, deny_1.getDeniedChanges)(scopedChanges, config.deny_packages, config.deny_groups);
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, config);
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(config, snapshot_warnings);
