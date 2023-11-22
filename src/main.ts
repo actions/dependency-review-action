@@ -107,7 +107,11 @@ async function run(): Promise<void> {
 
     core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
     core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)
-    core.debug(`Vulnerable Changes: ${vulnerableChanges}`)
+    core.debug('--------------------------')
+    core.debug('--------------------------')
+    core.debug('--------------------------')
+    core.debug('--------------------------')
+    core.debug(`Vulnerable Changes----------------------------------: ${vulnerableChanges}`)
 
     const deniedChanges = await getDeniedChanges(
       filteredChanges,
