@@ -108,7 +108,6 @@ async function run(): Promise<void> {
     core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
     core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)
     
-
     const deniedChanges = await getDeniedChanges(
       filteredChanges,
       config.deny_packages,
