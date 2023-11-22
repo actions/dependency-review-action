@@ -126,12 +126,12 @@ test('it properly filters by severity and also allowed vulnerabilities', async (
   const changes = [rubyChange]
 
   // filter by severity first then by allowed advisory
-  let tempResult = filterChangesBySeverity('high', changes)
+  let tempResult = filterChangesBySeverity('moderate', changes)
   let result = filterAllowedAdvisories(['second-random_string'], tempResult)
   expect(result).toEqual([])
 
   //filter by allowed advisory first then by severity (yields different output)
   tempResult = filterAllowedAdvisories(['second-random_string'], changes)
-  result = filterChangesBySeverity('high', tempResult)
+  result = filterChangesBySeverity('moderate', tempResult)
   expect(result).not.toEqual([])
 })
