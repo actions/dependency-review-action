@@ -608,10 +608,10 @@ function run() {
             }
             const minSeverity = config.fail_on_severity;
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
-            const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
-            const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
+            const filteredChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, scopedChanges).filter(change => change.change_type === 'added' &&
                 change.vulnerabilities !== undefined &&
                 change.vulnerabilities.length > 0);
+            const vulnerableChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, filteredChanges);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses,
