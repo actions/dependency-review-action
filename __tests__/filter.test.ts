@@ -123,7 +123,7 @@ test('it properly filters changes with allowed vulnerabilities', async () => {
 })
 
 test('it properly filters by severity and also allowed vulnerabilities', async () => {
-  const changes - [rubyChange]
+  const changes = [rubyChange]
 
   let tempResult = filterChangesBySeverity('high', changes)
 
