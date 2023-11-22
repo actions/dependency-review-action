@@ -97,7 +97,7 @@ async function run(): Promise<void> {
       filteredChanges
     )
     const invalidLicenseChanges = await getInvalidLicenseChanges(
-      filteredChanges,
+      scopedChanges,
       {
         allow: config.allow_licenses,
         deny: config.deny_licenses,
@@ -110,7 +110,7 @@ async function run(): Promise<void> {
     core.debug(`Vulnerable Changes: ${JSON.stringify(vulnerableChanges)}`)
 
     const deniedChanges = await getDeniedChanges(
-      filteredChanges,
+      scopedChanges,
       config.deny_packages,
       config.deny_groups
     )
