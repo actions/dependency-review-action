@@ -129,4 +129,4 @@ test('it properly filters by severity and also allowed vulnerabilities', async (
 
   let result = filterAllowedAdvisories(['second-random_string'], tempResult)
   expect(result).toEqual([])
-}
+})
