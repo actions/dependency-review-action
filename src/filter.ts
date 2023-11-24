@@ -1,5 +1,13 @@
 import {Changes, Severity, SEVERITIES, Scope} from './schemas'
 
+/**
+ * Filters changes by a severity level. Only vulnerable
+ * dependencies will be returned.
+ *
+ * @param severity - The severity level to filter by.
+ * @param changes - The array of changes to filter.
+ * @returns The filtered array of changes that match the specified severity level and have vulnerabilities.
+ */
 export function filterChangesBySeverity(
   severity: Severity,
   changes: Changes
@@ -31,7 +39,14 @@ export function filterChangesBySeverity(
   filteredChanges = filteredChanges.filter(
     change => change.vulnerabilities.length > 0
   )
-  return filteredChanges
+
+  // only report vulnerability additions
+  return filteredChanges.filter(
+    change =>
+      change.change_type === 'added' &&
+      change.vulnerabilities !== undefined &&
+      change.vulnerabilities.length > 0
+  )
 }
 
 export function filterChangesByScopes(
