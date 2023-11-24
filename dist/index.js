@@ -606,12 +606,10 @@ function run() {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;
             }
-            const minSeverity = config.fail_on_severity;
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
-            const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges).filter(change => change.change_type === 'added' &&
-                change.vulnerabilities !== undefined &&
-                change.vulnerabilities.length > 0);
+            const minSeverity = config.fail_on_severity;
+            const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
                 deny: config.deny_licenses,
@@ -55933,6 +55931,14 @@ function validatePURL(allow_dependencies_licenses) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.filterAllowedAdvisories = exports.filterChangesByScopes = exports.filterChangesBySeverity = void 0;
 const schemas_1 = __nccwpck_require__(1129);
+/**
+ * Filters changes by a severity level. Only vulnerable
+ * dependencies will be returned.
+ *
+ * @param severity - The severity level to filter by.
+ * @param changes - The array of changes to filter.
+ * @returns The filtered array of changes that match the specified severity level and have vulnerabilities.
+ */
 function filterChangesBySeverity(severity, changes) {
     const severityIdx = schemas_1.SEVERITIES.indexOf(severity);
     let filteredChanges = [];
@@ -55952,7 +55958,10 @@ function filterChangesBySeverity(severity, changes) {
     }
     // don't want to deal with changes with no vulnerabilities
     filteredChanges = filteredChanges.filter(change => change.vulnerabilities.length > 0);
-    return filteredChanges;
+    // only report vulnerability additions
+    return filteredChanges.filter(change => change.change_type === 'added' &&
+        change.vulnerabilities !== undefined &&
+        change.vulnerabilities.length > 0);
 }
 exports.filterChangesBySeverity = filterChangesBySeverity;
 function filterChangesByScopes(scopes, changes) {
@@ -55979,22 +55988,15 @@ function filterAllowedAdvisories(ghsas, changes) {
     if (ghsas === undefined) {
         return changes;
     }
-    const filteredChanges = changes.filter(change => {
+    const filteredChanges = changes.map(change => {
         const noAdvisories = change.vulnerabilities === undefined ||
             change.vulnerabilities.length === 0;
         if (noAdvisories) {
-            return true;
+            return change;
         }
-        let allAllowedAdvisories = true;
-        // if there's at least one advisory that is not allowlisted, we will keep the change
-        for (const vulnerability of change.vulnerabilities) {
-            if (!ghsas.includes(vulnerability.advisory_ghsa_id)) {
-                allAllowedAdvisories = false;
-            }
-            if (!allAllowedAdvisories) {
-                return true;
-            }
-        }
+        const newChange = Object.assign({}, change);
+        newChange.vulnerabilities = change.vulnerabilities.filter(vuln => !ghsas.includes(vuln.advisory_ghsa_id));
+        return newChange;
     });
     return filteredChanges;
 }
