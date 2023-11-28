@@ -203,7 +203,7 @@ test('it properly filters multiple GHSAs', async () => {
   expect(newVulns.length).toEqual(oldVulns.length - 3)
 })
 
-test('it properly filters multiple GHSAs', async () => {
+test('it filters out GHSA dependencies', async () => {
   const lodash = filterAllowedAdvisories(
     ['GHSA-jf85-cpcp-j695'],
     [lodashChange]
