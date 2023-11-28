@@ -80,21 +80,17 @@ async function run(): Promise<void> {
       return
     }
 
-    const minSeverity = config.fail_on_severity
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
+
     const filteredChanges = filterAllowedAdvisories(
       config.allow_ghsas,
       scopedChanges
     )
 
+    const minSeverity = config.fail_on_severity
     const vulnerableChanges = filterChangesBySeverity(
       minSeverity,
       filteredChanges
-    ).filter(
-      change =>
-        change.change_type === 'added' &&
-        change.vulnerabilities !== undefined &&
-        change.vulnerabilities.length > 0
     )
 
     const invalidLicenseChanges = await getInvalidLicenseChanges(
