@@ -26,9 +26,9 @@ const defaultConfig: ConfigurationOptions = {
   deny_groups: [],
   allow_dependencies_licenses: [
     'pkg:npm/express@4.17.1',
-    'pkg:pip/requests',
-    'pkg:pip/certifi',
-    'pkg:pip/pycrypto@2.6.1'
+    'pkg:pypi/requests',
+    'pkg:pypi/certifi',
+    'pkg:pypi/pycrypto@2.6.1'
   ],
   comment_summary_in_pr: true,
   retry_on_snapshot_warnings: false,
