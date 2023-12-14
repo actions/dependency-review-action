@@ -55,7 +55,7 @@ const pipChange: Change = {
   ecosystem: 'pip',
   name: 'package-1',
   version: '1.1.1',
-  package_url: 'pkg:pip/package-1@1.1.1',
+  package_url: 'pkg:pypi/package-1@1.1.1',
   license: 'MIT',
   source_repository_url: 'github.com/some-repo',
   scope: 'runtime',
@@ -183,7 +183,7 @@ test('it does not filter out changes that are on the exclusions list', async () 
   const changes: Changes = [pipChange, npmChange, rubyChange]
   const licensesConfig = {
     allow: ['BSD'],
-    licenseExclusions: ['pkg:pip/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
+    licenseExclusions: ['pkg:pypi/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
   }
   const invalidLicenses = await getInvalidLicenseChanges(
     changes,
@@ -199,7 +199,7 @@ test('it does not fail when the packages dont have a valid PURL', async () => {
   const changes: Changes = [emptyPurlChange, npmChange, rubyChange]
   const licensesConfig = {
     allow: ['BSD'],
-    licenseExclusions: ['pkg:pip/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
+    licenseExclusions: ['pkg:pypi/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
   }
 
   const invalidLicenses = await getInvalidLicenseChanges(
@@ -213,7 +213,10 @@ test('it does filters out changes if they are not on the exclusions list', async
   const changes: Changes = [pipChange, npmChange, rubyChange]
   const licensesConfig = {
     allow: ['BSD'],
-    licenseExclusions: ['pkg:pip/notmypackage-1@1.1.1', 'pkg:npm/alsonot@1.0.2']
+    licenseExclusions: [
+      'pkg:pypi/notmypackage-1@1.1.1',
+      'pkg:npm/alsonot@1.0.2'
+    ]
   }
   const invalidLicenses = await getInvalidLicenseChanges(
     changes,

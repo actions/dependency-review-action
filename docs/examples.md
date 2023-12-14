@@ -190,7 +190,7 @@ jobs:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
           comment-summary-in-pr: always
-          allow-dependencies-licenses: 'pkg:npm/loadash, pkg:pip/requests'
+          allow-dependencies-licenses: 'pkg:npm/loadash, pkg:pypi/requests'
 ```
 
 If we were to use configuration file, the configuration would look like this:
@@ -202,7 +202,7 @@ allow-licenses:
   - 'BSD-2-Clause'
 allow-dependencies-licenses:
   - 'pkg:npm/loadash'
-  - 'pkg:pip/requests'
+  - 'pkg:pypi/requests'
 ```
 
 ## Only check for vulnerabilities

@@ -55,7 +55,7 @@ const pipChange: Change = {
   ecosystem: 'pip',
   name: 'package-1',
   version: '1.1.1',
-  package_url: 'pkg:pip/package-1@1.1.1',
+  package_url: 'pkg:pypi/package-1@1.1.1',
   license: 'MIT',
   source_repository_url: 'github.com/some-repo',
   scope: 'runtime',

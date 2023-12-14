@@ -30,7 +30,7 @@ inputs:
     description: Comma-separated list of forbidden licenses (e.g. "MIT, GPL 3.0, BSD 2 Clause")
     required: false
   allow-dependencies-licenses:
-    description: Comma-separated list of dependencies in purl format (e.g. "pkg:npm/express, pkg:pip/pycrypto"). These dependencies will be permitted to use any license, no matter what license policy is enforced otherwise.
+    description: Comma-separated list of dependencies in purl format (e.g. "pkg:npm/express, pkg:pypi/pycrypto"). These dependencies will be permitted to use any license, no matter what license policy is enforced otherwise.
     required: false
   allow-ghsas:
     description: Comma-separated list of allowed GitHub Advisory IDs (e.g. "GHSA-abcd-1234-5679, GHSA-efgh-1234-5679")
@@ -48,10 +48,10 @@ inputs:
     description: Determines if the summary is posted as a comment in the PR itself. Setting this to `always` or `on-failure` requires you to give the workflow the write permissions for pull-requests
     required: false
   deny-packages:
-    description: A comma-separated list of package URLs to deny (e.g. "pkg:npm/express, pkg:pip/pycrypto")
+    description: A comma-separated list of package URLs to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto")
     required: false
   deny-groups:
-    description: A comma-separated list of package URLs for group(s)/namespace(s) to deny (e.g. "pkg:npm/express, pkg:pip/pycrypto")
+    description: A comma-separated list of package URLs for group(s)/namespace(s) to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto")
     required: false
   retry-on-snapshot-warnings:
     description: Whether to retry on snapshot warnings
