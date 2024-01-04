@@ -264,7 +264,8 @@ function compare({ owner, repo, baseRef, headRef }) {
             url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}',
             owner,
             repo,
-            basehead: `${baseRef}...${headRef}`
+            basehead: `${baseRef}...${headRef}`,
+            per_page: 5
         }, response => {
             if (response.headers[SnapshotWarningsHeader] &&
                 typeof response.headers[SnapshotWarningsHeader] === 'string') {
