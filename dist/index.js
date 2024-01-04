@@ -12444,7 +12444,7 @@ async function verifyAndReceive(state, event) {
     state.secret,
     typeof event.payload === "object" ? toNormalizedJsonString(event.payload) : event.payload,
     event.signature
-  );
+  ).catch(() => false);
   if (!matchesSignature) {
     const error = new Error(
       "[@octokit/webhooks] signature does not match event payload and secret"
