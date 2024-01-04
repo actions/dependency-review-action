@@ -33,7 +33,7 @@
     "ansi-styles": "^6.2.1",
     "got": "^13.0.0",
     "jest": "^29.7.0",
-    "octokit": "^2.1.0",
+    "octokit": "^3.1.2",
     "packageurl-js": "^1.2.0",
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^5.0.1",
