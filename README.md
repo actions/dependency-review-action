@@ -33,7 +33,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
 ```
 
 ### GitHub Enterprise Server
@@ -59,7 +59,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
 ```
 
 ## Configuration options
@@ -105,7 +105,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: Dependency Review
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
 
@@ -128,7 +128,7 @@ Start by specifying that you will be using an external configuration file:
 
 ```yaml
 - name: Dependency Review
-  uses: actions/dependency-review-action@v3
+  uses: actions/dependency-review-action@v4
   with:
     config-file: './.github/dependency-review-config.yml'
 ```

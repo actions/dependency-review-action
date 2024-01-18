@@ -20,7 +20,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
 ```
 
 ## Using an inline configuration
@@ -41,7 +41,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
@@ -78,7 +78,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           config-file: './.github/dependency-review-config.yml'
 ```
@@ -105,7 +105,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           config-file: 'github/octorepo/dependency-review-config.yml@main'
 ```
@@ -132,7 +132,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           config-file: 'github/octorepo-private/dependency-review-config.yml@main'
           external-repo-token: ${{ secrets.GITHUB_TOKEN }} # or a personal access token
@@ -157,7 +157,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
@@ -185,7 +185,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
@@ -224,7 +224,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           comment-summary-in-pr: always
@@ -253,7 +253,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core'
           deny-groups: 'pkg:maven/com.bazaarvoice.jolt'
@@ -287,7 +287,7 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           retry-on-snapshot-warnings: true
           retry-on-snapshot-warnings-timeout: 60
