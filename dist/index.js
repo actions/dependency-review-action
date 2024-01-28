@@ -609,9 +609,9 @@ function run() {
             }
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
-            let minSeverity = config.fail_on_severity;
             const failOnSeverityParams = config.fail_on_severity;
             const warnOnly = config.warn_only;
+            let minSeverity = 'low';
             // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
             if (failOnSeverityParams && !warnOnly) {
                 minSeverity = failOnSeverityParams;

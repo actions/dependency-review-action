@@ -87,9 +87,9 @@ async function run(): Promise<void> {
       scopedChanges
     )
 
-    let minSeverity = config.fail_on_severity
     const failOnSeverityParams = config.fail_on_severity
     const warnOnly = config.warn_only
+    let minSeverity: Severity = 'low'
     // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
     if (failOnSeverityParams && !warnOnly) {
       minSeverity = failOnSeverityParams
