@@ -135,7 +135,7 @@ async function run(): Promise<void> {
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      printLicensesBlock(invalidLicenseChanges)
+      printLicensesBlock(invalidLicenseChanges, warnOnly)
     }
     if (config.deny_packages || config.deny_groups) {
       summary.addDeniedToSummary(deniedChanges)
@@ -215,13 +215,19 @@ function printChangeVulnerabilities(change: Change): void {
 }
 
 function printLicensesBlock(
-  invalidLicenseChanges: Record<string, Changes>
+  invalidLicenseChanges: Record<string, Changes>,
+  warnOnly: boolean
 ): void {
   core.group('Licenses', async () => {
     if (invalidLicenseChanges.forbidden.length > 0) {
       core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
-      core.setFailed('Dependency review detected incompatible licenses.')
+      const msg = 'Dependency review detected incompatible licenses.'
+      if (warnOnly) {
+        core.warning(msg)
+      } else {
+        core.setFailed(msg)
+      }
     }
     if (invalidLicenseChanges.unresolved.length > 0) {
       core.warning(
