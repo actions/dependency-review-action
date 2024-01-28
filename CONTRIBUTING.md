@@ -79,7 +79,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 - Write tests.
 - Keep your change as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
-- Write a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+- Write a [good commit message](https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
 ## Cutting a new release
 
@@ -112,8 +112,8 @@ minor/patch updates.
 To do this just checkout `main`, force-create a new annotated tag, and push it:
 
 ```
-git tag -fa v3 -m "Updating v3 to 3.0.1"
-git push origin v3 --force
+git tag -fa v4 -m "Updating v4 to 4.0.1"
+git push origin v4 --force
 ```
 
 ## Resources

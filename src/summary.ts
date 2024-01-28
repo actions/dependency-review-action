@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Changes} from './schemas'
+import {ConfigurationOptions, Changes, Change} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
@@ -13,13 +13,15 @@ const icons = {
 export function addSummaryToSummary(
   vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
+  deniedChanges: Changes,
   config: ConfigurationOptions
 ): void {
   core.summary.addHeading('Dependency Review', 1)
 
   if (
     vulnerableChanges.length === 0 &&
-    countLicenseIssues(invalidLicenseChanges) === 0
+    countLicenseIssues(invalidLicenseChanges) === 0 &&
+    deniedChanges.length === 0
   ) {
     if (!config.license_check) {
       core.summary.addRaw(`${icons.check} No vulnerabilities found.`)
@@ -55,6 +57,13 @@ export function addSummaryToSummary(
             `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
               invalidLicenseChanges.unlicensed.length
             } package(s) with unknown licenses.`
+          ]
+        : []),
+      ...(deniedChanges.length > 0
+        ? [
+            `${checkOrWarnIcon(deniedChanges.length)} ${
+              deniedChanges.length
+            } package(s) denied.`
           ]
         : [])
     ])
@@ -222,21 +231,34 @@ export function addScannedDependencies(changes: Changes): void {
   }
 }
 
-export function addSnapshotWarnings(warnings: string): void {
-  // For now, we want to ignore warnings that just complain
-  // about missing snapshots on the head SHA. This is a product
-  // decision to avoid presenting warnings to users who simply
-  // don't use snapshots.
-  const ignore_regex = new RegExp(/No.*snapshot.*found.*head.*/, 'i')
-  if (ignore_regex.test(warnings)) {
-    return
+function snapshotWarningRecommendation(
+  config: ConfigurationOptions,
+  warnings: string
+): string {
+  const no_pr_snaps = warnings.includes(
+    'No snapshots were found for the head SHA'
+  )
+  const retries_disabled = !config.retry_on_snapshot_warnings
+  if (no_pr_snaps && retries_disabled) {
+    return 'Ensure that dependencies are being submitted on PR branches and consider enabling <em>retry-on-snapshot-warnings</em>.'
+  } else if (no_pr_snaps) {
+    return 'Ensure that dependencies are being submitted on PR branches. Re-running this action after a short time may resolve the issue.'
+  } else if (retries_disabled) {
+    return 'Consider enabling <em>retry-on-snapshot-warnings</em>.'
   }
+  return 'Re-running this action after a short time may resolve the issue.'
+}
 
+export function addSnapshotWarnings(
+  config: ConfigurationOptions,
+  warnings: string
+): void {
   core.summary.addHeading('Snapshot Warnings', 2)
   core.summary.addQuote(`${icons.warning}: ${warnings}`)
-  core.summary.addRaw(
-    'Re-running this action after a short time may resolve the issue. See the documentation for more information and troubleshooting advice.'
-  )
+  const recommendation = snapshotWarningRecommendation(config, warnings)
+  const docsLink =
+    'See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.'
+  core.summary.addRaw(`${recommendation} ${docsLink}`)
 }
 
 function countLicenseIssues(
@@ -246,6 +268,25 @@ function countLicenseIssues(
     (acc, val) => acc + val.length,
     0
   )
+}
+
+export function addDeniedToSummary(deniedChanges: Change[]): void {
+  if (deniedChanges.length === 0) {
+    return
+  }
+
+  core.summary.addHeading('Denied dependencies', 2)
+  for (const change of deniedChanges) {
+    core.summary.addHeading(`<em>Denied dependencies</em>`, 4)
+    core.summary.addTable([
+      ['Package', 'Version', 'License'],
+      [
+        renderUrl(change.source_repository_url, change.name),
+        change.version,
+        change.license || ''
+      ]
+    ])
+  }
 }
 
 function checkOrFailIcon(count: number): string {

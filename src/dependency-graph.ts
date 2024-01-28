@@ -31,7 +31,8 @@ export async function compare({
       url: '/repos/{owner}/{repo}/dependency-graph/compare/{basehead}',
       owner,
       repo,
-      basehead: `${baseRef}...${headRef}`
+      basehead: `${baseRef}...${headRef}`,
+      per_page: 5
     },
     response => {
       if (

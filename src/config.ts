@@ -33,12 +33,20 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const allow_dependencies_licenses = parseList(
     getOptionalInput('allow-dependencies-licenses')
   )
+  const deny_packages = parseList(getOptionalInput('deny-packages'))
+  const deny_groups = parseList(getOptionalInput('deny-groups'))
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
   const license_check = getOptionalBoolean('license-check')
   const vulnerability_check = getOptionalBoolean('vulnerability-check')
   const base_ref = getOptionalInput('base-ref')
   const head_ref = getOptionalInput('head-ref')
-  const comment_summary_in_pr = getOptionalBoolean('comment-summary-in-pr')
+  const comment_summary_in_pr = getOptionalInput('comment-summary-in-pr')
+  const retry_on_snapshot_warnings = getOptionalBoolean(
+    'retry-on-snapshot-warnings'
+  )
+  const retry_on_snapshot_warnings_timeout = getOptionalNumber(
+    'retry-on-snapshot-warnings-timeout'
+  )
   const warn_only = getOptionalBoolean('warn-only')
 
   validatePURL(allow_dependencies_licenses)
@@ -50,6 +58,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     fail_on_scopes,
     allow_licenses,
     deny_licenses,
+    deny_packages,
+    deny_groups,
     allow_dependencies_licenses,
     allow_ghsas,
     license_check,
@@ -57,12 +67,20 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     base_ref,
     head_ref,
     comment_summary_in_pr,
+    retry_on_snapshot_warnings,
+    retry_on_snapshot_warnings_timeout,
     warn_only
   }
 
   return Object.fromEntries(
     Object.entries(keys).filter(([_, value]) => value !== undefined)
   )
+}
+
+function getOptionalNumber(name: string): number | undefined {
+  const value = core.getInput(name)
+  const parsed = z.string().regex(/^\d+$/).transform(Number).safeParse(value)
+  return parsed.success ? parsed.data : undefined
 }
 
 function getOptionalBoolean(name: string): boolean | undefined {
@@ -139,7 +157,9 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
       'deny-licenses',
       'fail-on-scopes',
       'allow-ghsas',
-      'allow-dependencies-licenses'
+      'allow-dependencies-licenses',
+      'deny-packages',
+      'deny-groups'
     ]
 
     for (const key of Object.keys(data)) {

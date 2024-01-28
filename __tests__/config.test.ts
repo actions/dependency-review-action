@@ -27,7 +27,6 @@ test('it reads custom configs', async () => {
 })
 
 test('it defaults to false for warn-only', async () => {
-  setInput('warn-only', 'false')
   const config = await readConfig()
   expect(config.warn_only).toEqual(false)
 })
@@ -176,4 +175,30 @@ describe('licenses that are not valid SPDX licenses', () => {
       'Invalid license(s) in deny-licenses: BSD,GPL 2'
     )
   })
+})
+
+test('it parses the comment-summary-in-pr input', async () => {
+  setInput('comment-summary-in-pr', 'true')
+  let config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('always')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'false')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('never')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'always')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('always')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'never')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('never')
+
+  clearInputs()
+  setInput('comment-summary-in-pr', 'on-failure')
+  config = await readConfig()
+  expect(config.comment_summary_in_pr).toBe('on-failure')
 })

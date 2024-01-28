@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
 ```
 
 ## Using an inline configuration
@@ -39,9 +39,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
@@ -76,14 +76,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           config-file: './.github/dependency-review-config.yml'
 ```
 
-## Using a configuration file from a external repository
+## Using a configuration file from an external repository
 
 The following example will use a configuration file from an external public GitHub repository to configure the action.
 
@@ -103,14 +103,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           config-file: 'github/octorepo/dependency-review-config.yml@main'
 ```
 
-## Using a configuration file from a external repository with a personal access token
+## Using a configuration file from an external repository with a personal access token
 
 The following example will use a configuration file from an external private GtiHub repository to configure the action.
 
@@ -130,12 +130,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           config-file: 'github/octorepo-private/dependency-review-config.yml@main'
-          config-file-token: ${{ secrets.GITHUB_TOKEN }} # or a personal access token
+          external-repo-token: ${{ secrets.GITHUB_TOKEN }} # or a personal access token
 ```
 
 ## Getting the results of the action in the PR as a comment
@@ -155,13 +155,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
-          comment-summary-in-pr: true
+          comment-summary-in-pr: always
 ```
 
 ## Exclude dependencies from the license check
@@ -183,14 +183,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
-          comment-summary-in-pr: true
-          allow-dependencies-licenses: 'pkg:npm/loadash, pkg:pip/requests'
+          comment-summary-in-pr: always
+          allow-dependencies-licenses: 'pkg:npm/loadash, pkg:pypi/requests'
 ```
 
 If we were to use configuration file, the configuration would look like this:
@@ -202,7 +202,7 @@ allow-licenses:
   - 'BSD-2-Clause'
 allow-dependencies-licenses:
   - 'pkg:npm/loadash'
-  - 'pkg:pip/requests'
+  - 'pkg:pypi/requests'
 ```
 
 ## Only check for vulnerabilities
@@ -222,11 +222,75 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
-          comment-summary-in-pr: true
+          comment-summary-in-pr: always
           license-check: false
 ```
+
+## Exclude dependencies from their name or groups
+
+Using the `deny-packages` option you can exclude dependencies by their PURL. You can add multiple values separated by a commas.
+Using the `deny-groups` option you can exclude dependencies by their group name/namespace. You can add multiple values separated by a comma.
+
+In this example, we are excluding `pkg:maven/org.apache.logging.log4j:log4j-api` and `pkg:maven/org.apache.logging.log4j/log4j-core` from `maven` and all packages in the group `pkg:maven/com.bazaarvoice.maven`
+
+```yaml
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v4
+        with:
+          deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core'
+          deny-groups: 'pkg:maven/com.bazaarvoice.jolt'
+```
+
+## Waiting for dependency submission jobs to complete
+
+When possible, this action will [include dependencies submitted through the dependency submission API][DSAPI]. In this case,
+it's important for the action not to complete until all of the relevant dependencies have been submitted for both the base
+and head commits.
+
+When this action runs before one or more of the dependency submission actions, there will be an unequal number of dependency
+snapshots between the base and head commits. For example, there may be one snapshot available for the tip of `main` and none
+for the PR branch. In that case, the API response will contain a "snapshot warning" explaining the discrepancy.
+
+In this example, when the action encounters one of these warnings it will retry every 10 seconds after that for 60 seconds
+or until there is no warning in the response.
+
+```yaml
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v4
+        with:
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 60
+```
+
+[DSAPI]: https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together

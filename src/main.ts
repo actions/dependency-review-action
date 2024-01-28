@@ -3,7 +3,7 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Changes} from './schemas'
+import {Change, Severity, Changes, ConfigurationOptions} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -16,6 +16,43 @@ import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
+import {getDeniedChanges} from './deny'
+
+async function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function getComparison(
+  baseRef: string,
+  headRef: string,
+  retryOpts?: {
+    retryUntil: number
+    retryDelay: number
+  }
+): ReturnType<typeof dependencyGraph.compare> {
+  const comparison = await dependencyGraph.compare({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    baseRef,
+    headRef
+  })
+
+  if (comparison.snapshot_warnings.trim() !== '') {
+    core.info(comparison.snapshot_warnings)
+    if (retryOpts !== undefined) {
+      if (retryOpts.retryUntil < Date.now()) {
+        core.info(`Retry timeout exceeded. Proceeding...`)
+        return comparison
+      } else {
+        core.info(`Retrying in ${retryOpts.retryDelay} seconds...`)
+        await delay(retryOpts.retryDelay * 1000)
+        return getComparison(baseRef, headRef, retryOpts)
+      }
+    }
+  }
+
+  return comparison
+}
 
 async function run(): Promise<void> {
   try {
@@ -23,12 +60,18 @@ async function run(): Promise<void> {
 
     const refs = getRefs(config, github.context)
 
-    const comparison = await dependencyGraph.compare({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      baseRef: refs.base,
-      headRef: refs.head
-    })
+    const comparison = await getComparison(
+      refs.base,
+      refs.head,
+      config.retry_on_snapshot_warnings
+        ? {
+            retryUntil:
+              Date.now() + config.retry_on_snapshot_warnings_timeout * 1000,
+            retryDelay: 10
+          }
+        : undefined
+    )
+
     const changes = comparison.changes
     const snapshot_warnings = comparison.snapshot_warnings
 
@@ -37,28 +80,24 @@ async function run(): Promise<void> {
       return
     }
 
-    const failOnSeverityParams = config.fail_on_severity
-    const warnOnly = config.warn_only
-    let minSeverity: Severity = 'low'
-    // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
-    if (failOnSeverityParams && !warnOnly) {
-      minSeverity = failOnSeverityParams
-    }
-
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
+
     const filteredChanges = filterAllowedAdvisories(
       config.allow_ghsas,
       scopedChanges
     )
 
+    let minSeverity = config.fail_on_severity
+    const failOnSeverityParams = config.fail_on_severity
+    const warnOnly = config.warn_only
+    // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
+    if (failOnSeverityParams && !warnOnly) {
+      minSeverity = failOnSeverityParams
+    }
+
     const vulnerableChanges = filterChangesBySeverity(
       minSeverity,
       filteredChanges
-    ).filter(
-      change =>
-        change.change_type === 'added' &&
-        change.vulnerabilities !== undefined &&
-        change.vulnerabilities.length > 0
     )
 
     const invalidLicenseChanges = await getInvalidLicenseChanges(
@@ -70,28 +109,46 @@ async function run(): Promise<void> {
       }
     )
 
+    core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
+    core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)
+
+    const deniedChanges = await getDeniedChanges(
+      filteredChanges,
+      config.deny_packages,
+      config.deny_groups
+    )
+
     summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
+      deniedChanges,
       config
     )
 
     if (snapshot_warnings) {
-      summary.addSnapshotWarnings(snapshot_warnings)
+      summary.addSnapshotWarnings(config, snapshot_warnings)
     }
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly)
+      printVulnerabilitiesBlock(vulnerableChanges, minSeverity)
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      printLicensesBlock(invalidLicenseChanges, warnOnly)
+      printLicensesBlock(invalidLicenseChanges)
+    }
+    if (config.deny_packages || config.deny_groups) {
+      summary.addDeniedToSummary(deniedChanges)
+      printDeniedDependencies(deniedChanges, config)
     }
 
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
-    if (config.comment_summary_in_pr) {
+    if (
+      config.comment_summary_in_pr === 'always' ||
+      (config.comment_summary_in_pr === 'on-failure' &&
+        process.exitCode === core.ExitCode.Failure)
+    ) {
       await commentPr(core.summary)
     }
   } catch (error) {
@@ -117,25 +174,19 @@ async function run(): Promise<void> {
 
 function printVulnerabilitiesBlock(
   addedChanges: Changes,
-  minSeverity: Severity,
-  warnOnly: boolean
+  minSeverity: Severity
 ): void {
-  let vulFound = false
+  let failed = false
   core.group('Vulnerabilities', async () => {
     if (addedChanges.length > 0) {
       for (const change of addedChanges) {
         printChangeVulnerabilities(change)
       }
-      vulFound = true
+      failed = true
     }
 
-    if (vulFound) {
-      const msg = 'Dependency review detected vulnerable packages.'
-      if (warnOnly) {
-        core.warning(msg)
-      } else {
-        core.setFailed(msg)
-      }
+    if (failed) {
+      core.setFailed('Dependency review detected vulnerable packages.')
     } else {
       core.info(
         `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
@@ -158,19 +209,13 @@ function printChangeVulnerabilities(change: Change): void {
 }
 
 function printLicensesBlock(
-  invalidLicenseChanges: Record<string, Changes>,
-  warnOnly: boolean
+  invalidLicenseChanges: Record<string, Changes>
 ): void {
   core.group('Licenses', async () => {
     if (invalidLicenseChanges.forbidden.length > 0) {
       core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
-      const msg = 'Dependency review detected incompatible licenses.'
-      if (warnOnly) {
-        core.warning(msg)
-      } else {
-        core.setFailed(msg)
-      }
+      core.setFailed('Dependency review detected incompatible licenses.')
     }
     if (invalidLicenseChanges.unresolved.length > 0) {
       core.warning(
@@ -254,6 +299,22 @@ function printScannedDependencies(changes: Changes): void {
       for (const change of manifestChanges) {
         core.info(`${renderScannedDependency(change)}`)
       }
+    }
+  })
+}
+
+function printDeniedDependencies(
+  changes: Change[],
+  config: ConfigurationOptions
+): void {
+  core.group('Denied', async () => {
+    for (const denied of config.deny_packages) {
+      core.info(`Config: ${denied}`)
+    }
+
+    for (const change of changes) {
+      core.info(`Change: ${change.name}@${change.version} is denied`)
+      core.info(`Change: ${change.package_url} is denied`)
     }
   })
 }

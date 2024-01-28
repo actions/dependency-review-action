@@ -1,15 +1,8 @@
 import * as z from 'zod'
 
-export const FAIL_ON_SEVERITIES = [
-  'critical',
-  'high',
-  'moderate',
-  'low'
-] as const
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
 export const SCOPES = ['unknown', 'runtime', 'development'] as const
 
-export const FailOnSeveritySchema = z.enum(FAIL_ON_SEVERITIES).default('low')
 export const SeveritySchema = z.enum(SEVERITIES).default('low')
 
 export const ChangeSchema = z.object({
@@ -43,19 +36,39 @@ export const PullRequestSchema = z.object({
 
 export const ConfigurationOptionsSchema = z
   .object({
-    fail_on_severity: FailOnSeveritySchema,
+    fail_on_severity: SeveritySchema,
     fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
+    deny_packages: z.array(z.string()).default([]),
+    deny_groups: z.array(z.string()).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
     base_ref: z.string().optional(),
     head_ref: z.string().optional(),
-    comment_summary_in_pr: z.boolean().default(false),
+    retry_on_snapshot_warnings: z.boolean().default(false),
+    retry_on_snapshot_warnings_timeout: z.number().default(120),
+    comment_summary_in_pr: z
+      .union([
+        z.preprocess(
+          val => (val === 'true' ? true : val === 'false' ? false : val),
+          z.boolean()
+        ),
+        z.enum(['always', 'never', 'on-failure'])
+      ])
+      .default('never'),
     warn_only: z.boolean().default(false)
+  })
+  .transform(config => {
+    if (config.comment_summary_in_pr === true) {
+      config.comment_summary_in_pr = 'always'
+    } else if (config.comment_summary_in_pr === false) {
+      config.comment_summary_in_pr = 'never'
+    }
+    return config
   })
   .superRefine((config, context) => {
     if (config.allow_licenses && config.deny_licenses) {
@@ -91,6 +104,5 @@ export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
 export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
-export type FailOnSeverity = z.infer<typeof FailOnSeveritySchema>
 export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]

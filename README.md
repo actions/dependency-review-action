@@ -31,9 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
 ```
 
 ### GitHub Enterprise Server
@@ -43,7 +43,7 @@ This action is available in Enterprise Server starting with version 3.6. Make su
 Security](https://docs.github.com/en/enterprise-server@3.6/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
 and [GitHub
 Connect](https://docs.github.com/en/enterprise-server@3.6/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
-are enabled.
+are enabled, and that you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
 
 You can use the same workflow as above, replacing the `runs-on` value
 with the label of any of your runners (the default label
@@ -57,28 +57,32 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
 ```
 
 ## Configuration options
 
 Configure this action by either inlining these options in your workflow file, or by using an external configuration file. All configuration options are optional.
 
-| Option                          | Usage                                                                                                                                                                             | Possible values                                                              | Default value |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------- |
-| `fail-on-severity`              | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                        | `low`         |
-| `allow-licenses`\*              | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
-| `deny-licenses`\*               | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)               | none          |
-| `fail-on-scopes`†               | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                          | `runtime`     |
-| `allow-ghsas`                   | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories) | none          |
-| `license-check`                 | Enable or disable the license check performed by the action.                                                                                                                      | `true`, `false`                                                              | `true`        |
-| `vulnerability-check`           | Enable or disable the vulnerability check performed by the action.                                                                                                                | `true`, `false`                                                              | `true`        |
-| `allow-dependencies-licenses`\* | Contains a list of packages that will be excluded from license checks.                                                                                                            | Any package(s) in [purl](https://github.com/package-url/purl-spec) format    | none          |
-| `base-ref`/`head-ref`           | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                         | none          |
-| `comment-summary-in-pr`         | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `true`, `false`                                                              | `false`       |
-| `warn-only`+                   | Enable or disable the action to fail, when set to `true` the action will log all vulnarabilities as warning.                                                                       | `true`, `false`                                                              | `false`       |
+| Option                                 | Usage                                                                                                                                                                             | Possible values                                                                                              | Default value |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------- |
+| `fail-on-severity`                     | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.              | `low`, `moderate`, `high`, `critical`                                                                        | `low`         |
+| `allow-licenses`\*                     | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                  | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)                                               | none          |
+| `deny-licenses`\*                      | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                      | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)                                               | none          |
+| `fail-on-scopes`†                      | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list. | `runtime`, `development`, `unknown`                                                                          | `runtime`     |
+| `allow-ghsas`                          | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                             | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories)                                 | none          |
+| `license-check`                        | Enable or disable the license check performed by the action.                                                                                                                      | `true`, `false`                                                                                              | `true`        |
+| `vulnerability-check`                  | Enable or disable the vulnerability check performed by the action.                                                                                                                | `true`, `false`                                                                                              | `true`        |
+| `allow-dependencies-licenses`\*        | Contains a list of packages that will be excluded from license checks.                                                                                                            | Any package(s) in [purl](https://github.com/package-url/purl-spec) format                                    | none          |
+| `base-ref`/`head-ref`                  | Provide custom git references for the git base/head when performing the comparison check. This is only used for event types other than `pull_request` and `pull_request_target`.  | Any valid git ref(s) in your project                                                                         | none          |
+| `comment-summary-in-pr`                | Enable or disable reporting the review summary as a comment in the pull request. If enabled, you must give the workflow or job permission `pull-requests: write`.                 | `always`, `on-failure`, `never`                                                                              | `never`       |
+| `deny-packages`                        | Any number of packages to block in a PR.                                                                                                                                          | Package(s) in [purl](https://github.com/package-url/purl-spec) format                                        | empty         |
+| `deny-groups`                          | Any number of groups (namespaces) to block in a PR.                                                                                                                               | Namespace(s) in [purl](https://github.com/package-url/purl-spec) format (no package name, no version number) | empty         |
+| `retry-on-snapshot-warnings`\*         | Enable or disable retrying the action every 10 seconds while waiting for dependency submission actions to complete.                                                               | `true`, `false`                                                                                              | `false`       |
+| `retry-on-snapshot-warnings-timeout`\* | Maximum amount of time (in seconds) to retry the action while waiting for dependency submission actions to complete.                                                              | Any positive integer                                                                                         | 120           |
+| `warn-only`+                           | Enable or disable the action to fail, when set to `true` the action will log all vulnarabilities as warning.                                                                      | `true`, `false`                                                                                              | `false`       |
 
 \*not supported for use with GitHub Enterprise Server
 
@@ -103,9 +107,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Dependency Review
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
 
@@ -128,7 +132,7 @@ Start by specifying that you will be using an external configuration file:
 
 ```yaml
 - name: Dependency Review
-  uses: actions/dependency-review-action@v2
+  uses: actions/dependency-review-action@v4
   with:
     config-file: './.github/dependency-review-config.yml'
 ```
@@ -148,7 +152,7 @@ For more examples of how to use this action and its configuration options, see t
 
 ### Considerations
 
-- Checking for licenses is not supported on Enterprise Server.
+- Checking for licenses is not supported on Enterprise Server as the API does not return license information.
 - The action will only accept one of the two `license` parameters; an error will be raised if you provide both.
 - We don't have license information for all of your dependents. If we can't detect the license for a dependency **we will inform you, but the action won't fail**.
 

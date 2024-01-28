@@ -6,7 +6,7 @@
  * npx ts-node scripts/create_summary.ts
  */
 
-import {Changes, ConfigurationOptions} from '../src/schemas'
+import {Change, Changes, ConfigurationOptions} from '../src/schemas'
 import {createTestChange} from '../__tests__/fixtures/create-test-change'
 import {InvalidLicenseChanges} from '../src/licenses'
 import * as fs from 'fs'
@@ -22,13 +22,17 @@ const defaultConfig: ConfigurationOptions = {
   allow_ghsas: [],
   allow_licenses: ['MIT'],
   deny_licenses: [],
+  deny_packages: [],
+  deny_groups: [],
   allow_dependencies_licenses: [
     'pkg:npm/express@4.17.1',
-    'pkg:pip/requests',
-    'pkg:pip/certifi',
-    'pkg:pip/pycrypto@2.6.1'
+    'pkg:pypi/requests',
+    'pkg:pypi/certifi',
+    'pkg:pypi/pycrypto@2.6.1'
   ],
   comment_summary_in_pr: true,
+  retry_on_snapshot_warnings: false,
+  retry_on_snapshot_warnings_timeout: 120,
   warn_only: false
 }
 
@@ -45,6 +49,7 @@ const createNonIssueSummary = async (): Promise<void> => {
   await createSummary(
     [],
     {forbidden: [], unresolved: [], unlicensed: []},
+    [],
     defaultConfig,
     'non-issue-summary.md'
   )
@@ -86,16 +91,17 @@ const createFullSummary = async (): Promise<void> => {
     ]
   }
 
-  await createSummary(changes, licenses, defaultConfig, 'full-summary.md')
+  await createSummary(changes, licenses, [], defaultConfig, 'full-summary.md')
 }
 
 async function createSummary(
   vulnerabilities: Changes,
   licenseIssues: InvalidLicenseChanges,
+  denied: Change[],
   config: ConfigurationOptions,
   fileName: string
 ): Promise<void> {
-  summary.addSummaryToSummary(vulnerabilities, licenseIssues, config)
+  summary.addSummaryToSummary(vulnerabilities, licenseIssues, denied, config)
   summary.addChangeVulnerabilitiesToSummary(
     vulnerabilities,
     config.fail_on_severity
