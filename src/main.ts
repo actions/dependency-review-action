@@ -131,7 +131,7 @@ async function run(): Promise<void> {
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      printVulnerabilitiesBlock(vulnerableChanges, minSeverity)
+      printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly)
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
@@ -174,19 +174,25 @@ async function run(): Promise<void> {
 
 function printVulnerabilitiesBlock(
   addedChanges: Changes,
-  minSeverity: Severity
+  minSeverity: Severity,
+  warnOnly: boolean
 ): void {
-  let failed = false
+  let vulFound = false
   core.group('Vulnerabilities', async () => {
     if (addedChanges.length > 0) {
       for (const change of addedChanges) {
         printChangeVulnerabilities(change)
       }
-      failed = true
+      vulFound = true
     }
 
-    if (failed) {
-      core.setFailed('Dependency review detected vulnerable packages.')
+    if (vulFound) {
+      const msg = 'Dependency review detected vulnerable packages.'
+      if (warnOnly) {
+        core.warning(msg)
+      } else {
+        core.setFailed(msg)
+      }
     } else {
       core.info(
         `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
