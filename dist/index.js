@@ -671,7 +671,6 @@ function run() {
     });
 }
 function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
-    core.debug(`warnOnly: ${warnOnly}`);
     let vulFound = false;
     core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
         if (addedChanges.length > 0) {

@@ -177,7 +177,6 @@ function printVulnerabilitiesBlock(
   minSeverity: Severity,
   warnOnly: boolean
 ): void {
-  core.debug(`warnOnly: ${warnOnly}`)
   let vulFound = false
   core.group('Vulnerabilities', async () => {
     if (addedChanges.length > 0) {
