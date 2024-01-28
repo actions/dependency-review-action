@@ -631,11 +631,11 @@ function run() {
             }
             if (config.vulnerability_check) {
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
-                printVulnerabilitiesBlock(vulnerableChanges, minSeverity);
+                printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly);
             }
             if (config.license_check) {
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
-                printLicensesBlock(invalidLicenseChanges);
+                printLicensesBlock(invalidLicenseChanges, warnOnly);
             }
             if (config.deny_packages || config.deny_groups) {
                 summary.addDeniedToSummary(deniedChanges);
@@ -670,17 +670,24 @@ function run() {
         }
     });
 }
-function printVulnerabilitiesBlock(addedChanges, minSeverity) {
-    let failed = false;
+function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
+    core.debug(`warnOnly: ${warnOnly}`);
+    let vulFound = false;
     core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
         if (addedChanges.length > 0) {
             for (const change of addedChanges) {
                 printChangeVulnerabilities(change);
             }
-            failed = true;
+            vulFound = true;
         }
-        if (failed) {
-            core.setFailed('Dependency review detected vulnerable packages.');
+        if (vulFound) {
+            const msg = 'Dependency review detected vulnerable packages.';
+            if (warnOnly) {
+                core.warning(msg);
+            }
+            else {
+                core.setFailed(msg);
+            }
         }
         else {
             core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
@@ -693,12 +700,18 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
-function printLicensesBlock(invalidLicenseChanges) {
+function printLicensesBlock(invalidLicenseChanges, warnOnly) {
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
         if (invalidLicenseChanges.forbidden.length > 0) {
             core.info('\nThe following dependencies have incompatible licenses:');
             printLicensesError(invalidLicenseChanges.forbidden);
-            core.setFailed('Dependency review detected incompatible licenses.');
+            const msg = 'Dependency review detected incompatible licenses.';
+            if (warnOnly) {
+                core.warning(msg);
+            }
+            else {
+                core.setFailed(msg);
+            }
         }
         if (invalidLicenseChanges.unresolved.length > 0) {
             core.warning('\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:');
