@@ -88,7 +88,7 @@ Configure this action by either inlining these options in your workflow file, or
 
 †will be supported with GitHub Enterprise Server 3.8
 
-+when `warn_only` is set to `true`, all vulnarabilities, independently of the severity, will be reported as warnings and the action will not fail.
++when `warn-only` is set to `true`, all vulnarabilities, independently of the severity, will be reported as warnings and the action will not fail.
 
 
 ### Inline Configuration
