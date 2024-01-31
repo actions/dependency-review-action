@@ -1,4 +1,4 @@
-# Examples on how to use the Dependancy Review Action
+# Examples on how to use the Dependency Review Action
 
 ## Basic Usage
 
@@ -62,7 +62,7 @@ allow_licenses:
   - 'BSD-2-Clause'
 ```
 
-The Dependancy Review Action workflow file will then look like this:
+The Dependency Review Action workflow file will then look like this:
 
 ```yaml
 name: 'Dependency Review'
