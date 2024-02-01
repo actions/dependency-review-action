@@ -62,7 +62,8 @@ inputs:
     required: false
     default: 120
   warn-only:
-    description: When set to `true` this action will not make the action to fail, this override the `fail-on-severity` parameter.
+    description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
+Comment
     required: false
     default: false  
 
