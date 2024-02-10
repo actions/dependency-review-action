@@ -63,9 +63,8 @@ inputs:
     default: 120
   warn-only:
     description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
-Comment
     required: false
-    default: false  
+    default: false
 
 runs:
   using: 'node20'
