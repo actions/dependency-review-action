@@ -609,7 +609,13 @@ function run() {
             }
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
-            const minSeverity = config.fail_on_severity;
+            const failOnSeverityParams = config.fail_on_severity;
+            const warnOnly = config.warn_only;
+            let minSeverity = 'low';
+            // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
+            if (failOnSeverityParams && !warnOnly) {
+                minSeverity = failOnSeverityParams;
+            }
             const vulnerableChanges = (0, filter_1.filterChangesBySeverity)(minSeverity, filteredChanges);
             const invalidLicenseChanges = yield (0, licenses_1.getInvalidLicenseChanges)(filteredChanges, {
                 allow: config.allow_licenses,
@@ -625,11 +631,11 @@ function run() {
             }
             if (config.vulnerability_check) {
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
-                printVulnerabilitiesBlock(vulnerableChanges, minSeverity);
+                printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly);
             }
             if (config.license_check) {
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
-                printLicensesBlock(invalidLicenseChanges);
+                printLicensesBlock(invalidLicenseChanges, warnOnly);
             }
             if (config.deny_packages || config.deny_groups) {
                 summary.addDeniedToSummary(deniedChanges);
@@ -664,17 +670,23 @@ function run() {
         }
     });
 }
-function printVulnerabilitiesBlock(addedChanges, minSeverity) {
-    let failed = false;
+function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
+    let vulFound = false;
     core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
         if (addedChanges.length > 0) {
             for (const change of addedChanges) {
                 printChangeVulnerabilities(change);
             }
-            failed = true;
+            vulFound = true;
         }
-        if (failed) {
-            core.setFailed('Dependency review detected vulnerable packages.');
+        if (vulFound) {
+            const msg = 'Dependency review detected vulnerable packages.';
+            if (warnOnly) {
+                core.warning(msg);
+            }
+            else {
+                core.setFailed(msg);
+            }
         }
         else {
             core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
@@ -687,12 +699,18 @@ function printChangeVulnerabilities(change) {
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
 }
-function printLicensesBlock(invalidLicenseChanges) {
+function printLicensesBlock(invalidLicenseChanges, warnOnly) {
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
         if (invalidLicenseChanges.forbidden.length > 0) {
             core.info('\nThe following dependencies have incompatible licenses:');
             printLicensesError(invalidLicenseChanges.forbidden);
-            core.setFailed('Dependency review detected incompatible licenses.');
+            const msg = 'Dependency review detected incompatible licenses.';
+            if (warnOnly) {
+                core.warning(msg);
+            }
+            else {
+                core.setFailed(msg);
+            }
         }
         if (invalidLicenseChanges.unresolved.length > 0) {
             core.warning('\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:');
@@ -849,7 +867,8 @@ exports.ConfigurationOptionsSchema = z
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
         z.enum(['always', 'never', 'on-failure'])
     ])
-        .default('never')
+        .default('never'),
+    warn_only: z.boolean().default(false)
 })
     .transform(config => {
     if (config.comment_summary_in_pr === true) {
@@ -49005,6 +49024,7 @@ function readInlineConfig() {
     const comment_summary_in_pr = getOptionalInput('comment-summary-in-pr');
     const retry_on_snapshot_warnings = getOptionalBoolean('retry-on-snapshot-warnings');
     const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings-timeout');
+    const warn_only = getOptionalBoolean('warn-only');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
@@ -49023,7 +49043,8 @@ function readInlineConfig() {
         head_ref,
         comment_summary_in_pr,
         retry_on_snapshot_warnings,
-        retry_on_snapshot_warnings_timeout
+        retry_on_snapshot_warnings_timeout,
+        warn_only
     };
     return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
 }
@@ -49326,7 +49347,8 @@ exports.ConfigurationOptionsSchema = z
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
         z.enum(['always', 'never', 'on-failure'])
     ])
-        .default('never')
+        .default('never'),
+    warn_only: z.boolean().default(false)
 })
     .transform(config => {
     if (config.comment_summary_in_pr === true) {

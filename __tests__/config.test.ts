@@ -26,6 +26,11 @@ test('it reads custom configs', async () => {
   expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
 })
 
+test('it defaults to false for warn-only', async () => {
+  const config = await readConfig()
+  expect(config.warn_only).toEqual(false)
+})
+
 test('it defaults to empty allow/deny lists ', async () => {
   const config = await readConfig()
 

@@ -61,6 +61,11 @@ inputs:
     description: Number of seconds to wait before stopping snapshot retries.
     required: false
     default: 120
+  warn-only:
+    description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
+    required: false
+    default: false
+
 runs:
   using: 'node20'
   main: 'dist/index.js'

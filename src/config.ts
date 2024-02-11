@@ -47,6 +47,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const retry_on_snapshot_warnings_timeout = getOptionalNumber(
     'retry-on-snapshot-warnings-timeout'
   )
+  const warn_only = getOptionalBoolean('warn-only')
 
   validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
@@ -67,7 +68,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     head_ref,
     comment_summary_in_pr,
     retry_on_snapshot_warnings,
-    retry_on_snapshot_warnings_timeout
+    retry_on_snapshot_warnings_timeout,
+    warn_only
   }
 
   return Object.fromEntries(

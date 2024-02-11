@@ -32,7 +32,8 @@ const defaultConfig: ConfigurationOptions = {
   ],
   comment_summary_in_pr: true,
   retry_on_snapshot_warnings: false,
-  retry_on_snapshot_warnings_timeout: 120
+  retry_on_snapshot_warnings_timeout: 120,
+  warn_only: false
 }
 
 const tmpDir = path.resolve(__dirname, '../tmp')

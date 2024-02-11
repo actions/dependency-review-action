@@ -87,7 +87,14 @@ async function run(): Promise<void> {
       scopedChanges
     )
 
-    const minSeverity = config.fail_on_severity
+    const failOnSeverityParams = config.fail_on_severity
+    const warnOnly = config.warn_only
+    let minSeverity: Severity = 'low'
+    // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
+    if (failOnSeverityParams && !warnOnly) {
+      minSeverity = failOnSeverityParams
+    }
+
     const vulnerableChanges = filterChangesBySeverity(
       minSeverity,
       filteredChanges
@@ -124,11 +131,11 @@ async function run(): Promise<void> {
 
     if (config.vulnerability_check) {
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      printVulnerabilitiesBlock(vulnerableChanges, minSeverity)
+      printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly)
     }
     if (config.license_check) {
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      printLicensesBlock(invalidLicenseChanges)
+      printLicensesBlock(invalidLicenseChanges, warnOnly)
     }
     if (config.deny_packages || config.deny_groups) {
       summary.addDeniedToSummary(deniedChanges)
@@ -167,19 +174,25 @@ async function run(): Promise<void> {
 
 function printVulnerabilitiesBlock(
   addedChanges: Changes,
-  minSeverity: Severity
+  minSeverity: Severity,
+  warnOnly: boolean
 ): void {
-  let failed = false
+  let vulFound = false
   core.group('Vulnerabilities', async () => {
     if (addedChanges.length > 0) {
       for (const change of addedChanges) {
         printChangeVulnerabilities(change)
       }
-      failed = true
+      vulFound = true
     }
 
-    if (failed) {
-      core.setFailed('Dependency review detected vulnerable packages.')
+    if (vulFound) {
+      const msg = 'Dependency review detected vulnerable packages.'
+      if (warnOnly) {
+        core.warning(msg)
+      } else {
+        core.setFailed(msg)
+      }
     } else {
       core.info(
         `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
@@ -202,13 +215,19 @@ function printChangeVulnerabilities(change: Change): void {
 }
 
 function printLicensesBlock(
-  invalidLicenseChanges: Record<string, Changes>
+  invalidLicenseChanges: Record<string, Changes>,
+  warnOnly: boolean
 ): void {
   core.group('Licenses', async () => {
     if (invalidLicenseChanges.forbidden.length > 0) {
       core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
-      core.setFailed('Dependency review detected incompatible licenses.')
+      const msg = 'Dependency review detected incompatible licenses.'
+      if (warnOnly) {
+        core.warning(msg)
+      } else {
+        core.setFailed(msg)
+      }
     }
     if (invalidLicenseChanges.unresolved.length > 0) {
       core.warning(
