@@ -1,7 +1,7 @@
 # dependency-review-action
 
 This action scans your pull requests for dependency changes, and will
-raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions on your default branch.
+raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions on your default branch.
 
 The action is available for all public repositories, as well as private repositories that have GitHub Advanced Security licensed.
 
@@ -15,7 +15,7 @@ or on the job summary:
 
 ## Installation
 
-**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repositories.**
+**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repositories.**
 
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
@@ -155,7 +155,7 @@ For more examples of how to use this action and its configuration options, see t
 
 ## Blocking pull requests
 
-The Dependency Review GitHub Action check will only block a pull request from being merged if the repository owner has required the check to pass before merging. For more information, see the [documentation on protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging).
+The Dependency Review GitHub Action check will only block a pull request from being merged if the repository owner has required the check to pass before merging. For more information, see the [documentation on protected branches](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging).
 
 ## Getting help
 
