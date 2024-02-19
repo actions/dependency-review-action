@@ -174,6 +174,7 @@ on: [pull_request]
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   dependency-review:
@@ -183,16 +184,17 @@ jobs:
         uses: actions/checkout@v4
       - name: 'Dependency Review'
         id: review
-        uses: actions/dependency-review-action@main
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
       - name: 'Report'
+        if: always()  # make sure this step runs even if the previous failed
         shell: bash
         env:
           comment: ${{ steps.review.outputs.comment-content }}
         run: |
-          echo "$comment"
+          echo "$comment"  # do something with the comment
 ```
 
 ## Exclude dependencies from the license check
