@@ -1,21 +1,21 @@
 # dependency-review-action
 
 This action scans your pull requests for dependency changes, and will
-raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/en/rest/reference/dependency-graph#dependency-review) that diffs the dependencies between any two revisions on your default branch.
+raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/rest/dependency-graph/dependency-review) that diffs the dependencies between any two revisions on your default branch.
 
 The action is available for all public repositories, as well as private repositories that have GitHub Advanced Security licensed.
 
 You can see the results on the job logs:
 
-<img width="854" alt="Screen Shot 2022-03-31 at 1 10 51 PM" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
+<img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
 
 or on the job summary:
 
-<img src="https://user-images.githubusercontent.com/7847935/182871416-50332bbb-b279-4621-a136-ca72a4314301.png">
+<img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
 
 ## Installation
 
-**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repositories.**
+**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repositories.**
 
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
@@ -38,11 +38,11 @@ jobs:
 
 ### GitHub Enterprise Server
 
-This action is available in Enterprise Server starting with version 3.6. Make sure
+Make sure
 [GitHub Advanced
-Security](https://docs.github.com/en/enterprise-server@3.6/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
+Security](https://docs.github.com/enterprise-server@3.8/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
 and [GitHub
-Connect](https://docs.github.com/en/enterprise-server@3.6/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
+Connect](https://docs.github.com/enterprise-server@3.8/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
 are enabled, and that you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
 
 You can use the same workflow as above, replacing the `runs-on` value
@@ -71,7 +71,7 @@ Configure this action by either inlining these options in your workflow file, or
 | `fail-on-severity`                     | Defines the threshold for the level of severity. The action will fail on any pull requests that introduce vulnerabilities of the specified severity level or higher.                                    | `low`, `moderate`, `high`, `critical`                                                                        | `low`         |
 | `allow-licenses`\*                     | Contains a list of allowed licenses. The action will fail on pull requests that introduce dependencies with licenses that do not match the list.                                                        | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)                                               | none          |
 | `deny-licenses`\*                      | Contains a list of prohibited licenses. The action will fail on pull requests that introduce dependencies with licenses that match the list.                                                            | Any [SPDX-compliant identifier(s)](https://spdx.org/licenses/)                                               | none          |
-| `fail-on-scopes`†                      | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list.                       | `runtime`, `development`, `unknown`                                                                          | `runtime`     |
+| `fail-on-scopes`                       | Contains a list of strings of the build environments you want to support. The action will fail on pull requests that introduce vulnerabilities in the scopes that match the list.                       | `runtime`, `development`, `unknown`                                                                          | `runtime`     |
 | `allow-ghsas`                          | Contains a list of GitHub Advisory Database IDs that can be skipped during detection.                                                                                                                   | Any GHSAs from the [GitHub Advisory Database](https://github.com/advisories)                                 | none          |
 | `license-check`                        | Enable or disable the license check performed by the action.                                                                                                                                            | `true`, `false`                                                                                              | `true`        |
 | `vulnerability-check`                  | Enable or disable the vulnerability check performed by the action.                                                                                                                                      | `true`, `false`                                                                                              | `true`        |
@@ -85,8 +85,6 @@ Configure this action by either inlining these options in your workflow file, or
 | `warn-only`+                           | When set to `true`, the action will log all vulnerabilities as warnings regardless of the severity, and the action will complete with a `success` status. This overrides the `fail-on-severity` option. | `true`, `false`                                                                                              | `false`       |
 
 \*not supported for use with GitHub Enterprise Server
-
-†will be supported with GitHub Enterprise Server 3.8
 
 +when `warn-only` is set to `true`, all vulnerabilities, independently of the severity, will be reported as warnings and the action will not fail.
 
@@ -157,7 +155,11 @@ For more examples of how to use this action and its configuration options, see t
 
 ## Blocking pull requests
 
-The Dependency Review GitHub Action check will only block a pull request from being merged if the repository owner has required the check to pass before merging. For more information, see the [documentation on protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging).
+The Dependency Review GitHub Action check will only block a pull request from being merged if the repository owner has required the check to pass before merging. For more information, see the [documentation on protected branches](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging).
+
+## Outputs
+
+`comment-content` is generated with the same content as would be present in a Dependency Review Action comment.
 
 ## Getting help
 

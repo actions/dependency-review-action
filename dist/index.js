@@ -56,13 +56,20 @@ const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->';
-function commentPr(summary) {
+function commentPr(summary, config) {
     return __awaiter(this, void 0, void 0, function* () {
+        const commentContent = summary.stringify();
+        core.setOutput('comment-content', commentContent);
+        if (config.comment_summary_in_pr !== 'always' &&
+            config.comment_summary_in_pr === 'on-failure' &&
+            process.exitCode !== core.ExitCode.Failure) {
+            return;
+        }
         if (!github.context.payload.pull_request) {
             core.warning('Not in the context of a pull request. Skipping comment creation.');
             return;
         }
-        const commentBody = `${summary.stringify()}\n\n${COMMENT_MARKER}`;
+        const commentBody = `${commentContent}\n\n${COMMENT_MARKER}`;
         try {
             const existingCommentId = yield findCommentByMarker(COMMENT_MARKER);
             if (existingCommentId) {
@@ -305,14 +312,17 @@ function getRefs(config, context) {
     }
     if (!base_ref && !head_ref) {
         throw new Error('Both a base ref and head ref must be provided, either via the `base_ref`/`head_ref` ' +
-            'config options, or by running a `pull_request`/`pull_request_target` workflow.');
+            'config options, `base-ref`/`head-ref` workflow action options, or by running a ' +
+            '`pull_request`/`pull_request_target` workflow.');
     }
     else if (!base_ref) {
         throw new Error('A base ref must be provided, either via the `base_ref` config option, ' +
-            'or by running a `pull_request`/`pull_request_target` workflow.');
+            '`base-ref` workflow action option, or by running a ' +
+            '`pull_request`/`pull_request_target` workflow.');
     }
     else if (!head_ref) {
         throw new Error('A head ref must be provided, either via the `head_ref` config option, ' +
+            '`head-ref` workflow action option, or by running a ' +
             'or by running a `pull_request`/`pull_request_target` workflow.');
     }
     return {
@@ -643,11 +653,7 @@ function run() {
             }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
-            if (config.comment_summary_in_pr === 'always' ||
-                (config.comment_summary_in_pr === 'on-failure' &&
-                    process.exitCode === core.ExitCode.Failure)) {
-                yield (0, comment_pr_1.commentPr)(core.summary);
-            }
+            yield (0, comment_pr_1.commentPr)(core.summary, config);
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError && error.status === 404) {

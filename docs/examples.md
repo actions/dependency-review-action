@@ -164,6 +164,39 @@ jobs:
           comment-summary-in-pr: always
 ```
 
+## Getting the results of the action in a later step
+
+Using the `comment-content` output you can get the results of the action in a workflow step.
+
+```yaml
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+      - name: 'Dependency Review'
+        id: review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+          deny-licenses: LGPL-2.0, BSD-2-Clause
+      - name: 'Report'
+        if: always()  # make sure this step runs even if the previous failed
+        shell: bash
+        env:
+          comment: ${{ steps.review.outputs.comment-content }}
+        run: |
+          echo "$comment"  # do something with the comment
+```
+
 ## Exclude dependencies from the license check
 
 Using the `allow-dependencies-licenses` you can exclude dependencies from the license check. The values should be provided in [purl](https://github.com/package-url/purl-spec) format.

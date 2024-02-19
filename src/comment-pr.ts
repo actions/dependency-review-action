@@ -3,6 +3,7 @@ import * as core from '@actions/core'
 import * as githubUtils from '@actions/github/lib/utils'
 import * as retry from '@octokit/plugin-retry'
 import {RequestError} from '@octokit/request-error'
+import {ConfigurationOptions} from './schemas'
 
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry)
 const octo = new retryingOctokit(
@@ -12,7 +13,22 @@ const octo = new retryingOctokit(
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
 
-export async function commentPr(summary: typeof core.summary): Promise<void> {
+export async function commentPr(
+  summary: typeof core.summary,
+  config: ConfigurationOptions
+): Promise<void> {
+  const commentContent = summary.stringify()
+
+  core.setOutput('comment-content', commentContent)
+
+  if (
+    config.comment_summary_in_pr !== 'always' &&
+    config.comment_summary_in_pr === 'on-failure' &&
+    process.exitCode !== core.ExitCode.Failure
+  ) {
+    return
+  }
+
   if (!github.context.payload.pull_request) {
     core.warning(
       'Not in the context of a pull request. Skipping comment creation.'
@@ -20,7 +36,7 @@ export async function commentPr(summary: typeof core.summary): Promise<void> {
     return
   }
 
-  const commentBody = `${summary.stringify()}\n\n${COMMENT_MARKER}`
+  const commentBody = `${commentContent}\n\n${COMMENT_MARKER}`
 
   try {
     const existingCommentId = await findCommentByMarker(COMMENT_MARKER)
