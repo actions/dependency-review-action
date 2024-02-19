@@ -305,14 +305,17 @@ function getRefs(config, context) {
     }
     if (!base_ref && !head_ref) {
         throw new Error('Both a base ref and head ref must be provided, either via the `base_ref`/`head_ref` ' +
-            'config options, or by running a `pull_request`/`pull_request_target` workflow.');
+            'config options, `base-ref`/`head-ref` workflow action options, or by running a ' +
+            '`pull_request`/`pull_request_target` workflow.');
     }
     else if (!base_ref) {
         throw new Error('A base ref must be provided, either via the `base_ref` config option, ' +
-            'or by running a `pull_request`/`pull_request_target` workflow.');
+            '`base-ref` workflow action option, or by running a ' +
+            '`pull_request`/`pull_request_target` workflow.');
     }
     else if (!head_ref) {
         throw new Error('A head ref must be provided, either via the `head_ref` config option, ' +
+            '`head-ref` workflow action option, or by running a ' +
             'or by running a `pull_request`/`pull_request_target` workflow.');
     }
     return {
