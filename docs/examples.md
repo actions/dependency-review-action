@@ -189,7 +189,8 @@ jobs:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
       - name: 'Report'
-        if: always()  # make sure this step runs even if the previous failed
+        # make sure this step runs even if the previous failed
+        if: ${{ failure() && steps.review.conclusion == 'failure' }}
         shell: bash
         env:
           comment: ${{ steps.review.outputs.comment-content }}
