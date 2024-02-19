@@ -38,11 +38,11 @@ jobs:
 
 ### GitHub Enterprise Server
 
-This action is available in Enterprise Server starting with version 3.6. Make sure
+Make sure
 [GitHub Advanced
-Security](https://docs.github.com/en/enterprise-server@3.6/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
+Security](https://docs.github.com/enterprise-server@3.8/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
 and [GitHub
-Connect](https://docs.github.com/en/enterprise-server@3.6/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
+Connect](https://docs.github.com/enterprise-server@3.8/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
 are enabled, and that you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
 
 You can use the same workflow as above, replacing the `runs-on` value
