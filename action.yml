@@ -65,6 +65,9 @@ inputs:
     description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
     required: false
     default: false
+outputs:
+  comment-content:
+    description: Prepared dependency report comment
 
 runs:
   using: 'node20'

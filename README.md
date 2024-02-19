@@ -157,6 +157,10 @@ For more examples of how to use this action and its configuration options, see t
 
 The Dependency Review GitHub Action check will only block a pull request from being merged if the repository owner has required the check to pass before merging. For more information, see the [documentation on protected branches](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging).
 
+## Outputs
+
+`comment-content` is generated with the same content as would be present in a Dependency Review Action comment.
+
 ## Getting help
 
 If you have bug reports, questions or suggestions please [create a new issue](https://github.com/actions/dependency-review-action/issues/new/choose).
