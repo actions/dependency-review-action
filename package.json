@@ -1,6 +1,6 @@
 {
   "name": "dependency-review-action",
-  "version": "4.1.1",
+  "version": "4.1.2",
   "private": true,
   "description": "A GitHub Action for Dependency Review",
   "main": "lib/main.js",
