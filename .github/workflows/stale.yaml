@@ -1,6 +1,7 @@
-name: Close stale PRs
+name: Close stale PRs and Issues
 
 permissions:
+  issues: write
   pull-requests: write
 
 on:
@@ -12,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/stale@v9.0.0
-      name: Clean up stale PRs
+      name: Clean up stale PRs and Issues
       with:
         stale-pr-message: "👋 This pull request has been marked as stale because it has been open with no activity. You can: comment on the issue or remove the stale label to hold stale off for a while, add the `Keep` label to hold stale off permanently, or do nothing. If you do nothing, this pull request will be closed eventually by the stale bot. Please see CONTRIBUTING.md for more policy details."
         stale-pr-label: "Stale"
         exempt-pr-labels: "Keep" # a "Keep" label will keep the PR from being closed as stale
         days-before-pr-stale: 180 # when the PR is considered stale
         days-before-pr-close: 15 # when the PR is closed by the bot, 
-        days-before-issue-stale: -1 # prevents issues from being tagged by the bot
-        days-before-issue-close: -1 # prevents issues from being closed by the bot
+        days-before-issue-stale: 180 # prevents issues from being tagged by the bot
+        days-before-issue-close: 15 # prevents issues from being closed by the bot
         exempt-assignees: 'advanced-security-dependency-graph'
         ascending: true
