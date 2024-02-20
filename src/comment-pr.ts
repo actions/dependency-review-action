@@ -19,8 +19,6 @@ export async function commentPr(
 ): Promise<void> {
   const commentContent = summary.stringify()
 
-  core.setOutput('comment-content', commentContent)
-
   if (
     config.comment_summary_in_pr === 'always' ||
     (config.comment_summary_in_pr === 'on-failure' &&
@@ -28,6 +26,8 @@ export async function commentPr(
   ) {
     return
   }
+
+  core.setOutput('comment-content', commentContent)
 
   if (!github.context.payload.pull_request) {
     core.warning(
