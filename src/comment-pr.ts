@@ -22,9 +22,9 @@ export async function commentPr(
   core.setOutput('comment-content', commentContent)
 
   if (
-    config.comment_summary_in_pr !== 'always' &&
-    config.comment_summary_in_pr === 'on-failure' &&
-    process.exitCode !== core.ExitCode.Failure
+    config.comment_summary_in_pr === 'always' ||
+    (config.comment_summary_in_pr === 'on-failure' &&
+      process.exitCode === core.ExitCode.Failure)
   ) {
     return
   }
