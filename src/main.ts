@@ -144,7 +144,13 @@ async function run(): Promise<void> {
 
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
-    await commentPr(core.summary, config)
+    if (
+      config.comment_summary_in_pr === 'always' ||
+      (config.comment_summary_in_pr === 'on-failure' &&
+        process.exitCode === core.ExitCode.Failure)
+    ) {
+      await commentPr(core.summary)
+    }
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       core.setFailed(
