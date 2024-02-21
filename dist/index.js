@@ -56,10 +56,15 @@ const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->';
-function commentPr(summary) {
+function commentPr(summary, config) {
     return __awaiter(this, void 0, void 0, function* () {
         const commentContent = summary.stringify();
         core.setOutput('comment-content', commentContent);
+        if (!(config.comment_summary_in_pr === 'always' ||
+            (config.comment_summary_in_pr === 'on-failure' &&
+                process.exitCode === core.ExitCode.Failure))) {
+            return;
+        }
         if (!github.context.payload.pull_request) {
             core.warning('Not in the context of a pull request. Skipping comment creation.');
             return;
@@ -648,11 +653,7 @@ function run() {
             }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
-            if (config.comment_summary_in_pr === 'always' ||
-                (config.comment_summary_in_pr === 'on-failure' &&
-                    process.exitCode === core.ExitCode.Failure)) {
-                yield (0, comment_pr_1.commentPr)(core.summary);
-            }
+            yield (0, comment_pr_1.commentPr)(core.summary, config);
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError && error.status === 404) {
