@@ -11,6 +11,7 @@ import {
   filterAllowedAdvisories
 } from '../src/filter'
 import {getInvalidLicenseChanges} from './licenses'
+import {getScorecardLevels} from './scorecard'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
 
@@ -108,6 +109,8 @@ async function run(): Promise<void> {
         licenseExclusions: config.allow_dependencies_licenses
       }
     )
+
+    core.debug(await getScorecardLevels(filteredChanges))
 
     core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
     core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)

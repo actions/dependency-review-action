@@ -100,9 +100,52 @@ export const ComparisonResponseSchema = z.object({
   snapshot_warnings: z.string()
 })
 
+export const DepsDevProjectSchema = z.object({
+  projectKey: z.object({
+    id: z.string({}),
+    openIssuesCount: z.string(),
+    starsCount: z.string(),
+    forksCount: z.string(),
+    license: z.string(),
+    description: z.string(),
+    homepage: z.string(),
+    scorecard: z.object({
+      date: z.string(),
+      repository: z.object({
+        name: z.string(),
+        commit: z.string()
+      }),
+      scorecard: z.object({
+        version: z.string(),
+        commit: z.string()
+      }),
+      checks: z.array(
+        z.object({
+          name: z.string(),
+          documentation: z.object({
+            shortDescription: z.string(),
+            url: z.string()
+          }),
+          score: z.string(),
+          reason: z.string(),
+          details: z.array(z.string())
+        })
+      ),
+      overallScore: z.number()
+    }),
+    ossFuzz: z.object({
+      lineCount: z.string(),
+      lineCoverCount: z.string(),
+      date: z.string(),
+      configUrl: z.string()
+    })
+  })
+})
+
 export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
 export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
+export type DepsDevProject = z.infer<typeof DepsDevProjectSchema>
