@@ -1047,7 +1047,7 @@ function getDepsDevProjectData(projectKeyId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.debug(`Getting deps.dev project data for ${projectKeyId}`);
-            const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKeyId}`;
+            const url = `${depsDevAPIRoot}//v3alpha/projects/${encodeURIComponent(projectKeyId)}`;
             const response = yield fetch(url);
             if (response.ok) {
                 const data = yield response.json();
