@@ -1030,7 +1030,7 @@ const schemas_1 = __nccwpck_require__(8774);
 const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
-        const data = {};
+        const data = { dependencies: [] };
         for (const change of changes) {
             try {
                 const ecosystem = change.ecosystem;
