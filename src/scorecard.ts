@@ -20,26 +20,39 @@ async function getDepsDevData(
   packageName: String,
   version: String
 ): Promise<any> {
-  //Query deps.dev GetVersion API
-  core.debug(`Getting deps.dev data for ${packageName} ${version}`)
-  const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
-  const response = await fetch(url)
-  const data = await response.json()
-
-  //Get the related projects
-  const projects = data.relatedProjects
-  for (const project of projects) {
-    return getDepsDevProjectData(project.projectKey)
+  try {
+    core.debug(`Getting deps.dev data for ${packageName} ${version}`)
+    const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
+    const response = await fetch(url)
+    if (response.ok) {
+      const data = await response.json()
+      const projects = data.relatedProjects
+      for (const project of projects) {
+        return getDepsDevProjectData(project.projectKey)
+      }
+    } else {
+      throw new Error(`Failed to fetch data with status code: ${response.status}`)
+    }
+  } catch (error: any) {
+    core.error(`Error fetching data: ${error.message}`)
   }
 }
 
 async function getDepsDevProjectData(
   projectKey: String
 ): Promise<DepsDevProject> {
-  //Query deps.dev GetProject API
-  core.debug(`Getting deps.dev project data for ${projectKey}`)
-  const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`
-  const response = await fetch(url)
-  const data = await response.json()
-  return DepsDevProjectSchema.parse(data)
+  try {
+    core.debug(`Getting deps.dev project data for ${projectKey}`)
+    const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`
+    const response = await fetch(url)
+    if (response.ok) {
+      const data = await response.json()
+      return DepsDevProjectSchema.parse(data)
+    } else {
+      throw new Error(`Failed to fetch project data with status code: ${response.status}`)
+    }
+  } catch (error: any) {
+    core.error(`Error fetching project data: ${error.message}`)
+  }
+  return DepsDevProjectSchema.parse({})
 }

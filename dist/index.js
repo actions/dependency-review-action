@@ -1014,26 +1014,44 @@ exports.getScorecardLevels = getScorecardLevels;
 const depsDevAPIRoot = 'https://api.deps.dev';
 function getDepsDevData(ecosystem, packageName, version) {
     return __awaiter(this, void 0, void 0, function* () {
-        //Query deps.dev GetVersion API
-        core.debug(`Getting deps.dev data for ${packageName} ${version}`);
-        const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
-        const response = yield fetch(url);
-        const data = yield response.json();
-        //Get the related projects
-        const projects = data.relatedProjects;
-        for (const project of projects) {
-            return getDepsDevProjectData(project.projectKey);
+        try {
+            core.debug(`Getting deps.dev data for ${packageName} ${version}`);
+            const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
+            const response = yield fetch(url);
+            if (response.ok) {
+                const data = yield response.json();
+                const projects = data.relatedProjects;
+                for (const project of projects) {
+                    return getDepsDevProjectData(project.projectKey);
+                }
+            }
+            else {
+                throw new Error(`Failed to fetch data with status code: ${response.status}`);
+            }
+        }
+        catch (error) {
+            core.error(`Error fetching data: ${error.message}`);
         }
     });
 }
 function getDepsDevProjectData(projectKey) {
     return __awaiter(this, void 0, void 0, function* () {
-        //Query deps.dev GetProject API
-        core.debug(`Getting deps.dev project data for ${projectKey}`);
-        const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`;
-        const response = yield fetch(url);
-        const data = yield response.json();
-        return schemas_1.DepsDevProjectSchema.parse(data);
+        try {
+            core.debug(`Getting deps.dev project data for ${projectKey}`);
+            const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`;
+            const response = yield fetch(url);
+            if (response.ok) {
+                const data = yield response.json();
+                return schemas_1.DepsDevProjectSchema.parse(data);
+            }
+            else {
+                throw new Error(`Failed to fetch project data with status code: ${response.status}`);
+            }
+        }
+        catch (error) {
+            core.error(`Error fetching project data: ${error.message}`);
+        }
+        return schemas_1.DepsDevProjectSchema.parse({});
     });
 }
 
