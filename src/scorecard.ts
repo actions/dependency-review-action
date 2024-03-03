@@ -1,6 +1,7 @@
 import {Change, Changes, DepsDevProject, DepsDevProjectSchema} from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
 import {PackageURL} from 'packageurl-js'
+import * as core from '@actions/core'
 
 export async function getScorecardLevels(changes: Change[]): Promise<any> {
   for (const change of changes) {
@@ -20,6 +21,7 @@ async function getDepsDevData(
   version: String
 ): Promise<any> {
   //Query deps.dev GetVersion API
+  core.debug(`Getting deps.dev data for ${packageName} ${version}`)
   const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
   const response = await fetch(url)
   const data = await response.json()
@@ -35,6 +37,7 @@ async function getDepsDevProjectData(
   projectKey: String
 ): Promise<DepsDevProject> {
   //Query deps.dev GetProject API
+  core.debug(`Getting deps.dev project data for ${projectKey}`)
   const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`
   const response = await fetch(url)
   const data = await response.json()

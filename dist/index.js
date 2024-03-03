@@ -634,7 +634,7 @@ function run() {
                 licenseExclusions: config.allow_dependencies_licenses
             });
             const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
-            core.debug(`Scorecard: scorecard}`);
+            core.debug(`Scorecard: ${scorecard}`);
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
@@ -962,6 +962,29 @@ exports.DepsDevProjectSchema = z.object({
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -975,6 +998,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getScorecardLevels = void 0;
 const schemas_1 = __nccwpck_require__(8774);
 const packageurl_js_1 = __nccwpck_require__(8915);
+const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
         for (const change of changes) {
@@ -991,6 +1015,7 @@ const depsDevAPIRoot = 'https://api.deps.dev';
 function getDepsDevData(ecosystem, packageName, version) {
     return __awaiter(this, void 0, void 0, function* () {
         //Query deps.dev GetVersion API
+        core.debug(`Getting deps.dev data for ${packageName} ${version}`);
         const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
         const response = yield fetch(url);
         const data = yield response.json();
@@ -1004,6 +1029,7 @@ function getDepsDevData(ecosystem, packageName, version) {
 function getDepsDevProjectData(projectKey) {
     return __awaiter(this, void 0, void 0, function* () {
         //Query deps.dev GetProject API
+        core.debug(`Getting deps.dev project data for ${projectKey}`);
         const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`;
         const response = yield fetch(url);
         const data = yield response.json();

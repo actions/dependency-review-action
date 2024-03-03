@@ -111,7 +111,7 @@ async function run(): Promise<void> {
     )
 
     const scorecard = await getScorecardLevels(filteredChanges)
-    core.debug(`Scorecard: scorecard}`)
+    core.debug(`Scorecard: ${scorecard}`)
 
     core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
     core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)
