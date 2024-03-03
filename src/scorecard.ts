@@ -16,10 +16,9 @@ export async function getScorecardLevels(
   const data: Scorecard = {} as Scorecard
   for (const change of changes) {
     try {
-      const purl = PackageURL.fromString(change.package_url)
-      const ecosystem = purl.type
-      const packageName = purl.name
-      const version = purl.version
+      const ecosystem = change.ecosystem
+      const packageName = change.name
+      const version = change.version
       const depsDevResponse: DepsDevProject = await getDepsDevData(
         ecosystem,
         packageName,

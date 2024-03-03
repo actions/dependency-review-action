@@ -1016,17 +1016,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getScorecardLevels = void 0;
 const schemas_1 = __nccwpck_require__(8774);
-const packageurl_js_1 = __nccwpck_require__(8915);
 const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = {};
         for (const change of changes) {
             try {
-                const purl = packageurl_js_1.PackageURL.fromString(change.package_url);
-                const ecosystem = purl.type;
-                const packageName = purl.name;
-                const version = purl.version;
+                const ecosystem = change.ecosystem;
+                const packageName = change.name;
+                const version = change.version;
                 const depsDevResponse = yield getDepsDevData(ecosystem, packageName, version);
                 data.dependencies.push({
                     ecosystem,
