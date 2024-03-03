@@ -75,7 +75,7 @@ async function getDepsDevProjectData(
     const response = await fetch(url)
     if (response.ok) {
       const data = await response.json()
-      core.debug(`Got deps.dev project data: ${JSON.stringify(data)}`)
+      //core.debug(`Got deps.dev project data: ${JSON.stringify(data)}`)
       return DepsDevProjectSchema.parse(data)
     } else {
       throw new Error(

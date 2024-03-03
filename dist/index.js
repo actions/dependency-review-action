@@ -747,9 +747,10 @@ function printNullLicenses(changes) {
 }
 function printScorecardBlock(scorecard, config) {
     core.group('Scorecard', () => __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
         if (scorecard) {
             for (const dependency of scorecard.dependencies) {
-                core.info(`${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${dependency.depsDevData.scorecard.overallScore}`);
+                core.info(`${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${(_b = (_a = dependency === null || dependency === void 0 ? void 0 : dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard) === null || _b === void 0 ? void 0 : _b.overallScore}`);
             }
         }
     }));
@@ -925,7 +926,8 @@ exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
 });
-exports.DepsDevProjectSchema = z.object({
+exports.DepsDevProjectSchema = z
+    .object({
     projectKey: z.object({
         id: z.string({})
     }),
@@ -957,13 +959,16 @@ exports.DepsDevProjectSchema = z.object({
         })),
         overallScore: z.number()
     }),
-    ossFuzz: z.object({
+    ossFuzz: z
+        .object({
         lineCount: z.string(),
         lineCoverCount: z.string(),
         date: z.string(),
         configUrl: z.string()
     })
-});
+        .nullish()
+})
+    .nullish();
 exports.ScorecardSchema = z.object({
     dependencies: z.array(z.object({
         ecosystem: z.string(),
@@ -1073,7 +1078,7 @@ function getDepsDevProjectData(projectKeyId) {
             const response = yield fetch(url);
             if (response.ok) {
                 const data = yield response.json();
-                core.debug(`Got deps.dev project data: ${JSON.stringify(data)}`);
+                //core.debug(`Got deps.dev project data: ${JSON.stringify(data)}`)
                 return schemas_1.DepsDevProjectSchema.parse(data);
             }
             else {
@@ -50023,7 +50028,8 @@ exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
 });
-exports.DepsDevProjectSchema = z.object({
+exports.DepsDevProjectSchema = z
+    .object({
     projectKey: z.object({
         id: z.string({})
     }),
@@ -50055,13 +50061,16 @@ exports.DepsDevProjectSchema = z.object({
         })),
         overallScore: z.number()
     }),
-    ossFuzz: z.object({
+    ossFuzz: z
+        .object({
         lineCount: z.string(),
         lineCoverCount: z.string(),
         date: z.string(),
         configUrl: z.string()
     })
-});
+        .nullish()
+})
+    .nullish();
 exports.ScorecardSchema = z.object({
     dependencies: z.array(z.object({
         ecosystem: z.string(),
