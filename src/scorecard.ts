@@ -32,7 +32,7 @@ export async function getScorecardLevels(
         depsDevData: depsDevResponse
       })
     } catch (error: any) {
-      core.debug(`Error parsing package url: ${error.message}`)
+      core.debug(`Error querying for depsDevData: ${error.message}`)
     }
   }
   return data
@@ -47,7 +47,7 @@ async function getDepsDevData(
 ): Promise<DepsDevProject> {
   try {
     core.debug(`Getting deps.dev data for ${packageName} ${version}`)
-    const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
+    const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
     const response = await fetch(url)
     if (response.ok) {
       const data = await response.json()

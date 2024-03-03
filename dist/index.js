@@ -1034,7 +1034,7 @@ function getScorecardLevels(changes) {
                 });
             }
             catch (error) {
-                core.debug(`Error parsing package url: ${error.message}`);
+                core.debug(`Error querying for depsDevData: ${error.message}`);
             }
         }
         return data;
@@ -1046,7 +1046,7 @@ function getDepsDevData(ecosystem, packageName, version) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.debug(`Getting deps.dev data for ${packageName} ${version}`);
-            const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
+            const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
             const response = yield fetch(url);
             if (response.ok) {
                 const data = yield response.json();
