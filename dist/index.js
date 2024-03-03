@@ -565,6 +565,7 @@ const request_error_1 = __nccwpck_require__(537);
 const config_1 = __nccwpck_require__(6373);
 const filter_1 = __nccwpck_require__(134);
 const licenses_1 = __nccwpck_require__(3247);
+const scorecard_1 = __nccwpck_require__(307);
 const summary = __importStar(__nccwpck_require__(8608));
 const git_refs_1 = __nccwpck_require__(1086);
 const utils_1 = __nccwpck_require__(918);
@@ -632,6 +633,8 @@ function run() {
                 deny: config.deny_licenses,
                 licenseExclusions: config.allow_dependencies_licenses
             });
+            const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
+            core.debug(`Scorecard: ${JSON.stringify(scorecard)}`);
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
@@ -821,7 +824,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -911,6 +914,115 @@ exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
 });
+exports.DepsDevProjectSchema = z.object({
+    projectKey: z.object({
+        id: z.string({}),
+        openIssuesCount: z.string(),
+        starsCount: z.string(),
+        forksCount: z.string(),
+        license: z.string(),
+        description: z.string(),
+        homepage: z.string(),
+        scorecard: z.object({
+            date: z.string(),
+            repository: z.object({
+                name: z.string(),
+                commit: z.string()
+            }),
+            scorecard: z.object({
+                version: z.string(),
+                commit: z.string()
+            }),
+            checks: z.array(z.object({
+                name: z.string(),
+                documentation: z.object({
+                    shortDescription: z.string(),
+                    url: z.string()
+                }),
+                score: z.string(),
+                reason: z.string(),
+                details: z.array(z.string())
+            })),
+            overallScore: z.number()
+        }),
+        ossFuzz: z.object({
+            lineCount: z.string(),
+            lineCoverCount: z.string(),
+            date: z.string(),
+            configUrl: z.string()
+        })
+    })
+});
+
+
+/***/ }),
+
+/***/ 307:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getScorecardLevels = void 0;
+const schemas_1 = __nccwpck_require__(8774);
+const packageurl_js_1 = __nccwpck_require__(8915);
+/**
+ * Loops through a list of changes, filtering and returning the
+ * ones that don't conform to the licenses allow/deny lists.
+ * It will also filter out the changes which are defined in the licenseExclusions list.
+ *
+ * Keep in mind that we don't let users specify both an allow and a deny
+ * list in their config files, so this code works under the assumption that
+ * one of the two list parameters will be empty. If both lists are provided,
+ * we will ignore the deny list.
+ * @param {Change[]} changes The list of changes to filter.
+ * @param { { allow?: string[], deny?: string[], licenseExclusions?: string[]}} licenses An object with `allow`/`deny`/`licenseExclusions` keys, each containing a list of licenses.
+ * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
+ */
+function getScorecardLevels(changes) {
+    return __awaiter(this, void 0, void 0, function* () {
+        changes.forEach((change) => {
+            const purl = packageurl_js_1.PackageURL.fromString(change.package_url);
+            const ecosystem = purl.type;
+            const packageName = purl.name;
+            const version = purl.version;
+            return getDepsDevData(ecosystem, packageName, String(version));
+        });
+    });
+}
+exports.getScorecardLevels = getScorecardLevels;
+const depsDevAPIRoot = 'https://api.deps.dev';
+function getDepsDevData(ecosystem, packageName, version) {
+    return __awaiter(this, void 0, void 0, function* () {
+        //Query deps.dev GetVersion API
+        const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
+        const response = yield fetch(url);
+        const data = yield response.json();
+        //Get the related projects
+        const projects = data.relatedProjects;
+        projects.forEach((project) => {
+            return getDepsDevProjectData(project.projectKey);
+        });
+    });
+}
+function getDepsDevProjectData(projectKey) {
+    return __awaiter(this, void 0, void 0, function* () {
+        //Query deps.dev GetProject API
+        const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`;
+        const response = yield fetch(url);
+        const data = yield response.json();
+        return schemas_1.DepsDevProjectSchema.parse(data);
+    });
+}
 
 
 /***/ }),
@@ -49758,7 +49870,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -49847,6 +49959,45 @@ exports.ChangesSchema = z.array(exports.ChangeSchema);
 exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
+});
+exports.DepsDevProjectSchema = z.object({
+    projectKey: z.object({
+        id: z.string({}),
+        openIssuesCount: z.string(),
+        starsCount: z.string(),
+        forksCount: z.string(),
+        license: z.string(),
+        description: z.string(),
+        homepage: z.string(),
+        scorecard: z.object({
+            date: z.string(),
+            repository: z.object({
+                name: z.string(),
+                commit: z.string()
+            }),
+            scorecard: z.object({
+                version: z.string(),
+                commit: z.string()
+            }),
+            checks: z.array(z.object({
+                name: z.string(),
+                documentation: z.object({
+                    shortDescription: z.string(),
+                    url: z.string()
+                }),
+                score: z.string(),
+                reason: z.string(),
+                details: z.array(z.string())
+            })),
+            overallScore: z.number()
+        }),
+        ossFuzz: z.object({
+            lineCount: z.string(),
+            lineCoverCount: z.string(),
+            date: z.string(),
+            configUrl: z.string()
+        })
+    })
 });
 
 
