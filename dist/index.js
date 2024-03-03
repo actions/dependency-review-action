@@ -931,23 +931,28 @@ exports.DepsDevProjectSchema = z
     projectKey: z.object({
         id: z.string({})
     }),
-    openIssuesCount: z.string(),
-    starsCount: z.string(),
-    forksCount: z.string(),
-    license: z.string(),
-    description: z.string(),
-    homepage: z.string(),
+    openIssuesCount: z.string().nullish(),
+    starsCount: z.string().nullish(),
+    forksCount: z.string().nullish(),
+    license: z.string().nullish(),
+    description: z.string().nullish(),
+    homepage: z.string().nullish(),
     scorecard: z.object({
         date: z.string(),
-        repository: z.object({
+        repository: z
+            .object({
             name: z.string(),
             commit: z.string()
-        }),
-        scorecard: z.object({
+        })
+            .nullish(),
+        scorecard: z
+            .object({
             version: z.string(),
             commit: z.string()
-        }),
-        checks: z.array(z.object({
+        })
+            .nullish(),
+        checks: z
+            .array(z.object({
             name: z.string(),
             documentation: z.object({
                 shortDescription: z.string(),
@@ -956,8 +961,9 @@ exports.DepsDevProjectSchema = z
             score: z.string(),
             reason: z.string(),
             details: z.array(z.string())
-        })),
-        overallScore: z.number()
+        }))
+            .nullish(),
+        overallScore: z.number().nullish()
     }),
     ossFuzz: z
         .object({
@@ -50033,23 +50039,28 @@ exports.DepsDevProjectSchema = z
     projectKey: z.object({
         id: z.string({})
     }),
-    openIssuesCount: z.string(),
-    starsCount: z.string(),
-    forksCount: z.string(),
-    license: z.string(),
-    description: z.string(),
-    homepage: z.string(),
+    openIssuesCount: z.string().nullish(),
+    starsCount: z.string().nullish(),
+    forksCount: z.string().nullish(),
+    license: z.string().nullish(),
+    description: z.string().nullish(),
+    homepage: z.string().nullish(),
     scorecard: z.object({
         date: z.string(),
-        repository: z.object({
+        repository: z
+            .object({
             name: z.string(),
             commit: z.string()
-        }),
-        scorecard: z.object({
+        })
+            .nullish(),
+        scorecard: z
+            .object({
             version: z.string(),
             commit: z.string()
-        }),
-        checks: z.array(z.object({
+        })
+            .nullish(),
+        checks: z
+            .array(z.object({
             name: z.string(),
             documentation: z.object({
                 shortDescription: z.string(),
@@ -50058,8 +50069,9 @@ exports.DepsDevProjectSchema = z
             score: z.string(),
             reason: z.string(),
             details: z.array(z.string())
-        })),
-        overallScore: z.number()
+        }))
+            .nullish(),
+        overallScore: z.number().nullish()
     }),
     ossFuzz: z
         .object({

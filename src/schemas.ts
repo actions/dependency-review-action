@@ -105,35 +105,41 @@ export const DepsDevProjectSchema = z
     projectKey: z.object({
       id: z.string({})
     }),
-    openIssuesCount: z.string(),
-    starsCount: z.string(),
-    forksCount: z.string(),
-    license: z.string(),
-    description: z.string(),
-    homepage: z.string(),
+    openIssuesCount: z.string().nullish(),
+    starsCount: z.string().nullish(),
+    forksCount: z.string().nullish(),
+    license: z.string().nullish(),
+    description: z.string().nullish(),
+    homepage: z.string().nullish(),
     scorecard: z.object({
       date: z.string(),
-      repository: z.object({
-        name: z.string(),
-        commit: z.string()
-      }),
-      scorecard: z.object({
-        version: z.string(),
-        commit: z.string()
-      }),
-      checks: z.array(
-        z.object({
+      repository: z
+        .object({
           name: z.string(),
-          documentation: z.object({
-            shortDescription: z.string(),
-            url: z.string()
-          }),
-          score: z.string(),
-          reason: z.string(),
-          details: z.array(z.string())
+          commit: z.string()
         })
-      ),
-      overallScore: z.number()
+        .nullish(),
+      scorecard: z
+        .object({
+          version: z.string(),
+          commit: z.string()
+        })
+        .nullish(),
+      checks: z
+        .array(
+          z.object({
+            name: z.string(),
+            documentation: z.object({
+              shortDescription: z.string(),
+              url: z.string()
+            }),
+            score: z.string(),
+            reason: z.string(),
+            details: z.array(z.string())
+          })
+        )
+        .nullish(),
+      overallScore: z.number().nullish()
     }),
     ossFuzz: z
       .object({
