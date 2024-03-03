@@ -37,7 +37,7 @@ async function getDepsDevData(
       const data = await response.json()
       const projects = data.relatedProjects
       for (const project of projects) {
-        return await getDepsDevProjectData(project.projectKey)
+        return await getDepsDevProjectData(project.projectKey.id)
       }
     } else {
       throw new Error(`Failed to fetch data with status code: ${response.status}`)
@@ -49,11 +49,11 @@ async function getDepsDevData(
 }
 
 async function getDepsDevProjectData(
-  projectKey: String
+  projectKeyId: String
 ): Promise<DepsDevProject> {
   try {
-    core.debug(`Getting deps.dev project data for ${projectKey}`)
-    const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`
+    core.debug(`Getting deps.dev project data for ${projectKeyId}`)
+    const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKeyId}`
     const response = await fetch(url)
     if (response.ok) {
       const data = await response.json()

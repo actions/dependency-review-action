@@ -634,7 +634,7 @@ function run() {
                 licenseExclusions: config.allow_dependencies_licenses
             });
             const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
-            core.debug(`Scorecard: ${scorecard}`);
+            core.debug(`Scorecard: ${JSON.stringify(scorecard)}`);
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
@@ -1030,7 +1030,7 @@ function getDepsDevData(ecosystem, packageName, version) {
                 const data = yield response.json();
                 const projects = data.relatedProjects;
                 for (const project of projects) {
-                    return yield getDepsDevProjectData(project.projectKey);
+                    return yield getDepsDevProjectData(project.projectKey.id);
                 }
             }
             else {
@@ -1043,11 +1043,11 @@ function getDepsDevData(ecosystem, packageName, version) {
         return {};
     });
 }
-function getDepsDevProjectData(projectKey) {
+function getDepsDevProjectData(projectKeyId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            core.debug(`Getting deps.dev project data for ${projectKey}`);
-            const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKey}`;
+            core.debug(`Getting deps.dev project data for ${projectKeyId}`);
+            const url = `${depsDevAPIRoot}//v3alpha/projects/${projectKeyId}`;
             const response = yield fetch(url);
             if (response.ok) {
                 const data = yield response.json();
