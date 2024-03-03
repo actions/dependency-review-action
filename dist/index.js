@@ -996,7 +996,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getScorecardLevels = void 0;
-const schemas_1 = __nccwpck_require__(8774);
 const packageurl_js_1 = __nccwpck_require__(8915);
 const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
@@ -1051,7 +1050,7 @@ function getDepsDevProjectData(projectKeyId) {
             const response = yield fetch(url);
             if (response.ok) {
                 const data = yield response.json();
-                return schemas_1.DepsDevProjectSchema.parse(data);
+                return data;
             }
             else {
                 throw new Error(`Failed to fetch project data with status code: ${response.status}`);
@@ -1060,7 +1059,7 @@ function getDepsDevProjectData(projectKeyId) {
         catch (error) {
             core.error(`Error fetching project data: ${error.message}`);
         }
-        return schemas_1.DepsDevProjectSchema.parse({});
+        return {};
     });
 }
 

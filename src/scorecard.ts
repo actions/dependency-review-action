@@ -48,21 +48,19 @@ async function getDepsDevData(
   return {}
 }
 
-async function getDepsDevProjectData(
-  projectKeyId: string
-): Promise<DepsDevProject> {
+async function getDepsDevProjectData(projectKeyId: string): Promise<object> {
   try {
     core.debug(`Getting deps.dev project data for ${projectKeyId}`)
     const url = `${depsDevAPIRoot}/v3alpha/projects/${encodeURIComponent(projectKeyId)}`
     const response = await fetch(url)
     if (response.ok) {
       const data = await response.json()
-      return DepsDevProjectSchema.parse(data)
+      return data
     } else {
       throw new Error(`Failed to fetch project data with status code: ${response.status}`)
     }
   } catch (error: any) {
     core.error(`Error fetching project data: ${error.message}`)
   }
-  return DepsDevProjectSchema.parse({})
+  return {}
 }
