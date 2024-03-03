@@ -53,7 +53,7 @@ async function getDepsDevProjectData(
 ): Promise<DepsDevProject> {
   try {
     core.debug(`Getting deps.dev project data for ${projectKeyId}`)
-    const url = `${depsDevAPIRoot}//v3alpha/projects/${encodeURIComponent(projectKeyId)}`
+    const url = `${depsDevAPIRoot}/v3alpha/projects/${encodeURIComponent(projectKeyId)}`
     const response = await fetch(url)
     if (response.ok) {
       const data = await response.json()
