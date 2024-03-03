@@ -1001,13 +1001,21 @@ const packageurl_js_1 = __nccwpck_require__(8915);
 const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
+        const data = { dependencies: [] };
         for (const change of changes) {
             const purl = packageurl_js_1.PackageURL.fromString(change.package_url);
             const ecosystem = purl.type;
             const packageName = purl.name;
             const version = purl.version;
-            return getDepsDevData(ecosystem, packageName, String(version));
+            data.dependencies.push({
+                purl: purl,
+                ecosystem: ecosystem,
+                packageName: packageName,
+                version: version,
+                depsDevData: yield getDepsDevData(ecosystem, packageName, version)
+            });
         }
+        return data;
     });
 }
 exports.getScorecardLevels = getScorecardLevels;
@@ -1022,7 +1030,7 @@ function getDepsDevData(ecosystem, packageName, version) {
                 const data = yield response.json();
                 const projects = data.relatedProjects;
                 for (const project of projects) {
-                    return getDepsDevProjectData(project.projectKey);
+                    return yield getDepsDevProjectData(project.projectKey);
                 }
             }
             else {
@@ -1032,6 +1040,7 @@ function getDepsDevData(ecosystem, packageName, version) {
         catch (error) {
             core.error(`Error fetching data: ${error.message}`);
         }
+        return {};
     });
 }
 function getDepsDevProjectData(projectKey) {
