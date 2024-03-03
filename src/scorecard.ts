@@ -6,20 +6,24 @@ import * as core from '@actions/core'
 export async function getScorecardLevels(changes: Change[]): Promise<object> {
   const data: any = {dependencies: []}
   for (const change of changes) {
-    const purl = PackageURL.fromString(change.package_url)
-    const ecosystem = purl.type
-    const packageName = purl.name
-    const version = purl.version
+    try {
+      const purl = PackageURL.fromString(change.package_url)
+      const ecosystem = purl.type
+      const packageName = purl.name
+      const version = purl.version
 
-    data.dependencies.push({
-      purl: purl,
-      ecosystem: ecosystem,
-      packageName: packageName,
-      version: version,
-      depsDevData: await getDepsDevData(ecosystem, packageName, version)
-    })
+      data.dependencies.push({
+        purl: purl,
+        ecosystem: ecosystem,
+        packageName: packageName,
+        version: version,
+        depsDevData: await getDepsDevData(ecosystem, packageName, version)
+      })
+    } catch (error: any) {
+      core.debug(`Error parsing package url: ${error.message}`)
+    }
   }
-  return data;
+  return data
 }
 
 const depsDevAPIRoot = 'https://api.deps.dev'
@@ -40,10 +44,12 @@ async function getDepsDevData(
         return await getDepsDevProjectData(project.projectKey.id)
       }
     } else {
-      throw new Error(`Failed to fetch data with status code: ${response.status}`)
+      throw new Error(
+        `Failed to fetch data with status code: ${response.status}`
+      )
     }
   } catch (error: any) {
-    core.error(`Error fetching data: ${error.message}`)
+    core.debug(`Error fetching data: ${error.message}`)
   }
   return {}
 }
@@ -57,10 +63,12 @@ async function getDepsDevProjectData(projectKeyId: string): Promise<object> {
       const data = await response.json()
       return data
     } else {
-      throw new Error(`Failed to fetch project data with status code: ${response.status}`)
+      throw new Error(
+        `Failed to fetch project data with status code: ${response.status}`
+      )
     }
   } catch (error: any) {
-    core.error(`Error fetching project data: ${error.message}`)
+    core.debug(`Error fetching project data: ${error.message}`)
   }
   return {}
 }

@@ -1002,17 +1002,22 @@ function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = { dependencies: [] };
         for (const change of changes) {
-            const purl = packageurl_js_1.PackageURL.fromString(change.package_url);
-            const ecosystem = purl.type;
-            const packageName = purl.name;
-            const version = purl.version;
-            data.dependencies.push({
-                purl: purl,
-                ecosystem: ecosystem,
-                packageName: packageName,
-                version: version,
-                depsDevData: yield getDepsDevData(ecosystem, packageName, version)
-            });
+            try {
+                const purl = packageurl_js_1.PackageURL.fromString(change.package_url);
+                const ecosystem = purl.type;
+                const packageName = purl.name;
+                const version = purl.version;
+                data.dependencies.push({
+                    purl: purl,
+                    ecosystem: ecosystem,
+                    packageName: packageName,
+                    version: version,
+                    depsDevData: yield getDepsDevData(ecosystem, packageName, version)
+                });
+            }
+            catch (error) {
+                core.debug(`Error parsing package url: ${error.message}`);
+            }
         }
         return data;
     });
@@ -1037,7 +1042,7 @@ function getDepsDevData(ecosystem, packageName, version) {
             }
         }
         catch (error) {
-            core.error(`Error fetching data: ${error.message}`);
+            core.debug(`Error fetching data: ${error.message}`);
         }
         return {};
     });
@@ -1057,7 +1062,7 @@ function getDepsDevProjectData(projectKeyId) {
             }
         }
         catch (error) {
-            core.error(`Error fetching project data: ${error.message}`);
+            core.debug(`Error fetching project data: ${error.message}`);
         }
         return {};
     });
