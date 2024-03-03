@@ -65,6 +65,10 @@ inputs:
     description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
     required: false
     default: false
+  warn-on-openssf-scorecard-threshold:
+    description: Numeric threshold for the OpenSSF Scorecard score. If the score is below this threshold, the action will warn you.
+    required: false
+    default: 0
 outputs:
   comment-content:
     description: Prepared dependency report comment

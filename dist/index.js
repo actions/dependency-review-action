@@ -654,6 +654,8 @@ function run() {
                 summary.addDeniedToSummary(deniedChanges);
                 printDeniedDependencies(deniedChanges, config);
             }
+            //summary.addScorecardToSummary(scorecard, config)
+            printScorecardBlock(scorecard, config);
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
             yield (0, comment_pr_1.commentPr)(core.summary, config);
@@ -743,6 +745,15 @@ function printNullLicenses(changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
     }
 }
+function printScorecardBlock(scorecard, config) {
+    core.group('Scorecard', () => __awaiter(this, void 0, void 0, function* () {
+        if (scorecard) {
+            for (const dependency of scorecard.dependencies) {
+                core.info(`${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${dependency.depsDevData.scorecard.overallScore}`);
+            }
+        }
+    }));
+}
 function renderSeverity(severity) {
     const color = {
         critical: 'red',
@@ -824,7 +835,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -916,42 +927,50 @@ exports.ComparisonResponseSchema = z.object({
 });
 exports.DepsDevProjectSchema = z.object({
     projectKey: z.object({
-        id: z.string({}),
-        openIssuesCount: z.string(),
-        starsCount: z.string(),
-        forksCount: z.string(),
-        license: z.string(),
-        description: z.string(),
-        homepage: z.string(),
-        scorecard: z.object({
-            date: z.string(),
-            repository: z.object({
-                name: z.string(),
-                commit: z.string()
-            }),
-            scorecard: z.object({
-                version: z.string(),
-                commit: z.string()
-            }),
-            checks: z.array(z.object({
-                name: z.string(),
-                documentation: z.object({
-                    shortDescription: z.string(),
-                    url: z.string()
-                }),
-                score: z.string(),
-                reason: z.string(),
-                details: z.array(z.string())
-            })),
-            overallScore: z.number()
+        id: z.string({})
+    }),
+    openIssuesCount: z.string(),
+    starsCount: z.string(),
+    forksCount: z.string(),
+    license: z.string(),
+    description: z.string(),
+    homepage: z.string(),
+    scorecard: z.object({
+        date: z.string(),
+        repository: z.object({
+            name: z.string(),
+            commit: z.string()
         }),
-        ossFuzz: z.object({
-            lineCount: z.string(),
-            lineCoverCount: z.string(),
-            date: z.string(),
-            configUrl: z.string()
-        })
+        scorecard: z.object({
+            version: z.string(),
+            commit: z.string()
+        }),
+        checks: z.array(z.object({
+            name: z.string(),
+            documentation: z.object({
+                shortDescription: z.string(),
+                url: z.string()
+            }),
+            score: z.string(),
+            reason: z.string(),
+            details: z.array(z.string())
+        })),
+        overallScore: z.number()
+    }),
+    ossFuzz: z.object({
+        lineCount: z.string(),
+        lineCoverCount: z.string(),
+        date: z.string(),
+        configUrl: z.string()
     })
+});
+exports.ScorecardSchema = z.object({
+    dependencies: z.array(z.object({
+        ecosystem: z.string(),
+        packageName: z.string(),
+        version: z.string().nullish(),
+        depsDevData: exports.DepsDevProjectSchema
+    }))
 });
 
 
@@ -996,23 +1015,24 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getScorecardLevels = void 0;
+const schemas_1 = __nccwpck_require__(8774);
 const packageurl_js_1 = __nccwpck_require__(8915);
 const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
-        const data = { dependencies: [] };
+        const data = {};
         for (const change of changes) {
             try {
                 const purl = packageurl_js_1.PackageURL.fromString(change.package_url);
                 const ecosystem = purl.type;
                 const packageName = purl.name;
                 const version = purl.version;
+                const depsDevResponse = yield getDepsDevData(ecosystem, packageName, version);
                 data.dependencies.push({
-                    purl: purl,
-                    ecosystem: ecosystem,
-                    packageName: packageName,
-                    version: version,
-                    depsDevData: yield getDepsDevData(ecosystem, packageName, version)
+                    ecosystem,
+                    packageName,
+                    version,
+                    depsDevData: depsDevResponse
                 });
             }
             catch (error) {
@@ -1044,7 +1064,7 @@ function getDepsDevData(ecosystem, packageName, version) {
         catch (error) {
             core.debug(`Error fetching data: ${error.message}`);
         }
-        return {};
+        return schemas_1.DepsDevProjectSchema.parse({});
     });
 }
 function getDepsDevProjectData(projectKeyId) {
@@ -1064,7 +1084,7 @@ function getDepsDevProjectData(projectKeyId) {
         catch (error) {
             core.debug(`Error fetching project data: ${error.message}`);
         }
-        return {};
+        return schemas_1.DepsDevProjectSchema.parse({});
     });
 }
 
@@ -49914,7 +49934,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -50006,42 +50026,50 @@ exports.ComparisonResponseSchema = z.object({
 });
 exports.DepsDevProjectSchema = z.object({
     projectKey: z.object({
-        id: z.string({}),
-        openIssuesCount: z.string(),
-        starsCount: z.string(),
-        forksCount: z.string(),
-        license: z.string(),
-        description: z.string(),
-        homepage: z.string(),
-        scorecard: z.object({
-            date: z.string(),
-            repository: z.object({
-                name: z.string(),
-                commit: z.string()
-            }),
-            scorecard: z.object({
-                version: z.string(),
-                commit: z.string()
-            }),
-            checks: z.array(z.object({
-                name: z.string(),
-                documentation: z.object({
-                    shortDescription: z.string(),
-                    url: z.string()
-                }),
-                score: z.string(),
-                reason: z.string(),
-                details: z.array(z.string())
-            })),
-            overallScore: z.number()
+        id: z.string({})
+    }),
+    openIssuesCount: z.string(),
+    starsCount: z.string(),
+    forksCount: z.string(),
+    license: z.string(),
+    description: z.string(),
+    homepage: z.string(),
+    scorecard: z.object({
+        date: z.string(),
+        repository: z.object({
+            name: z.string(),
+            commit: z.string()
         }),
-        ossFuzz: z.object({
-            lineCount: z.string(),
-            lineCoverCount: z.string(),
-            date: z.string(),
-            configUrl: z.string()
-        })
+        scorecard: z.object({
+            version: z.string(),
+            commit: z.string()
+        }),
+        checks: z.array(z.object({
+            name: z.string(),
+            documentation: z.object({
+                shortDescription: z.string(),
+                url: z.string()
+            }),
+            score: z.string(),
+            reason: z.string(),
+            details: z.array(z.string())
+        })),
+        overallScore: z.number()
+    }),
+    ossFuzz: z.object({
+        lineCount: z.string(),
+        lineCoverCount: z.string(),
+        date: z.string(),
+        configUrl: z.string()
     })
+});
+exports.ScorecardSchema = z.object({
+    dependencies: z.array(z.object({
+        ecosystem: z.string(),
+        packageName: z.string(),
+        version: z.string().nullish(),
+        depsDevData: exports.DepsDevProjectSchema
+    }))
 });
 
 

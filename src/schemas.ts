@@ -102,44 +102,55 @@ export const ComparisonResponseSchema = z.object({
 
 export const DepsDevProjectSchema = z.object({
   projectKey: z.object({
-    id: z.string({}),
-    openIssuesCount: z.string(),
-    starsCount: z.string(),
-    forksCount: z.string(),
-    license: z.string(),
-    description: z.string(),
-    homepage: z.string(),
-    scorecard: z.object({
-      date: z.string(),
-      repository: z.object({
-        name: z.string(),
-        commit: z.string()
-      }),
-      scorecard: z.object({
-        version: z.string(),
-        commit: z.string()
-      }),
-      checks: z.array(
-        z.object({
-          name: z.string(),
-          documentation: z.object({
-            shortDescription: z.string(),
-            url: z.string()
-          }),
-          score: z.string(),
-          reason: z.string(),
-          details: z.array(z.string())
-        })
-      ),
-      overallScore: z.number()
+    id: z.string({})
+  }),
+  openIssuesCount: z.string(),
+  starsCount: z.string(),
+  forksCount: z.string(),
+  license: z.string(),
+  description: z.string(),
+  homepage: z.string(),
+  scorecard: z.object({
+    date: z.string(),
+    repository: z.object({
+      name: z.string(),
+      commit: z.string()
     }),
-    ossFuzz: z.object({
-      lineCount: z.string(),
-      lineCoverCount: z.string(),
-      date: z.string(),
-      configUrl: z.string()
-    })
+    scorecard: z.object({
+      version: z.string(),
+      commit: z.string()
+    }),
+    checks: z.array(
+      z.object({
+        name: z.string(),
+        documentation: z.object({
+          shortDescription: z.string(),
+          url: z.string()
+        }),
+        score: z.string(),
+        reason: z.string(),
+        details: z.array(z.string())
+      })
+    ),
+    overallScore: z.number()
+  }),
+  ossFuzz: z.object({
+    lineCount: z.string(),
+    lineCoverCount: z.string(),
+    date: z.string(),
+    configUrl: z.string()
   })
+})
+
+export const ScorecardSchema = z.object({
+  dependencies: z.array(
+    z.object({
+      ecosystem: z.string(),
+      packageName: z.string(),
+      version: z.string().nullish(),
+      depsDevData: DepsDevProjectSchema
+    })
+  )
 })
 
 export type Change = z.infer<typeof ChangeSchema>
@@ -149,3 +160,4 @@ export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
 export type DepsDevProject = z.infer<typeof DepsDevProjectSchema>
+export type Scorecard = z.infer<typeof ScorecardSchema>

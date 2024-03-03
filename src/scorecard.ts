@@ -1,23 +1,36 @@
-import {Change, Changes, DepsDevProject, DepsDevProjectSchema} from './schemas'
+import {
+  Change,
+  Changes,
+  DepsDevProject,
+  DepsDevProjectSchema,
+  Scorecard,
+  ScorecardSchema
+} from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
 import {PackageURL} from 'packageurl-js'
 import * as core from '@actions/core'
 
-export async function getScorecardLevels(changes: Change[]): Promise<object> {
-  const data: any = {dependencies: []}
+export async function getScorecardLevels(
+  changes: Change[]
+): Promise<Scorecard> {
+  const data: Scorecard = {} as Scorecard
   for (const change of changes) {
     try {
       const purl = PackageURL.fromString(change.package_url)
       const ecosystem = purl.type
       const packageName = purl.name
       const version = purl.version
+      const depsDevResponse: DepsDevProject = await getDepsDevData(
+        ecosystem,
+        packageName,
+        version
+      )
 
       data.dependencies.push({
-        purl: purl,
-        ecosystem: ecosystem,
-        packageName: packageName,
-        version: version,
-        depsDevData: await getDepsDevData(ecosystem, packageName, version)
+        ecosystem,
+        packageName,
+        version,
+        depsDevData: depsDevResponse
       })
     } catch (error: any) {
       core.debug(`Error parsing package url: ${error.message}`)
@@ -32,7 +45,7 @@ async function getDepsDevData(
   ecosystem: String,
   packageName: String,
   version: any
-): Promise<object> {
+): Promise<DepsDevProject> {
   try {
     core.debug(`Getting deps.dev data for ${packageName} ${version}`)
     const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
@@ -51,10 +64,12 @@ async function getDepsDevData(
   } catch (error: any) {
     core.debug(`Error fetching data: ${error.message}`)
   }
-  return {}
+  return DepsDevProjectSchema.parse({})
 }
 
-async function getDepsDevProjectData(projectKeyId: string): Promise<object> {
+async function getDepsDevProjectData(
+  projectKeyId: string
+): Promise<DepsDevProject> {
   try {
     core.debug(`Getting deps.dev project data for ${projectKeyId}`)
     const url = `${depsDevAPIRoot}/v3alpha/projects/${encodeURIComponent(projectKeyId)}`
@@ -70,5 +85,5 @@ async function getDepsDevProjectData(projectKeyId: string): Promise<object> {
   } catch (error: any) {
     core.debug(`Error fetching project data: ${error.message}`)
   }
-  return {}
+  return DepsDevProjectSchema.parse({})
 }

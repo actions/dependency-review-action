@@ -3,7 +3,14 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Changes, ConfigurationOptions} from './schemas'
+import {
+  Change,
+  Severity,
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  DepsDevProject
+} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -145,6 +152,8 @@ async function run(): Promise<void> {
       summary.addDeniedToSummary(deniedChanges)
       printDeniedDependencies(deniedChanges, config)
     }
+    //summary.addScorecardToSummary(scorecard, config)
+    printScorecardBlock(scorecard, config)
 
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
@@ -259,6 +268,21 @@ function printNullLicenses(changes: Changes): void {
       `${styles.bold.open}${change.manifest} » ${change.name}@${change.version}${styles.bold.close}`
     )
   }
+}
+
+function printScorecardBlock(
+  scorecard: Scorecard,
+  config: ConfigurationOptions
+): void {
+  core.group('Scorecard', async () => {
+    if (scorecard) {
+      for (const dependency of scorecard.dependencies) {
+        core.info(
+          `${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${dependency.depsDevData.scorecard.overallScore}`
+        )
+      }
+    }
+  })
 }
 
 function renderSeverity(
