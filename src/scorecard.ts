@@ -75,7 +75,7 @@ async function getDepsDevProjectData(
     const response = await fetch(url)
     if (response.ok) {
       const data = await response.json()
-      return data
+      return DepsDevProjectSchema.parse(data)
     } else {
       throw new Error(
         `Failed to fetch project data with status code: ${response.status}`
