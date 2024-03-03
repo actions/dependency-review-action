@@ -20,25 +20,25 @@ export async function getScorecardLevels(changes: Change[]): Promise<any> {
   changes.forEach((change) => {
     const purl = PackageURL.fromString(change.package_url)
     const ecosystem = purl.type
-    const package = purl.name
+    const packageName = purl.name
     const version = purl.version
-    return getDepsDevData(ecosystem, package, String(version));
-  }
+    return getDepsDevData(ecosystem, packageName, String(version));
+  });
 }
 
 const depsDevAPIRoot = 'https://api.deps.dev'
 
-async function getDepsDevData(ecosystem: String, package: String, version: String): Promise<any> {
+async function getDepsDevData(ecosystem: String, packageName: String, version: String): Promise<any> {
     //Query deps.dev GetVersion API
-    const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${package}/versions/${version}`;
+    const url = `${depsDevAPIRoot}//v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
     const response = await fetch(url);
     const data = await response.json();
     
     //Get the related projects
     const projects = data.relatedProjects;
-    projects.forEach((project) => {
+    projects.forEach((project: any) => {
         return getDepsDevProjectData(project.projectKey);
-    }
+    })
 }
 
 async function getDepsDevProjectData(projectKey: String): Promise<DepsDevProject> {
