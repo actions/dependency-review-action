@@ -1073,6 +1073,7 @@ function getDepsDevProjectData(projectKeyId) {
             const response = yield fetch(url);
             if (response.ok) {
                 const data = yield response.json();
+                core.debug(`Got deps.dev project data: ${JSON.stringify(data)}`);
                 return schemas_1.DepsDevProjectSchema.parse(data);
             }
             else {
