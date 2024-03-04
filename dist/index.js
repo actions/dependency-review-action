@@ -1330,7 +1330,7 @@ function addScorecardToSummary(scorecard, config) {
         core.debug('Adding scorecard to summary');
         core.debug(`Overall score ${(_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore}`);
         // Set the icon based on the overall score value
-        let overallIcon = null;
+        let overallIcon = '';
         if (((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore) !== undefined &&
             ((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.overallScore) !== null) {
             overallIcon =
@@ -1348,7 +1348,7 @@ function addScorecardToSummary(scorecard, config) {
                 const icon = parseFloat(check.score) < config.warn_on_openssf_scorecard_level
                     ? ':warning:'
                     : ':green_circle:';
-                detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${icon} ${check.reason}</td></tr>`;
+                detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${check.reason}</td></tr>`;
             }
             detailsTable += `</table>`;
             core.summary.addRaw(`<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`, true);

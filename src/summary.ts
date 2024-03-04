@@ -265,7 +265,7 @@ export function addScorecardToSummary(
     )
 
     // Set the icon based on the overall score value
-    let overallIcon = null
+    let overallIcon = ''
     if (
       dependency.depsDevData?.scorecard.overallScore !== undefined &&
       dependency.depsDevData?.scorecard.overallScore !== null
@@ -292,7 +292,7 @@ export function addScorecardToSummary(
             ? ':warning:'
             : ':green_circle:'
 
-        detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${icon} ${check.reason}</td></tr>`
+        detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${check.reason}</td></tr>`
       }
       detailsTable += `</table>`
       core.summary.addRaw(
