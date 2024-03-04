@@ -1323,16 +1323,18 @@ function snapshotWarningRecommendation(config, warnings) {
     return 'Re-running this action after a short time may resolve the issue.';
 }
 function addScorecardToSummary(scorecard, config) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     core.summary.addHeading('OpenSSF Scorecard', 2);
     core.summary.addRaw(`<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`, true);
     for (const dependency of scorecard.dependencies) {
         core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
-      <td>${((_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore) == undefined ? 'Unknown' : (_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore}</td>`, false);
-        if (((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.checks) !== undefined) {
+      <td>${((_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore) === undefined || ((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore) === null ? 'Unknown' : (_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.overallScore}</td>`, false);
+        if (((_d = dependency.depsDevData) === null || _d === void 0 ? void 0 : _d.scorecard.checks) !== undefined) {
             let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
-            for (const check of ((_d = dependency.depsDevData) === null || _d === void 0 ? void 0 : _d.scorecard.checks) || []) {
-                let icon = (check.score < config.warn_on_openssf_scorecard_level) ? ":warning:" : ":green_circle:";
+            for (const check of ((_e = dependency.depsDevData) === null || _e === void 0 ? void 0 : _e.scorecard.checks) || []) {
+                let icon = check.score < config.warn_on_openssf_scorecard_level
+                    ? ':warning:'
+                    : ':green_circle:';
                 detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${icon} ${check.reason}</td></tr>`;
             }
             detailsTable += `</table>`;
