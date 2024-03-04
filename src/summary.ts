@@ -254,18 +254,17 @@ export function addScorecardToSummary(
   config: ConfigurationOptions
 ): void {
   core.summary.addHeading('OpenSSF Scorecard', 2)
-
+  core.summary.addRaw(
+    `<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`,
+    true
+  )
   for (const dependency of scorecard.dependencies) {
     core.summary.addRaw(
-      `<table><th><td>Dependency</td><td>Score</td><td>Details</td></th>`,
-      true
-    )
-    core.summary.addRaw(
-      `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.depsDevData?.scorecard.overallScore}</td>`,
+      `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td><td>${dependency.depsDevData?.scorecard.overallScore}</td>`,
       false
     )
     let detailsTable =
-      '<table><th><td>Check</td><td>Score</td><td>Reason</td></th>'
+      '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>'
     for (const check of dependency.depsDevData?.scorecard.checks || []) {
       detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${check.reason}</td></tr>`
     }
@@ -274,8 +273,8 @@ export function addScorecardToSummary(
       `<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`,
       true
     )
-    core.summary.addRaw(`</table>`)
   }
+  core.summary.addRaw(`</table>`)
 }
 
 export function addSnapshotWarnings(

@@ -633,8 +633,6 @@ function run() {
                 deny: config.deny_licenses,
                 licenseExclusions: config.allow_dependencies_licenses
             });
-            const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
-            core.debug(`Scorecard: ${JSON.stringify(scorecard)}`);
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
@@ -656,7 +654,8 @@ function run() {
             }
             core.debug('Adding scorecard to summary');
             core.debug(`Config: ${config.show_openssf_scorecard}`);
-            if (config.show_openssf_scorecard && scorecard !== undefined) {
+            if (config.show_openssf_scorecard) {
+                const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
                 summary.addScorecardToSummary(scorecard, config);
                 printScorecardBlock(scorecard, config);
             }
@@ -1319,17 +1318,17 @@ function snapshotWarningRecommendation(config, warnings) {
 function addScorecardToSummary(scorecard, config) {
     var _a, _b;
     core.summary.addHeading('OpenSSF Scorecard', 2);
+    core.summary.addRaw(`<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`, true);
     for (const dependency of scorecard.dependencies) {
-        core.summary.addRaw(`<table><th><td>Dependency</td><td>Score</td><td>Details</td></th>`, true);
-        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${(_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore}</td>`, false);
-        let detailsTable = '<table><th><td>Check</td><td>Score</td><td>Reason</td></th>';
+        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td><td>${(_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore}</td>`, false);
+        let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
         for (const check of ((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.checks) || []) {
             detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${check.reason}</td></tr>`;
         }
         detailsTable += `</table>`;
         core.summary.addRaw(`<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`, true);
-        core.summary.addRaw(`</table>`);
     }
+    core.summary.addRaw(`</table>`);
 }
 exports.addScorecardToSummary = addScorecardToSummary;
 function addSnapshotWarnings(config, warnings) {

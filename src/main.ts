@@ -153,7 +153,7 @@ async function run(): Promise<void> {
     core.debug(`Config: ${config.show_openssf_scorecard}`)
     if (config.show_openssf_scorecard) {
       const scorecard = await getScorecardLevels(filteredChanges)
-      summary.addScorecarsdToSummary(scorecard, config)
+      summary.addScorecardToSummary(scorecard, config)
       printScorecardBlock(scorecard, config)
     }
 
