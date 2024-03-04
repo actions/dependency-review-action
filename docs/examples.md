@@ -166,7 +166,8 @@ jobs:
 
 ## Getting the results of the action in a later step
 
-Using the `comment-content` output you can get the results of the action in a workflow step.
+- Using the `comment-content` output you can get the results of the action in a workflow step.
+- Using other outputs like `dependency-changes`, `vulnerable-changes`, `invalid-license-changes` and `denied-changes` you can get the results of the action in JSON format and use them in a programmatic way.
 
 ```yaml
 name: 'Dependency Review'
@@ -190,12 +191,20 @@ jobs:
           deny-licenses: LGPL-2.0, BSD-2-Clause
       - name: 'Report'
         # make sure this step runs even if the previous failed
-        if: ${{ failure() && steps.review.conclusion == 'failure' }}
+        if: always()
         shell: bash
         env:
-          comment: ${{ steps.review.outputs.comment-content }}
-        run: |
-          echo "$comment"  # do something with the comment
+          COMMENT: ${{ steps.review.outputs.comment-content }}
+        run: | # do something with the comment:
+          echo "$COMMENT"
+      - name: 'List vulnerable dependencies'
+        # make sure this step runs even if the previous failed
+        if: always()
+        shell: bash
+        env:
+          VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
+        run: | # do something with the JSON:
+          echo "$VULNERABLE_CHANGES" | jq '.[].package_url'
 ```
 
 ## Exclude dependencies from the license check
