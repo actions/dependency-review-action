@@ -152,8 +152,10 @@ async function run(): Promise<void> {
       summary.addDeniedToSummary(deniedChanges)
       printDeniedDependencies(deniedChanges, config)
     }
-    //summary.addScorecardToSummary(scorecard, config)
-    printScorecardBlock(scorecard, config)
+    if (config.show_openssf_scorecard && scorecard !== undefined) {
+      summary.addScorecardToSummary(scorecard, config)
+      printScorecardBlock(scorecard, config)
+    }
 
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)

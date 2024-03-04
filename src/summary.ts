@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Changes, Change} from './schemas'
+import {ConfigurationOptions, Changes, Change, Scorecard} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
@@ -247,6 +247,31 @@ function snapshotWarningRecommendation(
     return 'Consider enabling <em>retry-on-snapshot-warnings</em>.'
   }
   return 'Re-running this action after a short time may resolve the issue.'
+}
+
+export function addScorecardToSummary(
+  scorecard: Scorecard,
+  config: ConfigurationOptions
+): void {
+  core.summary.addHeading('OpenSSF Scorecard', 2)
+
+  for (const dependency of scorecard.dependencies) {
+    core.summary.addHeading(
+      `${dependency.ecosystem}/${dependency.packageName}`,
+      3
+    )
+    if (dependency.depsDevData?.scorecard.overallScore) {
+      core.summary.addRaw(
+        `Overall score: ${dependency.depsDevData?.scorecard.overallScore}`,
+        true
+      )
+    }
+    let detailsTable = '| Check | Score | Reason | \n | --- | --- | --- | \n'
+    for (const check of dependency.depsDevData?.scorecard.checks || []) {
+      detailsTable += `| ${check.name} | ${check.score} | ${check.reason} | \n`
+    }
+    core.summary.addDetails('Details', detailsTable)
+  }
 }
 
 export function addSnapshotWarnings(

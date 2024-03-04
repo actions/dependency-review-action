@@ -654,8 +654,10 @@ function run() {
                 summary.addDeniedToSummary(deniedChanges);
                 printDeniedDependencies(deniedChanges, config);
             }
-            //summary.addScorecardToSummary(scorecard, config)
-            printScorecardBlock(scorecard, config);
+            if (config.show_openssf_scorecard && scorecard !== undefined) {
+                summary.addScorecardToSummary(scorecard, config);
+                printScorecardBlock(scorecard, config);
+            }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
             yield (0, comment_pr_1.commentPr)(core.summary, config);
@@ -883,6 +885,7 @@ exports.ConfigurationOptionsSchema = z
     head_ref: z.string().optional(),
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
+    show_openssf_scorecard: z.boolean().optional(),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -1130,7 +1133,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -1311,6 +1314,22 @@ function snapshotWarningRecommendation(config, warnings) {
     }
     return 'Re-running this action after a short time may resolve the issue.';
 }
+function addScorecardToSummary(scorecard, config) {
+    var _a, _b, _c;
+    core.summary.addHeading('OpenSSF Scorecard', 2);
+    for (const dependency of scorecard.dependencies) {
+        core.summary.addHeading(`${dependency.ecosystem}/${dependency.packageName}`, 3);
+        if ((_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore) {
+            core.summary.addRaw(`Overall score: ${(_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore}`, true);
+        }
+        let detailsTable = '| Check | Score | Reason | \n | --- | --- | --- | \n';
+        for (const check of ((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.checks) || []) {
+            detailsTable += `| ${check.name} | ${check.score} | ${check.reason} | \n`;
+        }
+        core.summary.addDetails('Details', detailsTable);
+    }
+}
+exports.addScorecardToSummary = addScorecardToSummary;
 function addSnapshotWarnings(config, warnings) {
     core.summary.addHeading('Snapshot Warnings', 2);
     core.summary.addQuote(`${icons.warning}: ${warnings}`);
@@ -49991,6 +50010,7 @@ exports.ConfigurationOptionsSchema = z
     head_ref: z.string().optional(),
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
+    show_openssf_scorecard: z.boolean().optional(),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
