@@ -165,6 +165,9 @@ The Dependency Review GitHub Action check will only block a pull request from be
   - `invalid-license-changes` holds information about invalid or non-compliant license dependency changes in a JSON format.
   - `denied-changes` holds information about denied dependency changes in a JSON format.
 
+> [!NOTE]
+> Action outputs [have a size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions): outputs are Unicode strings, and can be a maximum of 1MB
+
 ## Getting help
 
 If you have bug reports, questions or suggestions please [create a new issue](https://github.com/actions/dependency-review-action/issues/new/choose).
