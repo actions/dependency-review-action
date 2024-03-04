@@ -52,6 +52,7 @@ export const ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional(),
+    warn_on_openssf_scorecard_level: z.number(),
     comment_summary_in_pr: z
       .union([
         z.preprocess(
@@ -134,7 +135,7 @@ export const DepsDevProjectSchema = z
               shortDescription: z.string(),
               url: z.string()
             }),
-            score: z.string(),
+            score: z.number(),
             reason: z.string(),
             details: z.array(z.string())
           })

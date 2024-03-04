@@ -1,10 +1,8 @@
 import {
   Change,
-  Changes,
   DepsDevProject,
   DepsDevProjectSchema,
-  Scorecard,
-  ScorecardSchema
+  Scorecard
 } from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
 import {PackageURL} from 'packageurl-js'

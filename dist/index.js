@@ -887,6 +887,7 @@ exports.ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional(),
+    warn_on_openssf_scorecard_level: z.number(),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -962,7 +963,7 @@ exports.DepsDevProjectSchema = z
                 shortDescription: z.string(),
                 url: z.string()
             }),
-            score: z.string(),
+            score: z.number(),
             reason: z.string(),
             details: z.array(z.string())
         }))
@@ -1322,17 +1323,24 @@ function snapshotWarningRecommendation(config, warnings) {
     return 'Re-running this action after a short time may resolve the issue.';
 }
 function addScorecardToSummary(scorecard, config) {
-    var _a, _b;
+    var _a, _b, _c, _d;
     core.summary.addHeading('OpenSSF Scorecard', 2);
     core.summary.addRaw(`<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`, true);
     for (const dependency of scorecard.dependencies) {
-        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td><td>${(_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore}</td>`, false);
-        let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
-        for (const check of ((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.checks) || []) {
-            detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${check.reason}</td></tr>`;
+        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
+      <td>${((_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore) == undefined ? 'Unknown' : (_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore}</td>`, false);
+        if (((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.checks) !== undefined) {
+            let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
+            for (const check of ((_d = dependency.depsDevData) === null || _d === void 0 ? void 0 : _d.scorecard.checks) || []) {
+                let icon = (check.score < config.warn_on_openssf_scorecard_level) ? ":warning:" : ":green_circle:";
+                detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${icon} ${check.reason}</td></tr>`;
+            }
+            detailsTable += `</table>`;
+            core.summary.addRaw(`<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`, true);
         }
-        detailsTable += `</table>`;
-        core.summary.addRaw(`<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`, true);
+        else {
+            core.summary.addRaw('<td>Unknown</td></tr>', true);
+        }
     }
     core.summary.addRaw(`</table>`);
 }
@@ -49701,6 +49709,7 @@ function readInlineConfig() {
     const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings-timeout');
     const warn_only = getOptionalBoolean('warn-only');
     const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard');
+    const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
@@ -49721,7 +49730,8 @@ function readInlineConfig() {
         retry_on_snapshot_warnings,
         retry_on_snapshot_warnings_timeout,
         warn_only,
-        show_openssf_scorecard
+        show_openssf_scorecard,
+        warn_on_openssf_scorecard_level
     };
     return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
 }
@@ -50020,6 +50030,7 @@ exports.ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional(),
+    warn_on_openssf_scorecard_level: z.number(),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -50095,7 +50106,7 @@ exports.DepsDevProjectSchema = z
                 shortDescription: z.string(),
                 url: z.string()
             }),
-            score: z.string(),
+            score: z.number(),
             reason: z.string(),
             details: z.array(z.string())
         }))

@@ -69,10 +69,10 @@ inputs:
     description: Show a summary of the OpenSSF Scorecard scores.
     required: false
     default: true
-  warn-on-openssf-scorecard-threshold:
+  warn-on-openssf-scorecard-level:
     description: Numeric threshold for the OpenSSF Scorecard score. If the score is below this threshold, the action will warn you.
     required: false
-    default: 0
+    default: 3
 outputs:
   comment-content:
     description: Prepared dependency report comment

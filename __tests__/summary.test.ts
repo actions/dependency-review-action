@@ -29,7 +29,8 @@ const defaultConfig: ConfigurationOptions = {
   comment_summary_in_pr: true,
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
-  warn_only: false
+  warn_only: false,
+  warn_on_openssf_scorecard_level: 3
 }
 
 const changesWithEmptyManifests: Changes = [

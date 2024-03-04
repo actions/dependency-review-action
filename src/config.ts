@@ -49,6 +49,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   )
   const warn_only = getOptionalBoolean('warn-only')
   const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard')
+  const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level')
 
   validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
@@ -71,7 +72,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     retry_on_snapshot_warnings,
     retry_on_snapshot_warnings_timeout,
     warn_only,
-    show_openssf_scorecard
+    show_openssf_scorecard,
+    warn_on_openssf_scorecard_level
   }
 
   return Object.fromEntries(

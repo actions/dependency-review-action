@@ -8,8 +8,7 @@ import {
   Severity,
   Changes,
   ConfigurationOptions,
-  Scorecard,
-  DepsDevProject
+  Scorecard
 } from './schemas'
 import {readConfig} from '../src/config'
 import {

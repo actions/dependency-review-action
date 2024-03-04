@@ -260,19 +260,26 @@ export function addScorecardToSummary(
   )
   for (const dependency of scorecard.dependencies) {
     core.summary.addRaw(
-      `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td><td>${dependency.depsDevData?.scorecard.overallScore}</td>`,
+      `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
+      <td>${dependency.depsDevData?.scorecard.overallScore == undefined ? 'Unknown' : dependency.depsDevData?.scorecard.overallScore}</td>`,
       false
     )
-    let detailsTable =
-      '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>'
-    for (const check of dependency.depsDevData?.scorecard.checks || []) {
-      detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${check.reason}</td></tr>`
+    if (dependency.depsDevData?.scorecard.checks !== undefined) {
+      let detailsTable =
+        '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>'
+      for (const check of dependency.depsDevData?.scorecard.checks || []) {
+        let icon = (check.score < config.warn_on_openssf_scorecard_level) ? ":warning:" : ":green_circle:"
+
+        detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${icon} ${check.reason}</td></tr>`
+      }
+      detailsTable += `</table>`
+      core.summary.addRaw(
+        `<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`,
+        true
+      )
+    } else {
+      core.summary.addRaw('<td>Unknown</td></tr>', true)
     }
-    detailsTable += `</table>`
-    core.summary.addRaw(
-      `<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`,
-      true
-    )
   }
   core.summary.addRaw(`</table>`)
 }
