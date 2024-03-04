@@ -135,7 +135,7 @@ export const DepsDevProjectSchema = z
               shortDescription: z.string(),
               url: z.string()
             }),
-            score: z.number(),
+            score: z.string(),
             reason: z.string(),
             details: z.array(z.string())
           })

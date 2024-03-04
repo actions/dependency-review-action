@@ -963,7 +963,7 @@ exports.DepsDevProjectSchema = z
                 shortDescription: z.string(),
                 url: z.string()
             }),
-            score: z.number(),
+            score: z.string(),
             reason: z.string(),
             details: z.array(z.string())
         }))
@@ -1323,21 +1323,32 @@ function snapshotWarningRecommendation(config, warnings) {
     return 'Re-running this action after a short time may resolve the issue.';
 }
 function addScorecardToSummary(scorecard, config) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     core.summary.addHeading('OpenSSF Scorecard', 2);
     core.summary.addRaw(`<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`, true);
     for (const dependency of scorecard.dependencies) {
-        core.debug("Adding scorecard to summary");
+        core.debug('Adding scorecard to summary');
         core.debug(`Overall score ${(_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore}`);
-        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
-      <td>${((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore) === undefined || ((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.overallScore) === null ? 'Unknown' : (_d = dependency.depsDevData) === null || _d === void 0 ? void 0 : _d.scorecard.overallScore}</td>`, false);
-        if (((_e = dependency.depsDevData) === null || _e === void 0 ? void 0 : _e.scorecard.checks) !== undefined) {
-            let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
-            for (const check of ((_f = dependency.depsDevData) === null || _f === void 0 ? void 0 : _f.scorecard.checks) || []) {
-                let icon = check.score < config.warn_on_openssf_scorecard_level
+        // Set the icon based on the overall score value
+        let overallIcon = null;
+        if (((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore) !== undefined &&
+            ((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.overallScore) !== null) {
+            overallIcon =
+                ((_d = dependency.depsDevData) === null || _d === void 0 ? void 0 : _d.scorecard.overallScore) <
+                    config.warn_on_openssf_scorecard_level
                     ? ':warning:'
                     : ':green_circle:';
-                detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${icon} ${check.reason}</td></tr>`;
+        }
+        //Add a row for the dependency
+        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
+      <td>${overallIcon} ${((_e = dependency.depsDevData) === null || _e === void 0 ? void 0 : _e.scorecard.overallScore) === undefined || ((_f = dependency.depsDevData) === null || _f === void 0 ? void 0 : _f.scorecard.overallScore) === null ? 'Unknown' : (_g = dependency.depsDevData) === null || _g === void 0 ? void 0 : _g.scorecard.overallScore}</td>`, false);
+        if (((_h = dependency.depsDevData) === null || _h === void 0 ? void 0 : _h.scorecard.checks) !== undefined) {
+            let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
+            for (const check of ((_j = dependency.depsDevData) === null || _j === void 0 ? void 0 : _j.scorecard.checks) || []) {
+                const icon = parseFloat(check.score) < config.warn_on_openssf_scorecard_level
+                    ? ':warning:'
+                    : ':green_circle:';
+                detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${icon} ${check.reason}</td></tr>`;
             }
             detailsTable += `</table>`;
             core.summary.addRaw(`<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`, true);
@@ -50110,7 +50121,7 @@ exports.DepsDevProjectSchema = z
                 shortDescription: z.string(),
                 url: z.string()
             }),
-            score: z.number(),
+            score: z.string(),
             reason: z.string(),
             details: z.array(z.string())
         }))

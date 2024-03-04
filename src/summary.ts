@@ -259,23 +259,40 @@ export function addScorecardToSummary(
     true
   )
   for (const dependency of scorecard.dependencies) {
-    core.debug("Adding scorecard to summary")
-    core.debug(`Overall score ${dependency.depsDevData?.scorecard.overallScore}`)
+    core.debug('Adding scorecard to summary')
+    core.debug(
+      `Overall score ${dependency.depsDevData?.scorecard.overallScore}`
+    )
+
+    // Set the icon based on the overall score value
+    let overallIcon = null
+    if (
+      dependency.depsDevData?.scorecard.overallScore !== undefined &&
+      dependency.depsDevData?.scorecard.overallScore !== null
+    ) {
+      overallIcon =
+        dependency.depsDevData?.scorecard.overallScore <
+        config.warn_on_openssf_scorecard_level
+          ? ':warning:'
+          : ':green_circle:'
+    }
+
+    //Add a row for the dependency
     core.summary.addRaw(
       `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
-      <td>${dependency.depsDevData?.scorecard.overallScore === undefined || dependency.depsDevData?.scorecard.overallScore === null ? 'Unknown' : dependency.depsDevData?.scorecard.overallScore}</td>`,
+      <td>${overallIcon} ${dependency.depsDevData?.scorecard.overallScore === undefined || dependency.depsDevData?.scorecard.overallScore === null ? 'Unknown' : dependency.depsDevData?.scorecard.overallScore}</td>`,
       false
     )
     if (dependency.depsDevData?.scorecard.checks !== undefined) {
       let detailsTable =
         '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>'
       for (const check of dependency.depsDevData?.scorecard.checks || []) {
-        let icon =
-          check.score < config.warn_on_openssf_scorecard_level
+        const icon =
+          parseFloat(check.score) < config.warn_on_openssf_scorecard_level
             ? ':warning:'
             : ':green_circle:'
 
-        detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${icon} ${check.reason}</td></tr>`
+        detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${icon} ${check.reason}</td></tr>`
       }
       detailsTable += `</table>`
       core.summary.addRaw(
