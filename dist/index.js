@@ -654,6 +654,8 @@ function run() {
                 summary.addDeniedToSummary(deniedChanges);
                 printDeniedDependencies(deniedChanges, config);
             }
+            core.debug('Adding scorecard to summary');
+            core.debug(`Config: ${config.show_openssf_scorecard}`);
             if (config.show_openssf_scorecard && scorecard !== undefined) {
                 summary.addScorecardToSummary(scorecard, config);
                 printScorecardBlock(scorecard, config);
