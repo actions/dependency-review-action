@@ -1317,18 +1317,18 @@ function snapshotWarningRecommendation(config, warnings) {
     return 'Re-running this action after a short time may resolve the issue.';
 }
 function addScorecardToSummary(scorecard, config) {
-    var _a, _b, _c;
+    var _a, _b;
     core.summary.addHeading('OpenSSF Scorecard', 2);
     for (const dependency of scorecard.dependencies) {
-        core.summary.addHeading(`${dependency.ecosystem}/${dependency.packageName}`, 3);
-        if ((_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore) {
-            core.summary.addRaw(`Overall score: ${(_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore}`, true);
+        core.summary.addRaw(`<table><th><td>Dependency</td><td>Score</td><td>Details</td></th>`, true);
+        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${(_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore}</td>`, false);
+        let detailsTable = '<table><th><td>Check</td><td>Score</td><td>Reason</td></th>';
+        for (const check of ((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.checks) || []) {
+            detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${check.reason}</td></tr>`;
         }
-        let detailsTable = '| Check | Score | Reason | \n | --- | --- | --- | \n';
-        for (const check of ((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.checks) || []) {
-            detailsTable += `| ${check.name} | ${check.score} | ${check.reason} | \n`;
-        }
-        core.summary.addDetails('Details', detailsTable);
+        detailsTable += `</table>`;
+        core.summary.addRaw(`<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`, true);
+        core.summary.addRaw(`</table>`);
     }
 }
 exports.addScorecardToSummary = addScorecardToSummary;

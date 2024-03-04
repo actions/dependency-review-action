@@ -117,9 +117,6 @@ async function run(): Promise<void> {
       }
     )
 
-    const scorecard = await getScorecardLevels(filteredChanges)
-    core.debug(`Scorecard: ${JSON.stringify(scorecard)}`)
-
     core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`)
     core.debug(`Config Deny Packages: ${JSON.stringify(config)}`)
 
@@ -154,8 +151,9 @@ async function run(): Promise<void> {
     }
     core.debug('Adding scorecard to summary')
     core.debug(`Config: ${config.show_openssf_scorecard}`)
-    if (config.show_openssf_scorecard && scorecard !== undefined) {
-      summary.addScorecardToSummary(scorecard, config)
+    if (config.show_openssf_scorecard) {
+      const scorecard = await getScorecardLevels(filteredChanges)
+      summary.addScorecarsdToSummary(scorecard, config)
       printScorecardBlock(scorecard, config)
     }
 
