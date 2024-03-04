@@ -70,7 +70,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     comment_summary_in_pr,
     retry_on_snapshot_warnings,
     retry_on_snapshot_warnings_timeout,
-    warn_only
+    warn_only,
+    show_openssf_scorecard
   }
 
   return Object.fromEntries(
