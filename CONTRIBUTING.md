@@ -77,9 +77,11 @@ $ GITHUB_TOKEN=<token> ./scripts/scan_pr --config-file my_custom_config.yml <pr_
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 
-- Write tests.
+- Add unit tests for new features.
 - Keep your change as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
 - Write a [good commit message](https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+- Add examples of the usage to [examples.md](examples.md)
+- Link to a sample PR in a custom repository running your version of the Action.
 
 ## Cutting a new release
 
