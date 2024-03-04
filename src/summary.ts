@@ -259,6 +259,8 @@ export function addScorecardToSummary(
     true
   )
   for (const dependency of scorecard.dependencies) {
+    core.debug("Adding scorecard to summary")
+    core.debug(`Overall score ${dependency.depsDevData?.scorecard.overallScore}`)
     core.summary.addRaw(
       `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
       <td>${dependency.depsDevData?.scorecard.overallScore === undefined || dependency.depsDevData?.scorecard.overallScore === null ? 'Unknown' : dependency.depsDevData?.scorecard.overallScore}</td>`,
