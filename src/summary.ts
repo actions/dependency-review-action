@@ -261,14 +261,17 @@ export function addScorecardToSummary(
   for (const dependency of scorecard.dependencies) {
     core.summary.addRaw(
       `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
-      <td>${dependency.depsDevData?.scorecard.overallScore == undefined ? 'Unknown' : dependency.depsDevData?.scorecard.overallScore}</td>`,
+      <td>${dependency.depsDevData?.scorecard.overallScore === undefined || dependency.depsDevData?.scorecard.overallScore === null ? 'Unknown' : dependency.depsDevData?.scorecard.overallScore}</td>`,
       false
     )
     if (dependency.depsDevData?.scorecard.checks !== undefined) {
       let detailsTable =
         '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>'
       for (const check of dependency.depsDevData?.scorecard.checks || []) {
-        let icon = (check.score < config.warn_on_openssf_scorecard_level) ? ":warning:" : ":green_circle:"
+        let icon =
+          check.score < config.warn_on_openssf_scorecard_level
+            ? ':warning:'
+            : ':green_circle:'
 
         detailsTable += `<tr><td>${check.name}</td><td>${check.score}</td><td>${icon} ${check.reason}</td></tr>`
       }
