@@ -49695,6 +49695,7 @@ function readInlineConfig() {
     const retry_on_snapshot_warnings = getOptionalBoolean('retry-on-snapshot-warnings');
     const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings-timeout');
     const warn_only = getOptionalBoolean('warn-only');
+    const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);

@@ -48,6 +48,7 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     'retry-on-snapshot-warnings-timeout'
   )
   const warn_only = getOptionalBoolean('warn-only')
+  const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard')
 
   validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
