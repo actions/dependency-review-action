@@ -15,10 +15,10 @@ export async function getScorecardLevels(
 ): Promise<Scorecard> {
   const data: Scorecard = {dependencies: []} as Scorecard
   for (const change of changes) {
+    const ecosystem = change.ecosystem
+    const packageName = change.name
+    const version = change.version
     try {
-      const ecosystem = change.ecosystem
-      const packageName = change.name
-      const version = change.version
       const depsDevResponse: DepsDevProject = await getDepsDevData(
         ecosystem,
         packageName,
@@ -32,6 +32,12 @@ export async function getScorecardLevels(
       })
     } catch (error: any) {
       core.debug(`Error querying for depsDevData: ${error.message}`)
+      data.dependencies.push({
+        ecosystem,
+        packageName,
+        version,
+        depsDevData: null
+      })
     }
   }
   return data

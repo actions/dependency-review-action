@@ -1036,10 +1036,10 @@ function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = { dependencies: [] };
         for (const change of changes) {
+            const ecosystem = change.ecosystem;
+            const packageName = change.name;
+            const version = change.version;
             try {
-                const ecosystem = change.ecosystem;
-                const packageName = change.name;
-                const version = change.version;
                 const depsDevResponse = yield getDepsDevData(ecosystem, packageName, version);
                 data.dependencies.push({
                     ecosystem,
@@ -1050,6 +1050,12 @@ function getScorecardLevels(changes) {
             }
             catch (error) {
                 core.debug(`Error querying for depsDevData: ${error.message}`);
+                data.dependencies.push({
+                    ecosystem,
+                    packageName,
+                    version,
+                    depsDevData: null
+                });
             }
         }
         return data;
