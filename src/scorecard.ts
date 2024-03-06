@@ -57,10 +57,12 @@ async function getScorecard(repositoryUrl: string): Promise<ScorecardApi> {
   const apiRoot = 'https://api.securityscorecards.dev/'
   let scorecardResponse: ScorecardApi = {} as ScorecardApi
 
-  const url = `${apiRoot}/${repositoryUrl}`
+  const url = `${apiRoot}/projects/${repositoryUrl}`
   const response = await fetch(url)
   if (response.ok) {
     scorecardResponse = await response.json()
+  } else {
+    core.debug(`Couldn't get scorecard data for ${repositoryUrl}`)
   }
   return scorecardResponse
 }

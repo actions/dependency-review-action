@@ -1103,10 +1103,13 @@ function getScorecard(repositoryUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiRoot = 'https://api.securityscorecards.dev/';
         let scorecardResponse = {};
-        const url = `${apiRoot}/${repositoryUrl}`;
+        const url = `${apiRoot}/projects/${repositoryUrl}`;
         const response = yield fetch(url);
         if (response.ok) {
             scorecardResponse = yield response.json();
+        }
+        else {
+            core.debug(`Couldn't get scorecard data for ${repositoryUrl}`);
         }
         return scorecardResponse;
     });
