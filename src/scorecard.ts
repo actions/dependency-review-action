@@ -52,6 +52,7 @@ export async function getScorecardLevels(
       ecosystem,
       packageName,
       version,
+      repository: repositoryUrl,
       scorecard: scorecardApi
     })
   }

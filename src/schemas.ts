@@ -191,6 +191,7 @@ export const ScorecardSchema = z.object({
       ecosystem: z.string(),
       packageName: z.string(),
       version: z.string().nullish(),
+      repository: z.string().nullish(),
       scorecard: ScorecardApiSchema.nullish()
     })
   )

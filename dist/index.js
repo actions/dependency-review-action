@@ -1013,6 +1013,7 @@ exports.ScorecardSchema = z.object({
         ecosystem: z.string(),
         packageName: z.string(),
         version: z.string().nullish(),
+        repository: z.string().nullish(),
         scorecard: exports.ScorecardApiSchema.nullish()
     }))
 });
@@ -1096,6 +1097,7 @@ function getScorecardLevels(changes) {
                 ecosystem,
                 packageName,
                 version,
+                repository: repositoryUrl,
                 scorecard: scorecardApi
             });
         }
@@ -1364,7 +1366,7 @@ function addScorecardToSummary(scorecard, config) {
                     : ':green_circle:';
         }
         //Add a row for the dependency
-        core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
+        core.summary.addRaw(`<tr><td>${dependency.repository ? `<a href="https://${dependency.repository}">` : ''}${dependency.ecosystem}/${dependency.packageName}${dependency.repository ? `</a>` : ''}</td><td>${dependency.version}</td>
       <td>${overallIcon} ${((_e = dependency.scorecard) === null || _e === void 0 ? void 0 : _e.score) === undefined || ((_f = dependency.scorecard) === null || _f === void 0 ? void 0 : _f.score) === null ? 'Unknown' : (_g = dependency.scorecard) === null || _g === void 0 ? void 0 : _g.score}</td>`, false);
         //Add details table in the last column
         if (((_h = dependency.scorecard) === null || _h === void 0 ? void 0 : _h.checks) !== undefined) {
@@ -50196,6 +50198,7 @@ exports.ScorecardSchema = z.object({
         ecosystem: z.string(),
         packageName: z.string(),
         version: z.string().nullish(),
+        repository: z.string().nullish(),
         scorecard: exports.ScorecardApiSchema.nullish()
     }))
 });
