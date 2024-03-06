@@ -20,6 +20,11 @@ export async function getScorecardLevels(
 
     //Get the project repository
     let repositoryUrl = change.source_repository_url
+    //If the repository_url includes the protocol, remove it
+    if (repositoryUrl?.startsWith('https://')) {
+      repositoryUrl = repositoryUrl.replace('https://', '')
+    }
+
     // If GitHub API doesn't have the repository URL, query deps.dev for it.
     if (
       repositoryUrl === null ||
