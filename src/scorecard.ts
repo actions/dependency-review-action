@@ -2,7 +2,8 @@ import {
   Change,
   DepsDevProject,
   DepsDevProjectSchema,
-  Scorecard
+  Scorecard,
+  ScorecardApi
 } from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
 import {PackageURL} from 'packageurl-js'
@@ -16,77 +17,68 @@ export async function getScorecardLevels(
     const ecosystem = change.ecosystem
     const packageName = change.name
     const version = change.version
-    try {
-      const depsDevResponse: DepsDevProject = await getDepsDevData(
-        ecosystem,
-        packageName,
-        version
-      )
-      data.dependencies.push({
-        ecosystem,
-        packageName,
-        version,
-        depsDevData: depsDevResponse
-      })
-    } catch (error: any) {
-      core.debug(`Error querying for depsDevData: ${error.message}`)
-      data.dependencies.push({
-        ecosystem,
-        packageName,
-        version,
-        depsDevData: null
-      })
+
+    //Get the project repository
+    let repositoryUrl = change.source_repository_url
+    // If GitHub API doesn't have the repository URL, query deps.dev for it.
+    if (
+      repositoryUrl === null ||
+      repositoryUrl === undefined ||
+      repositoryUrl === ''
+    ) {
+      // Call the deps.dev API to get the repository URL from there
+      repositoryUrl = await getProjectUrl(ecosystem, packageName, version)
     }
+
+    // Get the scorecard API response from the scorecards API
+    let scorecardApi: ScorecardApi | null = null
+    if (
+      repositoryUrl !== null &&
+      repositoryUrl !== undefined &&
+      repositoryUrl !== ''
+    ) {
+      try {
+        scorecardApi = await getScorecard(repositoryUrl)
+      } catch (error: any) {
+        core.debug(`Error querying for scorecard: ${error.message}`)
+      }
+    }
+    data.dependencies.push({
+      ecosystem,
+      packageName,
+      version,
+      scorecard: scorecardApi
+    })
   }
   return data
 }
 
-const depsDevAPIRoot = 'https://api.deps.dev'
+async function getScorecard(repositoryUrl: string): Promise<ScorecardApi> {
+  const apiRoot = 'https://api.securityscorecards.dev/'
+  let scorecardResponse: ScorecardApi = {} as ScorecardApi
 
-async function getDepsDevData(
-  ecosystem: String,
-  packageName: String,
-  version: any
-): Promise<DepsDevProject> {
-  try {
-    core.debug(`Getting deps.dev data for ${packageName} ${version}`)
-    const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
-    const response = await fetch(url)
-    if (response.ok) {
-      const data = await response.json()
-      const projects = data.relatedProjects
-      for (const project of projects) {
-        return await getDepsDevProjectData(project.projectKey.id)
-      }
-    } else {
-      throw new Error(
-        `Failed to fetch data with status code: ${response.status}`
-      )
-    }
-  } catch (error: any) {
-    core.debug(`Error fetching data: ${error.message}`)
+  const url = `${apiRoot}/${repositoryUrl}`
+  const response = await fetch(url)
+  if (response.ok) {
+    scorecardResponse = await response.json()
   }
-  return DepsDevProjectSchema.parse({})
+  return scorecardResponse
 }
 
-async function getDepsDevProjectData(
-  projectKeyId: string
-): Promise<DepsDevProject> {
-  try {
-    core.debug(`Getting deps.dev project data for ${projectKeyId}`)
-    const url = `${depsDevAPIRoot}/v3alpha/projects/${encodeURIComponent(projectKeyId)}`
-    const response = await fetch(url)
-    if (response.ok) {
-      const data = await response.json()
-      //core.debug(`Got deps.dev project data: ${JSON.stringify(data)}`)
-      return DepsDevProjectSchema.parse(data)
-    } else {
-      throw new Error(
-        `Failed to fetch project data with status code: ${response.status}`
-      )
+async function getProjectUrl(
+  ecosystem: string,
+  packageName: string,
+  version: string
+): Promise<string> {
+  core.debug(`Getting deps.dev data for ${packageName} ${version}`)
+  const depsDevAPIRoot = 'https://api.deps.dev'
+  const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
+  const response = await fetch(url)
+  if (response.ok) {
+    const data = await response.json()
+    if (data.relatedProjects.length > 0) {
+      return data.relatedProjects[0].projectKey.id
     }
-  } catch (error: any) {
-    core.debug(`Error fetching project data: ${error.message}`)
   }
-  return DepsDevProjectSchema.parse({})
+  return ''
 }

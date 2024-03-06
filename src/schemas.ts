@@ -102,6 +102,37 @@ export const ComparisonResponseSchema = z.object({
   snapshot_warnings: z.string()
 })
 
+export const ScorecardApiSchema = z.object({
+  date: z.string(),
+  repo: z
+    .object({
+      name: z.string(),
+      commit: z.string()
+    })
+    .nullish(),
+  scorecard: z
+    .object({
+      version: z.string(),
+      commit: z.string()
+    })
+    .nullish(),
+  checks: z
+    .array(
+      z.object({
+        name: z.string(),
+        documentation: z.object({
+          shortDescription: z.string(),
+          url: z.string()
+        }),
+        score: z.string(),
+        reason: z.string(),
+        details: z.array(z.string())
+      })
+    )
+    .nullish(),
+  score: z.number().nullish()
+})
+
 export const DepsDevProjectSchema = z
   .object({
     projectKey: z.object({
@@ -160,7 +191,7 @@ export const ScorecardSchema = z.object({
       ecosystem: z.string(),
       packageName: z.string(),
       version: z.string().nullish(),
-      depsDevData: DepsDevProjectSchema
+      scorecard: ScorecardApiSchema.nullish()
     })
   )
 })
@@ -173,3 +204,4 @@ export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
 export type DepsDevProject = z.infer<typeof DepsDevProjectSchema>
 export type Scorecard = z.infer<typeof ScorecardSchema>
+export type ScorecardApi = z.infer<typeof ScorecardApiSchema>

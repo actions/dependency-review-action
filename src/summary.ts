@@ -260,19 +260,16 @@ export function addScorecardToSummary(
   )
   for (const dependency of scorecard.dependencies) {
     core.debug('Adding scorecard to summary')
-    core.debug(
-      `Overall score ${dependency.depsDevData?.scorecard.overallScore}`
-    )
+    core.debug(`Overall score ${dependency.scorecard?.score}`)
 
     // Set the icon based on the overall score value
     let overallIcon = ''
     if (
-      dependency.depsDevData?.scorecard.overallScore !== undefined &&
-      dependency.depsDevData?.scorecard.overallScore !== null
+      dependency.scorecard?.score !== undefined &&
+      dependency.scorecard?.score !== null
     ) {
       overallIcon =
-        dependency.depsDevData?.scorecard.overallScore <
-        config.warn_on_openssf_scorecard_level
+        dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
           ? ':warning:'
           : ':green_circle:'
     }
@@ -280,13 +277,15 @@ export function addScorecardToSummary(
     //Add a row for the dependency
     core.summary.addRaw(
       `<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
-      <td>${overallIcon} ${dependency.depsDevData?.scorecard.overallScore === undefined || dependency.depsDevData?.scorecard.overallScore === null ? 'Unknown' : dependency.depsDevData?.scorecard.overallScore}</td>`,
+      <td>${overallIcon} ${dependency.scorecard?.score === undefined || dependency.scorecard?.score === null ? 'Unknown' : dependency.scorecard?.score}</td>`,
       false
     )
-    if (dependency.depsDevData?.scorecard.checks !== undefined) {
+
+    //Add details table in the last column
+    if (dependency.scorecard?.checks !== undefined) {
       let detailsTable =
         '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>'
-      for (const check of dependency.depsDevData?.scorecard.checks || []) {
+      for (const check of dependency.scorecard?.checks || []) {
         const icon =
           parseFloat(check.score) < config.warn_on_openssf_scorecard_level
             ? ':warning:'

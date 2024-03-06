@@ -279,7 +279,7 @@ function printScorecardBlock(
     if (scorecard) {
       for (const dependency of scorecard.dependencies) {
         core.info(
-          `${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${dependency?.depsDevData?.scorecard?.overallScore}`
+          `${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}`
         )
       }
     }

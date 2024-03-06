@@ -750,10 +750,10 @@ function printNullLicenses(changes) {
 }
 function printScorecardBlock(scorecard, config) {
     core.group('Scorecard', () => __awaiter(this, void 0, void 0, function* () {
-        var _a, _b;
+        var _a;
         if (scorecard) {
             for (const dependency of scorecard.dependencies) {
-                core.info(`${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${(_b = (_a = dependency === null || dependency === void 0 ? void 0 : dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard) === null || _b === void 0 ? void 0 : _b.overallScore}`);
+                core.info(`${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${(_a = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score}`);
             }
         }
     }));
@@ -839,7 +839,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -931,6 +931,34 @@ exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
 });
+exports.ScorecardApiSchema = z.object({
+    date: z.string(),
+    repo: z
+        .object({
+        name: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    scorecard: z
+        .object({
+        version: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    checks: z
+        .array(z.object({
+        name: z.string(),
+        documentation: z.object({
+            shortDescription: z.string(),
+            url: z.string()
+        }),
+        score: z.string(),
+        reason: z.string(),
+        details: z.array(z.string())
+    }))
+        .nullish(),
+    score: z.number().nullish()
+});
 exports.DepsDevProjectSchema = z
     .object({
     projectKey: z.object({
@@ -985,7 +1013,7 @@ exports.ScorecardSchema = z.object({
         ecosystem: z.string(),
         packageName: z.string(),
         version: z.string().nullish(),
-        depsDevData: exports.DepsDevProjectSchema
+        scorecard: exports.ScorecardApiSchema.nullish()
     }))
 });
 
@@ -1031,7 +1059,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getScorecardLevels = void 0;
-const schemas_1 = __nccwpck_require__(8774);
 const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1040,72 +1067,63 @@ function getScorecardLevels(changes) {
             const ecosystem = change.ecosystem;
             const packageName = change.name;
             const version = change.version;
-            try {
-                const depsDevResponse = yield getDepsDevData(ecosystem, packageName, version);
-                data.dependencies.push({
-                    ecosystem,
-                    packageName,
-                    version,
-                    depsDevData: depsDevResponse
-                });
+            //Get the project repository
+            let repositoryUrl = change.source_repository_url;
+            // If GitHub API doesn't have the repository URL, query deps.dev for it.
+            if (repositoryUrl === null ||
+                repositoryUrl === undefined ||
+                repositoryUrl === '') {
+                // Call the deps.dev API to get the repository URL from there
+                repositoryUrl = yield getProjectUrl(ecosystem, packageName, version);
             }
-            catch (error) {
-                core.debug(`Error querying for depsDevData: ${error.message}`);
-                data.dependencies.push({
-                    ecosystem,
-                    packageName,
-                    version,
-                    depsDevData: null
-                });
+            // Get the scorecard API response from the scorecards API
+            let scorecardApi = null;
+            if (repositoryUrl !== null &&
+                repositoryUrl !== undefined &&
+                repositoryUrl !== '') {
+                try {
+                    scorecardApi = yield getScorecard(repositoryUrl);
+                }
+                catch (error) {
+                    core.debug(`Error querying for scorecard: ${error.message}`);
+                }
             }
+            data.dependencies.push({
+                ecosystem,
+                packageName,
+                version,
+                scorecard: scorecardApi
+            });
         }
         return data;
     });
 }
 exports.getScorecardLevels = getScorecardLevels;
-const depsDevAPIRoot = 'https://api.deps.dev';
-function getDepsDevData(ecosystem, packageName, version) {
+function getScorecard(repositoryUrl) {
     return __awaiter(this, void 0, void 0, function* () {
-        try {
-            core.debug(`Getting deps.dev data for ${packageName} ${version}`);
-            const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
-            const response = yield fetch(url);
-            if (response.ok) {
-                const data = yield response.json();
-                const projects = data.relatedProjects;
-                for (const project of projects) {
-                    return yield getDepsDevProjectData(project.projectKey.id);
-                }
-            }
-            else {
-                throw new Error(`Failed to fetch data with status code: ${response.status}`);
-            }
+        const apiRoot = 'https://api.securityscorecards.dev/';
+        let scorecardResponse = {};
+        const url = `${apiRoot}/${repositoryUrl}`;
+        const response = yield fetch(url);
+        if (response.ok) {
+            scorecardResponse = yield response.json();
         }
-        catch (error) {
-            core.debug(`Error fetching data: ${error.message}`);
-        }
-        return schemas_1.DepsDevProjectSchema.parse({});
+        return scorecardResponse;
     });
 }
-function getDepsDevProjectData(projectKeyId) {
+function getProjectUrl(ecosystem, packageName, version) {
     return __awaiter(this, void 0, void 0, function* () {
-        try {
-            core.debug(`Getting deps.dev project data for ${projectKeyId}`);
-            const url = `${depsDevAPIRoot}/v3alpha/projects/${encodeURIComponent(projectKeyId)}`;
-            const response = yield fetch(url);
-            if (response.ok) {
-                const data = yield response.json();
-                //core.debug(`Got deps.dev project data: ${JSON.stringify(data)}`)
-                return schemas_1.DepsDevProjectSchema.parse(data);
-            }
-            else {
-                throw new Error(`Failed to fetch project data with status code: ${response.status}`);
+        core.debug(`Getting deps.dev data for ${packageName} ${version}`);
+        const depsDevAPIRoot = 'https://api.deps.dev';
+        const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
+        const response = yield fetch(url);
+        if (response.ok) {
+            const data = yield response.json();
+            if (data.relatedProjects.length > 0) {
+                return data.relatedProjects[0].projectKey.id;
             }
         }
-        catch (error) {
-            core.debug(`Error fetching project data: ${error.message}`);
-        }
-        return schemas_1.DepsDevProjectSchema.parse({});
+        return '';
     });
 }
 
@@ -1328,23 +1346,23 @@ function addScorecardToSummary(scorecard, config) {
     core.summary.addRaw(`<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`, true);
     for (const dependency of scorecard.dependencies) {
         core.debug('Adding scorecard to summary');
-        core.debug(`Overall score ${(_a = dependency.depsDevData) === null || _a === void 0 ? void 0 : _a.scorecard.overallScore}`);
+        core.debug(`Overall score ${(_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score}`);
         // Set the icon based on the overall score value
         let overallIcon = '';
-        if (((_b = dependency.depsDevData) === null || _b === void 0 ? void 0 : _b.scorecard.overallScore) !== undefined &&
-            ((_c = dependency.depsDevData) === null || _c === void 0 ? void 0 : _c.scorecard.overallScore) !== null) {
+        if (((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) !== undefined &&
+            ((_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score) !== null) {
             overallIcon =
-                ((_d = dependency.depsDevData) === null || _d === void 0 ? void 0 : _d.scorecard.overallScore) <
-                    config.warn_on_openssf_scorecard_level
+                ((_d = dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score) < config.warn_on_openssf_scorecard_level
                     ? ':warning:'
                     : ':green_circle:';
         }
         //Add a row for the dependency
         core.summary.addRaw(`<tr><td>${dependency.ecosystem}/${dependency.packageName}</td><td>${dependency.version}</td>
-      <td>${overallIcon} ${((_e = dependency.depsDevData) === null || _e === void 0 ? void 0 : _e.scorecard.overallScore) === undefined || ((_f = dependency.depsDevData) === null || _f === void 0 ? void 0 : _f.scorecard.overallScore) === null ? 'Unknown' : (_g = dependency.depsDevData) === null || _g === void 0 ? void 0 : _g.scorecard.overallScore}</td>`, false);
-        if (((_h = dependency.depsDevData) === null || _h === void 0 ? void 0 : _h.scorecard.checks) !== undefined) {
+      <td>${overallIcon} ${((_e = dependency.scorecard) === null || _e === void 0 ? void 0 : _e.score) === undefined || ((_f = dependency.scorecard) === null || _f === void 0 ? void 0 : _f.score) === null ? 'Unknown' : (_g = dependency.scorecard) === null || _g === void 0 ? void 0 : _g.score}</td>`, false);
+        //Add details table in the last column
+        if (((_h = dependency.scorecard) === null || _h === void 0 ? void 0 : _h.checks) !== undefined) {
             let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
-            for (const check of ((_j = dependency.depsDevData) === null || _j === void 0 ? void 0 : _j.scorecard.checks) || []) {
+            for (const check of ((_j = dependency.scorecard) === null || _j === void 0 ? void 0 : _j.checks) || []) {
                 const icon = parseFloat(check.score) < config.warn_on_openssf_scorecard_level
                     ? ':warning:'
                     : ':green_circle:';
@@ -49997,7 +50015,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -50089,6 +50107,34 @@ exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
 });
+exports.ScorecardApiSchema = z.object({
+    date: z.string(),
+    repo: z
+        .object({
+        name: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    scorecard: z
+        .object({
+        version: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    checks: z
+        .array(z.object({
+        name: z.string(),
+        documentation: z.object({
+            shortDescription: z.string(),
+            url: z.string()
+        }),
+        score: z.string(),
+        reason: z.string(),
+        details: z.array(z.string())
+    }))
+        .nullish(),
+    score: z.number().nullish()
+});
 exports.DepsDevProjectSchema = z
     .object({
     projectKey: z.object({
@@ -50143,7 +50189,7 @@ exports.ScorecardSchema = z.object({
         ecosystem: z.string(),
         packageName: z.string(),
         version: z.string().nullish(),
-        depsDevData: exports.DepsDevProjectSchema
+        scorecard: exports.ScorecardApiSchema.nullish()
     }))
 });
 
