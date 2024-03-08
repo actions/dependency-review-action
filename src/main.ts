@@ -375,7 +375,9 @@ async function createScorecardWarnings(
         dependency.change.manifest,
         dependency.change.name
       )
-
+      core.debug(
+        `LineColNumbers: ${JSON.stringify(lineColNumbers)}; Manifest: ${dependency.change.manifest}; Name: ${dependency.change.name}`
+      )
       if (lineColNumbers.lineNumber > 0 && lineColNumbers.startCol > 0) {
         core.warning(
           `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
@@ -411,6 +413,7 @@ async function findLineColNumbers(
   // Open the file
   fs.readFile(fileName, 'utf8', function (err, data) {
     if (err) {
+      core.error(`Error reading file: ${fileName}`)
       throw err
     }
     // split the file into lines

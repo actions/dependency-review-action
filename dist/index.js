@@ -816,6 +816,7 @@ function createScorecardWarnings(scorecards, config) {
             if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
                 ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
                 const lineColNumbers = yield findLineColNumbers(dependency.change.manifest, dependency.change.name);
+                core.debug(`LineColNumbers: ${JSON.stringify(lineColNumbers)}; Manifest: ${dependency.change.manifest}; Name: ${dependency.change.name}`);
                 if (lineColNumbers.lineNumber > 0 && lineColNumbers.startCol > 0) {
                     core.warning(`${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${(_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`, {
                         title: 'OpenSSF Scorecard Warning',
@@ -843,6 +844,7 @@ function findLineColNumbers(manifest, packageName) {
         // Open the file
         graceful_fs_1.default.readFile(fileName, 'utf8', function (err, data) {
             if (err) {
+                core.error(`Error reading file: ${fileName}`);
                 throw err;
             }
             // split the file into lines
