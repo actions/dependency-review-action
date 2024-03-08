@@ -12,10 +12,11 @@ export async function getDeniedChanges(
   for (const change of changes) {
     change.name = change.name.toLowerCase()
     const packageUrl = change.package_url.toLowerCase().split('@')[0]
+    const packageVersion = change.package_url.toLowerCase().split('@')[1]
 
     if (deniedPackages) {
       for (const denied of deniedPackages) {
-        if (packageUrl === denied.split('@')[0].toLowerCase()) {
+        if (packageUrl === denied.split('@')[0].toLowerCase() && packageVersion === denied.split('@')[1].toLowerCase()) {
           changesDenied.push(change)
           failed = true
         }
