@@ -186,9 +186,11 @@ function getDeniedChanges(changes, deniedPackages, deniedGroups) {
         for (const change of changes) {
             change.name = change.name.toLowerCase();
             const packageUrl = change.package_url.toLowerCase().split('@')[0];
+            const packageVer = change.package_url.toLowerCase().split('@')[1];
             if (deniedPackages) {
                 for (const denied of deniedPackages) {
-                    if (packageUrl === denied.split('@')[0].toLowerCase()) {
+                    if (packageUrl === denied.split('@')[0].toLowerCase() &&
+                        packageVer === denied.split('@')[1]) {
                         changesDenied.push(change);
                         failed = true;
                     }
