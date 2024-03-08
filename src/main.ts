@@ -154,6 +154,7 @@ async function run(): Promise<void> {
       const scorecard = await getScorecardLevels(filteredChanges)
       summary.addScorecardToSummary(scorecard, config)
       printScorecardBlock(scorecard, config)
+      createScorecardWarnings(scorecard, config)
     }
 
     summary.addScannedDependencies(changes)
@@ -352,6 +353,23 @@ function printDeniedDependencies(
       core.info(`Change: ${change.package_url} is denied`)
     }
   })
+}
+
+function createScorecardWarnings(
+  scorecards: Scorecard,
+  config: ConfigurationOptions
+): void {
+  // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
+  for (const dependency of scorecards.dependencies) {
+    if (
+      dependency.scorecard?.score &&
+      dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
+    ) {
+      core.warning(
+        `${dependency.ecosystem}/${dependency.packageName} has an OpenSSF Scorecard of ${dependency.scorecard?.score} is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`
+      )
+    }
+  }
 }
 
 run()
