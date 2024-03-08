@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
-import fs from 'fs'
+import fs from 'graceful-fs'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
 import {
@@ -25,6 +25,7 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
 import {getDeniedChanges} from './deny'
+import * as path from 'path'
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -387,13 +388,14 @@ async function createScorecardWarnings(
             endColumn: lineColNumbers.endCol
           }
         )
+      } else {
+        core.warning(
+          `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
+          {
+            title: 'OpenSSF Scorecard Warning'
+          }
+        )
       }
-      core.warning(
-        `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
-        {
-          title: 'OpenSSF Scorecard Warning'
-        }
-      )
     }
   }
 }
@@ -403,8 +405,11 @@ async function findLineColNumbers(
   manifest: string,
   packageName: string
 ): Promise<{lineNumber: number; startCol: number; endCol: number}> {
-  // open the file
-  fs.readFile(manifest, 'utf8', function (err, data) {
+  // Concatenate the GITHUB_WORKSPACE to the manifest file
+  const fileName = path.join(process.env.GITHUB_WORKSPACE || '', manifest)
+
+  // Open the file
+  fs.readFile(fileName, 'utf8', function (err, data) {
     if (err) {
       throw err
     }
