@@ -658,6 +658,7 @@ function run() {
                 const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
                 summary.addScorecardToSummary(scorecard, config);
                 printScorecardBlock(scorecard, config);
+                createScorecardWarnings(scorecard, config);
             }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
@@ -804,6 +805,16 @@ function printDeniedDependencies(changes, config) {
             core.info(`Change: ${change.package_url} is denied`);
         }
     }));
+}
+function createScorecardWarnings(scorecards, config) {
+    var _a, _b, _c;
+    // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
+    for (const dependency of scorecards.dependencies) {
+        if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
+            ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
+            core.warning(`${dependency.ecosystem}/${dependency.packageName} has an OpenSSF Scorecard of ${(_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score} is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`);
+        }
+    }
 }
 run();
 
