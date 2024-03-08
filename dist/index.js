@@ -560,6 +560,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const dependencyGraph = __importStar(__nccwpck_require__(4966));
 const github = __importStar(__nccwpck_require__(5438));
+const fs_1 = __importDefault(__nccwpck_require__(7147));
 const ansi_styles_1 = __importDefault(__nccwpck_require__(6844));
 const request_error_1 = __nccwpck_require__(537);
 const config_1 = __nccwpck_require__(6373);
@@ -754,7 +755,7 @@ function printScorecardBlock(scorecard, config) {
         var _a;
         if (scorecard) {
             for (const dependency of scorecard.dependencies) {
-                core.info(`${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${(_a = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score}`);
+                core.info(`${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_a = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score}`);
             }
         }
     }));
@@ -807,14 +808,52 @@ function printDeniedDependencies(changes, config) {
     }));
 }
 function createScorecardWarnings(scorecards, config) {
-    var _a, _b, _c;
-    // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
-    for (const dependency of scorecards.dependencies) {
-        if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
-            ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
-            core.warning(`${dependency.ecosystem}/${dependency.packageName} has an OpenSSF Scorecard of ${(_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score} is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`);
+    var _a, _b, _c, _d;
+    return __awaiter(this, void 0, void 0, function* () {
+        // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
+        for (const dependency of scorecards.dependencies) {
+            if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
+                ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
+                const lineColNumbers = yield findLineColNumbers(dependency.change.manifest, dependency.change.name);
+                if (lineColNumbers.lineNumber > 0 && lineColNumbers.startCol > 0) {
+                    core.warning(`${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${(_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`, {
+                        title: 'OpenSSF Scorecard Warning',
+                        file: dependency.change.manifest,
+                        startLine: lineColNumbers.lineNumber,
+                        endLine: lineColNumbers.lineNumber,
+                        startColumn: lineColNumbers.startCol,
+                        endColumn: lineColNumbers.endCol
+                    });
+                }
+                core.warning(`${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${(_d = dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`, {
+                    title: 'OpenSSF Scorecard Warning'
+                });
+            }
         }
-    }
+    });
+}
+// Finds the line number of the package in the manifest file
+function findLineColNumbers(manifest, packageName) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // open the file
+        fs_1.default.readFile(manifest, 'utf8', function (err, data) {
+            if (err) {
+                throw err;
+            }
+            // split the file into lines
+            const lines = data.split('\n');
+            // search for the package name in the file
+            for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+                if (lines[lineNumber].includes(packageName)) {
+                    const startCol = lines[lineNumber].indexOf(packageName);
+                    const endCol = startCol + packageName.length;
+                    return { lineNumber, startCol, endCol };
+                }
+            }
+            return { lineNumber: -1, startCol: -1, endCol: -1 };
+        });
+        return { lineNumber: -1, startCol: -1, endCol: -1 };
+    });
 }
 run();
 
@@ -1021,10 +1060,7 @@ exports.DepsDevProjectSchema = z
     .nullish();
 exports.ScorecardSchema = z.object({
     dependencies: z.array(z.object({
-        ecosystem: z.string(),
-        packageName: z.string(),
-        version: z.string().nullish(),
-        repository: z.string().nullish(),
+        change: exports.ChangeSchema,
         scorecard: exports.ScorecardApiSchema.nullish()
     }))
 });
@@ -1105,10 +1141,7 @@ function getScorecardLevels(changes) {
                 }
             }
             data.dependencies.push({
-                ecosystem,
-                packageName,
-                version,
-                repository: repositoryUrl,
+                change,
                 scorecard: scorecardApi
             });
         }
@@ -1377,7 +1410,7 @@ function addScorecardToSummary(scorecard, config) {
                     : ':green_circle:';
         }
         //Add a row for the dependency
-        core.summary.addRaw(`<tr><td>${dependency.repository ? `<a href="https://${dependency.repository}">` : ''}${dependency.ecosystem}/${dependency.packageName}${dependency.repository ? `</a>` : ''}</td><td>${dependency.version}</td>
+        core.summary.addRaw(`<tr><td>${dependency.change.source_repository_url ? `<a href="https://${dependency.change.source_repository_url}">` : ''} ${dependency.change.ecosystem}/${dependency.change.name} ${dependency.change.source_repository_url ? `</a>` : ''}</td><td>${dependency.change.version}</td>
       <td>${overallIcon} ${((_e = dependency.scorecard) === null || _e === void 0 ? void 0 : _e.score) === undefined || ((_f = dependency.scorecard) === null || _f === void 0 ? void 0 : _f.score) === null ? 'Unknown' : (_g = dependency.scorecard) === null || _g === void 0 ? void 0 : _g.score}</td>`, false);
         //Add details table in the last column
         if (((_h = dependency.scorecard) === null || _h === void 0 ? void 0 : _h.checks) !== undefined) {
@@ -50206,10 +50239,7 @@ exports.DepsDevProjectSchema = z
     .nullish();
 exports.ScorecardSchema = z.object({
     dependencies: z.array(z.object({
-        ecosystem: z.string(),
-        packageName: z.string(),
-        version: z.string().nullish(),
-        repository: z.string().nullish(),
+        change: exports.ChangeSchema,
         scorecard: exports.ScorecardApiSchema.nullish()
     }))
 });

@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
+import fs from 'fs'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
 import {
@@ -280,7 +281,7 @@ function printScorecardBlock(
     if (scorecard) {
       for (const dependency of scorecard.dependencies) {
         core.info(
-          `${dependency.ecosystem}/${dependency.packageName}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}`
+          `${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}`
         )
       }
     }
@@ -355,21 +356,71 @@ function printDeniedDependencies(
   })
 }
 
-function createScorecardWarnings(
+async function createScorecardWarnings(
   scorecards: Scorecard,
   config: ConfigurationOptions
-): void {
+): Promise<void> {
   // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
   for (const dependency of scorecards.dependencies) {
     if (
       dependency.scorecard?.score &&
       dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
     ) {
+      const lineColNumbers: {
+        lineNumber: number
+        startCol: number
+        endCol: number
+      } = await findLineColNumbers(
+        dependency.change.manifest,
+        dependency.change.name
+      )
+
+      if (lineColNumbers.lineNumber > 0 && lineColNumbers.startCol > 0) {
+        core.warning(
+          `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
+          {
+            title: 'OpenSSF Scorecard Warning',
+            file: dependency.change.manifest,
+            startLine: lineColNumbers.lineNumber,
+            endLine: lineColNumbers.lineNumber,
+            startColumn: lineColNumbers.startCol,
+            endColumn: lineColNumbers.endCol
+          }
+        )
+      }
       core.warning(
-        `${dependency.ecosystem}/${dependency.packageName} has an OpenSSF Scorecard of ${dependency.scorecard?.score} is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`
+        `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
+        {
+          title: 'OpenSSF Scorecard Warning'
+        }
       )
     }
   }
+}
+
+// Finds the line number of the package in the manifest file
+async function findLineColNumbers(
+  manifest: string,
+  packageName: string
+): Promise<{lineNumber: number; startCol: number; endCol: number}> {
+  // open the file
+  fs.readFile(manifest, 'utf8', function (err, data) {
+    if (err) {
+      throw err
+    }
+    // split the file into lines
+    const lines = data.split('\n')
+    // search for the package name in the file
+    for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+      if (lines[lineNumber].includes(packageName)) {
+        const startCol = lines[lineNumber].indexOf(packageName)
+        const endCol = startCol + packageName.length
+        return {lineNumber, startCol, endCol}
+      }
+    }
+    return {lineNumber: -1, startCol: -1, endCol: -1}
+  })
+  return {lineNumber: -1, startCol: -1, endCol: -1}
 }
 
 run()

@@ -49,10 +49,7 @@ export async function getScorecardLevels(
       }
     }
     data.dependencies.push({
-      ecosystem,
-      packageName,
-      version,
-      repository: repositoryUrl,
+      change,
       scorecard: scorecardApi
     })
   }

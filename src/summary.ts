@@ -276,7 +276,7 @@ export function addScorecardToSummary(
 
     //Add a row for the dependency
     core.summary.addRaw(
-      `<tr><td>${dependency.repository ? `<a href="https://${dependency.repository}">` : ''}${dependency.ecosystem}/${dependency.packageName}${dependency.repository ? `</a>` : ''}</td><td>${dependency.version}</td>
+      `<tr><td>${dependency.change.source_repository_url ? `<a href="https://${dependency.change.source_repository_url}">` : ''} ${dependency.change.ecosystem}/${dependency.change.name} ${dependency.change.source_repository_url ? `</a>` : ''}</td><td>${dependency.change.version}</td>
       <td>${overallIcon} ${dependency.scorecard?.score === undefined || dependency.scorecard?.score === null ? 'Unknown' : dependency.scorecard?.score}</td>`,
       false
     )

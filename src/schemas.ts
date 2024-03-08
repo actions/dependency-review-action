@@ -188,10 +188,7 @@ export const DepsDevProjectSchema = z
 export const ScorecardSchema = z.object({
   dependencies: z.array(
     z.object({
-      ecosystem: z.string(),
-      packageName: z.string(),
-      version: z.string().nullish(),
-      repository: z.string().nullish(),
+      change: ChangeSchema,
       scorecard: ScorecardApiSchema.nullish()
     })
   )
