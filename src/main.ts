@@ -416,6 +416,8 @@ async function findLineColNumbers(
       core.error(`Error reading file: ${fileName}`)
       throw err
     }
+
+    core.debug(`File: ${fileName}, contents: ${data}`)
     // split the file into lines
     const lines = data.split('\n')
     // search for the package name in the file
