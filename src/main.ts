@@ -25,7 +25,6 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
 import {getDeniedChanges} from './deny'
-import * as path from 'path'
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
