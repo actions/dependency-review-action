@@ -1,12 +1,4 @@
-import {
-  Change,
-  DepsDevProject,
-  DepsDevProjectSchema,
-  Scorecard,
-  ScorecardApi
-} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
-import {PackageURL} from 'packageurl-js'
+import {Change, Scorecard, ScorecardApi} from './schemas'
 import * as core from '@actions/core'
 
 export async function getScorecardLevels(
@@ -44,8 +36,8 @@ export async function getScorecardLevels(
     ) {
       try {
         scorecardApi = await getScorecard(repositoryUrl)
-      } catch (error: any) {
-        core.debug(`Error querying for scorecard: ${error.message}`)
+      } catch (error: unknown) {
+        core.debug(`Error querying for scorecard: ${(error as Error).message}`)
       }
     }
     data.dependencies.push({

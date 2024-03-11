@@ -652,8 +652,6 @@ function run() {
                 summary.addDeniedToSummary(deniedChanges);
                 printDeniedDependencies(deniedChanges, config);
             }
-            core.debug('Adding scorecard to summary');
-            core.debug(`Config: ${config.show_openssf_scorecard}`);
             if (config.show_openssf_scorecard) {
                 const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
                 summary.addScorecardToSummary(scorecard, config);
@@ -751,10 +749,14 @@ function printNullLicenses(changes) {
 }
 function printScorecardBlock(scorecard, config) {
     core.group('Scorecard', () => __awaiter(this, void 0, void 0, function* () {
-        var _a;
+        var _a, _b, _c, _d;
         if (scorecard) {
             for (const dependency of scorecard.dependencies) {
-                core.info(`${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_a = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score}`);
+                if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
+                    ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
+                    core.info(`${ansi_styles_1.default.color.red}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_c = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score}${ansi_styles_1.default.red.close}`);
+                }
+                core.info(`${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_d = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score}`);
             }
         }
     }));
@@ -854,7 +856,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -974,55 +976,6 @@ exports.ScorecardApiSchema = z.object({
         .nullish(),
     score: z.number().nullish()
 });
-exports.DepsDevProjectSchema = z
-    .object({
-    projectKey: z.object({
-        id: z.string({})
-    }),
-    openIssuesCount: z.string().nullish(),
-    starsCount: z.string().nullish(),
-    forksCount: z.string().nullish(),
-    license: z.string().nullish(),
-    description: z.string().nullish(),
-    homepage: z.string().nullish(),
-    scorecard: z.object({
-        date: z.string(),
-        repository: z
-            .object({
-            name: z.string(),
-            commit: z.string()
-        })
-            .nullish(),
-        scorecard: z
-            .object({
-            version: z.string(),
-            commit: z.string()
-        })
-            .nullish(),
-        checks: z
-            .array(z.object({
-            name: z.string(),
-            documentation: z.object({
-                shortDescription: z.string(),
-                url: z.string()
-            }),
-            score: z.string(),
-            reason: z.string(),
-            details: z.array(z.string())
-        }))
-            .nullish(),
-        overallScore: z.number().nullish()
-    }),
-    ossFuzz: z
-        .object({
-        lineCount: z.string(),
-        lineCoverCount: z.string(),
-        date: z.string(),
-        configUrl: z.string()
-    })
-        .nullish()
-})
-    .nullish();
 exports.ScorecardSchema = z.object({
     dependencies: z.array(z.object({
         change: exports.ChangeSchema,
@@ -50033,7 +49986,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.DepsDevProjectSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -50153,55 +50106,6 @@ exports.ScorecardApiSchema = z.object({
         .nullish(),
     score: z.number().nullish()
 });
-exports.DepsDevProjectSchema = z
-    .object({
-    projectKey: z.object({
-        id: z.string({})
-    }),
-    openIssuesCount: z.string().nullish(),
-    starsCount: z.string().nullish(),
-    forksCount: z.string().nullish(),
-    license: z.string().nullish(),
-    description: z.string().nullish(),
-    homepage: z.string().nullish(),
-    scorecard: z.object({
-        date: z.string(),
-        repository: z
-            .object({
-            name: z.string(),
-            commit: z.string()
-        })
-            .nullish(),
-        scorecard: z
-            .object({
-            version: z.string(),
-            commit: z.string()
-        })
-            .nullish(),
-        checks: z
-            .array(z.object({
-            name: z.string(),
-            documentation: z.object({
-                shortDescription: z.string(),
-                url: z.string()
-            }),
-            score: z.string(),
-            reason: z.string(),
-            details: z.array(z.string())
-        }))
-            .nullish(),
-        overallScore: z.number().nullish()
-    }),
-    ossFuzz: z
-        .object({
-        lineCount: z.string(),
-        lineCoverCount: z.string(),
-        date: z.string(),
-        configUrl: z.string()
-    })
-        .nullish()
-})
-    .nullish();
 exports.ScorecardSchema = z.object({
     dependencies: z.array(z.object({
         change: exports.ChangeSchema,

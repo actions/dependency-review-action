@@ -150,8 +150,6 @@ async function run(): Promise<void> {
       summary.addDeniedToSummary(deniedChanges)
       printDeniedDependencies(deniedChanges, config)
     }
-    core.debug('Adding scorecard to summary')
-    core.debug(`Config: ${config.show_openssf_scorecard}`)
     if (config.show_openssf_scorecard) {
       const scorecard = await getScorecardLevels(filteredChanges)
       summary.addScorecardToSummary(scorecard, config)
@@ -281,6 +279,14 @@ function printScorecardBlock(
   core.group('Scorecard', async () => {
     if (scorecard) {
       for (const dependency of scorecard.dependencies) {
+        if (
+          dependency.scorecard?.score &&
+          dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
+        ) {
+          core.info(
+            `${styles.color.red}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}${styles.red.close}`
+          )
+        }
         core.info(
           `${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}`
         )

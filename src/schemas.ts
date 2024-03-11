@@ -133,58 +133,6 @@ export const ScorecardApiSchema = z.object({
   score: z.number().nullish()
 })
 
-export const DepsDevProjectSchema = z
-  .object({
-    projectKey: z.object({
-      id: z.string({})
-    }),
-    openIssuesCount: z.string().nullish(),
-    starsCount: z.string().nullish(),
-    forksCount: z.string().nullish(),
-    license: z.string().nullish(),
-    description: z.string().nullish(),
-    homepage: z.string().nullish(),
-    scorecard: z.object({
-      date: z.string(),
-      repository: z
-        .object({
-          name: z.string(),
-          commit: z.string()
-        })
-        .nullish(),
-      scorecard: z
-        .object({
-          version: z.string(),
-          commit: z.string()
-        })
-        .nullish(),
-      checks: z
-        .array(
-          z.object({
-            name: z.string(),
-            documentation: z.object({
-              shortDescription: z.string(),
-              url: z.string()
-            }),
-            score: z.string(),
-            reason: z.string(),
-            details: z.array(z.string())
-          })
-        )
-        .nullish(),
-      overallScore: z.number().nullish()
-    }),
-    ossFuzz: z
-      .object({
-        lineCount: z.string(),
-        lineCoverCount: z.string(),
-        date: z.string(),
-        configUrl: z.string()
-      })
-      .nullish()
-  })
-  .nullish()
-
 export const ScorecardSchema = z.object({
   dependencies: z.array(
     z.object({
@@ -200,6 +148,5 @@ export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
-export type DepsDevProject = z.infer<typeof DepsDevProjectSchema>
 export type Scorecard = z.infer<typeof ScorecardSchema>
 export type ScorecardApi = z.infer<typeof ScorecardApiSchema>
