@@ -254,6 +254,9 @@ export function addScorecardToSummary(
   config: ConfigurationOptions
 ): void {
   core.summary.addHeading('OpenSSF Scorecard', 2)
+  if (scorecard.dependencies.length > 10) {
+    core.summary.addRaw(`<details><summary>Scorecard details</summary>`, true)
+  }
   core.summary.addRaw(
     `<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`,
     true
@@ -303,6 +306,9 @@ export function addScorecardToSummary(
     }
   }
   core.summary.addRaw(`</table>`)
+  if (scorecard.dependencies.length > 10) {
+    core.summary.addRaw(`</details>`)
+  }
 }
 
 export function addSnapshotWarnings(

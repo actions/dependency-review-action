@@ -1314,6 +1314,9 @@ function snapshotWarningRecommendation(config, warnings) {
 function addScorecardToSummary(scorecard, config) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     core.summary.addHeading('OpenSSF Scorecard', 2);
+    if (scorecard.dependencies.length > 10) {
+        core.summary.addRaw(`<details><summary>Scorecard details</summary>`, true);
+    }
     core.summary.addRaw(`<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`, true);
     for (const dependency of scorecard.dependencies) {
         core.debug('Adding scorecard to summary');
@@ -1347,6 +1350,9 @@ function addScorecardToSummary(scorecard, config) {
         }
     }
     core.summary.addRaw(`</table>`);
+    if (scorecard.dependencies.length > 10) {
+        core.summary.addRaw(`</details>`);
+    }
 }
 exports.addScorecardToSummary = addScorecardToSummary;
 function addSnapshotWarnings(config, warnings) {
