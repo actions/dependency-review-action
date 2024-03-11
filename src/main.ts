@@ -367,70 +367,14 @@ async function createScorecardWarnings(
       dependency.scorecard?.score &&
       dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
     ) {
-      const lineColNumbers: {
-        lineNumber: number
-        startCol: number
-        endCol: number
-      } = await findLineColNumbers(
-        dependency.change.manifest,
-        dependency.change.name
+      core.warning(
+        `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
+        {
+          title: 'OpenSSF Scorecard Warning'
+        }
       )
-      core.debug(
-        `LineColNumbers: ${JSON.stringify(lineColNumbers)}; Manifest: ${dependency.change.manifest}; Name: ${dependency.change.name}`
-      )
-      if (lineColNumbers.lineNumber > 0 && lineColNumbers.startCol > 0) {
-        core.warning(
-          `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
-          {
-            title: 'OpenSSF Scorecard Warning',
-            file: dependency.change.manifest,
-            startLine: lineColNumbers.lineNumber,
-            endLine: lineColNumbers.lineNumber,
-            startColumn: lineColNumbers.startCol,
-            endColumn: lineColNumbers.endCol
-          }
-        )
-      } else {
-        core.warning(
-          `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
-          {
-            title: 'OpenSSF Scorecard Warning'
-          }
-        )
-      }
     }
   }
-}
-
-// Finds the line number of the package in the manifest file
-async function findLineColNumbers(
-  manifest: string,
-  packageName: string
-): Promise<{lineNumber: number; startCol: number; endCol: number}> {
-  // Concatenate the GITHUB_WORKSPACE to the manifest file
-  const fileName = path.join(process.env.GITHUB_WORKSPACE || '', manifest)
-
-  // Open the file
-  fs.readFile(fileName, 'utf8', function (err, data) {
-    if (err) {
-      core.error(`Error reading file: ${fileName}`)
-      throw err
-    }
-
-    core.debug(`File: ${fileName}, contents: ${data}`)
-    // split the file into lines
-    const lines = data.split('\n')
-    // search for the package name in the file
-    for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
-      if (lines[lineNumber].includes(packageName)) {
-        const startCol = lines[lineNumber].indexOf(packageName)
-        const endCol = startCol + packageName.length
-        return {lineNumber, startCol, endCol}
-      }
-    }
-    return {lineNumber: -1, startCol: -1, endCol: -1}
-  })
-  return {lineNumber: -1, startCol: -1, endCol: -1}
 }
 
 run()
