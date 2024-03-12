@@ -1,5 +1,5 @@
 import {expect, jest, test} from '@jest/globals'
-import {Changes, ConfigurationOptions} from '../src/schemas'
+import {Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -16,6 +16,9 @@ const emptyInvalidLicenseChanges = {
   unresolved: [],
   unlicensed: []
 }
+const emptyScorecard: Scorecard = {
+  dependencies: []
+}
 const defaultConfig: ConfigurationOptions = {
   vulnerability_check: true,
   license_check: true,
@@ -30,7 +33,8 @@ const defaultConfig: ConfigurationOptions = {
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
   warn_only: false,
-  warn_on_openssf_scorecard_level: 3
+  warn_on_openssf_scorecard_level: 3,
+  show_openssf_scorecard: false
 }
 
 const changesWithEmptyManifests: Changes = [
@@ -72,11 +76,32 @@ const changesWithEmptyManifests: Changes = [
   }
 ]
 
+const scorecard: Scorecard = {
+  dependencies: [
+    {
+      change: {
+        change_type: 'added',
+        manifest: '',
+        ecosystem: 'unknown',
+        name: 'castore',
+        version: '0.1.17',
+        package_url: 'pkg:hex/castore@0.1.17',
+        license: null,
+        source_repository_url: null,
+        scope: 'runtime',
+        vulnerabilities: []
+      },
+      scorecard: null
+    }
+  ]
+}
+
 test('prints headline as h1', () => {
   summary.addSummaryToSummary(
     emptyChanges,
     emptyInvalidLicenseChanges,
     emptyChanges,
+    scorecard,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -89,6 +114,7 @@ test('only includes "No vulnerabilities or license issues found"-message if both
     emptyChanges,
     emptyInvalidLicenseChanges,
     emptyChanges,
+    emptyScorecard,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -102,6 +128,7 @@ test('only includes "No vulnerabilities found"-message if "license_check" is set
     emptyChanges,
     emptyInvalidLicenseChanges,
     emptyChanges,
+    emptyScorecard,
     config
   )
   const text = core.summary.stringify()
@@ -115,6 +142,7 @@ test('only includes "No license issues found"-message if "vulnerability_check" i
     emptyChanges,
     emptyInvalidLicenseChanges,
     emptyChanges,
+    emptyScorecard,
     config
   )
   const text = core.summary.stringify()
@@ -127,6 +155,7 @@ test('groups dependencies with empty manifest paths together', () => {
     changesWithEmptyManifests,
     emptyInvalidLicenseChanges,
     emptyChanges,
+    emptyScorecard,
     defaultConfig
   )
   summary.addScannedDependencies(changesWithEmptyManifests)
@@ -144,6 +173,7 @@ test('does not include status section if nothing was found', () => {
     emptyChanges,
     emptyInvalidLicenseChanges,
     emptyChanges,
+    emptyScorecard,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -166,6 +196,7 @@ test('includes count and status icons for all findings', () => {
     vulnerabilities,
     licenseIssues,
     emptyChanges,
+    emptyScorecard,
     defaultConfig
   )
 
@@ -185,6 +216,7 @@ test('uses checkmarks for license issues if only vulnerabilities were found', ()
     vulnerabilities,
     emptyInvalidLicenseChanges,
     emptyChanges,
+    emptyScorecard,
     defaultConfig
   )
 
@@ -208,6 +240,7 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
     emptyChanges,
     licenseIssues,
     emptyChanges,
+    emptyScorecard,
     defaultConfig
   )
 

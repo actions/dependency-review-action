@@ -636,7 +636,8 @@ function run() {
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
-            summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, config);
+            const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
+            summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config);
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(config, snapshot_warnings);
             }
@@ -653,7 +654,6 @@ function run() {
                 printDeniedDependencies(deniedChanges, config);
             }
             if (config.show_openssf_scorecard) {
-                const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
                 summary.addScorecardToSummary(scorecard, config);
                 printScorecardBlock(scorecard, config);
                 createScorecardWarnings(scorecard, config);
@@ -903,8 +903,8 @@ exports.ConfigurationOptionsSchema = z
     head_ref: z.string().optional(),
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
-    show_openssf_scorecard: z.boolean().optional(),
-    warn_on_openssf_scorecard_level: z.number(),
+    show_openssf_scorecard: z.boolean().optional().default(true),
+    warn_on_openssf_scorecard_level: z.number().default(3),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -1139,19 +1139,24 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
-function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, config) {
+function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
+    const scorecardWarnings = countScorecardWarnings(scorecard, config);
+    const licenseIssues = countLicenseIssues(invalidLicenseChanges);
     core.summary.addHeading('Dependency Review', 1);
     if (vulnerableChanges.length === 0 &&
-        countLicenseIssues(invalidLicenseChanges) === 0 &&
-        deniedChanges.length === 0) {
-        if (!config.license_check) {
-            core.summary.addRaw(`${icons.check} No vulnerabilities found.`);
-        }
-        else if (!config.vulnerability_check) {
-            core.summary.addRaw(`${icons.check} No license issues found.`);
+        licenseIssues === 0 &&
+        deniedChanges.length === 0 &&
+        scorecardWarnings === 0) {
+        const issueTypes = [
+            config.vulnerability_check ? 'vulnerabilities' : '',
+            config.license_check ? 'license issues' : '',
+            config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
+        ];
+        if (issueTypes.filter(Boolean).length === 0) {
+            core.summary.addRaw(`${icons.check} No issues found.`);
         }
         else {
-            core.summary.addRaw(`${icons.check} No vulnerabilities or license issues found.`);
+            core.summary.addRaw(`${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`);
         }
         return;
     }
@@ -1174,11 +1179,26 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
             ? [
                 `${checkOrWarnIcon(deniedChanges.length)} ${deniedChanges.length} package(s) denied.`
             ]
+            : []),
+        ...(config.show_openssf_scorecard && scorecardWarnings > 0
+            ? [
+                `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+            ]
             : [])
     ])
         .addRaw('See the Details below.');
 }
 exports.addSummaryToSummary = addSummaryToSummary;
+function countScorecardWarnings(scorecard, config) {
+    return scorecard.dependencies.reduce((total, dependency) => {
+        var _a, _b;
+        return total +
+            (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
+                ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level
+                ? 1
+                : 0);
+    }, 0);
+}
 function addChangeVulnerabilitiesToSummary(vulnerableChanges, severity) {
     if (vulnerableChanges.length === 0) {
         return;
@@ -1313,7 +1333,7 @@ function snapshotWarningRecommendation(config, warnings) {
     return 'Re-running this action after a short time may resolve the issue.';
 }
 function addScorecardToSummary(scorecard, config) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     core.summary.addHeading('OpenSSF Scorecard', 2);
     if (scorecard.dependencies.length > 10) {
         core.summary.addRaw(`<details><summary>Scorecard details</summary>`, true);
@@ -1324,20 +1344,19 @@ function addScorecardToSummary(scorecard, config) {
         core.debug(`Overall score ${(_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score}`);
         // Set the icon based on the overall score value
         let overallIcon = '';
-        if (((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) !== undefined &&
-            ((_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score) !== null) {
+        if ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) {
             overallIcon =
-                ((_d = dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score) < config.warn_on_openssf_scorecard_level
+                ((_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score) < config.warn_on_openssf_scorecard_level
                     ? ':warning:'
                     : ':green_circle:';
         }
         //Add a row for the dependency
         core.summary.addRaw(`<tr><td>${dependency.change.source_repository_url ? `<a href="https://${dependency.change.source_repository_url}">` : ''} ${dependency.change.ecosystem}/${dependency.change.name} ${dependency.change.source_repository_url ? `</a>` : ''}</td><td>${dependency.change.version}</td>
-      <td>${overallIcon} ${((_e = dependency.scorecard) === null || _e === void 0 ? void 0 : _e.score) === undefined || ((_f = dependency.scorecard) === null || _f === void 0 ? void 0 : _f.score) === null ? 'Unknown' : (_g = dependency.scorecard) === null || _g === void 0 ? void 0 : _g.score}</td>`, false);
+      <td>${overallIcon} ${((_d = dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score) === undefined || ((_e = dependency.scorecard) === null || _e === void 0 ? void 0 : _e.score) === null ? 'Unknown' : (_f = dependency.scorecard) === null || _f === void 0 ? void 0 : _f.score}</td>`, false);
         //Add details table in the last column
-        if (((_h = dependency.scorecard) === null || _h === void 0 ? void 0 : _h.checks) !== undefined) {
+        if (((_g = dependency.scorecard) === null || _g === void 0 ? void 0 : _g.checks) !== undefined) {
             let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
-            for (const check of ((_j = dependency.scorecard) === null || _j === void 0 ? void 0 : _j.checks) || []) {
+            for (const check of ((_h = dependency.scorecard) === null || _h === void 0 ? void 0 : _h.checks) || []) {
                 const icon = parseFloat(check.score) < config.warn_on_openssf_scorecard_level
                     ? ':warning:'
                     : ':green_circle:';
@@ -50040,8 +50059,8 @@ exports.ConfigurationOptionsSchema = z
     head_ref: z.string().optional(),
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
-    show_openssf_scorecard: z.boolean().optional(),
-    warn_on_openssf_scorecard_level: z.number(),
+    show_openssf_scorecard: z.boolean().optional().default(true),
+    warn_on_openssf_scorecard_level: z.number().default(3),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),

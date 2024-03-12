@@ -37,7 +37,7 @@ export function addSummaryToSummary(
       core.summary.addRaw(`${icons.check} No issues found.`)
     } else {
       core.summary.addRaw(
-        `No ${issueTypes.filter(Boolean).join(' or ')} found.`
+        `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
       )
     }
 

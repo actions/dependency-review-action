@@ -1,7 +1,6 @@
 import * as core from '@actions/core'
 import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
-import fs from 'graceful-fs'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
 import {

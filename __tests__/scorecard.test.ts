@@ -1,4 +1,4 @@
-import {expect, jest, test} from '@jest/globals'
+import {expect, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
 import {getScorecardLevels, getProjectUrl} from '../src/scorecard'
 

@@ -51,8 +51,8 @@ export const ConfigurationOptionsSchema = z
     head_ref: z.string().optional(),
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
-    show_openssf_scorecard: z.boolean().optional(),
-    warn_on_openssf_scorecard_level: z.number(),
+    show_openssf_scorecard: z.boolean().optional().default(true),
+    warn_on_openssf_scorecard_level: z.number().default(3),
     comment_summary_in_pr: z
       .union([
         z.preprocess(
