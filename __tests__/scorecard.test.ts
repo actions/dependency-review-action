@@ -1,6 +1,6 @@
 import {expect, jest, test} from '@jest/globals'
-import {Change, Changes, Scorecard} from '../src/schemas'
-import {getScorecardLevels} from '../src/scorecard'
+import {Change, Changes} from '../src/schemas'
+import {getScorecardLevels, getProjectUrl} from '../src/scorecard'
 
 const npmChange: Change = {
   manifest: 'package.json',
@@ -22,8 +22,19 @@ const npmChange: Change = {
   ]
 }
 
-test('Can download data from deps.dev', async () => {
+test('Get scorecard from API', async () => {
   const changes: Changes = [npmChange]
   const scorecard = await getScorecardLevels(changes)
   expect(scorecard).not.toBeNull()
+  expect(scorecard.dependencies).toHaveLength(1)
+  expect(scorecard.dependencies[0].scorecard?.score).toBeGreaterThan(0)
+})
+
+test('Get project URL from deps.dev API', async () => {
+  const result = await getProjectUrl(
+    npmChange.ecosystem,
+    npmChange.name,
+    npmChange.version
+  )
+  expect(result).not.toBeNull()
 })

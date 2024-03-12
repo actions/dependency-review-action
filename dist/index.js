@@ -1024,7 +1024,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getScorecardLevels = void 0;
+exports.getProjectUrl = exports.getScorecardLevels = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1097,6 +1097,7 @@ function getProjectUrl(ecosystem, packageName, version) {
         return '';
     });
 }
+exports.getProjectUrl = getProjectUrl;
 
 
 /***/ }),

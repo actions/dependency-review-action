@@ -62,7 +62,7 @@ async function getScorecard(repositoryUrl: string): Promise<ScorecardApi> {
   return scorecardResponse
 }
 
-async function getProjectUrl(
+export async function getProjectUrl(
   ecosystem: string,
   packageName: string,
   version: string
