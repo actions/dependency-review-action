@@ -126,10 +126,13 @@ async function run(): Promise<void> {
       config.deny_groups
     )
 
+    const scorecard = await getScorecardLevels(filteredChanges)
+
     summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
       deniedChanges,
+      scorecard,
       config
     )
 
@@ -150,7 +153,6 @@ async function run(): Promise<void> {
       printDeniedDependencies(deniedChanges, config)
     }
     if (config.show_openssf_scorecard) {
-      const scorecard = await getScorecardLevels(filteredChanges)
       summary.addScorecardToSummary(scorecard, config)
       printScorecardBlock(scorecard, config)
       createScorecardWarnings(scorecard, config)

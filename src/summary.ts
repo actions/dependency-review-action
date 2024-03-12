@@ -14,22 +14,30 @@ export function addSummaryToSummary(
   vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
+  scorecard: Scorecard,
   config: ConfigurationOptions
 ): void {
+  const scorecardWarnings = countScorecardWarnings(scorecard, config)
+  const licenseIssues = countLicenseIssues(invalidLicenseChanges)
+
   core.summary.addHeading('Dependency Review', 1)
 
   if (
     vulnerableChanges.length === 0 &&
-    countLicenseIssues(invalidLicenseChanges) === 0 &&
-    deniedChanges.length === 0
+    licenseIssues === 0 &&
+    deniedChanges.length === 0 &&
+    scorecardWarnings === 0
   ) {
-    if (!config.license_check) {
-      core.summary.addRaw(`${icons.check} No vulnerabilities found.`)
-    } else if (!config.vulnerability_check) {
-      core.summary.addRaw(`${icons.check} No license issues found.`)
+    const issueTypes = [
+      config.vulnerability_check ? 'vulnerabilities' : '',
+      config.license_check ? 'license issues' : '',
+      config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
+    ]
+    if (issueTypes.filter(Boolean).length === 0) {
+      core.summary.addRaw(`${icons.check} No issues found.`)
     } else {
       core.summary.addRaw(
-        `${icons.check} No vulnerabilities or license issues found.`
+        `No ${issueTypes.filter(Boolean).join(' or ')} found.`
       )
     }
 
@@ -65,9 +73,29 @@ export function addSummaryToSummary(
               deniedChanges.length
             } package(s) denied.`
           ]
+        : []),
+      ...(config.show_openssf_scorecard && scorecardWarnings > 0
+        ? [
+            `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+          ]
         : [])
     ])
     .addRaw('See the Details below.')
+}
+
+function countScorecardWarnings(
+  scorecard: Scorecard,
+  config: ConfigurationOptions
+): number {
+  return scorecard.dependencies.reduce(
+    (total, dependency) =>
+      total +
+      (dependency.scorecard?.score &&
+      dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
+        ? 1
+        : 0),
+    0
+  )
 }
 
 export function addChangeVulnerabilitiesToSummary(
@@ -267,10 +295,7 @@ export function addScorecardToSummary(
 
     // Set the icon based on the overall score value
     let overallIcon = ''
-    if (
-      dependency.scorecard?.score !== undefined &&
-      dependency.scorecard?.score !== null
-    ) {
+    if (dependency.scorecard?.score) {
       overallIcon =
         dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
           ? ':warning:'
