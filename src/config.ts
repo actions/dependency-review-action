@@ -49,7 +49,9 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   )
   const warn_only = getOptionalBoolean('warn-only')
   const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard')
-  const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level')
+  const warn_on_openssf_scorecard_level = getOptionalNumber(
+    'warn-on-openssf-scorecard-level'
+  )
 
   validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
