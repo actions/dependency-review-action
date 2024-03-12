@@ -1040,17 +1040,13 @@ function getScorecardLevels(changes) {
                 repositoryUrl = repositoryUrl.replace('https://', '');
             }
             // If GitHub API doesn't have the repository URL, query deps.dev for it.
-            if (repositoryUrl === null ||
-                repositoryUrl === undefined ||
-                repositoryUrl === '') {
+            if (repositoryUrl) {
                 // Call the deps.dev API to get the repository URL from there
                 repositoryUrl = yield getProjectUrl(ecosystem, packageName, version);
             }
             // Get the scorecard API response from the scorecards API
             let scorecardApi = null;
-            if (repositoryUrl !== null &&
-                repositoryUrl !== undefined &&
-                repositoryUrl !== '') {
+            if (repositoryUrl) {
                 try {
                     scorecardApi = yield getScorecard(repositoryUrl);
                 }

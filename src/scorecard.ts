@@ -18,22 +18,14 @@ export async function getScorecardLevels(
     }
 
     // If GitHub API doesn't have the repository URL, query deps.dev for it.
-    if (
-      repositoryUrl === null ||
-      repositoryUrl === undefined ||
-      repositoryUrl === ''
-    ) {
+    if (repositoryUrl) {
       // Call the deps.dev API to get the repository URL from there
       repositoryUrl = await getProjectUrl(ecosystem, packageName, version)
     }
 
     // Get the scorecard API response from the scorecards API
     let scorecardApi: ScorecardApi | null = null
-    if (
-      repositoryUrl !== null &&
-      repositoryUrl !== undefined &&
-      repositoryUrl !== ''
-    ) {
+    if (repositoryUrl) {
       try {
         scorecardApi = await getScorecard(repositoryUrl)
       } catch (error: unknown) {
