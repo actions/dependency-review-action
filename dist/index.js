@@ -754,7 +754,7 @@ function printScorecardBlock(scorecard, config) {
             for (const dependency of scorecard.dependencies) {
                 if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
                     ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
-                    core.info(`${ansi_styles_1.default.color.red}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_c = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score}${ansi_styles_1.default.red.close}`);
+                    core.info(`${ansi_styles_1.default.color.red.open}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_c = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score}${ansi_styles_1.default.red.close}`);
                 }
                 core.info(`${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_d = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score}`);
             }

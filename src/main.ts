@@ -284,7 +284,7 @@ function printScorecardBlock(
           dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
         ) {
           core.info(
-            `${styles.color.red}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}${styles.red.close}`
+            `${styles.color.red.open}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}${styles.red.close}`
           )
         }
         core.info(
