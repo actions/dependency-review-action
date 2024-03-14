@@ -118,6 +118,10 @@ git tag -fa v4 -m "Updating v4 to 4.0.1"
 git push origin v4 --force
 ```
 
+## Stalebot
+
+We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see the configuration [here](.github/workflows/stalebot.yml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
+
 ## Resources
 
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
