@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Changes, Change} from './schemas'
+import {ConfigurationOptions, Changes, Change, Scorecard} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
@@ -14,22 +14,30 @@ export function addSummaryToSummary(
   vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
+  scorecard: Scorecard,
   config: ConfigurationOptions
 ): void {
+  const scorecardWarnings = countScorecardWarnings(scorecard, config)
+  const licenseIssues = countLicenseIssues(invalidLicenseChanges)
+
   core.summary.addHeading('Dependency Review', 1)
 
   if (
     vulnerableChanges.length === 0 &&
-    countLicenseIssues(invalidLicenseChanges) === 0 &&
-    deniedChanges.length === 0
+    licenseIssues === 0 &&
+    deniedChanges.length === 0 &&
+    scorecardWarnings === 0
   ) {
-    if (!config.license_check) {
-      core.summary.addRaw(`${icons.check} No vulnerabilities found.`)
-    } else if (!config.vulnerability_check) {
-      core.summary.addRaw(`${icons.check} No license issues found.`)
+    const issueTypes = [
+      config.vulnerability_check ? 'vulnerabilities' : '',
+      config.license_check ? 'license issues' : '',
+      config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
+    ]
+    if (issueTypes.filter(Boolean).length === 0) {
+      core.summary.addRaw(`${icons.check} No issues found.`)
     } else {
       core.summary.addRaw(
-        `${icons.check} No vulnerabilities or license issues found.`
+        `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
       )
     }
 
@@ -65,9 +73,29 @@ export function addSummaryToSummary(
               deniedChanges.length
             } package(s) denied.`
           ]
+        : []),
+      ...(config.show_openssf_scorecard && scorecardWarnings > 0
+        ? [
+            `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+          ]
         : [])
     ])
     .addRaw('See the Details below.')
+}
+
+function countScorecardWarnings(
+  scorecard: Scorecard,
+  config: ConfigurationOptions
+): number {
+  return scorecard.dependencies.reduce(
+    (total, dependency) =>
+      total +
+      (dependency.scorecard?.score &&
+      dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
+        ? 1
+        : 0),
+    0
+  )
 }
 
 export function addChangeVulnerabilitiesToSummary(
@@ -247,6 +275,65 @@ function snapshotWarningRecommendation(
     return 'Consider enabling <em>retry-on-snapshot-warnings</em>.'
   }
   return 'Re-running this action after a short time may resolve the issue.'
+}
+
+export function addScorecardToSummary(
+  scorecard: Scorecard,
+  config: ConfigurationOptions
+): void {
+  core.summary.addHeading('OpenSSF Scorecard', 2)
+  if (scorecard.dependencies.length > 10) {
+    core.summary.addRaw(`<details><summary>Scorecard details</summary>`, true)
+  }
+  core.summary.addRaw(
+    `<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`,
+    true
+  )
+  for (const dependency of scorecard.dependencies) {
+    core.debug('Adding scorecard to summary')
+    core.debug(`Overall score ${dependency.scorecard?.score}`)
+
+    // Set the icon based on the overall score value
+    let overallIcon = ''
+    if (dependency.scorecard?.score) {
+      overallIcon =
+        dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
+          ? ':warning:'
+          : ':green_circle:'
+    }
+
+    //Add a row for the dependency
+    core.summary.addRaw(
+      `<tr><td>${dependency.change.source_repository_url ? `<a href="https://${dependency.change.source_repository_url}">` : ''} ${dependency.change.ecosystem}/${dependency.change.name} ${dependency.change.source_repository_url ? `</a>` : ''}</td><td>${dependency.change.version}</td>
+      <td>${overallIcon} ${dependency.scorecard?.score === undefined || dependency.scorecard?.score === null ? 'Unknown' : dependency.scorecard?.score}</td>`,
+      false
+    )
+
+    //Add details table in the last column
+    if (dependency.scorecard?.checks !== undefined) {
+      let detailsTable =
+        '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>'
+      for (const check of dependency.scorecard?.checks || []) {
+        const icon =
+          parseFloat(check.score) < config.warn_on_openssf_scorecard_level
+            ? ':warning:'
+            : ':green_circle:'
+
+        detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${check.reason}</td></tr>`
+      }
+      detailsTable += `</table>`
+      core.summary.addRaw(
+        `<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`,
+        true
+      )
+    } else {
+      core.summary.addRaw('<td>Unknown</td></tr>', true)
+    }
+  }
+  core.summary.addRaw(`</table>`)
+  if (scorecard.dependencies.length > 10) {
+    core.summary.addRaw(`</details>`)
+  }
 }
 
 export function addSnapshotWarnings(

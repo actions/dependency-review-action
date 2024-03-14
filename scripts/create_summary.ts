@@ -6,7 +6,7 @@
  * npx ts-node scripts/create_summary.ts
  */
 
-import {Change, Changes, ConfigurationOptions} from '../src/schemas'
+import {Change, Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
 import {createTestChange} from '../__tests__/fixtures/create-test-change'
 import {InvalidLicenseChanges} from '../src/licenses'
 import * as fs from 'fs'
@@ -33,7 +33,29 @@ const defaultConfig: ConfigurationOptions = {
   comment_summary_in_pr: true,
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
-  warn_only: false
+  warn_only: false,
+  warn_on_openssf_scorecard_level: 3,
+  show_openssf_scorecard: true
+}
+
+const scorecard: Scorecard = {
+  dependencies: [
+    {
+      change: {
+        change_type: 'added',
+        manifest: '',
+        ecosystem: 'unknown',
+        name: 'castore',
+        version: '0.1.17',
+        package_url: 'pkg:hex/castore@0.1.17',
+        license: null,
+        source_repository_url: null,
+        scope: 'runtime',
+        vulnerabilities: []
+      },
+      scorecard: null
+    }
+  ]
 }
 
 const tmpDir = path.resolve(__dirname, '../tmp')
@@ -101,7 +123,13 @@ async function createSummary(
   config: ConfigurationOptions,
   fileName: string
 ): Promise<void> {
-  summary.addSummaryToSummary(vulnerabilities, licenseIssues, denied, config)
+  summary.addSummaryToSummary(
+    vulnerabilities,
+    licenseIssues,
+    denied,
+    scorecard,
+    config
+  )
   summary.addChangeVulnerabilitiesToSummary(
     vulnerabilities,
     config.fail_on_severity

@@ -565,6 +565,7 @@ const request_error_1 = __nccwpck_require__(537);
 const config_1 = __nccwpck_require__(6373);
 const filter_1 = __nccwpck_require__(134);
 const licenses_1 = __nccwpck_require__(3247);
+const scorecard_1 = __nccwpck_require__(307);
 const summary = __importStar(__nccwpck_require__(8608));
 const git_refs_1 = __nccwpck_require__(1086);
 const utils_1 = __nccwpck_require__(918);
@@ -635,7 +636,8 @@ function run() {
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
-            summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, config);
+            const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
+            summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config);
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(config, snapshot_warnings);
             }
@@ -650,6 +652,11 @@ function run() {
             if (config.deny_packages || config.deny_groups) {
                 summary.addDeniedToSummary(deniedChanges);
                 printDeniedDependencies(deniedChanges, config);
+            }
+            if (config.show_openssf_scorecard) {
+                summary.addScorecardToSummary(scorecard, config);
+                printScorecardBlock(scorecard, config);
+                createScorecardWarnings(scorecard, config);
             }
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
@@ -740,6 +747,20 @@ function printNullLicenses(changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
     }
 }
+function printScorecardBlock(scorecard, config) {
+    core.group('Scorecard', () => __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c, _d;
+        if (scorecard) {
+            for (const dependency of scorecard.dependencies) {
+                if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
+                    ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
+                    core.info(`${ansi_styles_1.default.color.red.open}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_c = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score}${ansi_styles_1.default.red.close}`);
+                }
+                core.info(`${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${(_d = dependency === null || dependency === void 0 ? void 0 : dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score}`);
+            }
+        }
+    }));
+}
 function renderSeverity(severity) {
     const color = {
         critical: 'red',
@@ -787,6 +808,20 @@ function printDeniedDependencies(changes, config) {
         }
     }));
 }
+function createScorecardWarnings(scorecards, config) {
+    var _a, _b, _c;
+    return __awaiter(this, void 0, void 0, function* () {
+        // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
+        for (const dependency of scorecards.dependencies) {
+            if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
+                ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level) {
+                core.warning(`${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${(_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`, {
+                    title: 'OpenSSF Scorecard Warning'
+                });
+            }
+        }
+    });
+}
 run();
 
 
@@ -821,7 +856,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -868,6 +903,8 @@ exports.ConfigurationOptionsSchema = z
     head_ref: z.string().optional(),
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
+    show_openssf_scorecard: z.boolean().optional().default(true),
+    warn_on_openssf_scorecard_level: z.number().default(3),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -911,6 +948,152 @@ exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
 });
+exports.ScorecardApiSchema = z.object({
+    date: z.string(),
+    repo: z
+        .object({
+        name: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    scorecard: z
+        .object({
+        version: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    checks: z
+        .array(z.object({
+        name: z.string(),
+        documentation: z.object({
+            shortDescription: z.string(),
+            url: z.string()
+        }),
+        score: z.string(),
+        reason: z.string(),
+        details: z.array(z.string())
+    }))
+        .nullish(),
+    score: z.number().nullish()
+});
+exports.ScorecardSchema = z.object({
+    dependencies: z.array(z.object({
+        change: exports.ChangeSchema,
+        scorecard: exports.ScorecardApiSchema.nullish()
+    }))
+});
+
+
+/***/ }),
+
+/***/ 307:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getProjectUrl = exports.getScorecardLevels = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+function getScorecardLevels(changes) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const data = { dependencies: [] };
+        for (const change of changes) {
+            const ecosystem = change.ecosystem;
+            const packageName = change.name;
+            const version = change.version;
+            //Get the project repository
+            let repositoryUrl = change.source_repository_url;
+            //If the repository_url includes the protocol, remove it
+            if (repositoryUrl === null || repositoryUrl === void 0 ? void 0 : repositoryUrl.startsWith('https://')) {
+                repositoryUrl = repositoryUrl.replace('https://', '');
+            }
+            // If GitHub API doesn't have the repository URL, query deps.dev for it.
+            if (repositoryUrl) {
+                // Call the deps.dev API to get the repository URL from there
+                repositoryUrl = yield getProjectUrl(ecosystem, packageName, version);
+            }
+            // Get the scorecard API response from the scorecards API
+            let scorecardApi = null;
+            if (repositoryUrl) {
+                try {
+                    scorecardApi = yield getScorecard(repositoryUrl);
+                }
+                catch (error) {
+                    core.debug(`Error querying for scorecard: ${error.message}`);
+                }
+            }
+            data.dependencies.push({
+                change,
+                scorecard: scorecardApi
+            });
+        }
+        return data;
+    });
+}
+exports.getScorecardLevels = getScorecardLevels;
+function getScorecard(repositoryUrl) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const apiRoot = 'https://api.securityscorecards.dev/';
+        let scorecardResponse = {};
+        const url = `${apiRoot}/projects/${repositoryUrl}`;
+        const response = yield fetch(url);
+        if (response.ok) {
+            scorecardResponse = yield response.json();
+        }
+        else {
+            core.debug(`Couldn't get scorecard data for ${repositoryUrl}`);
+        }
+        return scorecardResponse;
+    });
+}
+function getProjectUrl(ecosystem, packageName, version) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`Getting deps.dev data for ${packageName} ${version}`);
+        const depsDevAPIRoot = 'https://api.deps.dev';
+        const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
+        const response = yield fetch(url);
+        if (response.ok) {
+            const data = yield response.json();
+            if (data.relatedProjects.length > 0) {
+                return data.relatedProjects[0].projectKey.id;
+            }
+        }
+        return '';
+    });
+}
+exports.getProjectUrl = getProjectUrl;
 
 
 /***/ }),
@@ -944,7 +1127,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -952,19 +1135,24 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
-function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, config) {
+function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
+    const scorecardWarnings = countScorecardWarnings(scorecard, config);
+    const licenseIssues = countLicenseIssues(invalidLicenseChanges);
     core.summary.addHeading('Dependency Review', 1);
     if (vulnerableChanges.length === 0 &&
-        countLicenseIssues(invalidLicenseChanges) === 0 &&
-        deniedChanges.length === 0) {
-        if (!config.license_check) {
-            core.summary.addRaw(`${icons.check} No vulnerabilities found.`);
-        }
-        else if (!config.vulnerability_check) {
-            core.summary.addRaw(`${icons.check} No license issues found.`);
+        licenseIssues === 0 &&
+        deniedChanges.length === 0 &&
+        scorecardWarnings === 0) {
+        const issueTypes = [
+            config.vulnerability_check ? 'vulnerabilities' : '',
+            config.license_check ? 'license issues' : '',
+            config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
+        ];
+        if (issueTypes.filter(Boolean).length === 0) {
+            core.summary.addRaw(`${icons.check} No issues found.`);
         }
         else {
-            core.summary.addRaw(`${icons.check} No vulnerabilities or license issues found.`);
+            core.summary.addRaw(`${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`);
         }
         return;
     }
@@ -987,11 +1175,26 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
             ? [
                 `${checkOrWarnIcon(deniedChanges.length)} ${deniedChanges.length} package(s) denied.`
             ]
+            : []),
+        ...(config.show_openssf_scorecard && scorecardWarnings > 0
+            ? [
+                `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+            ]
             : [])
     ])
         .addRaw('See the Details below.');
 }
 exports.addSummaryToSummary = addSummaryToSummary;
+function countScorecardWarnings(scorecard, config) {
+    return scorecard.dependencies.reduce((total, dependency) => {
+        var _a, _b;
+        return total +
+            (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
+                ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) < config.warn_on_openssf_scorecard_level
+                ? 1
+                : 0);
+    }, 0);
+}
 function addChangeVulnerabilitiesToSummary(vulnerableChanges, severity) {
     if (vulnerableChanges.length === 0) {
         return;
@@ -1125,6 +1328,49 @@ function snapshotWarningRecommendation(config, warnings) {
     }
     return 'Re-running this action after a short time may resolve the issue.';
 }
+function addScorecardToSummary(scorecard, config) {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    core.summary.addHeading('OpenSSF Scorecard', 2);
+    if (scorecard.dependencies.length > 10) {
+        core.summary.addRaw(`<details><summary>Scorecard details</summary>`, true);
+    }
+    core.summary.addRaw(`<table><tr><th>Package</th><th>Version</th><th>Score</th><th>Details</th></tr>`, true);
+    for (const dependency of scorecard.dependencies) {
+        core.debug('Adding scorecard to summary');
+        core.debug(`Overall score ${(_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score}`);
+        // Set the icon based on the overall score value
+        let overallIcon = '';
+        if ((_b = dependency.scorecard) === null || _b === void 0 ? void 0 : _b.score) {
+            overallIcon =
+                ((_c = dependency.scorecard) === null || _c === void 0 ? void 0 : _c.score) < config.warn_on_openssf_scorecard_level
+                    ? ':warning:'
+                    : ':green_circle:';
+        }
+        //Add a row for the dependency
+        core.summary.addRaw(`<tr><td>${dependency.change.source_repository_url ? `<a href="https://${dependency.change.source_repository_url}">` : ''} ${dependency.change.ecosystem}/${dependency.change.name} ${dependency.change.source_repository_url ? `</a>` : ''}</td><td>${dependency.change.version}</td>
+      <td>${overallIcon} ${((_d = dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score) === undefined || ((_e = dependency.scorecard) === null || _e === void 0 ? void 0 : _e.score) === null ? 'Unknown' : (_f = dependency.scorecard) === null || _f === void 0 ? void 0 : _f.score}</td>`, false);
+        //Add details table in the last column
+        if (((_g = dependency.scorecard) === null || _g === void 0 ? void 0 : _g.checks) !== undefined) {
+            let detailsTable = '<table><tr><th>Check</th><th>Score</th><th>Reason</th></tr>';
+            for (const check of ((_h = dependency.scorecard) === null || _h === void 0 ? void 0 : _h.checks) || []) {
+                const icon = parseFloat(check.score) < config.warn_on_openssf_scorecard_level
+                    ? ':warning:'
+                    : ':green_circle:';
+                detailsTable += `<tr><td>${check.name}</td><td>${icon} ${check.score}</td><td>${check.reason}</td></tr>`;
+            }
+            detailsTable += `</table>`;
+            core.summary.addRaw(`<td><details><summary>Details</summary>${detailsTable}</details></td></tr>`, true);
+        }
+        else {
+            core.summary.addRaw('<td>Unknown</td></tr>', true);
+        }
+    }
+    core.summary.addRaw(`</table>`);
+    if (scorecard.dependencies.length > 10) {
+        core.summary.addRaw(`</details>`);
+    }
+}
+exports.addScorecardToSummary = addScorecardToSummary;
 function addSnapshotWarnings(config, warnings) {
     core.summary.addHeading('Snapshot Warnings', 2);
     core.summary.addQuote(`${icons.warning}: ${warnings}`);
@@ -49488,6 +49734,8 @@ function readInlineConfig() {
     const retry_on_snapshot_warnings = getOptionalBoolean('retry-on-snapshot-warnings');
     const retry_on_snapshot_warnings_timeout = getOptionalNumber('retry-on-snapshot-warnings-timeout');
     const warn_only = getOptionalBoolean('warn-only');
+    const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard');
+    const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level');
     validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
@@ -49507,7 +49755,9 @@ function readInlineConfig() {
         comment_summary_in_pr,
         retry_on_snapshot_warnings,
         retry_on_snapshot_warnings_timeout,
-        warn_only
+        warn_only,
+        show_openssf_scorecard,
+        warn_on_openssf_scorecard_level
     };
     return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
 }
@@ -49758,7 +50008,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
@@ -49805,6 +50055,8 @@ exports.ConfigurationOptionsSchema = z
     head_ref: z.string().optional(),
     retry_on_snapshot_warnings: z.boolean().default(false),
     retry_on_snapshot_warnings_timeout: z.number().default(120),
+    show_openssf_scorecard: z.boolean().optional().default(true),
+    warn_on_openssf_scorecard_level: z.number().default(3),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -49847,6 +50099,40 @@ exports.ChangesSchema = z.array(exports.ChangeSchema);
 exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
+});
+exports.ScorecardApiSchema = z.object({
+    date: z.string(),
+    repo: z
+        .object({
+        name: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    scorecard: z
+        .object({
+        version: z.string(),
+        commit: z.string()
+    })
+        .nullish(),
+    checks: z
+        .array(z.object({
+        name: z.string(),
+        documentation: z.object({
+            shortDescription: z.string(),
+            url: z.string()
+        }),
+        score: z.string(),
+        reason: z.string(),
+        details: z.array(z.string())
+    }))
+        .nullish(),
+    score: z.number().nullish()
+});
+exports.ScorecardSchema = z.object({
+    dependencies: z.array(z.object({
+        change: exports.ChangeSchema,
+        scorecard: exports.ScorecardApiSchema.nullish()
+    }))
 });
 
 
