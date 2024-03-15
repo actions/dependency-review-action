@@ -191,7 +191,7 @@ jobs:
           deny-licenses: LGPL-2.0, BSD-2-Clause
       - name: 'Report'
         # make sure this step runs even if the previous failed
-        if: always()
+        if: ${{ failure() && steps.review.conclusion == 'failure' }}
         shell: bash
         env:
           COMMENT: ${{ steps.review.outputs.comment-content }}
@@ -199,7 +199,7 @@ jobs:
           echo "$COMMENT"
       - name: 'List vulnerable dependencies'
         # make sure this step runs even if the previous failed
-        if: always()
+        if: ${{ failure() && steps.review.conclusion == 'failure' }}
         shell: bash
         env:
           VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
