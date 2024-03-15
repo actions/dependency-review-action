@@ -661,6 +661,7 @@ function run() {
                 printScorecardBlock(scorecard, config);
                 createScorecardWarnings(scorecard, config);
             }
+            core.setOutput('dependency-changes', JSON.stringify(changes));
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
             yield (0, comment_pr_1.commentPr)(core.summary, config);
