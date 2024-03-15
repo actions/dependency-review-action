@@ -166,8 +166,8 @@ jobs:
 
 ## Getting the results of the action in a later step
 
-- Using the `comment-content` output you can get the results of the action in a workflow step.
-- Using other outputs like `dependency-changes`, `vulnerable-changes`, `invalid-license-changes` and `denied-changes` you can get the results of the action in JSON format and use them in a programmatic way.
+- `comment-content` contains the output of the results comment for the entire run.
+`dependency-changes`, `vulnerable-changes`, `invalid-license-changes` and `denied-changes` are all JSON objects that allow you to access individual sets of changes.
 
 ```yaml
 name: 'Dependency Review'
