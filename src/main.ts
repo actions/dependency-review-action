@@ -3,7 +3,13 @@ import * as dependencyGraph from './dependency-graph'
 import * as github from '@actions/github'
 import styles from 'ansi-styles'
 import {RequestError} from '@octokit/request-error'
-import {Change, Severity, Changes, ConfigurationOptions} from './schemas'
+import {
+  Change,
+  Severity,
+  Changes,
+  ConfigurationOptions,
+  Scorecard
+} from './schemas'
 import {readConfig} from '../src/config'
 import {
   filterChangesBySeverity,
@@ -11,6 +17,7 @@ import {
   filterAllowedAdvisories
 } from '../src/filter'
 import {getInvalidLicenseChanges} from './licenses'
+import {getScorecardLevels} from './scorecard'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
 
@@ -118,10 +125,13 @@ async function run(): Promise<void> {
       config.deny_groups
     )
 
+    const scorecard = await getScorecardLevels(filteredChanges)
+
     summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
       deniedChanges,
+      scorecard,
       config
     )
 
@@ -146,6 +156,11 @@ async function run(): Promise<void> {
       core.setOutput('denied-changes', JSON.stringify(deniedChanges))
       summary.addDeniedToSummary(deniedChanges)
       printDeniedDependencies(deniedChanges, config)
+    }
+    if (config.show_openssf_scorecard) {
+      summary.addScorecardToSummary(scorecard, config)
+      printScorecardBlock(scorecard, config)
+      createScorecardWarnings(scorecard, config)
     }
 
     core.setOutput('dependency-changes', JSON.stringify(changes))
@@ -264,6 +279,29 @@ function printNullLicenses(changes: Changes): void {
   }
 }
 
+function printScorecardBlock(
+  scorecard: Scorecard,
+  config: ConfigurationOptions
+): void {
+  core.group('Scorecard', async () => {
+    if (scorecard) {
+      for (const dependency of scorecard.dependencies) {
+        if (
+          dependency.scorecard?.score &&
+          dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
+        ) {
+          core.info(
+            `${styles.color.red.open}${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}${styles.red.close}`
+          )
+        }
+        core.info(
+          `${dependency.change.ecosystem}/${dependency.change.name}: OpenSSF Scorecard Score: ${dependency?.scorecard?.score}`
+        )
+      }
+    }
+  })
+}
+
 function renderSeverity(
   severity: 'critical' | 'high' | 'moderate' | 'low'
 ): string {
@@ -330,6 +368,26 @@ function printDeniedDependencies(
       core.info(`Change: ${change.package_url} is denied`)
     }
   })
+}
+
+async function createScorecardWarnings(
+  scorecards: Scorecard,
+  config: ConfigurationOptions
+): Promise<void> {
+  // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
+  for (const dependency of scorecards.dependencies) {
+    if (
+      dependency.scorecard?.score &&
+      dependency.scorecard?.score < config.warn_on_openssf_scorecard_level
+    ) {
+      core.warning(
+        `${dependency.change.ecosystem}/${dependency.change.name} has an OpenSSF Scorecard of ${dependency.scorecard?.score}, which is less than this repository's threshold of ${config.warn_on_openssf_scorecard_level}.`,
+        {
+          title: 'OpenSSF Scorecard Warning'
+        }
+      )
+    }
+  }
 }
 
 run()

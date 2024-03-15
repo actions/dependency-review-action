@@ -77,9 +77,11 @@ $ GITHUB_TOKEN=<token> ./scripts/scan_pr --config-file my_custom_config.yml <pr_
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 
-- Write tests.
+- Add unit tests for new features.
 - Keep your change as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
 - Write a [good commit message](https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+- Add examples of the usage to [examples.md](examples.md)
+- Link to a sample PR in a custom repository running your version of the Action.
 
 ## Cutting a new release
 
@@ -115,6 +117,10 @@ To do this just checkout `main`, force-create a new annotated tag, and push it:
 git tag -fa v4 -m "Updating v4 to 4.0.1"
 git push origin v4 --force
 ```
+
+## Stalebot
+
+We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see the configuration [here](.github/workflows/stalebot.yml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
 
 ## Resources
 
