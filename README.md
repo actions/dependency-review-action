@@ -176,7 +176,8 @@ The Dependency Review GitHub Action check will only block a pull request from be
 > ```yaml
 > env:
 >   VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
-> run: echo "$VULNERABLE_CHANGES" | jq
+> run: |
+>   echo "$VULNERABLE_CHANGES" | jq
 > ```
 >
 > instead of direct `echo '${{ steps.review.outputs.vulnerable-changes }}'`. See [examples](docs/examples.md) for more.
