@@ -10,39 +10,5 @@ jobs:
     steps:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
-
-      - name: 'Dependency Review'
+      - name: Dependency Review
         uses: actions/dependency-review-action@main
-        id: review
-
-      - name: 'Check comment-content output'
-        if: always()
-        env:
-          COMMENT: ${{ steps.review.outputs.comment-content }}
-        run: |
-          test -n "$COMMENT"
-          echo "$COMMENT"
-
-      - name: 'Check dependency-changes output'
-        if: always()
-        env:
-          DEPENDENCY_CHANGES: ${{ steps.review.outputs.dependency-changes }}
-        run: echo "$DEPENDENCY_CHANGES" | jq
-
-      - name: 'Check vulnerable-changes output'
-        if: always()
-        env:
-          VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
-        run: echo "$VULNERABLE_CHANGES" | jq
-
-      - name: 'Check invalid-license-changes output'
-        if: always()
-        env:
-          LICENSE_CHANGES: ${{ steps.review.outputs.invalid-license-changes }}
-        run: echo "$LICENSE_CHANGES" | jq
-
-      - name: 'Check denied-changes output'
-        if: always()
-        env:
-          DENIED_CHANGES: ${{ steps.review.outputs.denied-changes }}
-        run: echo "$DENIED_CHANGES" | jq
