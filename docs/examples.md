@@ -193,7 +193,7 @@ jobs:
         # make sure this step runs even if the previous failed
         if: ${{ failure() && steps.review.conclusion == 'failure' }}
         shell: bash
-        env:
+        env: # store comment HTML data in an environment variable
           COMMENT: ${{ steps.review.outputs.comment-content }}
         run: | # do something with the comment:
           echo "$COMMENT"
@@ -201,7 +201,7 @@ jobs:
         # make sure this step runs even if the previous failed
         if: ${{ failure() && steps.review.conclusion == 'failure' }}
         shell: bash
-        env:
+        env: # store JSON data in an environment variable
           VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
         run: | # do something with the JSON:
           echo "$VULNERABLE_CHANGES" | jq '.[].package_url'
