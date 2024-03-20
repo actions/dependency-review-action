@@ -83,8 +83,8 @@ Configure this action by either inlining these options in your workflow file, or
 | `retry-on-snapshot-warnings`\*         | Enable or disable retrying the action every 10 seconds while waiting for dependency submission actions to complete.                                                                                     | `true`, `false`                                                                                              | `false`       |
 | `retry-on-snapshot-warnings-timeout`\* | Maximum amount of time (in seconds) to retry the action while waiting for dependency submission actions to complete.                                                                                    | Any positive integer                                                                                         | 120           |
 | `warn-only`+                           | When set to `true`, the action will log all vulnerabilities as warnings regardless of the severity, and the action will complete with a `success` status. This overrides the `fail-on-severity` option. | `true`, `false`                                                                                              | `false`       |
-| `show-openssf-scorecard-levels`        | When set to `true`, the action will output information about all the known OpenSSF Scorecard scores for the dependencies changed in this pull request.                                                  | `true`, `false`                                                                                              | `true`        | 
-| `warn-on-openssf-scorecard-level`      | When `show-openssf-scorecard-levels` is set to `true`, this option lets you configure the threshold for when a score is considered too low and gets a :warning: warning in the CI.                      | Any positive integer                                                                                         | 3             |          
+| `show-openssf-scorecard-levels`        | When set to `true`, the action will output information about all the known OpenSSF Scorecard scores for the dependencies changed in this pull request.                                                  | `true`, `false`                                                                                              | `true`        |
+| `warn-on-openssf-scorecard-level`      | When `show-openssf-scorecard-levels` is set to `true`, this option lets you configure the threshold for when a score is considered too low and gets a :warning: warning in the CI.                      | Any positive integer                                                                                         | 3             |
 
 \*not supported for use with GitHub Enterprise Server
 
@@ -161,7 +161,26 @@ The Dependency Review GitHub Action check will only block a pull request from be
 
 ## Outputs
 
-`comment-content` is generated with the same content as would be present in a Dependency Review Action comment.
+- `comment-content` is generated with the same content as would be present in a Dependency Review Action comment.
+- `dependency-changes` holds all dependency changes in a JSON format. The following outputs are subsets of `dependency-changes` filtered based on the configuration:
+- `vulnerable-changes` holds information about dependency changes with vulnerable dependencies in a JSON format.
+- `invalid-license-changes` holds information about invalid or non-compliant license dependency changes in a JSON format.
+- `denied-changes` holds information about denied dependency changes in a JSON format.
+
+> [!NOTE]
+> Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).
+
+> [!IMPORTANT]
+> If you use these outputs in a run-step, you must store the ouput data in an envrioment variable instead of using the output directly. Using an output directly might break shell scripts. For example:
+>
+> ```yaml
+> env:
+>   VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
+> run: |
+>   echo "$VULNERABLE_CHANGES" | jq
+> ```
+>
+> instead of direct `echo '${{ steps.review.outputs.vulnerable-changes }}'`. See [examples](docs/examples.md) for more.
 
 ## Getting help
 

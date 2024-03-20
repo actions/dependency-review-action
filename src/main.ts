@@ -140,14 +140,20 @@ async function run(): Promise<void> {
     }
 
     if (config.vulnerability_check) {
+      core.setOutput('vulnerable-changes', JSON.stringify(vulnerableChanges))
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
       printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly)
     }
     if (config.license_check) {
+      core.setOutput(
+        'invalid-license-changes',
+        JSON.stringify(invalidLicenseChanges)
+      )
       summary.addLicensesToSummary(invalidLicenseChanges, config)
       printLicensesBlock(invalidLicenseChanges, warnOnly)
     }
     if (config.deny_packages || config.deny_groups) {
+      core.setOutput('denied-changes', JSON.stringify(deniedChanges))
       summary.addDeniedToSummary(deniedChanges)
       printDeniedDependencies(deniedChanges, config)
     }
@@ -157,6 +163,7 @@ async function run(): Promise<void> {
       createScorecardWarnings(scorecard, config)
     }
 
+    core.setOutput('dependency-changes', JSON.stringify(changes))
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
     await commentPr(core.summary, config)

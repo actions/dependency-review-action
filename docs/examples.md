@@ -166,7 +166,8 @@ jobs:
 
 ## Getting the results of the action in a later step
 
-Using the `comment-content` output you can get the results of the action in a workflow step.
+- `comment-content` contains the output of the results comment for the entire run.
+`dependency-changes`, `vulnerable-changes`, `invalid-license-changes` and `denied-changes` are all JSON objects that allow you to access individual sets of changes.
 
 ```yaml
 name: 'Dependency Review'
@@ -192,10 +193,18 @@ jobs:
         # make sure this step runs even if the previous failed
         if: ${{ failure() && steps.review.conclusion == 'failure' }}
         shell: bash
-        env:
-          comment: ${{ steps.review.outputs.comment-content }}
-        run: |
-          echo "$comment"  # do something with the comment
+        env: # store comment HTML data in an environment variable
+          COMMENT: ${{ steps.review.outputs.comment-content }}
+        run: | # do something with the comment:
+          echo "$COMMENT"
+      - name: 'List vulnerable dependencies'
+        # make sure this step runs even if the previous failed
+        if: ${{ failure() && steps.review.conclusion == 'failure' }}
+        shell: bash
+        env: # store JSON data in an environment variable
+          VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
+        run: | # do something with the JSON:
+          echo "$VULNERABLE_CHANGES" | jq '.[].package_url'
 ```
 
 ## Exclude dependencies from the license check

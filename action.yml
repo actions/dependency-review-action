@@ -76,6 +76,14 @@ inputs:
 outputs:
   comment-content:
     description: Prepared dependency report comment
+  dependency-changes:
+    description: All dependency changes (JSON)
+  vulnerable-changes:
+    description: Vulnerable dependency changes (JSON)
+  invalid-license-changes:
+    description: Invalid license dependency changes (JSON)
+  denied-changes:
+    description: Denied dependency changes (JSON)
 
 runs:
   using: 'node20'
