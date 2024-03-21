@@ -2,8 +2,5 @@
   "name": "Dependency Review Action",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:18",
   "postCreateCommand": "npm install",
-  "remoteUser": "node",
-  "features": {
-    "ghcr.io/devcontainers/features/ruby:1": {}
-  }
+  "remoteUser": "node"
 }
