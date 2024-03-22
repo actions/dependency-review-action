@@ -1043,8 +1043,15 @@ function getScorecardLevels(changes) {
             if (repositoryUrl === null || repositoryUrl === void 0 ? void 0 : repositoryUrl.startsWith('https://')) {
                 repositoryUrl = repositoryUrl.replace('https://', '');
             }
+            // Handle the special case for GitHub Actions, where the repository URL is null
+            if (ecosystem === 'actions') {
+                // The package name for GitHub Actions in the API is in the format `owner/repo/`, so we can use that to get the repository URL
+                // If the package name has more than 2 slashes, it's referencing a sub-action, and we need to strip the last part out
+                const parts = packageName.split('/');
+                repositoryUrl = `github.com/${parts[0]}/${parts[1]}`; // e.g. github.com/actions/checkout
+            }
             // If GitHub API doesn't have the repository URL, query deps.dev for it.
-            if (repositoryUrl) {
+            if (!repositoryUrl) {
                 // Call the deps.dev API to get the repository URL from there
                 repositoryUrl = yield getProjectUrl(ecosystem, packageName, version);
             }
@@ -1069,7 +1076,7 @@ function getScorecardLevels(changes) {
 exports.getScorecardLevels = getScorecardLevels;
 function getScorecard(repositoryUrl) {
     return __awaiter(this, void 0, void 0, function* () {
-        const apiRoot = 'https://api.securityscorecards.dev/';
+        const apiRoot = 'https://api.securityscorecards.dev';
         let scorecardResponse = {};
         const url = `${apiRoot}/projects/${repositoryUrl}`;
         const response = yield fetch(url);
