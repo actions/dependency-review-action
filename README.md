@@ -171,7 +171,7 @@ The Dependency Review GitHub Action check will only block a pull request from be
 > Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).
 
 > [!IMPORTANT]
-> If you use these outputs in a run-step, you must store the ouput data in an envrioment variable instead of using the output directly. Using an output directly might break shell scripts. For example:
+> If you use these outputs in a run-step, you must store the output data in an environment variable instead of using the output directly. Using an output directly might break shell scripts. For example:
 >
 > ```yaml
 > env:
