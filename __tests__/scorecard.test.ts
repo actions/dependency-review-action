@@ -26,7 +26,7 @@ const actionsChange: Change = {
   manifest: 'workflow.yml',
   change_type: 'added',
   ecosystem: 'actions',
-  name: 'actions/checkout',
+  name: 'actions/checkout/',
   version: 'v3',
   package_url: 'pkg:githubactions/actions@v3',
   license: 'MIT',
