@@ -49,7 +49,7 @@ export async function getScorecardLevels(
 }
 
 async function getScorecard(repositoryUrl: string): Promise<ScorecardApi> {
-  const apiRoot = 'https://api.securityscorecards.dev/'
+  const apiRoot = 'https://api.securityscorecards.dev'
   let scorecardResponse: ScorecardApi = {} as ScorecardApi
 
   const url = `${apiRoot}/projects/${repositoryUrl}`
