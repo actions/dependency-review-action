@@ -22,6 +22,19 @@ const npmChange: Change = {
   ]
 }
 
+const actionsChange: Change = {
+  manifest: 'workflow.yml',
+  change_type: 'added',
+  ecosystem: 'actions',
+  name: 'actions/checkout/',
+  version: 'v3',
+  package_url: 'pkg:githubactions/actions@v3',
+  license: 'MIT',
+  source_repository_url: 'null',
+  scope: 'runtime',
+  vulnerabilities: []
+}
+
 test('Get scorecard from API', async () => {
   const changes: Changes = [npmChange]
   const scorecard = await getScorecardLevels(changes)
@@ -37,4 +50,12 @@ test('Get project URL from deps.dev API', async () => {
     npmChange.version
   )
   expect(result).not.toBeNull()
+})
+
+test('Handles Actions special case', async () => {
+  const changes: Changes = [actionsChange]
+  const result = await getScorecardLevels(changes)
+  expect(result).not.toBeNull()
+  expect(result.dependencies).toHaveLength(1)
+  expect(result.dependencies[0].scorecard?.score).toBeGreaterThan(0)
 })
