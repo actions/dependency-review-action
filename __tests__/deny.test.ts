@@ -1,5 +1,6 @@
 import {expect, jest, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
+import * as spdx from '../src/spdx'
 
 let getDeniedChanges: Function
 
@@ -121,10 +122,13 @@ jest.mock('octokit', () => {
 
 beforeEach(async () => {
   jest.resetModules()
-  jest.doMock('spdx-satisfies', () => {
-    // mock spdx-satisfies return value
-    // true for BSD, false for all others
-    return jest.fn((license: string, _: string): boolean => license === 'BSD')
+  jest.mock('../src/spdx', () => {
+    return {
+      ...spdx,
+      satisfies: jest.fn(
+        (license: string, _: string): boolean => license === 'BSD'
+      )
+    }
   })
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   ;({getDeniedChanges} = require('../src/deny'))

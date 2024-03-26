@@ -1,10 +1,11 @@
+import * as path from 'path'
 import * as fs from 'fs'
-import path from 'path'
-import YAML from 'yaml'
+import * as YAML from 'yaml'
 import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {octokitClient} from './utils'
+import * as spdx from './spdx'
 import {PackageURL} from 'packageurl-js'
 
 type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
@@ -101,7 +102,7 @@ function getOptionalInput(name: string): string | undefined {
 
 function parseList(list: string | undefined): string[] | undefined {
   if (list === undefined) {
-    return list
+    return undefined
   } else {
     return list.split(',').map(x => x.trim())
   }
@@ -115,7 +116,7 @@ function validateLicenses(
     return
   }
 
-  const invalid_licenses = licenses.filter(license => !isSPDXValid(license))
+  const invalid_licenses = licenses.filter(license => !spdx.isValid(license))
 
   if (invalid_licenses.length > 0) {
     throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses}`)
@@ -134,6 +135,7 @@ async function readConfigFile(
   const pieces = format.exec(filePath)
 
   try {
+    // remote config file
     if (pieces?.groups && pieces.length === 5) {
       data = await getRemoteConfig({
         owner: pieces.groups.owner,
@@ -142,7 +144,9 @@ async function readConfigFile(
         ref: pieces.groups.ref
       })
     } else {
-      data = fs.readFileSync(path.resolve(filePath), 'utf-8')
+      // repo-local file
+      const fullPath = path.resolve(__dirname, filePath)
+      data = fs.readFileSync(fullPath, 'utf-8').toString()
     }
     return parseConfigFile(data)
   } catch (error) {
@@ -153,21 +157,21 @@ async function readConfigFile(
 }
 
 function parseConfigFile(configData: string): ConfigurationOptionsPartial {
+  const data = YAML.parse(configData)
+
+  // These are the options that we support where the user can provide
+  // either a YAML list or a comma-separated string.
+  const listKeys = [
+    'allow-licenses',
+    'deny-licenses',
+    'fail-on-scopes',
+    'allow-ghsas',
+    'allow-dependencies-licenses',
+    'deny-packages',
+    'deny-groups'
+  ]
+
   try {
-    const data = YAML.parse(configData)
-
-    // These are the options that we support where the user can provide
-    // either a YAML list or a comma-separated string.
-    const listKeys = [
-      'allow-licenses',
-      'deny-licenses',
-      'fail-on-scopes',
-      'allow-ghsas',
-      'allow-dependencies-licenses',
-      'deny-packages',
-      'deny-groups'
-    ]
-
     for (const key of Object.keys(data)) {
       // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
       // case we need to parse that into a list (e.g. ['MIT', 'Apache-2.0']).
@@ -180,13 +184,16 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
       }
 
       // perform SPDX validation
-      if (key === 'allow-licenses' || key === 'deny-licenses') {
-        validateLicenses(key, data[key])
+      if (
+        (key === 'allow-licenses' || key === 'deny-licenses') &&
+        Array.isArray(data[key])
+      ) {
+        validateLicenses(key, data[key] as string[])
       }
 
       // validate purls from the allow-dependencies-licenses
-      if (key === 'allow-dependencies-licenses') {
-        validatePURL(data[key])
+      if (key === 'allow-dependencies-licenses' && Array.isArray(data[key])) {
+        validatePURL(data[key] as string[])
       }
 
       // get rid of the ugly dashes from the actions conventions
@@ -197,7 +204,7 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
     }
     return data
   } catch (error) {
-    throw error
+    throw new Error(`error validating config: ${error}`)
   }
 }
 

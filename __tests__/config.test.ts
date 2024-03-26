@@ -1,12 +1,8 @@
 import {expect, test, beforeEach} from '@jest/globals'
 import {readConfig} from '../src/config'
 import {getRefs} from '../src/git-refs'
-import * as Utils from '../src/utils'
+import * as spdx from '../src/spdx'
 import {setInput, clearInputs} from './test-helpers'
-
-beforeAll(() => {
-  jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(true)
-})
 
 beforeEach(() => {
   clearInputs()
@@ -19,11 +15,11 @@ test('it defaults to low severity', async () => {
 
 test('it reads custom configs', async () => {
   setInput('fail-on-severity', 'critical')
-  setInput('allow-licenses', ' BSD, GPL 2')
+  setInput('allow-licenses', 'ISC, GPL-2.0')
 
   const config = await readConfig()
   expect(config.fail_on_severity).toEqual('critical')
-  expect(config.allow_licenses).toEqual(['BSD', 'GPL 2'])
+  expect(config.allow_licenses).toEqual(['ISC', 'GPL-2.0'])
 })
 
 test('it defaults to false for warn-only', async () => {
@@ -40,14 +36,15 @@ test('it defaults to empty allow/deny lists ', async () => {
 
 test('it raises an error if both an allow and denylist are specified', async () => {
   setInput('allow-licenses', 'MIT')
-  setInput('deny-licenses', 'BSD')
+  setInput('deny-licenses', 'BSD-3-Clause')
 
   await expect(readConfig()).rejects.toThrow(
     'You cannot specify both allow-licenses and deny-licenses'
   )
 })
+
 test('it raises an error if an empty allow list is specified', async () => {
-  setInput('config-file', './__tests__/fixtures/config-empty-allow-sample.yml')
+  setInput('config-file', '../__tests__/fixtures/config-empty-allow-sample.yml')
 
   await expect(readConfig()).rejects.toThrow(
     'You should provide at least one license in allow-licenses'
@@ -158,21 +155,17 @@ test('it is not possible to disable both checks', async () => {
 })
 
 describe('licenses that are not valid SPDX licenses', () => {
-  beforeAll(() => {
-    jest.spyOn(Utils, 'isSPDXValid').mockReturnValue(false)
-  })
-
   test('it raises an error for invalid licenses in allow-licenses', async () => {
-    setInput('allow-licenses', ' BSD, GPL 2')
+    setInput('allow-licenses', 'BSD')
     await expect(readConfig()).rejects.toThrow(
-      'Invalid license(s) in allow-licenses: BSD,GPL 2'
+      'Invalid license(s) in allow-licenses: BSD'
     )
   })
 
   test('it raises an error for invalid licenses in deny-licenses', async () => {
-    setInput('deny-licenses', ' BSD, GPL 2')
+    setInput('deny-licenses', 'BSD')
     await expect(readConfig()).rejects.toThrow(
-      'Invalid license(s) in deny-licenses: BSD,GPL 2'
+      'Invalid license(s) in deny-licenses: BSD'
     )
   })
 })

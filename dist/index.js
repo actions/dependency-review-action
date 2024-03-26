@@ -340,6 +340,29 @@ exports.getRefs = getRefs;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -349,13 +372,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
-const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
+const spdx = __importStar(__nccwpck_require__(8590));
 const packageurl_js_1 = __nccwpck_require__(8915);
 function getInvalidLicenseChanges(changes, licenses) {
     var _a;
@@ -404,11 +424,11 @@ function getInvalidLicenseChanges(changes, licenses) {
             else if (validityCache.get(license) === undefined) {
                 try {
                     if (allow !== undefined) {
-                        const found = allow.find(spdxExpression => (0, spdx_satisfies_1.default)(license, spdxExpression));
+                        const found = allow.find(spdxExpression => spdx.satisfies(license, spdxExpression));
                         validityCache.set(license, found !== undefined);
                     }
                     else if (deny !== undefined) {
-                        const found = deny.find(spdxExpression => (0, spdx_satisfies_1.default)(license, spdxExpression));
+                        const found = deny.find(spdxExpression => spdx.satisfies(license, spdxExpression));
                         validityCache.set(license, found === undefined);
                     }
                 }
@@ -468,7 +488,7 @@ const setGHLicenses = (changes) => __awaiter(void 0, void 0, void 0, function* (
 });
 // Currently Dependency Graph licenses are truncated to 255 characters
 // This possibly makes them invalid spdx ids
-const truncatedDGLicense = (license) => license.length === 255 && !(0, utils_1.isSPDXValid)(license);
+const truncatedDGLicense = (license) => license.length === 255 && !spdx.isValid(license);
 function groupChanges(changes) {
     return __awaiter(this, void 0, void 0, function* () {
         const result = {
@@ -1109,6 +1129,44 @@ exports.getProjectUrl = getProjectUrl;
 
 /***/ }),
 
+/***/ 8590:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isValid = exports.satisfies = void 0;
+const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
+const spdx_license_satisfies_1 = __nccwpck_require__(9391);
+// TODO: Add support for NOASSERTION (#704), (#575)
+// TODO: Handle uknown licenses (#714)
+function satisfies(license, expr) {
+    return (0, spdx_license_satisfies_1.satisfies)(license, expr);
+}
+exports.satisfies = satisfies;
+function isValid(license) {
+    try {
+        (0, spdx_expression_parse_1.default)(license);
+        return true;
+    }
+    catch (e) {
+        // make a note in the log if the exception
+        // was caused by the expression parser, this
+        // usually means a discrepancy in ESM/CJS.
+        if (e instanceof TypeError) {
+            throw new Error('spdx: invalid expression parser');
+        }
+        return false;
+    }
+}
+exports.isValid = isValid;
+
+
+/***/ }),
+
 /***/ 8608:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -1449,14 +1507,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
-const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
 function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
@@ -1485,16 +1539,6 @@ function renderUrl(url, text) {
     }
 }
 exports.renderUrl = renderUrl;
-function isSPDXValid(license) {
-    try {
-        (0, spdx_expression_parse_1.default)(license);
-        return true;
-    }
-    catch (_) {
-        return false;
-    }
-}
-exports.isSPDXValid = isSPDXValid;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
@@ -12796,6 +12840,223 @@ var Webhooks = class {
 
 /***/ }),
 
+/***/ 9391:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var compare = __nccwpck_require__(8918)
+var parse = __nccwpck_require__(1620)
+var ranges = __nccwpck_require__(9797)
+
+function rangesAreCompatible (first, second) {
+  return (
+    first.license === second.license ||
+    ranges.some(function (range) {
+      return (
+        licenseInRange(first.license, range) &&
+        licenseInRange(second.license, range)
+      )
+    })
+  )
+}
+
+function licenseInRange (license, range) {
+  return (
+    range.indexOf(license) !== -1 ||
+    range.some(function (element) {
+      return (
+        Array.isArray(element) &&
+        element.indexOf(license) !== -1
+      )
+    })
+  )
+}
+
+function identifierInRange (identifier, range) {
+  return (
+    identifier.license === range.license ||
+    compare.gt(identifier.license, range.license) ||
+    compare.eq(identifier.license, range.license)
+  )
+}
+
+function licensesAreCompatible (first, second) {
+  if (first.exception !== second.exception) {
+    return false
+  } else if (second.hasOwnProperty('license')) {
+    if (second.hasOwnProperty('plus')) {
+      if (first.hasOwnProperty('plus')) {
+        // first+, second+
+        return rangesAreCompatible(first, second)
+      } else {
+        // first, second+
+        return identifierInRange(first, second)
+      }
+    } else {
+      if (first.hasOwnProperty('plus')) {
+        // first+, second
+        return identifierInRange(second, first)
+      } else {
+        // first, second
+        return first.license === second.license
+      }
+    }
+  }
+}
+
+function replaceGPLOnlyOrLaterWithRanges (argument) {
+  var license = argument.license
+  if (license) {
+    if (endsWith(license, '-or-later')) {
+      argument.license = license.replace('-or-later', '')
+      argument.plus = true
+    } else if (endsWith(license, '-only')) {
+      argument.license = license.replace('-only', '')
+      delete argument.plus
+    }
+  } else if (argument.left && argument.right) {
+    argument.left = replaceGPLOnlyOrLaterWithRanges(argument.left)
+    argument.right = replaceGPLOnlyOrLaterWithRanges(argument.right)
+  }
+  return argument
+}
+
+function endsWith (string, substring) {
+  return string.indexOf(substring) === string.length - substring.length
+}
+
+function licenseString (e) {
+  if (e.hasOwnProperty('noassertion')) return 'NOASSERTION'
+  if (e.license) {
+    return (
+      e.license +
+      (e.plus ? '+' : '') +
+      (e.exception ? ('WITH ' + e.exception) : '')
+    )
+  }
+}
+
+// Expand the given expression into an equivalent array where each member is an array of licenses AND'd
+// together and the members are OR'd together. For example, `(MIT OR ISC) AND GPL-3.0` expands to
+// `[[GPL-3.0 AND MIT], [ISC AND MIT]]`. Note that within each array of licenses, the entries are
+// normalized (sorted) by license name.
+function expand (expression) {
+  return sort(expandInner(expression))
+}
+
+function expandInner (expression) {
+  if (!expression.conjunction) return [{ [licenseString(expression)]: expression }]
+  if (expression.conjunction === 'or') return expandInner(expression.left).concat(expandInner(expression.right))
+  if (expression.conjunction === 'and') {
+    var left = expandInner(expression.left)
+    var right = expandInner(expression.right)
+    return left.reduce(function (result, l) {
+      right.forEach(function (r) { result.push(Object.assign({}, l, r)) })
+      return result
+    }, [])
+  }
+}
+
+function sort (licenseList) {
+  var sortedLicenseLists = licenseList
+    .filter(function (e) { return Object.keys(e).length })
+    .map(function (e) { return Object.keys(e).sort() })
+  return sortedLicenseLists.map(function (list, i) {
+    return list.map(function (license) { return licenseList[i][license] })
+  })
+}
+
+/**
+ * Checks if all the licenses on the first argument are satisfied by any license on the second argument.
+ * @param {object[]} one - Source licenses.
+ * @param {object[]} two - Target licenses.
+ * @return {boolean} - Whether all the licenses on the first argument are satisfied by the target licenses.
+ */
+function isExpressionCompatible (one, two) {
+  if (one.length !== two.length) return false
+  return one.every(function (o) {
+    return two.some(function (t) { return licensesAreCompatible(o, t) })
+  })
+}
+
+/**
+ * Checks whether any group of licenses satisfies any target group of licenses.
+ * e.g. [[MIT], [GPL-1.0+, Apache-2.0]] checked against
+ * [[ISC, GPL-2.0], [GPL-2.0, Apache-2.0]] will return true.
+ * @param {(object[])[]} one - Groups of licenses to be checked.
+ * @param {(object[])[]} two - Target groups of licenses.
+ * @return {boolean} - Whether any group of licenses in "one" satisfies any group of licenses of the "two" (the target).
+ */
+function anyExpressionCompatible (one, two) {
+  return one.some(function (o) {
+    return two.some(function (t) {
+      return isExpressionCompatible(o, t)
+    })
+  })
+}
+
+function checkArguments (first, second) {
+  if (first.type === 'string' && second.type === 'string') {
+    if (typeof first.value !== 'string' || typeof second.value !== 'string') throw new Error('Both arguments must be string.')
+  } else {
+    if (typeof first.value !== 'string') throw new Error('First argument must be string.')
+    if (!Array.isArray(second.value)) throw new Error('Second argument must be array.')
+  }
+}
+
+/**
+ * Check if "first" satisfies "second".
+ * @param {string} first - A valid SPDX expression to be tested.
+ * @param {string} second - A valid SDPX expression to be tested against.
+ * @return {boolean} - Whether "first" satisfies "second".
+ */
+function satisfies (first, second) {
+  checkArguments({ value: first, type: 'string' }, { value: second, type: 'string' })
+  var one = expand(replaceGPLOnlyOrLaterWithRanges(parse(first)))
+  var two = expand(replaceGPLOnlyOrLaterWithRanges(parse(second)))
+  return anyExpressionCompatible(one, two)
+}
+
+function parseLicensesArray (licenses) {
+  var parsed = licenses.map(l => replaceGPLOnlyOrLaterWithRanges(parse(l)))
+  if (parsed.some(({ conjunction }) => !!conjunction)) throw new Error('AND and OR operators are not allowed.')
+  return parsed
+}
+
+/**
+ * Check if "first" satisfies any of the licenses in "second".
+ * @param {string} first - A valid SPDX expression to be tested.
+ * @param {string[]} second - A list of licenses. AND and OR operators are not allowed.
+ * @return {boolean} - Whether "first" satisfies any license in "second".
+ */
+function satisfiesAny (first, second) {
+  checkArguments({value: first, type: 'string'}, {value: second, type: 'array'})
+  var one = expand(replaceGPLOnlyOrLaterWithRanges(parse(first)))
+  var two = parseLicensesArray(second).map(l => expand(l).flat())
+  return anyExpressionCompatible(one, two)
+}
+
+/**
+ * Check if "first" satisfies all the license in "second".
+ * @param {string} first - A valid SPDX expression to be tested.
+ * @param {string[]} second - A list of licenses. AND and OR operators are not allowed.
+ * @return {boolean} - Whether "first" satisfies all licenses in "second".
+ */
+function satisfiesAll (first, second) {
+  checkArguments({value: first, type: 'string'}, {value: second, type: 'array'})
+  var one = expand(replaceGPLOnlyOrLaterWithRanges(parse(first)))
+  var two = [parseLicensesArray(second)]
+  return anyExpressionCompatible(one, two)
+}
+
+module.exports = {
+  satisfies,
+  satisfiesAny,
+  satisfiesAll
+}
+
+
+/***/ }),
+
 /***/ 1231:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -22359,151 +22620,6 @@ module.exports = function (source) {
   }
   return tokens
 }
-
-
-/***/ }),
-
-/***/ 4424:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-var compare = __nccwpck_require__(8918)
-var parse = __nccwpck_require__(1620)
-var ranges = __nccwpck_require__(9797)
-
-var rangesAreCompatible = function (first, second) {
-  return (
-    first.license === second.license ||
-    ranges.some(function (range) {
-      return (
-        licenseInRange(first.license, range) &&
-        licenseInRange(second.license, range)
-      )
-    })
-  )
-}
-
-function licenseInRange (license, range) {
-  return (
-    range.indexOf(license) !== -1 ||
-    range.some(function (element) {
-      return (
-        Array.isArray(element) &&
-        element.indexOf(license) !== -1
-      )
-    })
-  )
-}
-
-var identifierInRange = function (identifier, range) {
-  return (
-    identifier.license === range.license ||
-    compare.gt(identifier.license, range.license) ||
-    compare.eq(identifier.license, range.license)
-  )
-}
-
-var licensesAreCompatible = function (first, second) {
-  if (first.exception !== second.exception) {
-    return false
-  } else if (second.hasOwnProperty('license')) {
-    if (second.hasOwnProperty('plus')) {
-      if (first.hasOwnProperty('plus')) {
-        // first+, second+
-        return rangesAreCompatible(first, second)
-      } else {
-        // first, second+
-        return identifierInRange(first, second)
-      }
-    } else {
-      if (first.hasOwnProperty('plus')) {
-        // first+, second
-        return identifierInRange(second, first)
-      } else {
-        // first, second
-        return first.license === second.license
-      }
-    }
-  }
-}
-
-function normalizeGPLIdentifiers (argument) {
-  var license = argument.license
-  if (license) {
-    if (endsWith(license, '-or-later')) {
-      argument.license = license.replace('-or-later', '')
-      argument.plus = true
-    } else if (endsWith(license, '-only')) {
-      argument.license = license.replace('-or-later', '')
-      delete argument.plus
-    }
-  } else if (argument.left && argument.right) {
-    argument.left = normalizeGPLIdentifiers(argument.left)
-    argument.right = normalizeGPLIdentifiers(argument.right)
-  }
-  return argument
-}
-
-function endsWith (string, substring) {
-  return string.indexOf(substring) === string.length - substring.length
-}
-
-function licenseString (e) {
-  if (e.hasOwnProperty('noassertion')) return 'NOASSERTION'
-  if (e.license) return `${e.license}${e.plus ? '+' : ''}${e.exception ? ` WITH ${e.exception}` : ''}`
-}
-
-// Expand the given expression into an equivalent array where each member is an array of licenses AND'd
-// together and the members are OR'd together. For example, `(MIT OR ISC) AND GPL-3.0` expands to
-// `[[GPL-3.0 AND MIT], [ISC AND MIT]]`. Note that within each array of licenses, the entries are
-// normalized (sorted) by license name.
-function expand (expression) {
-  return sort(expandInner(expression))
-}
-
-// Flatten the given expression into an array of all licenses mentioned in the expression.
-function flatten (expression) {
-  var expanded = expandInner(expression)
-  var flattened = expanded.reduce(function (result, clause) {
-    return Object.assign(result, clause)
-  }, {})
-  return sort([flattened])[0]
-}
-
-function expandInner (expression) {
-  if (!expression.conjunction) return [{ [licenseString(expression)]: expression }]
-  if (expression.conjunction === 'or') return expandInner(expression.left).concat(expandInner(expression.right))
-  if (expression.conjunction === 'and') {
-    var left = expandInner(expression.left)
-    var right = expandInner(expression.right)
-    return left.reduce(function (result, l) {
-      right.forEach(function (r) { result.push(Object.assign({}, l, r)) })
-      return result
-    }, [])
-  }
-}
-
-function sort (licenseList) {
-  var sortedLicenseLists = licenseList
-    .filter(function (e) { return Object.keys(e).length })
-    .map(function (e) { return Object.keys(e).sort() })
-  return sortedLicenseLists.map(function (list, i) {
-    return list.map(function (license) { return licenseList[i][license] })
-  })
-}
-
-function isANDCompatible (one, two) {
-  return one.every(function (o) {
-    return two.some(function (t) { return licensesAreCompatible(o, t) })
-  })
-}
-
-function satisfies (first, second) {
-  var one = expand(normalizeGPLIdentifiers(parse(first)))
-  var two = flatten(normalizeGPLIdentifiers(parse(second)))
-  return one.some(function (o) { return isANDCompatible(o, two) })
-}
-
-module.exports = satisfies
 
 
 /***/ }),
@@ -49703,18 +49819,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.readConfig = void 0;
+const path = __importStar(__nccwpck_require__(1017));
 const fs = __importStar(__nccwpck_require__(7147));
-const path_1 = __importDefault(__nccwpck_require__(1017));
-const yaml_1 = __importDefault(__nccwpck_require__(4083));
+const YAML = __importStar(__nccwpck_require__(4083));
 const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
+const spdx = __importStar(__nccwpck_require__(5967));
 const packageurl_js_1 = __nccwpck_require__(8915);
 function readConfig() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -49787,7 +49901,7 @@ function getOptionalInput(name) {
 }
 function parseList(list) {
     if (list === undefined) {
-        return list;
+        return undefined;
     }
     else {
         return list.split(',').map(x => x.trim());
@@ -49797,7 +49911,7 @@ function validateLicenses(key, licenses) {
     if (licenses === undefined) {
         return;
     }
-    const invalid_licenses = licenses.filter(license => !(0, utils_1.isSPDXValid)(license));
+    const invalid_licenses = licenses.filter(license => !spdx.isValid(license));
     if (invalid_licenses.length > 0) {
         throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses}`);
     }
@@ -49809,6 +49923,7 @@ function readConfigFile(filePath) {
         let data;
         const pieces = format.exec(filePath);
         try {
+            // remote config file
             if ((pieces === null || pieces === void 0 ? void 0 : pieces.groups) && pieces.length === 5) {
                 data = yield getRemoteConfig({
                     owner: pieces.groups.owner,
@@ -49818,7 +49933,9 @@ function readConfigFile(filePath) {
                 });
             }
             else {
-                data = fs.readFileSync(path_1.default.resolve(filePath), 'utf-8');
+                // repo-local file
+                const fullPath = path.resolve(__dirname, filePath);
+                data = fs.readFileSync(fullPath, 'utf-8').toString();
             }
             return parseConfigFile(data);
         }
@@ -49828,19 +49945,19 @@ function readConfigFile(filePath) {
     });
 }
 function parseConfigFile(configData) {
+    const data = YAML.parse(configData);
+    // These are the options that we support where the user can provide
+    // either a YAML list or a comma-separated string.
+    const listKeys = [
+        'allow-licenses',
+        'deny-licenses',
+        'fail-on-scopes',
+        'allow-ghsas',
+        'allow-dependencies-licenses',
+        'deny-packages',
+        'deny-groups'
+    ];
     try {
-        const data = yaml_1.default.parse(configData);
-        // These are the options that we support where the user can provide
-        // either a YAML list or a comma-separated string.
-        const listKeys = [
-            'allow-licenses',
-            'deny-licenses',
-            'fail-on-scopes',
-            'allow-ghsas',
-            'allow-dependencies-licenses',
-            'deny-packages',
-            'deny-groups'
-        ];
         for (const key of Object.keys(data)) {
             // strings can contain list values (e.g. 'MIT, Apache-2.0'). In this
             // case we need to parse that into a list (e.g. ['MIT', 'Apache-2.0']).
@@ -49851,11 +49968,12 @@ function parseConfigFile(configData) {
                 }
             }
             // perform SPDX validation
-            if (key === 'allow-licenses' || key === 'deny-licenses') {
+            if ((key === 'allow-licenses' || key === 'deny-licenses') &&
+                Array.isArray(data[key])) {
                 validateLicenses(key, data[key]);
             }
             // validate purls from the allow-dependencies-licenses
-            if (key === 'allow-dependencies-licenses') {
+            if (key === 'allow-dependencies-licenses' && Array.isArray(data[key])) {
                 validatePURL(data[key]);
             }
             // get rid of the ugly dashes from the actions conventions
@@ -49867,7 +49985,7 @@ function parseConfigFile(configData) {
         return data;
     }
     catch (error) {
-        throw error;
+        throw new Error(`error validating config: ${error}`);
     }
 }
 function getRemoteConfig(configOpts) {
@@ -50149,6 +50267,44 @@ exports.ScorecardSchema = z.object({
 
 /***/ }),
 
+/***/ 5967:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isValid = exports.satisfies = void 0;
+const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
+const spdx_license_satisfies_1 = __nccwpck_require__(9391);
+// TODO: Add support for NOASSERTION (#704), (#575)
+// TODO: Handle uknown licenses (#714)
+function satisfies(license, expr) {
+    return (0, spdx_license_satisfies_1.satisfies)(license, expr);
+}
+exports.satisfies = satisfies;
+function isValid(license) {
+    try {
+        (0, spdx_expression_parse_1.default)(license);
+        return true;
+    }
+    catch (e) {
+        // make a note in the log if the exception
+        // was caused by the expression parser, this
+        // usually means a discrepancy in ESM/CJS.
+        if (e instanceof TypeError) {
+            throw new Error('spdx: invalid expression parser');
+        }
+        return false;
+    }
+}
+exports.isValid = isValid;
+
+
+/***/ }),
+
 /***/ 1314:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -50177,14 +50333,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
-const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
 function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
@@ -50213,16 +50365,6 @@ function renderUrl(url, text) {
     }
 }
 exports.renderUrl = renderUrl;
-function isSPDXValid(license) {
-    try {
-        (0, spdx_expression_parse_1.default)(license);
-        return true;
-    }
-    catch (_) {
-        return false;
-    }
-}
-exports.isSPDXValid = isSPDXValid;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');

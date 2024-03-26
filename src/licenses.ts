@@ -1,6 +1,6 @@
-import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {octokitClient} from './utils'
+import * as spdx from './spdx'
 import {PackageURL} from 'packageurl-js'
 
 /**
@@ -90,12 +90,12 @@ export async function getInvalidLicenseChanges(
       try {
         if (allow !== undefined) {
           const found = allow.find(spdxExpression =>
-            spdxSatisfies(license, spdxExpression)
+            spdx.satisfies(license, spdxExpression)
           )
           validityCache.set(license, found !== undefined)
         } else if (deny !== undefined) {
           const found = deny.find(spdxExpression =>
-            spdxSatisfies(license, spdxExpression)
+            spdx.satisfies(license, spdxExpression)
           )
           validityCache.set(license, found === undefined)
         }
@@ -166,7 +166,7 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
 // Currently Dependency Graph licenses are truncated to 255 characters
 // This possibly makes them invalid spdx ids
 const truncatedDGLicense = (license: string): boolean =>
-  license.length === 255 && !isSPDXValid(license)
+  license.length === 255 && !spdx.isValid(license)
 
 async function groupChanges(
   changes: Changes
