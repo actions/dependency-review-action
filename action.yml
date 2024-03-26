@@ -1,5 +1,13 @@
-# Avoid using default values for options here since they will
-# end up overriding external configurations.
+# IMPORTANT
+#
+# Avoid setting default values for configuration options in
+# this file, they will overwrite external configurations.
+#
+# If you are trying to find out the default value for a config
+# option please take a look at the README or src/schemas.ts.
+#
+# If you are adding an option, make sure the Zod definition
+# contains a default value.
 name: 'Dependency Review'
 description: 'Prevent the introduction of dependencies with known vulnerabilities'
 author: 'GitHub'
@@ -56,23 +64,18 @@ inputs:
   retry-on-snapshot-warnings:
     description: Whether to retry on snapshot warnings
     required: false
-    default: false
   retry-on-snapshot-warnings-timeout:
     description: Number of seconds to wait before stopping snapshot retries.
     required: false
-    default: 120
   warn-only:
     description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
     required: false
-    default: false
   show-openssf-scorecard:
     description: Show a summary of the OpenSSF Scorecard scores.
     required: false
-    default: true
   warn-on-openssf-scorecard-level:
     description: Numeric threshold for the OpenSSF Scorecard score. If the score is below this threshold, the action will warn you.
     required: false
-    default: 3
 outputs:
   comment-content:
     description: Prepared dependency report comment
