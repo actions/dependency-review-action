@@ -164,3 +164,14 @@ test('it adds packages outside of the deny lists', async () => {
 
   expect(deniedChanges.length).toEqual(0)
 })
+
+test('it adds packages with versions', async () => {
+  const changes: Changes = [npmChange]
+  const deniedChanges = await getDeniedChanges(
+    changes,
+    ['pkg:npm/reeuhq@1.0.4'],
+    ['pkg:maven:org.apache.logging.log4j']
+  )
+
+  expect(deniedChanges.length).toEqual(0)
+})
