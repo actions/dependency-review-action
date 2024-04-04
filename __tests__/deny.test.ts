@@ -1,11 +1,7 @@
 import {expect, jest, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {
-  createMavenTestChange,
-  createPipTestChange,
-  createRubyTestChange,
-  createTestChange
-} from './fixtures/create-test-change'
+import {createTestChange} from './fixtures/create-test-change'
+import {getDeniedChanges} from '../src/deny'
 
 jest.mock('@actions/core')
 
@@ -19,7 +15,6 @@ const mockOctokit = {
   }
 }
 
-let getDeniedChanges: Function
 let npmChange: Change
 let rubyChange: Change
 let pipChange: Change
@@ -43,22 +38,18 @@ beforeEach(async () => {
     // true for BSD, false for all others
     return jest.fn((license: string, _: string): boolean => license === 'BSD')
   })
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  ;({getDeniedChanges} = require('../src/deny'))
 
-  npmChange = createTestChange()
-  rubyChange = createRubyTestChange()
-  pipChange = createPipTestChange()
-  mvnChange = createMavenTestChange()
+  npmChange = createTestChange({ecosystem: 'npm'})
+  rubyChange = createTestChange({ecosystem: 'rubygems'})
+  pipChange = createTestChange({ecosystem: 'pip'})
+  mvnChange = createTestChange({ecosystem: 'maven'})
 })
 
 test('denies packages from the deny packages list', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const deniedChanges = await getDeniedChanges(
-    changes,
-    ['pkg:gem/actionsomething@3.2.0'],
-    []
-  )
+  const deniedChanges = await getDeniedChanges(changes, [
+    'pkg:gem/actionsomething@3.2.0'
+  ])
 
   expect(deniedChanges[0]).toBe(rubyChange)
   expect(deniedChanges.length).toEqual(1)
@@ -67,11 +58,9 @@ test('denies packages from the deny packages list', async () => {
 test('denies packages only for the specified version from deny packages list', async () => {
   const packageWithDifferentVersion = 'pkg:npm/lodash@1.2.3'
   const changes: Changes = [npmChange]
-  const deniedChanges = await getDeniedChanges(
-    changes,
-    [packageWithDifferentVersion],
-    []
-  )
+  const deniedChanges = await getDeniedChanges(changes, [
+    packageWithDifferentVersion
+  ])
 
   expect(deniedChanges.length).toEqual(0)
 })
@@ -83,11 +72,7 @@ test('if no specified version from deny packages list, it will treat package as 
     createTestChange({name: 'lodash', version: '7.8.9'})
   ]
   const denyAllLodashVersions = 'pkg:npm/lodash'
-  const deniedChanges = await getDeniedChanges(
-    changes,
-    [denyAllLodashVersions],
-    []
-  )
+  const deniedChanges = await getDeniedChanges(changes, [denyAllLodashVersions])
 
   expect(deniedChanges.length).toEqual(3)
 })

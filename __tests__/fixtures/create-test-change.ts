@@ -101,29 +101,19 @@ const defaultMavenChange: Change = {
   ]
 }
 
-const createTestChange = (overwrites: Partial<Change> = {}): Change => ({
-  ...defaultNpmChange,
-  ...overwrites
-})
-
-const createRubyTestChange = (overwrites: Partial<Change> = {}): Change => ({
-  ...defaultRubyChange,
-  ...overwrites
-})
-
-const createPipTestChange = (overwrites: Partial<Change> = {}): Change => ({
-  ...defaultPipChange,
-  ...overwrites
-})
-
-const createMavenTestChange = (overwrites: Partial<Change> = {}): Change => ({
-  ...defaultMavenChange,
-  ...overwrites
-})
-
-export {
-  createTestChange,
-  createRubyTestChange,
-  createPipTestChange,
-  createMavenTestChange
+const ecosystemToDefaultChange: {[key: string]: Change} = {
+  npm: defaultNpmChange,
+  rubygems: defaultRubyChange,
+  pip: defaultPipChange,
+  maven: defaultMavenChange
 }
+
+const createTestChange = (overwrites: Partial<Change> = {}): Change => {
+  const ecosystem = overwrites.ecosystem || 'npm'
+  return {
+    ...ecosystemToDefaultChange[ecosystem],
+    ...overwrites
+  }
+}
+
+export {createTestChange}
