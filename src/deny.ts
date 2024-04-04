@@ -16,12 +16,16 @@ export async function getDeniedChanges(
     if (deniedPackages) {
       for (const denied of deniedPackages) {
         const [dpName, dpVersion] = denied.toLowerCase().split('@')
-        if (name === dpName && version !== dpVersion) {
-          continue
-        }
-        if (name === dpName && version === dpVersion) {
-          changesDenied.push(change)
-          failed = true
+        if (dpVersion) {
+          if (name === dpName && version === dpVersion) {
+            changesDenied.push(change)
+            failed = true
+          }
+        } else {
+          if (name === dpName) {
+            changesDenied.push(change)
+            failed = true
+          }
         }
       }
     }

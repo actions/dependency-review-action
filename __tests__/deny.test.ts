@@ -1,100 +1,11 @@
 import {expect, jest, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-
-let getDeniedChanges: Function
-
-const npmChange: Change = {
-  manifest: 'package.json',
-  change_type: 'added',
-  ecosystem: 'npm',
-  name: 'Reeuhq',
-  version: '1.0.2',
-  package_url: 'pkg:npm/reeuhq@1.0.2',
-  license: 'MIT',
-  source_repository_url: 'github.com/some-repo',
-  scope: 'runtime',
-  vulnerabilities: [
-    {
-      severity: 'critical',
-      advisory_ghsa_id: 'first-random_string',
-      advisory_summary: 'very dangerous',
-      advisory_url: 'github.com/future-funk'
-    }
-  ]
-}
-
-const rubyChange: Change = {
-  change_type: 'added',
-  manifest: 'Gemfile.lock',
-  ecosystem: 'rubygems',
-  name: 'actionsomething',
-  version: '3.2.0',
-  package_url: 'pkg:gem/actionsomething@3.2.0',
-  license: 'BSD',
-  source_repository_url: 'github.com/some-repo',
-  scope: 'runtime',
-  vulnerabilities: [
-    {
-      severity: 'moderate',
-      advisory_ghsa_id: 'second-random_string',
-      advisory_summary: 'not so dangerous',
-      advisory_url: 'github.com/future-funk'
-    },
-    {
-      severity: 'low',
-      advisory_ghsa_id: 'third-random_string',
-      advisory_summary: 'dont page me',
-      advisory_url: 'github.com/future-funk'
-    }
-  ]
-}
-
-const pipChange: Change = {
-  change_type: 'added',
-  manifest: 'requirements.txt',
-  ecosystem: 'pip',
-  name: 'package-1',
-  version: '1.1.1',
-  package_url: 'pkg:pypi/package-1@1.1.1',
-  license: 'MIT',
-  source_repository_url: 'github.com/some-repo',
-  scope: 'runtime',
-  vulnerabilities: [
-    {
-      severity: 'moderate',
-      advisory_ghsa_id: 'second-random_string',
-      advisory_summary: 'not so dangerous',
-      advisory_url: 'github.com/future-funk'
-    },
-    {
-      severity: 'low',
-      advisory_ghsa_id: 'third-random_string',
-      advisory_summary: 'dont page me',
-      advisory_url: 'github.com/future-funk'
-    }
-  ]
-}
-
-const mvnChange: Change = {
-  change_type: 'added',
-  manifest: 'pom.xml',
-  ecosystem: 'maven',
-  name: 'org.apache.logging.log4j:log4j-core',
-  version: '2.15.0',
-  package_url: 'pkg:maven/org.apache.logging.log4j/log4j-core@2.14.7',
-  license: 'Apache-2.0',
-  source_repository_url:
-    'https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core',
-  scope: 'unknown',
-  vulnerabilities: [
-    {
-      severity: 'critical',
-      advisory_ghsa_id: 'second-random_string',
-      advisory_summary: 'not so dangerous',
-      advisory_url: 'github.com/future-funk'
-    }
-  ]
-}
+import {
+  createMavenTestChange,
+  createPipTestChange,
+  createRubyTestChange,
+  createTestChange
+} from './fixtures/create-test-change'
 
 jest.mock('@actions/core')
 
@@ -107,6 +18,12 @@ const mockOctokit = {
     }
   }
 }
+
+let getDeniedChanges: Function
+let npmChange: Change
+let rubyChange: Change
+let pipChange: Change
+let mvnChange: Change
 
 jest.mock('octokit', () => {
   return {
@@ -128,13 +45,18 @@ beforeEach(async () => {
   })
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   ;({getDeniedChanges} = require('../src/deny'))
+
+  npmChange = createTestChange()
+  rubyChange = createRubyTestChange()
+  pipChange = createPipTestChange()
+  mvnChange = createMavenTestChange()
 })
 
-test('it adds packages in the deny packages list', async () => {
+test('denies packages from the deny packages list', async () => {
   const changes: Changes = [npmChange, rubyChange]
   const deniedChanges = await getDeniedChanges(
     changes,
-    ['pkg:gem/actionsomething'],
+    ['pkg:gem/actionsomething@3.2.0'],
     []
   )
 
@@ -142,7 +64,35 @@ test('it adds packages in the deny packages list', async () => {
   expect(deniedChanges.length).toEqual(1)
 })
 
-test('it adds packages in the deny group list', async () => {
+test('denies packages only for the specified version from deny packages list', async () => {
+  const packageWithDifferentVersion = 'pkg:npm/lodash@1.2.3'
+  const changes: Changes = [npmChange]
+  const deniedChanges = await getDeniedChanges(
+    changes,
+    [packageWithDifferentVersion],
+    []
+  )
+
+  expect(deniedChanges.length).toEqual(0)
+})
+
+test('if no specified version from deny packages list, it will treat package as wildcard and deny all versions', async () => {
+  const changes: Changes = [
+    createTestChange({name: 'lodash', version: '1.2.3'}),
+    createTestChange({name: 'lodash', version: '4.5.6'}),
+    createTestChange({name: 'lodash', version: '7.8.9'})
+  ]
+  const denyAllLodashVersions = 'pkg:npm/lodash'
+  const deniedChanges = await getDeniedChanges(
+    changes,
+    [denyAllLodashVersions],
+    []
+  )
+
+  expect(deniedChanges.length).toEqual(3)
+})
+
+test('denies packages from the deny group list', async () => {
   const changes: Changes = [mvnChange, rubyChange]
   const deniedChanges = await getDeniedChanges(
     changes,
@@ -154,23 +104,12 @@ test('it adds packages in the deny group list', async () => {
   expect(deniedChanges.length).toEqual(1)
 })
 
-test('it adds packages outside of the deny lists', async () => {
+test('allows packages not defined in the deny packages and groups list', async () => {
   const changes: Changes = [npmChange, pipChange]
   const deniedChanges = await getDeniedChanges(
     changes,
-    ['pkg:gem/actionsomething'],
-    ['pkg:maven:org.apache.logging.log4j']
-  )
-
-  expect(deniedChanges.length).toEqual(0)
-})
-
-test('it adds packages with versions', async () => {
-  const changes: Changes = [npmChange]
-  const deniedChanges = await getDeniedChanges(
-    changes,
-    ['pkg:npm/reeuhq@1.0.4'],
-    ['pkg:maven:org.apache.logging.log4j']
+    ['pkg:gem/not-in-list@1.0.0'],
+    ['pkg:maven:org.apache.logging.not-in-list']
   )
 
   expect(deniedChanges.length).toEqual(0)

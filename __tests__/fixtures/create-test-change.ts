@@ -1,7 +1,7 @@
 import {Change} from '../../src/schemas'
 import {createTestVulnerability} from './create-test-vulnerability'
 
-const defaultChange: Change = {
+const defaultNpmChange: Change = {
   change_type: 'added',
   manifest: 'package.json',
   ecosystem: 'npm',
@@ -28,9 +28,102 @@ const defaultChange: Change = {
   ]
 }
 
+const defaultRubyChange: Change = {
+  change_type: 'added',
+  manifest: 'Gemfile.lock',
+  ecosystem: 'rubygems',
+  name: 'actionsomething',
+  version: '3.2.0',
+  package_url: 'pkg:gem/actionsomething@3.2.0',
+  license: 'BSD',
+  source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
+  vulnerabilities: [
+    {
+      severity: 'moderate',
+      advisory_ghsa_id: 'second-random_string',
+      advisory_summary: 'not so dangerous',
+      advisory_url: 'github.com/future-funk'
+    },
+    {
+      severity: 'low',
+      advisory_ghsa_id: 'third-random_string',
+      advisory_summary: 'dont page me',
+      advisory_url: 'github.com/future-funk'
+    }
+  ]
+}
+
+const defaultPipChange: Change = {
+  change_type: 'added',
+  manifest: 'requirements.txt',
+  ecosystem: 'pip',
+  name: 'package-1',
+  version: '1.1.1',
+  package_url: 'pkg:pypi/package-1@1.1.1',
+  license: 'MIT',
+  source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
+  vulnerabilities: [
+    {
+      severity: 'moderate',
+      advisory_ghsa_id: 'second-random_string',
+      advisory_summary: 'not so dangerous',
+      advisory_url: 'github.com/future-funk'
+    },
+    {
+      severity: 'low',
+      advisory_ghsa_id: 'third-random_string',
+      advisory_summary: 'dont page me',
+      advisory_url: 'github.com/future-funk'
+    }
+  ]
+}
+
+const defaultMavenChange: Change = {
+  change_type: 'added',
+  manifest: 'pom.xml',
+  ecosystem: 'maven',
+  name: 'org.apache.logging.log4j:log4j-core',
+  version: '2.15.0',
+  package_url: 'pkg:maven/org.apache.logging.log4j/log4j-core@2.14.7',
+  license: 'Apache-2.0',
+  source_repository_url:
+    'https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core',
+  scope: 'unknown',
+  vulnerabilities: [
+    {
+      severity: 'critical',
+      advisory_ghsa_id: 'second-random_string',
+      advisory_summary: 'not so dangerous',
+      advisory_url: 'github.com/future-funk'
+    }
+  ]
+}
+
 const createTestChange = (overwrites: Partial<Change> = {}): Change => ({
-  ...defaultChange,
+  ...defaultNpmChange,
   ...overwrites
 })
 
-export {createTestChange}
+const createRubyTestChange = (overwrites: Partial<Change> = {}): Change => ({
+  ...defaultRubyChange,
+  ...overwrites
+})
+
+const createPipTestChange = (overwrites: Partial<Change> = {}): Change => ({
+  ...defaultPipChange,
+  ...overwrites
+})
+
+const createMavenTestChange = (overwrites: Partial<Change> = {}): Change => ({
+  ...defaultMavenChange,
+  ...overwrites
+})
+
+export {
+  createTestChange,
+  createRubyTestChange,
+  createPipTestChange,
+  createMavenTestChange
+}
