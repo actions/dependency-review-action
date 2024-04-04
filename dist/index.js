@@ -179,31 +179,30 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getDeniedChanges = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-function getDeniedChanges(changes, deniedPackages, deniedGroups) {
+function getDeniedChanges(changes, deniedPackages = [], deniedGroups = []) {
     return __awaiter(this, void 0, void 0, function* () {
         const changesDenied = [];
-        let failed = false;
+        let hasDeniedPackage = false;
         for (const change of changes) {
-            change.name = change.name.toLowerCase();
-            const packageUrl = change.package_url.toLowerCase().split('@')[0];
-            if (deniedPackages) {
-                for (const denied of deniedPackages) {
-                    if (packageUrl === denied.split('@')[0].toLowerCase()) {
-                        changesDenied.push(change);
-                        failed = true;
-                    }
+            const [packageName, packageVersion] = change.package_url
+                .toLowerCase()
+                .split('@');
+            for (const denied of deniedPackages) {
+                const [deniedName, deniedVersion] = denied.toLowerCase().split('@');
+                if ((!deniedVersion || packageVersion === deniedVersion) &&
+                    packageName === deniedName) {
+                    changesDenied.push(change);
+                    hasDeniedPackage = true;
                 }
             }
-            if (deniedGroups) {
-                for (const denied of deniedGroups) {
-                    if (packageUrl.startsWith(denied.toLowerCase())) {
-                        changesDenied.push(change);
-                        failed = true;
-                    }
+            for (const denied of deniedGroups) {
+                if (packageName.startsWith(denied.toLowerCase())) {
+                    changesDenied.push(change);
+                    hasDeniedPackage = true;
                 }
             }
         }
-        if (failed) {
+        if (hasDeniedPackage) {
             core.setFailed('Dependency review detected denied packages.');
         }
         else {
