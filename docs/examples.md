@@ -167,7 +167,7 @@ jobs:
 ## Getting the results of the action in a later step
 
 - `comment-content` contains the output of the results comment for the entire run.
-`dependency-changes`, `vulnerable-changes`, `invalid-license-changes` and `denied-changes` are all JSON objects that allow you to access individual sets of changes.
+  `dependency-changes`, `vulnerable-changes`, `invalid-license-changes` and `denied-changes` are all JSON objects that allow you to access individual sets of changes.
 
 ```yaml
 name: 'Dependency Review'
@@ -276,10 +276,11 @@ jobs:
 
 ## Exclude dependencies from their name or groups
 
-Using the `deny-packages` option you can exclude dependencies by their PURL. You can add multiple values separated by a commas.
+With the `deny-packages` option, you can exclude dependencies based on their PURL (Package URL). If a specific version is provided, the action will deny packages matching that version. When no version is specified, the action treats it as a wildcard, denying all matching packages regardless of version. Multiple values can be added, separated by commas.
+
 Using the `deny-groups` option you can exclude dependencies by their group name/namespace. You can add multiple values separated by a comma.
 
-In this example, we are excluding `pkg:maven/org.apache.logging.log4j:log4j-api` and `pkg:maven/org.apache.logging.log4j/log4j-core` from `maven` and all packages in the group `pkg:maven/com.bazaarvoice.maven`
+In this example, we are excluding all versions of `pkg:maven/org.apache.logging.log4j:log4j-api` and only `2.23.0` of log4j-core `pkg:maven/org.apache.logging.log4j/log4j-core@2.23.0` from `maven` and all packages in the group `pkg:maven/com.bazaarvoice.maven`
 
 ```yaml
 name: 'Dependency Review'
@@ -298,7 +299,7 @@ jobs:
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
-          deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core'
+          deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core@2.23.0'
           deny-groups: 'pkg:maven/com.bazaarvoice.jolt'
 ```
 
