@@ -69,7 +69,7 @@ export async function getProjectUrl(
 ): Promise<string> {
   core.debug(`Getting deps.dev data for ${packageName} ${version}`)
   const depsDevAPIRoot = 'https://api.deps.dev'
-  const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`
+  const url = `${depsDevAPIRoot}/v3/systems/${ecosystem}/packages/${packageName}/versions/${version}`
   const response = await fetch(url)
   if (response.ok) {
     const data = await response.json()
