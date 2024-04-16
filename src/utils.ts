@@ -70,7 +70,7 @@ export function octokitClient(token = 'repo-token', required = true): Octokit {
   return new Octokit(opts)
 }
 
-export const parseGroupPURL = (purlString: string): PackageURL | undefined => {
+export const parsePURL = (purlString: string): PackageURL | undefined => {
   try {
     return PackageURL.fromString(purlString)
   } catch (error) {
