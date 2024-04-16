@@ -70,7 +70,7 @@ export function octokitClient(token = 'repo-token', required = true): Octokit {
   return new Octokit(opts)
 }
 
-export const parsePURL = (purlString: string): PackageURL | undefined => {
+export const parsePURL = (purlString: string): PackageURL => {
   try {
     return PackageURL.fromString(purlString)
   } catch (error) {
@@ -78,12 +78,12 @@ export const parsePURL = (purlString: string): PackageURL | undefined => {
       (error as Error).message ===
       `purl is missing the required "name" component.`
     ) {
-      //package-url-js does not support empty names, so will manually override it for deny-groups
+      //packageurl-js does not support empty names, so will manually override it for deny-groups
       //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
       const purl = PackageURL.fromString(`${purlString}TEMP_NAME`)
       purl.name = ''
       return purl
     }
+    throw error
   }
-  return undefined
 }

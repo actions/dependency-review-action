@@ -119,11 +119,9 @@ const createTestChange = (overwrites: Partial<Change> = {}): Change => {
 }
 
 const createTestPURLs = (list: string[]): PackageURL[] => {
-  return list
-    .map(purl => {
-      return parsePURL(purl)
-    })
-    .filter((purl): purl is PackageURL => purl !== undefined)
+  return list.map(purl => {
+    return parsePURL(purl)
+  })
 }
 
 export {createTestChange, createTestPURLs}
