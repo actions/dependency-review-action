@@ -4,7 +4,7 @@ import YAML from 'yaml'
 import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {isSPDXValid, octokitClient, parseGroupPURL} from './utils'
 import {PackageURL} from 'packageurl-js'
 
 type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
@@ -33,8 +33,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
   const allow_dependencies_licenses = parseList(
     getOptionalInput('allow-dependencies-licenses')
   )
-  const deny_packages = parseList(getOptionalInput('deny-packages'))
-  const deny_groups = parseList(getOptionalInput('deny-groups'))
+  const deny_packages = getPackagePURLs(getOptionalInput('deny-packages'))
+  const deny_groups = getGroupPURLs(getOptionalInput('deny-groups'))
   const allow_ghsas = parseList(getOptionalInput('allow-ghsas'))
   const license_check = getOptionalBoolean('license-check')
   const vulnerability_check = getOptionalBoolean('vulnerability-check')
@@ -104,6 +104,23 @@ function parseList(list: string | undefined): string[] | undefined {
     return list
   } else {
     return list.split(',').map(x => x.trim())
+  }
+}
+
+function getPackagePURLs(list: string | undefined): PackageURL[] | undefined {
+  if (list) {
+    return list
+      .split(',')
+      .map(packageString => PackageURL.fromString(packageString.trim()))
+  }
+}
+
+function getGroupPURLs(list: string | undefined): PackageURL[] | undefined {
+  if (list) {
+    return list
+      .split(',')
+      .map(packageString => parseGroupPURL(packageString.trim()))
+      .filter((purl): purl is PackageURL => purl !== undefined)
   }
 }
 

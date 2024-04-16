@@ -1,24 +1,22 @@
-import {Change} from './schemas'
 import * as core from '@actions/core'
+import {Change} from './schemas'
+import {PackageURL} from 'packageurl-js'
 
 export async function getDeniedChanges(
   changes: Change[],
-  deniedPackages: string[] = [],
-  deniedGroups: string[] = []
+  deniedPackages: PackageURL[] = [],
+  deniedGroups: PackageURL[] = []
 ): Promise<Change[]> {
   const changesDenied: Change[] = []
 
   let hasDeniedPackage = false
   for (const change of changes) {
-    const [packageName, packageVersion] = change.package_url
-      .toLowerCase()
-      .split('@')
+    const changedPackage = PackageURL.fromString(change.package_url)
 
     for (const denied of deniedPackages) {
-      const [deniedName, deniedVersion] = denied.toLowerCase().split('@')
       if (
-        (!deniedVersion || packageVersion === deniedVersion) &&
-        packageName === deniedName
+        (!denied.version || changedPackage.version === denied.version) &&
+        changedPackage.name === denied.name
       ) {
         changesDenied.push(change)
         hasDeniedPackage = true
@@ -26,7 +24,10 @@ export async function getDeniedChanges(
     }
 
     for (const denied of deniedGroups) {
-      if (packageName.startsWith(denied.toLowerCase())) {
+      if (
+        changedPackage.namespace &&
+        changedPackage.namespace === denied.namespace
+      ) {
         changesDenied.push(change)
         hasDeniedPackage = true
       }

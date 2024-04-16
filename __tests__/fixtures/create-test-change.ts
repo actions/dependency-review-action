@@ -1,5 +1,7 @@
+import {PackageURL} from 'packageurl-js'
 import {Change} from '../../src/schemas'
 import {createTestVulnerability} from './create-test-vulnerability'
+import {parseGroupPURL} from '../../src/utils'
 
 const defaultNpmChange: Change = {
   change_type: 'added',
@@ -116,4 +118,18 @@ const createTestChange = (overwrites: Partial<Change> = {}): Change => {
   }
 }
 
-export {createTestChange}
+const createTestPackagePURLs = (list: string[]): PackageURL[] => {
+  return list.map(purl => {
+    return PackageURL.fromString(purl)
+  })
+}
+
+const createTestGroupPURLs = (list: string[]): PackageURL[] => {
+  return list
+    .map(purl => {
+      return parseGroupPURL(purl)
+    })
+    .filter((purl): purl is PackageURL => purl !== undefined)
+}
+
+export {createTestChange, createTestPackagePURLs, createTestGroupPURLs}
