@@ -1,10 +1,6 @@
 import {expect, jest, test} from '@jest/globals'
 import {Change, Changes} from '../src/schemas'
-import {
-  createTestChange,
-  createTestGroupPURLs,
-  createTestPackagePURLs
-} from './fixtures/create-test-change'
+import {createTestChange, createTestPURLs} from './fixtures/create-test-change'
 import {getDeniedChanges} from '../src/deny'
 
 jest.mock('@actions/core')
@@ -51,9 +47,7 @@ beforeEach(async () => {
 
 test('denies packages from the deny packages list', async () => {
   const changes: Changes = [npmChange, rubyChange]
-  const deniedPackages = createTestPackagePURLs([
-    'pkg:gem/actionsomething@3.2.0'
-  ])
+  const deniedPackages = createTestPURLs(['pkg:gem/actionsomething@3.2.0'])
   const deniedChanges = await getDeniedChanges(changes, deniedPackages)
 
   expect(deniedChanges[0]).toBe(rubyChange)
@@ -61,7 +55,7 @@ test('denies packages from the deny packages list', async () => {
 })
 
 test('denies packages only for the specified version from deny packages list', async () => {
-  const deniedPackageWithDifferentVersion = createTestPackagePURLs([
+  const deniedPackageWithDifferentVersion = createTestPURLs([
     'pkg:npm/lodash@1.2.3'
   ])
   const changes: Changes = [npmChange]
@@ -79,7 +73,7 @@ test('if no specified version from deny packages list, it will treat package as 
     createTestChange({name: 'lodash', version: '4.5.6'}),
     createTestChange({name: 'lodash', version: '7.8.9'})
   ]
-  const denyAllLodashVersions = createTestPackagePURLs(['pkg:npm/lodash'])
+  const denyAllLodashVersions = createTestPURLs(['pkg:npm/lodash'])
   const deniedChanges = await getDeniedChanges(changes, denyAllLodashVersions)
 
   expect(deniedChanges.length).toEqual(3)
@@ -87,9 +81,7 @@ test('if no specified version from deny packages list, it will treat package as 
 
 test('denies packages from the deny group list', async () => {
   const changes: Changes = [mvnChange, rubyChange]
-  const deniedGroups = createTestGroupPURLs([
-    'pkg:maven/org.apache.logging.log4j/'
-  ])
+  const deniedGroups = createTestPURLs(['pkg:maven/org.apache.logging.log4j/'])
   const deniedChanges = await getDeniedChanges(changes, [], deniedGroups)
 
   expect(deniedChanges[0]).toBe(mvnChange)
@@ -107,7 +99,7 @@ test('denies packages that match the deny group list exactly', async () => {
       ecosystem: 'npm'
     })
   ]
-  const deniedGroups = createTestGroupPURLs(['pkg:npm/org.test/'])
+  const deniedGroups = createTestPURLs(['pkg:npm/org.test/'])
   const deniedChanges = await getDeniedChanges(changes, [], deniedGroups)
 
   expect(deniedChanges.length).toEqual(1)
@@ -116,10 +108,10 @@ test('denies packages that match the deny group list exactly', async () => {
 
 test('allows packages not defined in the deny packages and groups list', async () => {
   const changes: Changes = [npmChange, pipChange]
-  const deniedPackages = createTestPackagePURLs([
+  const deniedPackages = createTestPURLs([
     'pkg:gem/package-not-in-changes@1.0.0'
   ])
-  const deniedGroups = createTestGroupPURLs(['pkg:maven/group.not.in.changes/'])
+  const deniedGroups = createTestPURLs(['pkg:maven/group.not.in.changes/'])
   const deniedChanges = await getDeniedChanges(
     changes,
     deniedPackages,

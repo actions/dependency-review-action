@@ -118,13 +118,7 @@ const createTestChange = (overwrites: Partial<Change> = {}): Change => {
   }
 }
 
-const createTestPackagePURLs = (list: string[]): PackageURL[] => {
-  return list.map(purl => {
-    return PackageURL.fromString(purl)
-  })
-}
-
-const createTestGroupPURLs = (list: string[]): PackageURL[] => {
+const createTestPURLs = (list: string[]): PackageURL[] => {
   return list
     .map(purl => {
       return parsePURL(purl)
@@ -132,4 +126,4 @@ const createTestGroupPURLs = (list: string[]): PackageURL[] => {
     .filter((purl): purl is PackageURL => purl !== undefined)
 }
 
-export {createTestChange, createTestPackagePURLs, createTestGroupPURLs}
+export {createTestChange, createTestPURLs}
