@@ -1358,7 +1358,7 @@ function addScorecardToSummary(scorecard, config) {
                     : ':green_circle:';
         }
         //Add a row for the dependency
-        core.summary.addRaw(`<tr><td>${dependency.change.source_repository_url ? `<a href="https://${dependency.change.source_repository_url}">` : ''} ${dependency.change.ecosystem}/${dependency.change.name} ${dependency.change.source_repository_url ? `</a>` : ''}</td><td>${dependency.change.version}</td>
+        core.summary.addRaw(`<tr><td>${dependency.change.source_repository_url ? `<a href="${dependency.change.source_repository_url}">` : ''} ${dependency.change.ecosystem}/${dependency.change.name} ${dependency.change.source_repository_url ? `</a>` : ''}</td><td>${dependency.change.version}</td>
       <td>${overallIcon} ${((_d = dependency.scorecard) === null || _d === void 0 ? void 0 : _d.score) === undefined || ((_e = dependency.scorecard) === null || _e === void 0 ? void 0 : _e.score) === null ? 'Unknown' : (_f = dependency.scorecard) === null || _f === void 0 ? void 0 : _f.score}</td>`, false);
         //Add details table in the last column
         if (((_g = dependency.scorecard) === null || _g === void 0 ? void 0 : _g.checks) !== undefined) {
