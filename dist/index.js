@@ -106,8 +106,8 @@ function commentPr(summary, config) {
 }
 exports.commentPr = commentPr;
 function findCommentByMarker(commentBodyIncludes) {
-    var _a, e_1, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
+        var _a, e_1, _b, _c;
         const commentsIterator = octo.paginate.iterator(octo.rest.issues.listComments, {
             owner: github.context.repo.owner,
             repo: github.context.repo.repo,
@@ -263,8 +263,8 @@ const schemas_1 = __nccwpck_require__(8774);
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
 const SnapshotWarningsHeader = 'x-github-dependency-graph-snapshot-warnings';
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
-function compare({ owner, repo, baseRef, headRef }) {
-    return __awaiter(this, void 0, void 0, function* () {
+function compare(_a) {
+    return __awaiter(this, arguments, void 0, function* ({ owner, repo, baseRef, headRef }) {
         let snapshot_warnings = '';
         const changes = yield octo.paginate({
             method: 'GET',
@@ -358,8 +358,8 @@ const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
 const packageurl_js_1 = __nccwpck_require__(8915);
 function getInvalidLicenseChanges(changes, licenses) {
-    var _a;
     return __awaiter(this, void 0, void 0, function* () {
+        var _a;
         const { allow, deny } = licenses;
         const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
             return packageurl_js_1.PackageURL.fromString(encodeURI(pkgUrl));
@@ -813,8 +813,8 @@ function printDeniedDependencies(changes, config) {
     }));
 }
 function createScorecardWarnings(scorecards, config) {
-    var _a, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
         // Iterate through the list of scorecards, and if the score is less than the threshold, send a warning
         for (const dependency of scorecards.dependencies) {
             if (((_a = dependency.scorecard) === null || _a === void 0 ? void 0 : _a.score) &&
