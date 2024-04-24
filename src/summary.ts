@@ -69,7 +69,7 @@ export function addSummaryToSummary(
         : []),
       ...(deniedChanges.length > 0
         ? [
-            `${checkOrWarnIcon(deniedChanges.length)} ${
+            `${checkOrFailIcon(deniedChanges.length)} ${
               deniedChanges.length
             } package(s) denied.`
           ]
