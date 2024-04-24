@@ -1184,7 +1184,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
             : []),
         ...(deniedChanges.length > 0
             ? [
-                `${checkOrWarnIcon(deniedChanges.length)} ${deniedChanges.length} package(s) denied.`
+                `${checkOrFailIcon(deniedChanges.length)} ${deniedChanges.length} package(s) denied.`
             ]
             : []),
         ...(config.show_openssf_scorecard && scorecardWarnings > 0
