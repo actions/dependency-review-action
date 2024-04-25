@@ -1,38 +1,40 @@
-import {Change} from './schemas'
 import * as core from '@actions/core'
+import {Change} from './schemas'
+import {PackageURL} from 'packageurl-js'
 
 export async function getDeniedChanges(
   changes: Change[],
-  deniedPackages: string[],
-  deniedGroups: string[]
+  deniedPackages: PackageURL[] = [],
+  deniedGroups: PackageURL[] = []
 ): Promise<Change[]> {
   const changesDenied: Change[] = []
 
-  let failed = false
+  let hasDeniedPackage = false
   for (const change of changes) {
-    change.name = change.name.toLowerCase()
-    const packageUrl = change.package_url.toLowerCase().split('@')[0]
+    const changedPackage = PackageURL.fromString(change.package_url)
 
-    if (deniedPackages) {
-      for (const denied of deniedPackages) {
-        if (packageUrl === denied.split('@')[0].toLowerCase()) {
-          changesDenied.push(change)
-          failed = true
-        }
+    for (const denied of deniedPackages) {
+      if (
+        (!denied.version || changedPackage.version === denied.version) &&
+        changedPackage.name === denied.name
+      ) {
+        changesDenied.push(change)
+        hasDeniedPackage = true
       }
     }
 
-    if (deniedGroups) {
-      for (const denied of deniedGroups) {
-        if (packageUrl.startsWith(denied.toLowerCase())) {
-          changesDenied.push(change)
-          failed = true
-        }
+    for (const denied of deniedGroups) {
+      if (
+        changedPackage.namespace &&
+        changedPackage.namespace === denied.namespace
+      ) {
+        changesDenied.push(change)
+        hasDeniedPackage = true
       }
     }
   }
 
-  if (failed) {
+  if (hasDeniedPackage) {
     core.setFailed('Dependency review detected denied packages.')
   } else {
     core.info('Dependency review did not detect any denied packages')

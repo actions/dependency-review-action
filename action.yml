@@ -56,7 +56,7 @@ inputs:
     description: Determines if the summary is posted as a comment in the PR itself. Setting this to `always` or `on-failure` requires you to give the workflow the write permissions for pull-requests
     required: false
   deny-packages:
-    description: A comma-separated list of package URLs to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto")
+    description: A comma-separated list of package URLs to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto"). If version specified, only deny matching packages and version; else, deny all regardless of version.
     required: false
   deny-groups:
     description: A comma-separated list of package URLs for group(s)/namespace(s) to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto")

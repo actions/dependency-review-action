@@ -179,31 +179,29 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getDeniedChanges = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-function getDeniedChanges(changes, deniedPackages, deniedGroups) {
-    return __awaiter(this, void 0, void 0, function* () {
+const packageurl_js_1 = __nccwpck_require__(8915);
+function getDeniedChanges(changes_1) {
+    return __awaiter(this, arguments, void 0, function* (changes, deniedPackages = [], deniedGroups = []) {
         const changesDenied = [];
-        let failed = false;
+        let hasDeniedPackage = false;
         for (const change of changes) {
-            change.name = change.name.toLowerCase();
-            const packageUrl = change.package_url.toLowerCase().split('@')[0];
-            if (deniedPackages) {
-                for (const denied of deniedPackages) {
-                    if (packageUrl === denied.split('@')[0].toLowerCase()) {
-                        changesDenied.push(change);
-                        failed = true;
-                    }
+            const changedPackage = packageurl_js_1.PackageURL.fromString(change.package_url);
+            for (const denied of deniedPackages) {
+                if ((!denied.version || changedPackage.version === denied.version) &&
+                    changedPackage.name === denied.name) {
+                    changesDenied.push(change);
+                    hasDeniedPackage = true;
                 }
             }
-            if (deniedGroups) {
-                for (const denied of deniedGroups) {
-                    if (packageUrl.startsWith(denied.toLowerCase())) {
-                        changesDenied.push(change);
-                        failed = true;
-                    }
+            for (const denied of deniedGroups) {
+                if (changedPackage.namespace &&
+                    changedPackage.namespace === denied.namespace) {
+                    changesDenied.push(change);
+                    hasDeniedPackage = true;
                 }
             }
         }
-        if (failed) {
+        if (hasDeniedPackage) {
             core.setFailed('Dependency review detected denied packages.');
         }
         else {
@@ -862,9 +860,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
+const utils_1 = __nccwpck_require__(918);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
+const PackageURL = z.string().transform(purlString => {
+    return (0, utils_1.parsePURL)(purlString);
+});
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -898,8 +900,8 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).optional(),
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
-    deny_packages: z.array(z.string()).default([]),
-    deny_groups: z.array(z.string()).default([]),
+    deny_packages: z.array(PackageURL).default([]),
+    deny_groups: z.array(PackageURL).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
@@ -1453,10 +1455,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
+const packageurl_js_1 = __nccwpck_require__(8915);
 function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
@@ -1516,6 +1519,23 @@ function octokitClient(token = 'repo-token', required = true) {
     return new octokit_1.Octokit(opts);
 }
 exports.octokitClient = octokitClient;
+const parsePURL = (purlString) => {
+    try {
+        return packageurl_js_1.PackageURL.fromString(purlString);
+    }
+    catch (error) {
+        if (error.message ===
+            `purl is missing the required "name" component.`) {
+            //packageurl-js does not support empty names, so will manually override it for deny-groups
+            //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
+            const purl = packageurl_js_1.PackageURL.fromString(`${purlString}TEMP_NAME`);
+            purl.name = '';
+            return purl;
+        }
+        throw error;
+    }
+};
+exports.parsePURL = parsePURL;
 
 
 /***/ }),
@@ -5400,11 +5420,11 @@ __export(dist_src_exports, {
 module.exports = __toCommonJS(dist_src_exports);
 var import_universal_user_agent = __nccwpck_require__(5030);
 var import_request = __nccwpck_require__(6234);
-var import_auth_oauth_app = __nccwpck_require__(4098);
+var import_auth_oauth_app = __nccwpck_require__(8459);
 
 // pkg/dist-src/auth.js
 var import_deprecation = __nccwpck_require__(8932);
-var OAuthAppAuth = __toESM(__nccwpck_require__(4098));
+var OAuthAppAuth = __toESM(__nccwpck_require__(8459));
 
 // pkg/dist-src/get-app-authentication.js
 var import_universal_github_app_jwt = __nccwpck_require__(4419);
@@ -5852,7 +5872,7 @@ function createAppAuth(options) {
 
 /***/ }),
 
-/***/ 4098:
+/***/ 8459:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -7362,7 +7382,7 @@ __export(dist_src_exports, {
   unknownRouteResponse: () => unknownRouteResponse
 });
 module.exports = __toCommonJS(dist_src_exports);
-var import_auth_oauth_app = __nccwpck_require__(4098);
+var import_auth_oauth_app = __nccwpck_require__(8459);
 
 // pkg/dist-src/version.js
 var VERSION = "6.0.0";
@@ -7450,7 +7470,7 @@ function getWebFlowAuthorizationUrlWithState(state, options) {
 }
 
 // pkg/dist-src/methods/create-token.js
-var OAuthAppAuth = __toESM(__nccwpck_require__(4098));
+var OAuthAppAuth = __toESM(__nccwpck_require__(8459));
 async function createTokenWithState(state, options) {
   const authentication = await state.octokit.auth({
     type: "oauth-user",
@@ -19431,7 +19451,7 @@ const { MAX_LENGTH, MAX_SAFE_INTEGER } = __nccwpck_require__(2293)
 const { safeRe: re, t } = __nccwpck_require__(9523)
 
 const parseOptions = __nccwpck_require__(785)
-const { compareIdentifiers } = __nccwpck_require__(5865)
+const { compareIdentifiers } = __nccwpck_require__(2463)
 class SemVer {
   constructor (version, options) {
     options = parseOptions(options)
@@ -19804,7 +19824,7 @@ module.exports = cmp
 
 /***/ }),
 
-/***/ 5280:
+/***/ 3466:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const SemVer = __nccwpck_require__(9087)
@@ -20190,7 +20210,7 @@ module.exports = valid
 const internalRe = __nccwpck_require__(9523)
 const constants = __nccwpck_require__(2293)
 const SemVer = __nccwpck_require__(9087)
-const identifiers = __nccwpck_require__(5865)
+const identifiers = __nccwpck_require__(2463)
 const parse = __nccwpck_require__(5925)
 const valid = __nccwpck_require__(9601)
 const clean = __nccwpck_require__(8848)
@@ -20213,7 +20233,7 @@ const neq = __nccwpck_require__(6017)
 const gte = __nccwpck_require__(5930)
 const lte = __nccwpck_require__(7520)
 const cmp = __nccwpck_require__(5098)
-const coerce = __nccwpck_require__(5280)
+const coerce = __nccwpck_require__(3466)
 const Comparator = __nccwpck_require__(1532)
 const Range = __nccwpck_require__(9828)
 const satisfies = __nccwpck_require__(6055)
@@ -20337,7 +20357,7 @@ module.exports = debug
 
 /***/ }),
 
-/***/ 5865:
+/***/ 2463:
 /***/ ((module) => {
 
 const numeric = /^[0-9]+$/
@@ -50021,9 +50041,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
+const utils_1 = __nccwpck_require__(1314);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
+const PackageURL = z.string().transform(purlString => {
+    return (0, utils_1.parsePURL)(purlString);
+});
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -50057,8 +50081,8 @@ exports.ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).optional(),
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
-    deny_packages: z.array(z.string()).default([]),
-    deny_groups: z.array(z.string()).default([]),
+    deny_packages: z.array(PackageURL).default([]),
+    deny_groups: z.array(PackageURL).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
@@ -50181,10 +50205,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
+const packageurl_js_1 = __nccwpck_require__(8915);
 function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
@@ -50244,6 +50269,23 @@ function octokitClient(token = 'repo-token', required = true) {
     return new octokit_1.Octokit(opts);
 }
 exports.octokitClient = octokitClient;
+const parsePURL = (purlString) => {
+    try {
+        return packageurl_js_1.PackageURL.fromString(purlString);
+    }
+    catch (error) {
+        if (error.message ===
+            `purl is missing the required "name" component.`) {
+            //packageurl-js does not support empty names, so will manually override it for deny-groups
+            //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
+            const purl = packageurl_js_1.PackageURL.fromString(`${purlString}TEMP_NAME`);
+            purl.name = '';
+            return purl;
+        }
+        throw error;
+    }
+};
+exports.parsePURL = parsePURL;
 
 
 /***/ }),
@@ -53633,13 +53675,13 @@ exports.mapIncludes = mapIncludes;
 
 
 var Alias = __nccwpck_require__(5639);
-var Collection = __nccwpck_require__(3466);
+var Collection = __nccwpck_require__(2240);
 var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
-var toJS = __nccwpck_require__(2463);
+var toJS = __nccwpck_require__(979);
 var Schema = __nccwpck_require__(6831);
 var stringifyDocument = __nccwpck_require__(5225);
-var anchors = __nccwpck_require__(8459);
+var anchors = __nccwpck_require__(2723);
 var applyReviver = __nccwpck_require__(3412);
 var createNode = __nccwpck_require__(9652);
 var directives = __nccwpck_require__(5400);
@@ -53970,7 +54012,7 @@ exports.Document = Document;
 
 /***/ }),
 
-/***/ 8459:
+/***/ 2723:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -54565,11 +54607,11 @@ exports.warn = warn;
 "use strict";
 
 
-var anchors = __nccwpck_require__(8459);
+var anchors = __nccwpck_require__(2723);
 var visit = __nccwpck_require__(6796);
 var identity = __nccwpck_require__(5589);
 var Node = __nccwpck_require__(1399);
-var toJS = __nccwpck_require__(2463);
+var toJS = __nccwpck_require__(979);
 
 class Alias extends Node.NodeBase {
     constructor(source) {
@@ -54670,7 +54712,7 @@ exports.Alias = Alias;
 
 /***/ }),
 
-/***/ 3466:
+/***/ 2240:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -54838,7 +54880,7 @@ exports.isEmptyPath = isEmptyPath;
 
 var applyReviver = __nccwpck_require__(3412);
 var identity = __nccwpck_require__(5589);
-var toJS = __nccwpck_require__(2463);
+var toJS = __nccwpck_require__(979);
 
 class NodeBase {
     constructor(type) {
@@ -54933,7 +54975,7 @@ exports.createPair = createPair;
 
 var identity = __nccwpck_require__(5589);
 var Node = __nccwpck_require__(1399);
-var toJS = __nccwpck_require__(2463);
+var toJS = __nccwpck_require__(979);
 
 const isScalarValue = (value) => !value || (typeof value !== 'function' && typeof value !== 'object');
 class Scalar extends Node.NodeBase {
@@ -54968,7 +55010,7 @@ exports.isScalarValue = isScalarValue;
 
 var stringifyCollection = __nccwpck_require__(2466);
 var addPairToJSMap = __nccwpck_require__(4676);
-var Collection = __nccwpck_require__(3466);
+var Collection = __nccwpck_require__(2240);
 var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
 var Scalar = __nccwpck_require__(9338);
@@ -55123,10 +55165,10 @@ exports.findPair = findPair;
 
 var createNode = __nccwpck_require__(9652);
 var stringifyCollection = __nccwpck_require__(2466);
-var Collection = __nccwpck_require__(3466);
+var Collection = __nccwpck_require__(2240);
 var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
-var toJS = __nccwpck_require__(2463);
+var toJS = __nccwpck_require__(979);
 
 class YAMLSeq extends Collection.Collection {
     static get tagName() {
@@ -55248,7 +55290,7 @@ var log = __nccwpck_require__(6909);
 var stringify = __nccwpck_require__(8409);
 var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
-var toJS = __nccwpck_require__(2463);
+var toJS = __nccwpck_require__(979);
 
 const MERGE_KEY = '<<';
 function addPairToJSMap(ctx, map, { key, value }) {
@@ -55413,7 +55455,7 @@ exports.isSeq = isSeq;
 
 /***/ }),
 
-/***/ 2463:
+/***/ 979:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -58564,7 +58606,7 @@ exports.intOct = intOct;
 
 
 var identity = __nccwpck_require__(5589);
-var toJS = __nccwpck_require__(2463);
+var toJS = __nccwpck_require__(979);
 var YAMLMap = __nccwpck_require__(6011);
 var YAMLSeq = __nccwpck_require__(5161);
 var pairs = __nccwpck_require__(9841);
@@ -59150,7 +59192,7 @@ exports.foldFlowLines = foldFlowLines;
 "use strict";
 
 
-var anchors = __nccwpck_require__(8459);
+var anchors = __nccwpck_require__(2723);
 var identity = __nccwpck_require__(5589);
 var stringifyComment = __nccwpck_require__(5182);
 var stringifyString = __nccwpck_require__(6226);
@@ -59285,7 +59327,7 @@ exports.stringify = stringify;
 "use strict";
 
 
-var Collection = __nccwpck_require__(3466);
+var Collection = __nccwpck_require__(2240);
 var identity = __nccwpck_require__(5589);
 var stringify = __nccwpck_require__(8409);
 var stringifyComment = __nccwpck_require__(5182);

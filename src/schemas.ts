@@ -1,9 +1,14 @@
 import * as z from 'zod'
+import {parsePURL} from './utils'
 
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
 export const SCOPES = ['unknown', 'runtime', 'development'] as const
 
 export const SeveritySchema = z.enum(SEVERITIES).default('low')
+
+const PackageURL = z.string().transform(purlString => {
+  return parsePURL(purlString)
+})
 
 export const ChangeSchema = z.object({
   change_type: z.enum(['added', 'removed']),
@@ -42,8 +47,8 @@ export const ConfigurationOptionsSchema = z
     deny_licenses: z.array(z.string()).optional(),
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
-    deny_packages: z.array(z.string()).default([]),
-    deny_groups: z.array(z.string()).default([]),
+    deny_packages: z.array(PackageURL).default([]),
+    deny_groups: z.array(PackageURL).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
