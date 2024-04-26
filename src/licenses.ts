@@ -1,6 +1,6 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {isSPDXValid, octokitClient, parsePURL} from './utils'
 import {PackageURL} from 'packageurl-js'
 
 /**
@@ -45,9 +45,7 @@ export async function getInvalidLicenseChanges(
       return true
     }
 
-    const changeAsPackageURL = PackageURL.fromString(
-      encodeURI(change.package_url)
-    )
+    const changeAsPackageURL = parsePURL(encodeURI(change.package_url))
 
     // We want to find if the licenseExclussion list contains the PackageURL of the Change
     // If it does, we want to filter it out and therefore return false

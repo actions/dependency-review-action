@@ -233,7 +233,7 @@ function validatePURL(allow_dependencies_licenses: string[] | undefined): void {
     return
   }
   const invalid_purls = allow_dependencies_licenses.filter(
-    purl => !PackageURL.fromString(purl)
+    purl => !isPURLValid(purl)
   )
 
   if (invalid_purls.length > 0) {
@@ -242,4 +242,12 @@ function validatePURL(allow_dependencies_licenses: string[] | undefined): void {
     )
   }
   return
+}
+
+const isPURLValid = (purl: string): boolean => {
+  try {
+    return PackageURL.fromString(purl) !== null
+  } catch (error) {
+    return false
+  }
 }

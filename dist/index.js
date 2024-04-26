@@ -177,32 +177,24 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getDeniedChanges = void 0;
+exports.getNamespace = exports.getDeniedChanges = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const packageurl_js_1 = __nccwpck_require__(8915);
+const utils_1 = __nccwpck_require__(918);
 function getDeniedChanges(changes_1) {
     return __awaiter(this, arguments, void 0, function* (changes, deniedPackages = [], deniedGroups = []) {
         const changesDenied = [];
         let hasDeniedPackage = false;
         for (const change of changes) {
-            let changedPackage;
-            try {
-                changedPackage = packageurl_js_1.PackageURL.fromString(change.package_url);
-            }
-            catch (error) {
-                core.error(`Error parsing package URL '${change.package_url}': ${error}`);
-                continue;
-            }
             for (const denied of deniedPackages) {
-                if ((!denied.version || changedPackage.version === denied.version) &&
-                    changedPackage.name === denied.name) {
+                if ((!denied.version || change.version === denied.version) &&
+                    change.name === denied.name) {
                     changesDenied.push(change);
                     hasDeniedPackage = true;
                 }
             }
             for (const denied of deniedGroups) {
-                if (changedPackage.namespace &&
-                    changedPackage.namespace === denied.namespace) {
+                const namespace = (0, exports.getNamespace)(change);
+                if (namespace && namespace === denied.namespace) {
                     changesDenied.push(change);
                     hasDeniedPackage = true;
                 }
@@ -218,6 +210,36 @@ function getDeniedChanges(changes_1) {
     });
 }
 exports.getDeniedChanges = getDeniedChanges;
+// getNamespace returns the namespace associated with the given change.
+// it tries to get this from the package_url member, but that won't exist
+// for all changes, so as a fallback it may create a new purl based on the
+// ecosystem and name associated with the change, then extract the namespace
+// from that.
+// returns '' if there is no namespace.
+const getNamespace = (change) => {
+    let purl_str;
+    if (change.package_url) {
+        purl_str = change.package_url;
+    }
+    else {
+        purl_str = `pkg:${change.ecosystem}/${change.name}`;
+    }
+    try {
+        const purl = (0, utils_1.parsePURL)(purl_str);
+        const namespace = purl.namespace;
+        if (namespace === undefined || namespace === null) {
+            return '';
+        }
+        else {
+            return namespace;
+        }
+    }
+    catch (e) {
+        core.error(`Error parsing purl '${purl_str}': ${e}`);
+        return '';
+    }
+};
+exports.getNamespace = getNamespace;
 
 
 /***/ }),
@@ -376,7 +398,7 @@ function getInvalidLicenseChanges(changes, licenses) {
             if (change.package_url.length === 0) {
                 return true;
             }
-            const changeAsPackageURL = packageurl_js_1.PackageURL.fromString(encodeURI(change.package_url));
+            const changeAsPackageURL = (0, utils_1.parsePURL)(encodeURI(change.package_url));
             // We want to find if the licenseExclussion list contains the PackageURL of the Change
             // If it does, we want to filter it out and therefore return false
             // If it doesn't, we want to keep it and therefore return true
@@ -1462,7 +1484,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.addTempName = exports.removeVersion = exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -1535,14 +1557,39 @@ const parsePURL = (purlString) => {
             `purl is missing the required "name" component.`) {
             //packageurl-js does not support empty names, so will manually override it for deny-groups
             //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
-            const purl = packageurl_js_1.PackageURL.fromString(`${purlString}TEMP_NAME`);
+            const fixedPurlString = (0, exports.addTempName)(purlString);
+            const purl = packageurl_js_1.PackageURL.fromString(fixedPurlString);
             purl.name = '';
             return purl;
         }
+        else if (error.message === `version must be percent-encoded`) {
+            core.error(`Version must be percent-encoded. Removing version from purl: '${purlString}.`);
+            const fixedPurlString = (0, exports.removeVersion)(purlString);
+            const purl = (0, exports.parsePURL)(fixedPurlString);
+            purl.version = '';
+            return purl;
+        }
+        core.error(`Error parsing purl: ${purlString}`);
         throw error;
     }
 };
 exports.parsePURL = parsePURL;
+const removeVersion = (purlString) => {
+    // sometimes these errors are actually caused by a final '/', so try removing that first
+    if (purlString.endsWith('/')) {
+        return purlString.substring(0, purlString.length - 1);
+    }
+    const idx = purlString.lastIndexOf('@');
+    return purlString.substring(0, idx);
+};
+exports.removeVersion = removeVersion;
+const addTempName = (purlString) => {
+    if (purlString.endsWith('/')) {
+        return `${purlString}TEMP_NAME`;
+    }
+    return `${purlString}/TEMP_NAME`;
+};
+exports.addTempName = addTempName;
 
 
 /***/ }),
@@ -49925,12 +49972,20 @@ function validatePURL(allow_dependencies_licenses) {
     if (allow_dependencies_licenses === undefined) {
         return;
     }
-    const invalid_purls = allow_dependencies_licenses.filter(purl => !packageurl_js_1.PackageURL.fromString(purl));
+    const invalid_purls = allow_dependencies_licenses.filter(purl => !isPURLValid(purl));
     if (invalid_purls.length > 0) {
         throw new Error(`Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`);
     }
     return;
 }
+const isPURLValid = (purl) => {
+    try {
+        return packageurl_js_1.PackageURL.fromString(purl) !== null;
+    }
+    catch (error) {
+        return false;
+    }
+};
 
 
 /***/ }),
@@ -50212,7 +50267,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.addTempName = exports.removeVersion = exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
@@ -50285,14 +50340,39 @@ const parsePURL = (purlString) => {
             `purl is missing the required "name" component.`) {
             //packageurl-js does not support empty names, so will manually override it for deny-groups
             //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
-            const purl = packageurl_js_1.PackageURL.fromString(`${purlString}TEMP_NAME`);
+            const fixedPurlString = (0, exports.addTempName)(purlString);
+            const purl = packageurl_js_1.PackageURL.fromString(fixedPurlString);
             purl.name = '';
             return purl;
         }
+        else if (error.message === `version must be percent-encoded`) {
+            core.error(`Version must be percent-encoded. Removing version from purl: '${purlString}.`);
+            const fixedPurlString = (0, exports.removeVersion)(purlString);
+            const purl = (0, exports.parsePURL)(fixedPurlString);
+            purl.version = '';
+            return purl;
+        }
+        core.error(`Error parsing purl: ${purlString}`);
         throw error;
     }
 };
 exports.parsePURL = parsePURL;
+const removeVersion = (purlString) => {
+    // sometimes these errors are actually caused by a final '/', so try removing that first
+    if (purlString.endsWith('/')) {
+        return purlString.substring(0, purlString.length - 1);
+    }
+    const idx = purlString.lastIndexOf('@');
+    return purlString.substring(0, idx);
+};
+exports.removeVersion = removeVersion;
+const addTempName = (purlString) => {
+    if (purlString.endsWith('/')) {
+        return `${purlString}TEMP_NAME`;
+    }
+    return `${purlString}/TEMP_NAME`;
+};
+exports.addTempName = addTempName;
 
 
 /***/ }),

@@ -80,10 +80,36 @@ export const parsePURL = (purlString: string): PackageURL => {
     ) {
       //packageurl-js does not support empty names, so will manually override it for deny-groups
       //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
-      const purl = PackageURL.fromString(`${purlString}TEMP_NAME`)
+      const fixedPurlString = addTempName(purlString)
+      const purl = PackageURL.fromString(fixedPurlString)
       purl.name = ''
       return purl
+    } else if ((error as Error).message === `version must be percent-encoded`) {
+      core.error(
+        `Version must be percent-encoded. Removing version from purl: '${purlString}.`
+      )
+      const fixedPurlString = removeVersion(purlString)
+      const purl = parsePURL(fixedPurlString)
+      purl.version = ''
+      return purl
     }
+    core.error(`Error parsing purl: ${purlString}`)
     throw error
   }
+}
+
+export const removeVersion = (purlString: string): string => {
+  // sometimes these errors are actually caused by a final '/', so try removing that first
+  if (purlString.endsWith('/')) {
+    return purlString.substring(0, purlString.length - 1)
+  }
+  const idx = purlString.lastIndexOf('@')
+  return purlString.substring(0, idx)
+}
+
+export const addTempName = (purlString: string): string => {
+  if (purlString.endsWith('/')) {
+    return `${purlString}TEMP_NAME`
+  }
+  return `${purlString}/TEMP_NAME`
 }
