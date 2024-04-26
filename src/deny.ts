@@ -15,7 +15,7 @@ export async function getDeniedChanges(
     try {
       changedPackage = PackageURL.fromString(change.package_url)
     } catch (error) {
-      core.error(`Error parsing package URL: ${error}`)
+      core.error(`Error parsing package URL '${change.package_url}': ${error}`)
       continue
     }
 

@@ -190,7 +190,7 @@ function getDeniedChanges(changes_1) {
                 changedPackage = packageurl_js_1.PackageURL.fromString(change.package_url);
             }
             catch (error) {
-                core.error(`Error parsing package URL: ${error}`);
+                core.error(`Error parsing package URL '${change.package_url}': ${error}`);
                 continue;
             }
             for (const denied of deniedPackages) {
