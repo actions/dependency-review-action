@@ -185,7 +185,14 @@ function getDeniedChanges(changes_1) {
         const changesDenied = [];
         let hasDeniedPackage = false;
         for (const change of changes) {
-            const changedPackage = packageurl_js_1.PackageURL.fromString(change.package_url);
+            let changedPackage;
+            try {
+                changedPackage = packageurl_js_1.PackageURL.fromString(change.package_url);
+            }
+            catch (error) {
+                core.error(`Error parsing package URL: ${error}`);
+                continue;
+            }
             for (const denied of deniedPackages) {
                 if ((!denied.version || changedPackage.version === denied.version) &&
                     changedPackage.name === denied.name) {

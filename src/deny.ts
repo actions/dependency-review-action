@@ -11,7 +11,13 @@ export async function getDeniedChanges(
 
   let hasDeniedPackage = false
   for (const change of changes) {
-    const changedPackage = PackageURL.fromString(change.package_url)
+    let changedPackage: PackageURL
+    try {
+      changedPackage = PackageURL.fromString(change.package_url)
+    } catch (error) {
+      core.error(`Error parsing package URL: ${error}`)
+      continue
+    }
 
     for (const denied of deniedPackages) {
       if (
