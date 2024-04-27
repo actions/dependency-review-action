@@ -6,9 +6,39 @@ export const SCOPES = ['unknown', 'runtime', 'development'] as const
 
 export const SeveritySchema = z.enum(SEVERITIES).default('low')
 
-const PackageURL = z.string().transform(purlString => {
-  return parsePURL(purlString)
-})
+const PackageURL = z
+  .string()
+  .transform(purlString => {
+    return parsePURL(purlString)
+  })
+  .superRefine((purl, context) => {
+    if (purl.error) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Error parsing purl: ${purl.error}`
+      })
+    }
+  })
+
+const PackageURLWithNamespace = z
+  .string()
+  .transform(purlString => {
+    return parsePURL(purlString)
+  })
+  .superRefine((purl, context) => {
+    if (purl.error) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Error parsing purl: ${purl.error}`
+      })
+    }
+    if (purl.namespace === null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `purl must have a namespace, and the namespace must be followed by '/'`
+      })
+    }
+  })
 
 export const ChangeSchema = z.object({
   change_type: z.enum(['added', 'removed']),
@@ -48,7 +78,7 @@ export const ConfigurationOptionsSchema = z
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     deny_packages: z.array(PackageURL).default([]),
-    deny_groups: z.array(PackageURL).default([]),
+    deny_groups: z.array(PackageURLWithNamespace).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),

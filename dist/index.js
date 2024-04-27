@@ -972,8 +972,37 @@ const purl_1 = __nccwpck_require__(3609);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
-const PackageURL = z.string().transform(purlString => {
+const PackageURL = z
+    .string()
+    .transform(purlString => {
     return (0, purl_1.parsePURL)(purlString);
+})
+    .superRefine((purl, context) => {
+    if (purl.error) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing purl: ${purl.error}`
+        });
+    }
+});
+const PackageURLWithNamespace = z
+    .string()
+    .transform(purlString => {
+    return (0, purl_1.parsePURL)(purlString);
+})
+    .superRefine((purl, context) => {
+    if (purl.error) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing purl: ${purl.error}`
+        });
+    }
+    if (purl.namespace === null) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `purl must have a namespace, and the namespace must be followed by '/'`
+        });
+    }
 });
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -1009,7 +1038,7 @@ exports.ConfigurationOptionsSchema = z
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     deny_packages: z.array(PackageURL).default([]),
-    deny_groups: z.array(PackageURL).default([]),
+    deny_groups: z.array(PackageURLWithNamespace).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
@@ -49964,8 +49993,37 @@ const purl_1 = __nccwpck_require__(4498);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
-const PackageURL = z.string().transform(purlString => {
+const PackageURL = z
+    .string()
+    .transform(purlString => {
     return (0, purl_1.parsePURL)(purlString);
+})
+    .superRefine((purl, context) => {
+    if (purl.error) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing purl: ${purl.error}`
+        });
+    }
+});
+const PackageURLWithNamespace = z
+    .string()
+    .transform(purlString => {
+    return (0, purl_1.parsePURL)(purlString);
+})
+    .superRefine((purl, context) => {
+    if (purl.error) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing purl: ${purl.error}`
+        });
+    }
+    if (purl.namespace === null) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `purl must have a namespace, and the namespace must be followed by '/'`
+        });
+    }
 });
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -50001,7 +50059,7 @@ exports.ConfigurationOptionsSchema = z
     allow_dependencies_licenses: z.array(z.string()).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     deny_packages: z.array(PackageURL).default([]),
-    deny_groups: z.array(PackageURL).default([]),
+    deny_groups: z.array(PackageURLWithNamespace).default([]),
     license_check: z.boolean().default(true),
     vulnerability_check: z.boolean().default(true),
     config_file: z.string().optional(),
