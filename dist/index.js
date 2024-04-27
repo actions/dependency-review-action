@@ -179,7 +179,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getNamespace = exports.getDeniedChanges = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const utils_1 = __nccwpck_require__(918);
+const purl_1 = __nccwpck_require__(3609);
 function getDeniedChanges(changes_1) {
     return __awaiter(this, arguments, void 0, function* (changes, deniedPackages = [], deniedGroups = []) {
         const changesDenied = [];
@@ -194,6 +194,9 @@ function getDeniedChanges(changes_1) {
             }
             for (const denied of deniedGroups) {
                 const namespace = (0, exports.getNamespace)(change);
+                if (!denied.namespace) {
+                    core.error(`Denied group represented by '${denied.original}' does not have a namespace. The format should be 'pkg:<type>/<namespace>/'.`);
+                }
                 if (namespace && namespace === denied.namespace) {
                     changesDenied.push(change);
                     hasDeniedPackage = true;
@@ -210,34 +213,15 @@ function getDeniedChanges(changes_1) {
     });
 }
 exports.getDeniedChanges = getDeniedChanges;
-// getNamespace returns the namespace associated with the given change.
-// it tries to get this from the package_url member, but that won't exist
-// for all changes, so as a fallback it may create a new purl based on the
-// ecosystem and name associated with the change, then extract the namespace
-// from that.
-// returns '' if there is no namespace.
 const getNamespace = (change) => {
-    let purl_str;
     if (change.package_url) {
-        purl_str = change.package_url;
+        return (0, purl_1.parsePURL)(change.package_url).namespace;
     }
-    else {
-        purl_str = `pkg:${change.ecosystem}/${change.name}`;
+    const matches = change.name.match(/([^:/]+)[:/]/);
+    if (matches && matches.length > 1) {
+        return matches[1];
     }
-    try {
-        const purl = (0, utils_1.parsePURL)(purl_str);
-        const namespace = purl.namespace;
-        if (namespace === undefined || namespace === null) {
-            return '';
-        }
-        else {
-            return namespace;
-        }
-    }
-    catch (e) {
-        core.error(`Error parsing purl '${purl_str}': ${e}`);
-        return '';
-    }
+    return null;
 };
 exports.getNamespace = getNamespace;
 
@@ -383,13 +367,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInvalidLicenseChanges = void 0;
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(4424));
 const utils_1 = __nccwpck_require__(918);
-const packageurl_js_1 = __nccwpck_require__(8915);
+const purl_1 = __nccwpck_require__(3609);
 function getInvalidLicenseChanges(changes, licenses) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
         const { allow, deny } = licenses;
         const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
-            return packageurl_js_1.PackageURL.fromString(encodeURI(pkgUrl));
+            return (0, purl_1.parsePURL)(pkgUrl);
         });
         const groupedChanges = yield groupChanges(changes);
         // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
@@ -398,7 +382,7 @@ function getInvalidLicenseChanges(changes, licenses) {
             if (change.package_url.length === 0) {
                 return true;
             }
-            const changeAsPackageURL = (0, utils_1.parsePURL)(encodeURI(change.package_url));
+            const changeAsPackageURL = (0, purl_1.parsePURL)(encodeURI(change.package_url));
             // We want to find if the licenseExclussion list contains the PackageURL of the Change
             // If it does, we want to filter it out and therefore return false
             // If it doesn't, we want to keep it and therefore return true
@@ -858,6 +842,101 @@ run();
 
 /***/ }),
 
+/***/ 3609:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parsePURL = exports.PurlSchema = void 0;
+const z = __importStar(__nccwpck_require__(3301));
+// the basic purl type, containing ecosystem, namespace, name, and version.
+// other than ecosystem, all fields are nullable. this is for maximum flexibility
+// at the cost of strict adherence to the package-url spec.
+exports.PurlSchema = z.object({
+    type: z.string(),
+    namespace: z.string().nullable(),
+    name: z.string().nullable(), // name is nullable for deny-groups
+    version: z.string().nullable(),
+    original: z.string(),
+    error: z.string().nullable()
+});
+const PURL_ECOSYSTEM = /pkg:([a-zA-Z0-9-_]+)\/.*/;
+function parsePURL(purl) {
+    const result = {
+        type: '',
+        namespace: null,
+        name: null,
+        version: null,
+        original: purl,
+        error: null
+    };
+    if (!purl.startsWith('pkg:')) {
+        result.error = 'purl must start with "pkg:"';
+        return result;
+    }
+    const ecosystem = purl.match(PURL_ECOSYSTEM);
+    if (ecosystem === null) {
+        result.error = 'purl must contain an ecosystem';
+        return result;
+    }
+    result.type = ecosystem[1];
+    const parts = purl.split('/');
+    // the first 'part' should be 'pkg:ecosystem'
+    if (parts.length < 2 || parts[1].length === 0) {
+        result.error = 'purl must contain a namespace or name';
+        return result;
+    }
+    let namePlusRest;
+    if (parts.length === 2) {
+        namePlusRest = parts[1];
+    }
+    else {
+        result.namespace = decodeURIComponent(parts[1]);
+        namePlusRest = parts[2];
+    }
+    const name = namePlusRest.match(/([^@#?]+)[@#?]?.*/);
+    if (name === null) {
+        // we're done here
+        return result;
+    }
+    result.name = decodeURIComponent(name[1]);
+    const version = namePlusRest.match(/@([^#?]+)[#?]?.*/);
+    if (version === null) {
+        return result;
+    }
+    result.version = decodeURIComponent(version[1]);
+    // we don't parse subpath or attributes, so we're done here
+    return result;
+}
+exports.parsePURL = parsePURL;
+
+
+/***/ }),
+
 /***/ 8774:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -889,12 +968,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
-const utils_1 = __nccwpck_require__(918);
+const purl_1 = __nccwpck_require__(3609);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 const PackageURL = z.string().transform(purlString => {
-    return (0, utils_1.parsePURL)(purlString);
+    return (0, purl_1.parsePURL)(purlString);
 });
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -1484,11 +1563,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addTempName = exports.removeVersion = exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
-const packageurl_js_1 = __nccwpck_require__(8915);
 function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
@@ -1548,48 +1626,6 @@ function octokitClient(token = 'repo-token', required = true) {
     return new octokit_1.Octokit(opts);
 }
 exports.octokitClient = octokitClient;
-const parsePURL = (purlString) => {
-    try {
-        return packageurl_js_1.PackageURL.fromString(purlString);
-    }
-    catch (error) {
-        if (error.message ===
-            `purl is missing the required "name" component.`) {
-            //packageurl-js does not support empty names, so will manually override it for deny-groups
-            //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
-            const fixedPurlString = (0, exports.addTempName)(purlString);
-            const purl = packageurl_js_1.PackageURL.fromString(fixedPurlString);
-            purl.name = '';
-            return purl;
-        }
-        else if (error.message === `version must be percent-encoded`) {
-            core.error(`Version must be percent-encoded. Removing version from purl: '${purlString}.`);
-            const fixedPurlString = (0, exports.removeVersion)(purlString);
-            const purl = (0, exports.parsePURL)(fixedPurlString);
-            purl.version = '';
-            return purl;
-        }
-        core.error(`Error parsing purl: ${purlString}`);
-        throw error;
-    }
-};
-exports.parsePURL = parsePURL;
-const removeVersion = (purlString) => {
-    // sometimes these errors are actually caused by a final '/', so try removing that first
-    if (purlString.endsWith('/')) {
-        return purlString.substring(0, purlString.length - 1);
-    }
-    const idx = purlString.lastIndexOf('@');
-    return purlString.substring(0, idx);
-};
-exports.removeVersion = removeVersion;
-const addTempName = (purlString) => {
-    if (purlString.endsWith('/')) {
-        return `${purlString}TEMP_NAME`;
-    }
-    return `${purlString}/TEMP_NAME`;
-};
-exports.addTempName = addTempName;
 
 
 /***/ }),
@@ -5474,11 +5510,11 @@ __export(dist_src_exports, {
 module.exports = __toCommonJS(dist_src_exports);
 var import_universal_user_agent = __nccwpck_require__(5030);
 var import_request = __nccwpck_require__(6234);
-var import_auth_oauth_app = __nccwpck_require__(8459);
+var import_auth_oauth_app = __nccwpck_require__(4098);
 
 // pkg/dist-src/auth.js
 var import_deprecation = __nccwpck_require__(8932);
-var OAuthAppAuth = __toESM(__nccwpck_require__(8459));
+var OAuthAppAuth = __toESM(__nccwpck_require__(4098));
 
 // pkg/dist-src/get-app-authentication.js
 var import_universal_github_app_jwt = __nccwpck_require__(4419);
@@ -5926,7 +5962,7 @@ function createAppAuth(options) {
 
 /***/ }),
 
-/***/ 8459:
+/***/ 4098:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -7436,7 +7472,7 @@ __export(dist_src_exports, {
   unknownRouteResponse: () => unknownRouteResponse
 });
 module.exports = __toCommonJS(dist_src_exports);
-var import_auth_oauth_app = __nccwpck_require__(8459);
+var import_auth_oauth_app = __nccwpck_require__(4098);
 
 // pkg/dist-src/version.js
 var VERSION = "6.0.0";
@@ -7524,7 +7560,7 @@ function getWebFlowAuthorizationUrlWithState(state, options) {
 }
 
 // pkg/dist-src/methods/create-token.js
-var OAuthAppAuth = __toESM(__nccwpck_require__(8459));
+var OAuthAppAuth = __toESM(__nccwpck_require__(4098));
 async function createTokenWithState(state, options) {
   const authentication = await state.octokit.auth({
     type: "oauth-user",
@@ -18465,272 +18501,6 @@ function onceStrict (fn) {
 
 /***/ }),
 
-/***/ 8915:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-/*!
-Copyright (c) the purl authors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
-const PackageURL = __nccwpck_require__(8749);
-
-module.exports = {
-  PackageURL
-};
-
-
-/***/ }),
-
-/***/ 8749:
-/***/ ((module) => {
-
-/*!
-Copyright (c) the purl authors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
-const KnownQualifierNames = Object.freeze({
-  // known qualifiers as defined here:
-  // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
-  RepositoryUrl: 'repository_url',
-  DownloadUrl: 'download_url',
-  VcsUrl: 'vcs_url',
-  FileName: 'file_name',
-  Checksum: 'checksum'
-});
-
-class PackageURL {
-
-  static get KnownQualifierNames() {
-    return KnownQualifierNames;
-  }
-
-  constructor(type, namespace, name, version, qualifiers, subpath) {
-    let required = { 'type': type, 'name': name };
-    Object.keys(required).forEach(key => {
-      if (!required[key]) {
-        throw new Error('Invalid purl: "' + key + '" is a required field.');
-      }
-    });
-
-    let strings = { 'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath };
-    Object.keys(strings).forEach(key => {
-      if (strings[key] && typeof strings[key] === 'string' || !strings[key]) {
-        return;
-      }
-      throw new Error('Invalid purl: "' + key + '" argument must be a string.');
-    });
-
-    if (qualifiers) {
-      if (typeof qualifiers !== 'object') {
-        throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
-      }
-      Object.keys(qualifiers).forEach(key => {
-        if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
-          throw new Error('Invalid purl: qualifier "' + key + '" contains an illegal character.');
-        }
-      });
-    }
-
-    this.type = type;
-    this.name = name;
-    this.namespace = namespace;
-    this.version = version;
-    this.qualifiers = qualifiers;
-    this.subpath = subpath;
-  }
-
-  _handlePyPi() {
-    this.name = this.name.toLowerCase().replace(/_/g, '-');
-  }
-  _handlePub() {
-    this.name = this.name.toLowerCase();
-    if (!/^[a-z0-9_]+$/i.test(this.name)) {
-      throw new Error('Invalid purl: contains an illegal character.');
-    }
-  }
-
-  toString() {
-    var purl = ['pkg:', encodeURIComponent(this.type), '/'];
-
-    if (this.type === 'pypi') {
-      this._handlePyPi();
-    }
-    if (this.type === 'pub') {
-      this._handlePub();
-    }
-
-    if (this.namespace) {
-      purl.push(
-        encodeURIComponent(this.namespace)
-          .replace(/%3A/g, ':')
-          .replace(/%2F/g, '/')
-        );
-      purl.push('/');
-    }
-
-    purl.push(encodeURIComponent(this.name).replace(/%3A/g, ':'));
-
-    if (this.version) {
-      purl.push('@');
-      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':').replace(/%2B/g,'+'));
-    }
-
-    if (this.qualifiers) {
-      purl.push('?');
-
-      let qualifiers = this.qualifiers;
-      let qualifierString = [];
-      Object.keys(qualifiers).sort().forEach(key => {
-        qualifierString.push(
-          encodeURIComponent(key).replace(/%3A/g, ':')
-          + '='
-          + encodeURIComponent(qualifiers[key]).replace(/%2F/g, '/')
-        );
-      });
-
-      purl.push(qualifierString.join('&'));
-    }
-
-    if (this.subpath) {
-      purl.push('#');
-      purl.push(encodeURIComponent(this.subpath)
-        .replace(/%3A/g, ':')
-        .replace(/%2F/g, '/'));
-    }
-
-    return purl.join('');
-  }
-
-  static fromString(purl) {
-    if (!purl || typeof purl !== 'string' || !purl.trim()) {
-      throw new Error('A purl string argument is required.');
-    }
-
-    let scheme = purl.slice(0, purl.indexOf(':'))
-    let remainder = purl.slice(purl.indexOf(':') + 1)
-    if (scheme !== 'pkg') {
-      throw new Error('purl is missing the required "pkg" scheme component.');
-    }
-    // this strip '/, // and /// as possible in :// or :///
-    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-    remainder = remainder.trim().replace(/^\/+/g, '');
-
-    let type
-    [type, remainder] = remainder.split('/', 2);
-    if (!type || !remainder) {
-      throw new Error('purl is missing the required "type" component.');
-    }
-    type = decodeURIComponent(type)
-
-    let url = new URL(purl);
-
-    let qualifiers = null;
-    url.searchParams.forEach((value, key) => {
-      if (!qualifiers) {
-        qualifiers = {};
-      }
-      qualifiers[key] = value;
-    });
-    let subpath = url.hash;
-    if (subpath.indexOf('#') === 0) {
-      subpath = subpath.substring(1);
-    }
-    subpath = subpath.length === 0
-      ? null
-      : decodeURIComponent(subpath)
-
-    if (url.username !== '' || url.password !== '') {
-      throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
-    }
-
-    // this strip '/, // and /// as possible in :// or :///
-    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-    let path = url.pathname.trim().replace(/^\/+/g, '');
-
-    // version is optional - check for existence
-    let version = null;
-    if (path.includes('@')) {
-      let index = path.indexOf('@');
-      let rawVersion= path.substring(index + 1);
-      version = decodeURIComponent(rawVersion);
-
-      // Convert percent-encoded colons (:) back, to stay in line with the `toString`
-      // implementation of this library.
-      // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
-      let versionEncoded = encodeURIComponent(version).replace(/%3A/g, ':').replace(/%2B/g,'+');
-
-      if (rawVersion !== versionEncoded) {
-        throw new Error('Invalid purl: version must be percent-encoded');
-      }
-
-      remainder = path.substring(0, index);
-    } else {
-      remainder = path;
-    }
-
-    // The 'remainder' should now consist of an optional namespace and the name
-    let remaining = remainder.split('/').slice(1);
-    let name = null;
-    let namespace = null;
-    if (remaining.length > 1) {
-      let nameIndex = remaining.length - 1;
-      let namespaceComponents = remaining.slice(0, nameIndex);
-      name = decodeURIComponent(remaining[nameIndex]);
-      namespace = decodeURIComponent(namespaceComponents.join('/'));
-    } else if (remaining.length === 1) {
-      name = decodeURIComponent(remaining[0]);
-    }
-
-    if (name === '') {
-      throw new Error('purl is missing the required "name" component.');
-    }
-
-    return new PackageURL(type, namespace, name, version, qualifiers, subpath);
-  }
-
-};
-
-module.exports = PackageURL;
-
-
-/***/ }),
-
 /***/ 1867:
 /***/ ((module, exports, __nccwpck_require__) => {
 
@@ -19505,7 +19275,7 @@ const { MAX_LENGTH, MAX_SAFE_INTEGER } = __nccwpck_require__(2293)
 const { safeRe: re, t } = __nccwpck_require__(9523)
 
 const parseOptions = __nccwpck_require__(785)
-const { compareIdentifiers } = __nccwpck_require__(2463)
+const { compareIdentifiers } = __nccwpck_require__(5865)
 class SemVer {
   constructor (version, options) {
     options = parseOptions(options)
@@ -19878,7 +19648,7 @@ module.exports = cmp
 
 /***/ }),
 
-/***/ 3466:
+/***/ 5280:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const SemVer = __nccwpck_require__(9087)
@@ -20264,7 +20034,7 @@ module.exports = valid
 const internalRe = __nccwpck_require__(9523)
 const constants = __nccwpck_require__(2293)
 const SemVer = __nccwpck_require__(9087)
-const identifiers = __nccwpck_require__(2463)
+const identifiers = __nccwpck_require__(5865)
 const parse = __nccwpck_require__(5925)
 const valid = __nccwpck_require__(9601)
 const clean = __nccwpck_require__(8848)
@@ -20287,7 +20057,7 @@ const neq = __nccwpck_require__(6017)
 const gte = __nccwpck_require__(5930)
 const lte = __nccwpck_require__(7520)
 const cmp = __nccwpck_require__(5098)
-const coerce = __nccwpck_require__(3466)
+const coerce = __nccwpck_require__(5280)
 const Comparator = __nccwpck_require__(1532)
 const Range = __nccwpck_require__(9828)
 const satisfies = __nccwpck_require__(6055)
@@ -20411,7 +20181,7 @@ module.exports = debug
 
 /***/ }),
 
-/***/ 2463:
+/***/ 5865:
 /***/ ((module) => {
 
 const numeric = /^[0-9]+$/
@@ -49789,7 +49559,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
-const packageurl_js_1 = __nccwpck_require__(8915);
+const purl_1 = __nccwpck_require__(4498);
 function readConfig() {
     return __awaiter(this, void 0, void 0, function* () {
         const inlineConfig = readInlineConfig();
@@ -49972,20 +49742,12 @@ function validatePURL(allow_dependencies_licenses) {
     if (allow_dependencies_licenses === undefined) {
         return;
     }
-    const invalid_purls = allow_dependencies_licenses.filter(purl => !isPURLValid(purl));
+    const invalid_purls = allow_dependencies_licenses.filter(purl => !(0, purl_1.parsePURL)(purl).error);
     if (invalid_purls.length > 0) {
         throw new Error(`Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`);
     }
     return;
 }
-const isPURLValid = (purl) => {
-    try {
-        return packageurl_js_1.PackageURL.fromString(purl) !== null;
-    }
-    catch (error) {
-        return false;
-    }
-};
 
 
 /***/ }),
@@ -50072,6 +49834,101 @@ exports.filterAllowedAdvisories = filterAllowedAdvisories;
 
 /***/ }),
 
+/***/ 4498:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parsePURL = exports.PurlSchema = void 0;
+const z = __importStar(__nccwpck_require__(3301));
+// the basic purl type, containing ecosystem, namespace, name, and version.
+// other than ecosystem, all fields are nullable. this is for maximum flexibility
+// at the cost of strict adherence to the package-url spec.
+exports.PurlSchema = z.object({
+    type: z.string(),
+    namespace: z.string().nullable(),
+    name: z.string().nullable(), // name is nullable for deny-groups
+    version: z.string().nullable(),
+    original: z.string(),
+    error: z.string().nullable()
+});
+const PURL_ECOSYSTEM = /pkg:([a-zA-Z0-9-_]+)\/.*/;
+function parsePURL(purl) {
+    const result = {
+        type: '',
+        namespace: null,
+        name: null,
+        version: null,
+        original: purl,
+        error: null
+    };
+    if (!purl.startsWith('pkg:')) {
+        result.error = 'purl must start with "pkg:"';
+        return result;
+    }
+    const ecosystem = purl.match(PURL_ECOSYSTEM);
+    if (ecosystem === null) {
+        result.error = 'purl must contain an ecosystem';
+        return result;
+    }
+    result.type = ecosystem[1];
+    const parts = purl.split('/');
+    // the first 'part' should be 'pkg:ecosystem'
+    if (parts.length < 2 || parts[1].length === 0) {
+        result.error = 'purl must contain a namespace or name';
+        return result;
+    }
+    let namePlusRest;
+    if (parts.length === 2) {
+        namePlusRest = parts[1];
+    }
+    else {
+        result.namespace = decodeURIComponent(parts[1]);
+        namePlusRest = parts[2];
+    }
+    const name = namePlusRest.match(/([^@#?]+)[@#?]?.*/);
+    if (name === null) {
+        // we're done here
+        return result;
+    }
+    result.name = decodeURIComponent(name[1]);
+    const version = namePlusRest.match(/@([^#?]+)[#?]?.*/);
+    if (version === null) {
+        return result;
+    }
+    result.version = decodeURIComponent(version[1]);
+    // we don't parse subpath or attributes, so we're done here
+    return result;
+}
+exports.parsePURL = parsePURL;
+
+
+/***/ }),
+
 /***/ 1129:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -50103,12 +49960,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
-const utils_1 = __nccwpck_require__(1314);
+const purl_1 = __nccwpck_require__(4498);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
 exports.SCOPES = ['unknown', 'runtime', 'development'];
 exports.SeveritySchema = z.enum(exports.SEVERITIES).default('low');
 const PackageURL = z.string().transform(purlString => {
-    return (0, utils_1.parsePURL)(purlString);
+    return (0, purl_1.parsePURL)(purlString);
 });
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
@@ -50267,11 +50124,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addTempName = exports.removeVersion = exports.parsePURL = exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
+exports.octokitClient = exports.isSPDXValid = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(1620));
-const packageurl_js_1 = __nccwpck_require__(8915);
 function groupDependenciesByManifest(changes) {
     var _a;
     const dependencies = new Map();
@@ -50331,48 +50187,6 @@ function octokitClient(token = 'repo-token', required = true) {
     return new octokit_1.Octokit(opts);
 }
 exports.octokitClient = octokitClient;
-const parsePURL = (purlString) => {
-    try {
-        return packageurl_js_1.PackageURL.fromString(purlString);
-    }
-    catch (error) {
-        if (error.message ===
-            `purl is missing the required "name" component.`) {
-            //packageurl-js does not support empty names, so will manually override it for deny-groups
-            //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
-            const fixedPurlString = (0, exports.addTempName)(purlString);
-            const purl = packageurl_js_1.PackageURL.fromString(fixedPurlString);
-            purl.name = '';
-            return purl;
-        }
-        else if (error.message === `version must be percent-encoded`) {
-            core.error(`Version must be percent-encoded. Removing version from purl: '${purlString}.`);
-            const fixedPurlString = (0, exports.removeVersion)(purlString);
-            const purl = (0, exports.parsePURL)(fixedPurlString);
-            purl.version = '';
-            return purl;
-        }
-        core.error(`Error parsing purl: ${purlString}`);
-        throw error;
-    }
-};
-exports.parsePURL = parsePURL;
-const removeVersion = (purlString) => {
-    // sometimes these errors are actually caused by a final '/', so try removing that first
-    if (purlString.endsWith('/')) {
-        return purlString.substring(0, purlString.length - 1);
-    }
-    const idx = purlString.lastIndexOf('@');
-    return purlString.substring(0, idx);
-};
-exports.removeVersion = removeVersion;
-const addTempName = (purlString) => {
-    if (purlString.endsWith('/')) {
-        return `${purlString}TEMP_NAME`;
-    }
-    return `${purlString}/TEMP_NAME`;
-};
-exports.addTempName = addTempName;
 
 
 /***/ }),
@@ -53762,13 +53576,13 @@ exports.mapIncludes = mapIncludes;
 
 
 var Alias = __nccwpck_require__(5639);
-var Collection = __nccwpck_require__(2240);
+var Collection = __nccwpck_require__(3466);
 var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
-var toJS = __nccwpck_require__(979);
+var toJS = __nccwpck_require__(2463);
 var Schema = __nccwpck_require__(6831);
 var stringifyDocument = __nccwpck_require__(5225);
-var anchors = __nccwpck_require__(2723);
+var anchors = __nccwpck_require__(8459);
 var applyReviver = __nccwpck_require__(3412);
 var createNode = __nccwpck_require__(9652);
 var directives = __nccwpck_require__(5400);
@@ -54099,7 +53913,7 @@ exports.Document = Document;
 
 /***/ }),
 
-/***/ 2723:
+/***/ 8459:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -54694,11 +54508,11 @@ exports.warn = warn;
 "use strict";
 
 
-var anchors = __nccwpck_require__(2723);
+var anchors = __nccwpck_require__(8459);
 var visit = __nccwpck_require__(6796);
 var identity = __nccwpck_require__(5589);
 var Node = __nccwpck_require__(1399);
-var toJS = __nccwpck_require__(979);
+var toJS = __nccwpck_require__(2463);
 
 class Alias extends Node.NodeBase {
     constructor(source) {
@@ -54799,7 +54613,7 @@ exports.Alias = Alias;
 
 /***/ }),
 
-/***/ 2240:
+/***/ 3466:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -54967,7 +54781,7 @@ exports.isEmptyPath = isEmptyPath;
 
 var applyReviver = __nccwpck_require__(3412);
 var identity = __nccwpck_require__(5589);
-var toJS = __nccwpck_require__(979);
+var toJS = __nccwpck_require__(2463);
 
 class NodeBase {
     constructor(type) {
@@ -55062,7 +54876,7 @@ exports.createPair = createPair;
 
 var identity = __nccwpck_require__(5589);
 var Node = __nccwpck_require__(1399);
-var toJS = __nccwpck_require__(979);
+var toJS = __nccwpck_require__(2463);
 
 const isScalarValue = (value) => !value || (typeof value !== 'function' && typeof value !== 'object');
 class Scalar extends Node.NodeBase {
@@ -55097,7 +54911,7 @@ exports.isScalarValue = isScalarValue;
 
 var stringifyCollection = __nccwpck_require__(2466);
 var addPairToJSMap = __nccwpck_require__(4676);
-var Collection = __nccwpck_require__(2240);
+var Collection = __nccwpck_require__(3466);
 var identity = __nccwpck_require__(5589);
 var Pair = __nccwpck_require__(246);
 var Scalar = __nccwpck_require__(9338);
@@ -55252,10 +55066,10 @@ exports.findPair = findPair;
 
 var createNode = __nccwpck_require__(9652);
 var stringifyCollection = __nccwpck_require__(2466);
-var Collection = __nccwpck_require__(2240);
+var Collection = __nccwpck_require__(3466);
 var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
-var toJS = __nccwpck_require__(979);
+var toJS = __nccwpck_require__(2463);
 
 class YAMLSeq extends Collection.Collection {
     static get tagName() {
@@ -55377,7 +55191,7 @@ var log = __nccwpck_require__(6909);
 var stringify = __nccwpck_require__(8409);
 var identity = __nccwpck_require__(5589);
 var Scalar = __nccwpck_require__(9338);
-var toJS = __nccwpck_require__(979);
+var toJS = __nccwpck_require__(2463);
 
 const MERGE_KEY = '<<';
 function addPairToJSMap(ctx, map, { key, value }) {
@@ -55542,7 +55356,7 @@ exports.isSeq = isSeq;
 
 /***/ }),
 
-/***/ 979:
+/***/ 2463:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -58693,7 +58507,7 @@ exports.intOct = intOct;
 
 
 var identity = __nccwpck_require__(5589);
-var toJS = __nccwpck_require__(979);
+var toJS = __nccwpck_require__(2463);
 var YAMLMap = __nccwpck_require__(6011);
 var YAMLSeq = __nccwpck_require__(5161);
 var pairs = __nccwpck_require__(9841);
@@ -59279,7 +59093,7 @@ exports.foldFlowLines = foldFlowLines;
 "use strict";
 
 
-var anchors = __nccwpck_require__(2723);
+var anchors = __nccwpck_require__(8459);
 var identity = __nccwpck_require__(5589);
 var stringifyComment = __nccwpck_require__(5182);
 var stringifyString = __nccwpck_require__(6226);
@@ -59414,7 +59228,7 @@ exports.stringify = stringify;
 "use strict";
 
 
-var Collection = __nccwpck_require__(2240);
+var Collection = __nccwpck_require__(3466);
 var identity = __nccwpck_require__(5589);
 var stringify = __nccwpck_require__(8409);
 var stringifyComment = __nccwpck_require__(5182);

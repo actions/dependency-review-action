@@ -1,7 +1,6 @@
 import * as core from '@actions/core'
 import {Change} from './schemas'
-import {PackageURL} from 'packageurl-js'
-import {parsePURL} from './utils'
+import {PackageURL, parsePURL} from './purl'
 
 export async function getDeniedChanges(
   changes: Change[],
@@ -24,6 +23,11 @@ export async function getDeniedChanges(
 
     for (const denied of deniedGroups) {
       const namespace = getNamespace(change)
+      if (!denied.namespace) {
+        core.error(
+          `Denied group represented by '${denied.original}' does not have a namespace. The format should be 'pkg:<type>/<namespace>/'.`
+        )
+      }
       if (namespace && namespace === denied.namespace) {
         changesDenied.push(change)
         hasDeniedPackage = true
@@ -40,30 +44,13 @@ export async function getDeniedChanges(
   return changesDenied
 }
 
-// getNamespace returns the namespace associated with the given change.
-// it tries to get this from the package_url member, but that won't exist
-// for all changes, so as a fallback it may create a new purl based on the
-// ecosystem and name associated with the change, then extract the namespace
-// from that.
-// returns '' if there is no namespace.
-export const getNamespace = (change: Change): string => {
-  let purl_str: string
+export const getNamespace = (change: Change): string | null => {
   if (change.package_url) {
-    purl_str = change.package_url
-  } else {
-    purl_str = `pkg:${change.ecosystem}/${change.name}`
+    return parsePURL(change.package_url).namespace
   }
-
-  try {
-    const purl = parsePURL(purl_str)
-    const namespace = purl.namespace
-    if (namespace === undefined || namespace === null) {
-      return ''
-    } else {
-      return namespace
-    }
-  } catch (e) {
-    core.error(`Error parsing purl '${purl_str}': ${e}`)
-    return ''
+  const matches = change.name.match(/([^:/]+)[:/]/)
+  if (matches && matches.length > 1) {
+    return matches[1]
   }
+  return null
 }

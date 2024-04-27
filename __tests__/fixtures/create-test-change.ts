@@ -1,7 +1,6 @@
-import {PackageURL} from 'packageurl-js'
 import {Change} from '../../src/schemas'
 import {createTestVulnerability} from './create-test-vulnerability'
-import {parsePURL} from '../../src/utils'
+import {PackageURL, parsePURL} from '../../src/purl'
 
 const defaultNpmChange: Change = {
   change_type: 'added',

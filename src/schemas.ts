@@ -1,5 +1,5 @@
 import * as z from 'zod'
-import {parsePURL} from './utils'
+import {parsePURL} from './purl'
 
 export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const
 export const SCOPES = ['unknown', 'runtime', 'development'] as const

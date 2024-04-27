@@ -106,6 +106,25 @@ test('denies packages that match the deny group list exactly', async () => {
   expect(deniedChanges[0]).toBe(changes[1])
 })
 
+test(`denies packages using the namespace from the name when there's no package_url`, async () => {
+  const changes: Changes = [
+    createTestChange({
+      package_url: 'pkg:npm/org.test.pass/pass-this@1.0.0',
+      ecosystem: 'npm'
+    }),
+    createTestChange({
+      name: 'org.test:deny-this',
+      package_url: '',
+      ecosystem: 'maven'
+    })
+  ]
+  const deniedGroups = createTestPURLs(['pkg:maven/org.test/'])
+  const deniedChanges = await getDeniedChanges(changes, [], deniedGroups)
+
+  expect(deniedChanges.length).toEqual(1)
+  expect(deniedChanges[0]).toBe(changes[1])
+})
+
 test('allows packages not defined in the deny packages and groups list', async () => {
   const changes: Changes = [npmChange, pipChange]
   const deniedPackages = createTestPURLs([

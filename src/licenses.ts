@@ -1,7 +1,7 @@
 import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient, parsePURL} from './utils'
-import {PackageURL} from 'packageurl-js'
+import {isSPDXValid, octokitClient} from './utils'
+import {parsePURL} from './purl'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -32,7 +32,7 @@ export async function getInvalidLicenseChanges(
   const {allow, deny} = licenses
   const licenseExclusions = licenses.licenseExclusions?.map(
     (pkgUrl: string) => {
-      return PackageURL.fromString(encodeURI(pkgUrl))
+      return parsePURL(pkgUrl)
     }
   )
 
