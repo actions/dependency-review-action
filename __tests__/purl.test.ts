@@ -4,20 +4,20 @@ import {parsePURL} from '../src/purl'
 test('parsePURL returns an error if the purl does not start with "pkg:"', () => {
   const purl = 'not-a-purl'
   const result = parsePURL(purl)
-  expect(result.error).toEqual('purl must start with "pkg:"')
+  expect(result.error).toEqual('package-url must start with "pkg:"')
 })
 
-test('parsePURL returns an error if the purl does not contain an ecosystem', () => {
+test('parsePURL returns an error if the purl does not contain a type', () => {
   const purl = 'pkg:/'
   const result = parsePURL(purl)
-  expect(result.error).toEqual('purl must contain an ecosystem')
+  expect(result.error).toEqual('package-url must contain a type')
 })
 
 test('parsePURL returns an error if the purl does not contain a namespace or name', () => {
   const purl = 'pkg:ecosystem/'
   const result = parsePURL(purl)
   expect(result.type).toEqual('ecosystem')
-  expect(result.error).toEqual('purl must contain a namespace or name')
+  expect(result.error).toEqual('package-url must contain a namespace or name')
 })
 
 test('parsePURL returns a PURL with the correct values in the happy case', () => {
@@ -86,6 +86,28 @@ test('parsePURL table test', () => {
         version: null,
         original: 'pkg:ecosystem/name',
         error: null
+      }
+    },
+    {
+      purl: 'pkg:/?',
+      expected: {
+        type: '',
+        namespace: null,
+        name: null,
+        version: null,
+        original: 'pkg:/?',
+        error: 'package-url must contain a type'
+      }
+    },
+    {
+      purl: 'pkg:ecosystem/#',
+      expected: {
+        type: 'ecosystem',
+        namespace: null,
+        name: null,
+        version: null,
+        original: 'pkg:ecosystem/#',
+        error: 'package-url must contain a namespace or name'
       }
     },
     {

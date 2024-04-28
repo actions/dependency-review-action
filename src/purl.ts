@@ -1,7 +1,7 @@
 import * as z from 'zod'
 
-// the basic purl type, containing ecosystem, namespace, name, and version.
-// other than ecosystem, all fields are nullable. this is for maximum flexibility
+// the basic purl type, containing type, namespace, name, and version.
+// other than type, all fields are nullable. this is for maximum flexibility
 // at the cost of strict adherence to the package-url spec.
 export const PurlSchema = z.object({
   type: z.string(),
@@ -14,7 +14,7 @@ export const PurlSchema = z.object({
 
 export type PackageURL = z.infer<typeof PurlSchema>
 
-const PURL_ECOSYSTEM = /pkg:([a-zA-Z0-9-_]+)\/.*/
+const PURL_TYPE = /pkg:([a-zA-Z0-9-_]+)\/.*/
 
 export function parsePURL(purl: string): PackageURL {
   const result: PackageURL = {
@@ -26,19 +26,19 @@ export function parsePURL(purl: string): PackageURL {
     error: null
   }
   if (!purl.startsWith('pkg:')) {
-    result.error = 'purl must start with "pkg:"'
+    result.error = 'package-url must start with "pkg:"'
     return result
   }
-  const ecosystem = purl.match(PURL_ECOSYSTEM)
-  if (ecosystem === null) {
-    result.error = 'purl must contain an ecosystem'
+  const type = purl.match(PURL_TYPE)
+  if (!type) {
+    result.error = 'package-url must contain a type'
     return result
   }
-  result.type = ecosystem[1]
+  result.type = type[1]
   const parts = purl.split('/')
   // the first 'part' should be 'pkg:ecosystem'
-  if (parts.length < 2 || parts[1].length === 0) {
-    result.error = 'purl must contain a namespace or name'
+  if (parts.length < 2 || !parts[1]) {
+    result.error = 'package-url must contain a namespace or name'
     return result
   }
   let namePlusRest: string
@@ -49,13 +49,17 @@ export function parsePURL(purl: string): PackageURL {
     namePlusRest = parts[2]
   }
   const name = namePlusRest.match(/([^@#?]+)[@#?]?.*/)
-  if (name === null) {
+  if (!result.namespace && !name) {
+    result.error = 'package-url must contain a namespace or name'
+    return result
+  }
+  if (!name) {
     // we're done here
     return result
   }
   result.name = decodeURIComponent(name[1])
   const version = namePlusRest.match(/@([^#?]+)[#?]?.*/)
-  if (version === null) {
+  if (!version) {
     return result
   }
   result.version = decodeURIComponent(version[1])

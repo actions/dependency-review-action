@@ -15,7 +15,7 @@ const PackageURL = z
     if (purl.error) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Error parsing purl: ${purl.error}`
+        message: `Error parsing package-url: ${purl.error}`
       })
     }
   })
@@ -35,7 +35,7 @@ const PackageURLWithNamespace = z
     if (purl.namespace === null) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `purl must have a namespace, and the namespace must be followed by '/'`
+        message: `package-url must have a namespace, and the namespace must be followed by '/'`
       })
     }
   })
