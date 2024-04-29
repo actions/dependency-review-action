@@ -280,7 +280,7 @@ With the `deny-packages` option, you can exclude dependencies based on their PUR
 
 Using the `deny-groups` option you can exclude dependencies by their group name/namespace. You can add multiple values separated by a comma.
 
-In this example, we are excluding all versions of `pkg:maven/org.apache.logging.log4j:log4j-api` and only `2.23.0` of log4j-core `pkg:maven/org.apache.logging.log4j/log4j-core@2.23.0` from `maven` and all packages in the group `pkg:maven/com.bazaarvoice.maven`
+In this example, we are excluding all versions of `pkg:maven/org.apache.logging.log4j:log4j-api` and only `2.23.0` of log4j-core `pkg:maven/org.apache.logging.log4j/log4j-core@2.23.0` from `maven` and all packages in the group `pkg:maven/com.bazaarvoice.maven/`
 
 ```yaml
 name: 'Dependency Review'
@@ -300,7 +300,7 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           deny-packages: 'pkg:maven/org.apache.logging.log4j/log4j-api,pkg:maven/org.apache.logging.log4j/log4j-core@2.23.0'
-          deny-groups: 'pkg:maven/com.bazaarvoice.jolt'
+          deny-groups: 'pkg:maven/com.bazaarvoice.jolt/'
 ```
 
 ## Waiting for dependency submission jobs to complete

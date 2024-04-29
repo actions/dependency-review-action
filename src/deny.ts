@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import {Change} from './schemas'
-import {PackageURL} from 'packageurl-js'
+import {PackageURL, parsePURL} from './purl'
 
 export async function getDeniedChanges(
   changes: Change[],
@@ -11,12 +11,10 @@ export async function getDeniedChanges(
 
   let hasDeniedPackage = false
   for (const change of changes) {
-    const changedPackage = PackageURL.fromString(change.package_url)
-
     for (const denied of deniedPackages) {
       if (
-        (!denied.version || changedPackage.version === denied.version) &&
-        changedPackage.name === denied.name
+        (!denied.version || change.version === denied.version) &&
+        change.name === denied.name
       ) {
         changesDenied.push(change)
         hasDeniedPackage = true
@@ -24,10 +22,13 @@ export async function getDeniedChanges(
     }
 
     for (const denied of deniedGroups) {
-      if (
-        changedPackage.namespace &&
-        changedPackage.namespace === denied.namespace
-      ) {
+      const namespace = getNamespace(change)
+      if (!denied.namespace) {
+        core.error(
+          `Denied group represented by '${denied.original}' does not have a namespace. The format should be 'pkg:<type>/<namespace>/'.`
+        )
+      }
+      if (namespace && namespace === denied.namespace) {
         changesDenied.push(change)
         hasDeniedPackage = true
       }
@@ -41,4 +42,15 @@ export async function getDeniedChanges(
   }
 
   return changesDenied
+}
+
+export const getNamespace = (change: Change): string | null => {
+  if (change.package_url) {
+    return parsePURL(change.package_url).namespace
+  }
+  const matches = change.name.match(/([^:/]+)[:/]/)
+  if (matches && matches.length > 1) {
+    return matches[1]
+  }
+  return null
 }

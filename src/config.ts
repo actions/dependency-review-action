@@ -5,7 +5,7 @@ import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
-import {PackageURL} from 'packageurl-js'
+import {parsePURL} from './purl'
 
 type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
 
@@ -233,7 +233,7 @@ function validatePURL(allow_dependencies_licenses: string[] | undefined): void {
     return
   }
   const invalid_purls = allow_dependencies_licenses.filter(
-    purl => !PackageURL.fromString(purl)
+    purl => !parsePURL(purl).error
   )
 
   if (invalid_purls.length > 0) {

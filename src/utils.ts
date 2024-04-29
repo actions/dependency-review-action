@@ -1,7 +1,6 @@
 import * as core from '@actions/core'
 import {Octokit} from 'octokit'
 import spdxParse from 'spdx-expression-parse'
-import {PackageURL} from 'packageurl-js'
 import {Changes} from './schemas'
 
 export function groupDependenciesByManifest(
@@ -68,22 +67,4 @@ export function octokitClient(token = 'repo-token', required = true): Octokit {
   }
 
   return new Octokit(opts)
-}
-
-export const parsePURL = (purlString: string): PackageURL => {
-  try {
-    return PackageURL.fromString(purlString)
-  } catch (error) {
-    if (
-      (error as Error).message ===
-      `purl is missing the required "name" component.`
-    ) {
-      //packageurl-js does not support empty names, so will manually override it for deny-groups
-      //https://github.com/package-url/packageurl-js/blob/master/src/package-url.js#L216
-      const purl = PackageURL.fromString(`${purlString}TEMP_NAME`)
-      purl.name = ''
-      return purl
-    }
-    throw error
-  }
 }
