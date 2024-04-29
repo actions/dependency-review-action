@@ -224,3 +224,22 @@ test('it parses the comment-summary-in-pr input', async () => {
   config = await readConfig()
   expect(config.comment_summary_in_pr).toBe('on-failure')
 })
+
+test('it successfully parses allow-dependencies-licenses', async () => {
+  setInput(
+    'allow-dependencies-licenses',
+    'pkg:npm/strip-ansi@6.0.1, pkg:npm/wrap-ansi@7.0.0'
+  )
+  const config = await readConfig()
+  expect(config.allow_dependencies_licenses).toEqual([
+    'pkg:npm/strip-ansi@6.0.1',
+    'pkg:npm/wrap-ansi@7.0.0'
+  ])
+})
+
+test('it raises an error if invalid purl_url is included in allow-dependencies-licenses', async () => {
+  setInput('allow-dependencies-licenses', 'invalid')
+  await expect(readConfig()).rejects.toThrow(
+    /Invalid purl\(s\) in allow-dependencies-licenses:/
+  )
+})

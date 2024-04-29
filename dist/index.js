@@ -49781,9 +49781,16 @@ function validatePURL(allow_dependencies_licenses) {
     if (allow_dependencies_licenses === undefined) {
         return;
     }
-    const invalid_purls = allow_dependencies_licenses.filter(purl => !(0, purl_1.parsePURL)(purl).error);
+    const invalid_purls = allow_dependencies_licenses.reduce((acc, license) => {
+        const { error } = (0, purl_1.parsePURL)(license);
+        if (error) {
+            acc.push(`- ${license}: ${error}`);
+        }
+        return acc;
+    }, []);
     if (invalid_purls.length > 0) {
-        throw new Error(`Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`);
+        console.error(`Invalid purl(s) in allow-dependencies-licenses:\n ${invalid_purls.join('\n')}`);
+        throw new Error(`Invalid purl(s) in allow-dependencies-licenses:\n ${invalid_purls.join('\n')}`);
     }
     return;
 }
