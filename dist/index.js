@@ -988,6 +988,12 @@ const PackageURL = z
             message: `Error parsing package-url: ${purl.error}`
         });
     }
+    if (!purl.name) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing package-url: name is required`
+        });
+    }
 });
 const PackageURLWithNamespace = z
     .string()
@@ -50011,6 +50017,12 @@ const PackageURL = z
         context.addIssue({
             code: z.ZodIssueCode.custom,
             message: `Error parsing package-url: ${purl.error}`
+        });
+    }
+    if (!purl.name) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing package-url: name is required`
         });
     }
 });
