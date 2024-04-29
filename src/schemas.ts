@@ -46,6 +46,22 @@ const PackageURLWithNamespace = z
     }
   })
 
+const PackageURLString = z.string().superRefine((value, context) => {
+  const purl = parsePURL(value)
+  if (purl.error) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Error parsing package-url: ${purl.error}`
+    })
+  }
+  if (!purl.name) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Error parsing package-url: name is required`
+    })
+  }
+})
+
 export const ChangeSchema = z.object({
   change_type: z.enum(['added', 'removed']),
   manifest: z.string(),
@@ -81,7 +97,7 @@ export const ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
-    allow_dependencies_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(PackageURLString).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     deny_packages: z.array(PackageURL).default([]),
     deny_groups: z.array(PackageURLWithNamespace).default([]),

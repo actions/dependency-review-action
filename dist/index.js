@@ -1014,6 +1014,21 @@ const PackageURLWithNamespace = z
         });
     }
 });
+const PackageURLString = z.string().superRefine((value, context) => {
+    const purl = (0, purl_1.parsePURL)(value);
+    if (purl.error) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing package-url: ${purl.error}`
+        });
+    }
+    if (!purl.name) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing package-url: name is required`
+        });
+    }
+});
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -1045,7 +1060,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
-    allow_dependencies_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(PackageURLString).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     deny_packages: z.array(PackageURL).default([]),
     deny_groups: z.array(PackageURLWithNamespace).default([]),
@@ -49598,7 +49613,6 @@ const core = __importStar(__nccwpck_require__(2186));
 const z = __importStar(__nccwpck_require__(3301));
 const schemas_1 = __nccwpck_require__(1129);
 const utils_1 = __nccwpck_require__(1314);
-const purl_1 = __nccwpck_require__(4498);
 function readConfig() {
     return __awaiter(this, void 0, void 0, function* () {
         const inlineConfig = readInlineConfig();
@@ -49630,7 +49644,6 @@ function readInlineConfig() {
     const warn_only = getOptionalBoolean('warn-only');
     const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard');
     const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level');
-    validatePURL(allow_dependencies_licenses);
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const keys = {
@@ -49737,10 +49750,6 @@ function parseConfigFile(configData) {
             if (key === 'allow-licenses' || key === 'deny-licenses') {
                 validateLicenses(key, data[key]);
             }
-            // validate purls from the allow-dependencies-licenses
-            if (key === 'allow-dependencies-licenses') {
-                validatePURL(data[key]);
-            }
             // get rid of the ugly dashes from the actions conventions
             if (key.includes('-')) {
                 data[key.replace(/-/g, '_')] = data[key];
@@ -49775,17 +49784,6 @@ function getRemoteConfig(configOpts) {
             throw new Error('Error fetching remote config file');
         }
     });
-}
-function validatePURL(allow_dependencies_licenses) {
-    //validate that the provided elements of the string are in valid purl format
-    if (allow_dependencies_licenses === undefined) {
-        return;
-    }
-    const invalid_purls = allow_dependencies_licenses.filter(purl => !(0, purl_1.parsePURL)(purl).error);
-    if (invalid_purls.length > 0) {
-        throw new Error(`Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`);
-    }
-    return;
 }
 
 
@@ -50045,6 +50043,21 @@ const PackageURLWithNamespace = z
         });
     }
 });
+const PackageURLString = z.string().superRefine((value, context) => {
+    const purl = (0, purl_1.parsePURL)(value);
+    if (purl.error) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing package-url: ${purl.error}`
+        });
+    }
+    if (!purl.name) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Error parsing package-url: name is required`
+        });
+    }
+});
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -50076,7 +50089,7 @@ exports.ConfigurationOptionsSchema = z
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
-    allow_dependencies_licenses: z.array(z.string()).optional(),
+    allow_dependencies_licenses: z.array(PackageURLString).optional(),
     allow_ghsas: z.array(z.string()).default([]),
     deny_packages: z.array(PackageURL).default([]),
     deny_groups: z.array(PackageURLWithNamespace).default([]),

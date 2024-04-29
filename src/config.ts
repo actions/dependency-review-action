@@ -5,7 +5,6 @@ import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
 import {isSPDXValid, octokitClient} from './utils'
-import {parsePURL} from './purl'
 
 type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
 
@@ -53,7 +52,6 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     'warn-on-openssf-scorecard-level'
   )
 
-  validatePURL(allow_dependencies_licenses)
   validateLicenses('allow-licenses', allow_licenses)
   validateLicenses('deny-licenses', deny_licenses)
 
@@ -184,11 +182,6 @@ function parseConfigFile(configData: string): ConfigurationOptionsPartial {
         validateLicenses(key, data[key])
       }
 
-      // validate purls from the allow-dependencies-licenses
-      if (key === 'allow-dependencies-licenses') {
-        validatePURL(data[key])
-      }
-
       // get rid of the ugly dashes from the actions conventions
       if (key.includes('-')) {
         data[key.replace(/-/g, '_')] = data[key]
@@ -226,20 +219,4 @@ async function getRemoteConfig(configOpts: {
     core.debug(error as string)
     throw new Error('Error fetching remote config file')
   }
-}
-function validatePURL(allow_dependencies_licenses: string[] | undefined): void {
-  //validate that the provided elements of the string are in valid purl format
-  if (allow_dependencies_licenses === undefined) {
-    return
-  }
-  const invalid_purls = allow_dependencies_licenses.filter(
-    purl => !parsePURL(purl).error
-  )
-
-  if (invalid_purls.length > 0) {
-    throw new Error(
-      `Invalid purl(s) in allow-dependencies-licenses: ${invalid_purls}`
-    )
-  }
-  return
 }

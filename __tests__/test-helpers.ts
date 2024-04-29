@@ -11,6 +11,7 @@ export function clearInputs(): void {
     'FAIL-ON-SEVERITY',
     'FAIL-ON-SCOPES',
     'ALLOW-LICENSES',
+    'ALLOW-DEPENDENCIES-LICENSES',
     'DENY-LICENSES',
     'ALLOW-GHSAS',
     'LICENSE-CHECK',
