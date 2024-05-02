@@ -46,7 +46,10 @@ export function parsePURL(purl: string): PackageURL {
     namePlusRest = parts[1]
   } else {
     result.namespace = decodeURIComponent(parts[1])
-    namePlusRest = parts[2]
+    // Add back the '/'s to the rest of the parts, in case there are any more.
+    // This may violate the purl spec, but people do it and it can be parsed
+    // without ambiguity.
+    namePlusRest = parts.slice(2).join('/')
   }
   const name = namePlusRest.match(/([^@#?]+)[@#?]?.*/)
   if (!result.namespace && !name) {
