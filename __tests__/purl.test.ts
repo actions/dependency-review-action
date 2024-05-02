@@ -45,6 +45,30 @@ test('parsePURL table test', () => {
       }
     },
     {
+      purl: 'pkg:golang/gopkg.in/DataDog/dd-trace-go.v1@1.63.1',
+      // Note: this purl is technically invalid, but we can still parse it
+      expected: {
+        type: 'golang',
+        namespace: 'gopkg.in',
+        name: 'DataDog/dd-trace-go.v1',
+        version: '1.63.1',
+        original: 'pkg:golang/gopkg.in/DataDog/dd-trace-go.v1@1.63.1',
+        error: null
+      }
+    },
+    {
+      purl: 'pkg:golang/github.com/pelletier/go-toml/v2',
+      // Note: this purl is technically invalid, but we can still parse it
+      expected: {
+        type: 'golang',
+        namespace: 'github.com',
+        name: 'pelletier/go-toml/v2',
+        version: null,
+        original: 'pkg:golang/github.com/pelletier/go-toml/v2',
+        error: null
+      }
+    },
+    {
       purl: 'pkg:npm/%40ns%20foo/n%40me@1.%2f2.3',
       expected: {
         type: 'npm',
