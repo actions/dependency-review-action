@@ -11,6 +11,7 @@ export function clearInputs(): void {
     'FAIL-ON-SEVERITY',
     'FAIL-ON-SCOPES',
     'ALLOW-LICENSES',
+    'ALLOW-DEPENDENCIES-LICENSES',
     'DENY-LICENSES',
     'ALLOW-GHSAS',
     'LICENSE-CHECK',
@@ -19,7 +20,9 @@ export function clearInputs(): void {
     'BASE-REF',
     'HEAD-REF',
     'COMMENT-SUMMARY-IN-PR',
-    'WARN-ONLY'
+    'WARN-ONLY',
+    'DENY-GROUPS',
+    'DENY-PACKAGES'
   ]
 
   // eslint-disable-next-line github/array-foreach

@@ -59,7 +59,7 @@ inputs:
     description: A comma-separated list of package URLs to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto"). If version specified, only deny matching packages and version; else, deny all regardless of version.
     required: false
   deny-groups:
-    description: A comma-separated list of package URLs for group(s)/namespace(s) to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto")
+    description: A comma-separated list of package URLs for group(s)/namespace(s) to deny (e.g. "pkg:npm/express/, pkg:pypi/pycrypto/"). Please note that the group name must be followed by a `/`.
     required: false
   retry-on-snapshot-warnings:
     description: Whether to retry on snapshot warnings

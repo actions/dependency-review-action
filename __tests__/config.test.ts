@@ -54,6 +54,52 @@ test('it raises an error if an empty allow list is specified', async () => {
   )
 })
 
+test('it successfully parses allow-dependencies-licenses', async () => {
+  setInput(
+    'allow-dependencies-licenses',
+    'pkg:npm/@test/package@1.2.3,pkg:npm/example'
+  )
+  const config = await readConfig()
+  expect(config.allow_dependencies_licenses).toEqual([
+    'pkg:npm/@test/package@1.2.3',
+    'pkg:npm/example'
+  ])
+})
+
+test('it raises an error when an invalid package-url is used for allow-dependencies-licenses', async () => {
+  setInput('allow-dependencies-licenses', 'not-a-purl')
+  await expect(readConfig()).rejects.toThrow(`Error parsing package-url`)
+})
+
+test('it raises an error when a nameless package-url is used for allow-dependencies-licenses', async () => {
+  setInput('allow-dependencies-licenses', 'pkg:npm/@namespace/')
+  await expect(readConfig()).rejects.toThrow(
+    `Error parsing package-url: name is required`
+  )
+})
+
+test('it raises an error when an invalid package-url is used for deny-packages', async () => {
+  setInput('deny-packages', 'not-a-purl')
+
+  await expect(readConfig()).rejects.toThrow(`Error parsing package-url`)
+})
+
+test('it raises an error when a nameless package-url is used for deny-packages', async () => {
+  setInput('deny-packages', 'pkg:npm/@namespace/')
+
+  await expect(readConfig()).rejects.toThrow(
+    `Error parsing package-url: name is required`
+  )
+})
+
+test('it raises an error when an argument to deny-groups is missing a namespace', async () => {
+  setInput('deny-groups', 'pkg:npm/my-fun-org')
+
+  await expect(readConfig()).rejects.toThrow(
+    `package-url must have a namespace`
+  )
+})
+
 test('it raises an error when given an unknown severity', async () => {
   setInput('fail-on-severity', 'zombies')
 

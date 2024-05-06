@@ -85,7 +85,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 ## Cutting a new release
 
-1. Update the version number in [package.json](https://github.com/actions/dependency-review-action/blob/main/package.json).
+1. Update the version number in [package.json](https://github.com/actions/dependency-review-action/blob/main/package.json) and run `npm i` to update the lockfile.
 1. Go to [Draft a new
    release](https://github.com/actions/dependency-review-action/releases/new)
    in the Releases page.
