@@ -10,6 +10,70 @@ const icons = {
   warning: '⚠️'
 }
 
+export function getMinSummaryForComment(
+  vulnerableChanges: Changes,
+  invalidLicenseChanges: InvalidLicenseChanges,
+  deniedChanges: Changes,
+  scorecard: Scorecard,
+  config: ConfigurationOptions
+): string {
+  const scorecardWarnings = countScorecardWarnings(scorecard, config)
+  const licenseIssues = countLicenseIssues(invalidLicenseChanges)
+
+  let minSummary = '# Dependency Review\n'
+
+  if (
+    vulnerableChanges.length === 0 &&
+    licenseIssues === 0 &&
+    deniedChanges.length === 0 &&
+    scorecardWarnings === 0
+  ) {
+    const issueTypes = [
+      config.vulnerability_check ? 'vulnerabilities' : '',
+      config.license_check ? 'license issues' : '',
+      config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
+    ]
+    if (issueTypes.filter(Boolean).length === 0) {
+      minSummary += `${icons.check} No issues found.`
+    } else {
+      minSummary += `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
+    }
+  }
+
+  minSummary += 'The following issues were found:\n'
+  minSummary += config.vulnerability_check
+    ? `* ${checkOrFailIcon(vulnerableChanges.length)} ${
+        vulnerableChanges.length
+      } vulnerable package(s)\n`
+    : ''
+  minSummary += config.license_check
+    ? `* ${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
+        invalidLicenseChanges.forbidden.length
+      } package(s) with incompatible licenses\n
+            * ${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
+              invalidLicenseChanges.unresolved.length
+            } package(s) with invalid SPDX license definitions\n
+            * ${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
+              invalidLicenseChanges.unlicensed.length
+            } package(s) with unknown licenses.\n`
+    : ''
+  minSummary +=
+    deniedChanges.length > 0
+      ? `* ${checkOrWarnIcon(deniedChanges.length)} ${
+          deniedChanges.length
+        } package(s) denied.\n`
+      : ''
+  minSummary +=
+    config.show_openssf_scorecard && scorecardWarnings > 0
+      ? `* ${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.\n`
+      : ''
+
+  // Add the link to the job summary provided by GitHub Actions for this workflow run
+  minSummary += `\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
+
+  return minSummary
+}
+
 export function addSummaryToSummary(
   vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,

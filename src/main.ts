@@ -134,6 +134,13 @@ async function run(): Promise<void> {
       scorecard,
       config
     )
+    const minSummary = summary.getMinSummaryForComment(
+      vulnerableChanges,
+      invalidLicenseChanges,
+      deniedChanges,
+      scorecard,
+      config
+    )
 
     if (snapshot_warnings) {
       summary.addSnapshotWarnings(config, snapshot_warnings)
@@ -166,7 +173,7 @@ async function run(): Promise<void> {
     core.setOutput('dependency-changes', JSON.stringify(changes))
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
-    await commentPr(core.summary, config)
+    await commentPr(core.summary, config, minSummary)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       core.setFailed(

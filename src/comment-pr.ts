@@ -12,14 +12,20 @@ const octo = new retryingOctokit(
 
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
+const MAX_COMMENT_LENGTH = 65536
 
 export async function commentPr(
   summary: typeof core.summary,
-  config: ConfigurationOptions
+  config: ConfigurationOptions,
+  minComment: string
 ): Promise<void> {
   const commentContent = summary.stringify()
 
-  core.setOutput('comment-content', commentContent)
+  if (commentContent.length >= MAX_COMMENT_LENGTH) {
+    core.setOutput('comment-content', minComment)
+  } else {
+    core.setOutput('comment-content', commentContent)
+  }
 
   if (
     !(
