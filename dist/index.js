@@ -56,10 +56,16 @@ const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->';
-function commentPr(summary, config) {
+const MAX_COMMENT_LENGTH = 65536;
+function commentPr(summary, config, minComment) {
     return __awaiter(this, void 0, void 0, function* () {
         const commentContent = summary.stringify();
-        core.setOutput('comment-content', commentContent);
+        if (commentContent.length >= MAX_COMMENT_LENGTH) {
+            core.setOutput('comment-content', minComment);
+        }
+        else {
+            core.setOutput('comment-content', commentContent);
+        }
         if (!(config.comment_summary_in_pr === 'always' ||
             (config.comment_summary_in_pr === 'on-failure' &&
                 process.exitCode === core.ExitCode.Failure))) {
@@ -638,6 +644,7 @@ function run() {
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
             const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
             summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config);
+            const minSummary = summary.getMinSummaryForComment(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config);
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(config, snapshot_warnings);
             }
@@ -664,7 +671,7 @@ function run() {
             core.setOutput('dependency-changes', JSON.stringify(changes));
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
-            yield (0, comment_pr_1.commentPr)(core.summary, config);
+            yield (0, comment_pr_1.commentPr)(core.summary, config, minSummary);
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError && error.status === 404) {
@@ -1138,7 +1145,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = exports.getMinSummaryForComment = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -1146,6 +1153,48 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
+function getMinSummaryForComment(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
+    const scorecardWarnings = countScorecardWarnings(scorecard, config);
+    const licenseIssues = countLicenseIssues(invalidLicenseChanges);
+    let minSummary = '# Dependency Review\n';
+    if (vulnerableChanges.length === 0 &&
+        licenseIssues === 0 &&
+        deniedChanges.length === 0 &&
+        scorecardWarnings === 0) {
+        const issueTypes = [
+            config.vulnerability_check ? 'vulnerabilities' : '',
+            config.license_check ? 'license issues' : '',
+            config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
+        ];
+        if (issueTypes.filter(Boolean).length === 0) {
+            minSummary += `${icons.check} No issues found.`;
+        }
+        else {
+            minSummary += `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`;
+        }
+    }
+    minSummary += 'The following issues were found:\n';
+    minSummary += config.vulnerability_check
+        ? `* ${checkOrFailIcon(vulnerableChanges.length)} ${vulnerableChanges.length} vulnerable package(s)\n`
+        : '';
+    minSummary += config.license_check
+        ? `* ${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses\n
+            * ${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions\n
+            * ${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.\n`
+        : '';
+    minSummary +=
+        deniedChanges.length > 0
+            ? `* ${checkOrWarnIcon(deniedChanges.length)} ${deniedChanges.length} package(s) denied.\n`
+            : '';
+    minSummary +=
+        config.show_openssf_scorecard && scorecardWarnings > 0
+            ? `* ${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.\n`
+            : '';
+    // Add the link to the job summary provided by GitHub Actions for this workflow run
+    minSummary += `\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`;
+    return minSummary;
+}
+exports.getMinSummaryForComment = getMinSummaryForComment;
 function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
     const scorecardWarnings = countScorecardWarnings(scorecard, config);
     const licenseIssues = countLicenseIssues(invalidLicenseChanges);
