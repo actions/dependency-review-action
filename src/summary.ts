@@ -50,12 +50,12 @@ export function getMinSummaryForComment(
     ? `* ${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
         invalidLicenseChanges.forbidden.length
       } package(s) with incompatible licenses\n
-            * ${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-              invalidLicenseChanges.unresolved.length
-            } package(s) with invalid SPDX license definitions\n
-            * ${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
-              invalidLicenseChanges.unlicensed.length
-            } package(s) with unknown licenses.\n`
+* ${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
+        invalidLicenseChanges.unresolved.length
+      } package(s) with invalid SPDX license definitions\n
+* ${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
+        invalidLicenseChanges.unlicensed.length
+      } package(s) with unknown licenses.\n`
     : ''
   minSummary +=
     deniedChanges.length > 0
