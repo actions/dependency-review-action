@@ -60,12 +60,6 @@ const MAX_COMMENT_LENGTH = 65536;
 function commentPr(summary, config, minComment) {
     return __awaiter(this, void 0, void 0, function* () {
         const commentContent = summary.stringify();
-        if (commentContent.length >= MAX_COMMENT_LENGTH) {
-            core.setOutput('comment-content', minComment);
-        }
-        else {
-            core.setOutput('comment-content', commentContent);
-        }
         if (!(config.comment_summary_in_pr === 'always' ||
             (config.comment_summary_in_pr === 'on-failure' &&
                 process.exitCode === core.ExitCode.Failure))) {
@@ -75,7 +69,11 @@ function commentPr(summary, config, minComment) {
             core.warning('Not in the context of a pull request. Skipping comment creation.');
             return;
         }
-        const commentBody = `${commentContent}\n\n${COMMENT_MARKER}`;
+        let commentBody = `${commentContent}\n\n${COMMENT_MARKER}`;
+        if (commentBody.length >= MAX_COMMENT_LENGTH) {
+            core.debug('The comment was too big for the GitHub API. Falling back on a minimum comment');
+            commentBody = `${minComment}\n\n${COMMENT_MARKER}`;
+        }
         try {
             const existingCommentId = yield findCommentByMarker(COMMENT_MARKER);
             if (existingCommentId) {

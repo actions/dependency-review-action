@@ -21,12 +21,6 @@ export async function commentPr(
 ): Promise<void> {
   const commentContent = summary.stringify()
 
-  if (commentContent.length >= MAX_COMMENT_LENGTH) {
-    core.setOutput('comment-content', minComment)
-  } else {
-    core.setOutput('comment-content', commentContent)
-  }
-
   if (
     !(
       config.comment_summary_in_pr === 'always' ||
@@ -44,7 +38,14 @@ export async function commentPr(
     return
   }
 
-  const commentBody = `${commentContent}\n\n${COMMENT_MARKER}`
+  let commentBody = `${commentContent}\n\n${COMMENT_MARKER}`
+
+  if (commentBody.length >= MAX_COMMENT_LENGTH) {
+    core.debug(
+      'The comment was too big for the GitHub API. Falling back on a minimum comment'
+    )
+    commentBody = `${minComment}\n\n${COMMENT_MARKER}`
+  }
 
   try {
     const existingCommentId = await findCommentByMarker(COMMENT_MARKER)
