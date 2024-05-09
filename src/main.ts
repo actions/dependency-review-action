@@ -24,6 +24,7 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
 import {getDeniedChanges} from './deny'
+import { getTrustyScores, addTrustyScores } from './trusty'
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -87,6 +88,9 @@ async function run(): Promise<void> {
       return
     }
 
+    if (config.trusty_scores) {
+      getTrustyScores(changes, config)
+    }
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
 
     const filteredChanges = filterAllowedAdvisories(
@@ -161,6 +165,9 @@ async function run(): Promise<void> {
       summary.addScorecardToSummary(scorecard, config)
       printScorecardBlock(scorecard, config)
       createScorecardWarnings(scorecard, config)
+    }
+    if (config.trusty_scores) {
+      addTrustyScores(changes, config)
     }
 
     core.setOutput('dependency-changes', JSON.stringify(changes))
