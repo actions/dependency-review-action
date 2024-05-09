@@ -89,7 +89,7 @@ async function run(): Promise<void> {
     }
 
     if (config.trusty_scores) {
-      getTrustyScores(changes, config)
+      await getTrustyScores(changes, config)
     }
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
 

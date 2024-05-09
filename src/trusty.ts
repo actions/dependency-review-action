@@ -1,8 +1,9 @@
-import {Change, Changes, ConfigurationOptions, TrustySummary} from './schemas'
+import {Change, Changes, ConfigurationOptions, Trusty, TrustySummary} from './schemas'
 import * as core from '@actions/core'
 import { SummaryTableRow } from '@actions/core/lib/summary'
+import { Type } from 'typescript'
 
-let failed_trusty = {status: 'failed'}
+let failed_trusty: Trusty = {status: 'failed'}
 
 function trustyEcosystem(ecosystem: string): String {
   let ret = ecosystem
@@ -26,27 +27,48 @@ function uiUrl(change: Change, endpoint: string){
   return url;
 }
 
+function processResponse(trustyResponse: { [x: string]: { [x: string]: any } }): Trusty {
+  let trusty = { ...trustyResponse['summary'],
+    status: trustyResponse?.['package_data']?.['status'],
+    status_code: trustyResponse?.['package_data']?.['status_code']
+  } || failed_trusty
+  if (trusty && trustyResponse['package_data']?.['status_code']) {
+    trusty.status_code = trustyResponse['package_data']['status_code']
+  }
+  return trusty;
+}
+
+async function fetchWithRetry(url: string, retries: number, changeName: string): Promise<Trusty> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      core.debug(`Fetching ${changeName} ${attempt}`);
+      let response = await fetch(url);
+      if (response.ok) {
+        let trustyResponse = await response.json()
+        let processed = processResponse(trustyResponse)
+        if (processed.status === 'complete') {
+          return processed;
+        } else {
+          core.warning(`Attempt ${changeName} ${attempt} failed: ${processed.status_code}`);
+        }
+      }
+    } catch (error) {
+      core.warning(`Attempt ${changeName} ${attempt} failed: ${error}`);
+    }
+    core.debug(`Waiting ${Math.pow(2, attempt)} seconds before retrying ${changeName}`);
+    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+  }
+  return failed_trusty;
+}
+
 async function processChange(change: Change, config: ConfigurationOptions): Promise<Change> {
   const url = apiUrl(change, config.trusty_api);
-  const response = await fetch(url);
-  if (response.ok) {
-    let trustyResponse = await response.json()
-    change.trusty = { ...trustyResponse.summary,
-      status: trustyResponse?.package_data.status,
-      status_code: trustyResponse?.package_data.status_code
-    } || failed_trusty
-    if (change.trusty && trustyResponse['package_data']?.['status_code']) {
-      change.trusty.status_code = trustyResponse['package_data']['status_code']
-    }
-  } else {
-    core.debug(`Couldn't get trusty data for ${url}`)
-    change.trusty = failed_trusty
-  }
+  change.trusty = await fetchWithRetry(url, config.trusty_retries, change.name);
   return change;
 }
 
 export async function getTrustyScores(changes: Changes, config: ConfigurationOptions): Promise<Changes> {
-  const results = Promise.all(changes.map(change => processChange(change, config)));
+  const results = await Promise.all(changes.map(change => processChange(change, config)));
   return results
 }
 
@@ -63,8 +85,11 @@ function nameAndLink(change: Change, endpoint: string): string {
 }
 
 function changeAsRow(change: Change, config: ConfigurationOptions): SummaryTableRow {
+  let ct = {'added': '+', 'removed': '-'}
   let row: SummaryTableRow = [
+    ct[change.change_type],
     nameAndLink(change, config.trusty_ui),
+    change.version,
     change.trusty?.status || 'failed',
     change.trusty?.status_code?.toString() || '',
     change.trusty?.score?.toString() || '',
@@ -76,7 +101,7 @@ function changeAsRow(change: Change, config: ConfigurationOptions): SummaryTable
 }
 
 function changesAsTable(changes: Changes, config: ConfigurationOptions): SummaryTableRow[] {
-  let headings = ['Package', 'Status', 'Status Code', 'Score'].map(heading => ({
+  let headings = ['+/-', 'Package', 'Version', 'Status', 'Status Code', 'Score'].map(heading => ({
     data: heading,
     header: true
   }))
