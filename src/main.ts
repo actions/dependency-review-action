@@ -24,7 +24,7 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr} from './comment-pr'
 import {getDeniedChanges} from './deny'
-import { getTrustyScores, addTrustyScores } from './trusty'
+import {getTrustyScores, addTrustyScores} from './trusty'
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))

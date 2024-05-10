@@ -132,9 +132,7 @@ test('Test non-existent', async () => {
 })
 
 test('Test good list', async () => {
-  const changes: Changes = [
-    npmChange, pipChange, mavenChange
-  ]
+  const changes: Changes = [npmChange, pipChange, mavenChange]
   const changed = await getTrustyScores(changes, config)
   expect(changed[0]).not.toBeNull()
   expect(changed).toHaveLength(changes.length)
@@ -142,9 +140,7 @@ test('Test good list', async () => {
 })
 
 test('Test bad list', async () => {
-  const changes: Changes = [
-    npmChange, pipChange, mavenChange, nonExistChange
-  ]
+  const changes: Changes = [npmChange, pipChange, mavenChange, nonExistChange]
   const changed = await getTrustyScores(changes, config)
   expect(changed[0]).not.toBeNull()
   expect(changed).toHaveLength(changes.length)

@@ -62,7 +62,8 @@ const PackageURLString = z.string().superRefine((value, context) => {
   }
 })
 
-export const TrustySummarySchema = z.object({    activity_user: z.number(),
+export const TrustySummarySchema = z.object({
+  activity_user: z.number(),
   activity_repo: z.number(),
   from: z.string(),
   activity: z.number(),
@@ -76,7 +77,7 @@ export const TrustySchema = z.object({
   status_code: z.number().optional(),
   description: TrustySummarySchema.optional(),
   updated_at: z.string().optional() // or z.date() if you want to parse the string into a Date object
-});
+})
 
 export const ChangeSchema = z.object({
   change_type: z.enum(['added', 'removed']),
