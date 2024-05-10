@@ -1,5 +1,5 @@
 import {expect, jest, test} from '@jest/globals'
-import {Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
+import {Changes, ConfigurationOptions, ConfigurationOptionsSchema, Scorecard} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -19,23 +19,18 @@ const emptyInvalidLicenseChanges = {
 const emptyScorecard: Scorecard = {
   dependencies: []
 }
-const defaultConfig: ConfigurationOptions = {
+const defaultConfig: ConfigurationOptions = ConfigurationOptionsSchema.parse({
   vulnerability_check: true,
   license_check: true,
   fail_on_severity: 'high',
   fail_on_scopes: ['runtime'],
-  allow_ghsas: [],
-  allow_licenses: [],
-  deny_licenses: [],
-  deny_packages: [],
-  deny_groups: [],
   comment_summary_in_pr: true,
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: false
-}
+});
 
 const changesWithEmptyManifests: Changes = [
   {

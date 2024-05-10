@@ -1,5 +1,5 @@
 import {expect, test} from '@jest/globals'
-import {Change, Changes, ConfigurationOptions} from '../src/schemas'
+import {Change, Changes, ConfigurationOptions, ConfigurationOptionsSchema} from '../src/schemas'
 import {getTrustyScores} from '../src/trusty'
 
 const nonExistChange: Change = {
@@ -39,9 +39,9 @@ const pipChange: Change = {
   change_type: 'added',
   manifest: 'requirements.txt',
   ecosystem: 'pip',
-  name: 'package-1',
+  name: 'pandas',
   version: '1.1.1',
-  package_url: 'pkg:pypi/package-1@1.1.1',
+  package_url: 'pkg:pypi/pandas@1.1.1',
   license: 'MIT',
   source_repository_url: 'github.com/some-repo',
   scope: 'runtime',
@@ -82,22 +82,9 @@ const mavenChange: Change = {
   ]
 }
 
-const config: ConfigurationOptions = {
-  trusty_api: 'https://trusty.stacklok.dev',
-  fail_on_severity: 'critical',
-  fail_on_scopes: [],
-  allow_ghsas: [],
-  deny_packages: [],
-  deny_groups: [],
-  license_check: false,
-  vulnerability_check: false,
-  retry_on_snapshot_warnings: false,
-  retry_on_snapshot_warnings_timeout: 0,
-  show_openssf_scorecard: false,
-  warn_on_openssf_scorecard_level: 0,
-  comment_summary_in_pr: false,
-  warn_only: false
-}
+const config: ConfigurationOptions = ConfigurationOptionsSchema.parse({
+ trusty_retries: 2
+});
 
 test('Test npm', async () => {
   const changes: Changes = [npmChange]

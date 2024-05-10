@@ -60,11 +60,11 @@ function processResponse(trustyResponse: TrustyResponse): Trusty {
   const trusty =
     {
       ...trustyResponse['summary'],
-      status: trustyResponse?.['package_data']?.['status'],
-      status_code: trustyResponse?.['package_data']?.['status_code']
+      status: trustyResponse?.['package_data']?.['status'] as string | undefined,
+      status_code: trustyResponse?.['package_data']?.['status_code'] as number | undefined
     } || failed_trusty
   if (trusty && trustyResponse['package_data']?.['status_code']) {
-    trusty.status_code = trustyResponse['package_data']['status_code']
+    trusty.status_code = trustyResponse['package_data']['status_code'] as number
   }
   return trusty
 }
