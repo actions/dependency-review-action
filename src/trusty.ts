@@ -1,9 +1,16 @@
 import {Change, Changes, ConfigurationOptions, Trusty, TrustySummary} from './schemas'
 import * as core from '@actions/core'
 import { SummaryTableRow } from '@actions/core/lib/summary'
-import { Type } from 'typescript'
 
 let failed_trusty: Trusty = {status: 'failed'}
+
+const icons = {
+  check: '✅',
+  cross: '❌',
+  warning: '⚠️',
+  plus: '➕',
+  minus: '➖'
+};
 
 function trustyEcosystem(ecosystem: string): String {
   let ret = ecosystem
@@ -23,7 +30,8 @@ function apiUrl(change: Change, endpoint: string){
 function uiUrl(change: Change, endpoint: string){
   let base_api = endpoint || 'https://api.trustypkg.dev'
   let ecosystem = trustyEcosystem(change.ecosystem)
-  const url = `${base_api}/${ecosystem}/${change.name}`;
+  const name = encodeURIComponent(change.name);
+  const url = `${base_api}/${ecosystem}/${name}`;
   return url;
 }
 
@@ -38,32 +46,36 @@ function processResponse(trustyResponse: { [x: string]: { [x: string]: any } }):
   return trusty;
 }
 
-async function fetchWithRetry(url: string, retries: number, changeName: string): Promise<Trusty> {
+async function fetchWithRetry(change: Change, retries: number, config: ConfigurationOptions): Promise<Trusty> {
+  let ret = failed_trusty
+  const url = apiUrl(change, config.trusty_api);
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      core.debug(`Fetching ${changeName} ${attempt}`);
+      core.debug(`Fetching ${change.name} ${attempt}`);
       let response = await fetch(url);
+      let status: string =`${response.status} ${response.statusText}`;
       if (response.ok) {
         let trustyResponse = await response.json()
         let processed = processResponse(trustyResponse)
         if (processed.status === 'complete') {
           return processed;
-        } else {
-          core.warning(`Attempt ${changeName} ${attempt} failed: ${processed.status_code}`);
         }
+        status = '${processed.status_code} ${processed.status}';
       }
+      core.warning(`Attempt ${change.name} ${attempt} failed: ${status}`);
+      ret.status = response.statusText;
+      ret.status_code = response.status;
     } catch (error) {
-      core.warning(`Attempt ${changeName} ${attempt} failed: ${error}`);
+      core.warning(`Attempt ${change.name} ${attempt} failed: ${error}`);
     }
-    core.debug(`Waiting ${Math.pow(2, attempt)} seconds before retrying ${changeName}`);
+    core.debug(`Waiting ${Math.pow(2, attempt)} seconds before retrying ${change.name}`);
     await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
   }
-  return failed_trusty;
+  return ret;
 }
 
 async function processChange(change: Change, config: ConfigurationOptions): Promise<Change> {
-  const url = apiUrl(change, config.trusty_api);
-  change.trusty = await fetchWithRetry(url, config.trusty_retries, change.name);
+  change.trusty = await fetchWithRetry(change, config.trusty_retries, config);
   return change;
 }
 
@@ -84,24 +96,40 @@ function nameAndLink(change: Change, endpoint: string): string {
   return `<a href="${url}">${change.name}</a>`
 }
 
+function delta(change: Change, config: ConfigurationOptions): string{
+  let ct = {'added': icons.plus, 'removed': icons.minus}
+  let icon = icons.check
+  if (change.change_type === 'added' && change?.trusty?.score) {
+    if (change?.trusty.score <= config.trusty_warn) {
+      icon = icons.warning
+    }
+    if (change?.trusty.score <= config.trusty_fail) {
+      icon = icons.cross
+    }
+  }
+  return `${ct[change.change_type]}${icon}`
+}
+
 function changeAsRow(change: Change, config: ConfigurationOptions): SummaryTableRow {
-  let ct = {'added': '+', 'removed': '-'}
+  
   let row: SummaryTableRow = [
-    ct[change.change_type],
+    delta(change, config),
     nameAndLink(change, config.trusty_ui),
     change.version,
-    change.trusty?.status || 'failed',
-    change.trusty?.status_code?.toString() || '',
     change.trusty?.score?.toString() || '',
   ]
   if (change.trusty?.description !== undefined){
     row.push({data: descriptionAsTable(change.trusty.description)})
   }
+  if (change.trusty?.status !== 'complete'){
+    let status = `${change.trusty?.status_code} ${change.trusty?.status}`
+    row.push(status)
+  }
   return row
 }
 
 function changesAsTable(changes: Changes, config: ConfigurationOptions): SummaryTableRow[] {
-  let headings = ['+/-', 'Package', 'Version', 'Status', 'Status Code', 'Score'].map(heading => ({
+  let headings = ['+/-', 'Package', 'Version', 'Score'].map(heading => ({
     data: heading,
     header: true
   }))
@@ -112,7 +140,21 @@ function changesAsTable(changes: Changes, config: ConfigurationOptions): Summary
   return rows
 }
 
+export function sortChangesByTrustyScore(changes: Changes): Changes {
+  return changes.sort((a, b) => {
+    const scoreA = a.trusty?.score || 0;
+    const scoreB = b.trusty?.score || 0;
+    return scoreA - scoreB; // For descending order, swap scoreA and scoreB for ascending order
+  });
+}
+
+export function filterChangesByTrustyScore(changes: Changes, threshold: number): Changes {
+  return changes.filter(change => (change.trusty?.score || 0) < threshold);
+}
+
 export function addTrustyScores(changes: Changes, config: ConfigurationOptions): void {
+  const filteredChanges = filterChangesByTrustyScore(changes, config.trusty_show);
+  const sortedChanges = sortChangesByTrustyScore(filteredChanges);
   core.summary.addHeading('Trusty Scores', 2)
-  core.summary.addTable(changesAsTable(changes, config))
+  core.summary.addTable(changesAsTable(sortedChanges, config))
 }
