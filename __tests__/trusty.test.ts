@@ -1,5 +1,10 @@
 import {expect, test} from '@jest/globals'
-import {Change, Changes, ConfigurationOptions, ConfigurationOptionsSchema} from '../src/schemas'
+import {
+  Change,
+  Changes,
+  ConfigurationOptions,
+  ConfigurationOptionsSchema
+} from '../src/schemas'
 import {getTrustyScores} from '../src/trusty'
 
 const nonExistChange: Change = {
@@ -83,8 +88,8 @@ const mavenChange: Change = {
 }
 
 const config: ConfigurationOptions = ConfigurationOptionsSchema.parse({
- trusty_retries: 2
-});
+  trusty_retries: 2
+})
 
 test('Test npm', async () => {
   const changes: Changes = [npmChange]

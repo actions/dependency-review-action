@@ -1,5 +1,10 @@
 import {expect, jest, test} from '@jest/globals'
-import {Changes, ConfigurationOptions, ConfigurationOptionsSchema, Scorecard} from '../src/schemas'
+import {
+  Changes,
+  ConfigurationOptions,
+  ConfigurationOptionsSchema,
+  Scorecard
+} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -30,7 +35,7 @@ const defaultConfig: ConfigurationOptions = ConfigurationOptionsSchema.parse({
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: false
-});
+})
 
 const changesWithEmptyManifests: Changes = [
   {
