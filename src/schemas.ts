@@ -129,9 +129,9 @@ export const ConfigurationOptionsSchema = z
     warn_on_openssf_scorecard_level: z.number().default(3),
     trusty_scores: z.boolean().optional().default(true),
     trusty_retries: z.number().optional().default(3),
-    trusty_show: z.number().optional().default(10),
-    trusty_warn: z.number().optional().default(8),
-    trusty_fail: z.number().optional().default(7),
+    trusty_show: z.number().optional().default(7),
+    trusty_warn: z.number().optional().default(5),
+    trusty_fail: z.number().optional().default(1),
     trusty_api: z.string().default('https://api.trustypkg.dev'),
     trusty_ui: z.string().default('https://trustypkg.dev'),
     comment_summary_in_pr: z

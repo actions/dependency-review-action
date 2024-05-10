@@ -152,9 +152,36 @@ export function filterChangesByTrustyScore(changes: Changes, threshold: number):
   return changes.filter(change => (change.trusty?.score || 0) < threshold);
 }
 
+function createSummary(changes: Changes, config: ConfigurationOptions): string {
+  const showCount = changes.filter(change => (
+    change.change_type === 'added' &&
+    change.trusty?.score || 0) < config.trusty_show).length;
+  const failCount = changes.filter(change => (
+    change.change_type === 'added' &&
+    change.trusty?.score || 0) < config.trusty_fail).length;
+  const warnCount = changes.filter(change => (
+    change.change_type === 'added' &&
+    change.trusty?.score || 0) < config.trusty_warn).length;
+
+  let ret =  `There are ${showCount} additions with a score below ${config.trusty_show}, ` +
+         `${warnCount} additions with a score below ${config.trusty_warn}, and ` +
+         `${failCount} additions with a score below ${config.trusty_fail}.`;
+  if (failCount > 0) {
+    ret += ` Please review the changes carefully.`;
+    core.setFailed(ret)
+  } else if(warnCount > 0) {
+    ret += ` You might want to review the warnings.`;    
+  } else {
+    ret += ` No changes require immediate attention.`;
+  }
+  return ret
+}
+
 export function addTrustyScores(changes: Changes, config: ConfigurationOptions): void {
   const filteredChanges = filterChangesByTrustyScore(changes, config.trusty_show);
   const sortedChanges = sortChangesByTrustyScore(filteredChanges);
   core.summary.addHeading('Trusty Scores', 2)
+  core.summary.addRaw(`<a>${createSummary(sortedChanges, config)}</a>`)
+  core.summary.addEOL()
   core.summary.addTable(changesAsTable(sortedChanges, config))
 }
