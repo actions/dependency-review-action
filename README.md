@@ -85,6 +85,14 @@ Configure this action by either inlining these options in your workflow file, or
 | `warn-only`+                           | When set to `true`, the action will log all vulnerabilities as warnings regardless of the severity, and the action will complete with a `success` status. This overrides the `fail-on-severity` option.    | `true`, `false`                                                                                              | `false`       |
 | `show-openssf-scorecard-levels`        | When set to `true`, the action will output information about all the known OpenSSF Scorecard scores for the dependencies changed in this pull request.                                                     | `true`, `false`                                                                                              | `true`        |
 | `warn-on-openssf-scorecard-level`      | When `show-openssf-scorecard-levels` is set to `true`, this option lets you configure the threshold for when a score is considered too low and gets a :warning: warning in the CI.                         | Any positive integer                                                                                         | 3             |
+| `trusty-scores`| `trusty-scores` is a boolean to enable or disable Trusty scores | `true`, `false` | `true` |
+| `trusty-retries`| `trusty-retries` specifies the number of retries the action uses to fetch from the trusty API. | Any positive integer | 3 |
+| `trusty-show`| `trusty-show` is the minimum score package to show. | Any positive integer | 7 |
+| `trusty-warn`| `trusty-warn` is the minimum score before a wqarning is shown. | Any positive integer | 5 |
+| `trusty-fail`| `trusty-fail` is the minimum score before a failure is shown and the action is marked as failed. | Any positive integer | 1 |
+| `trusty-api`| `trusty-api` is the base url for API calls. There should be no need to change this. | string | 'https://api.trustypkg.dev' |
+| `trusty-ui`| `trusty-ui` is the base url for the Trusty UI. There should be no need to change this. | string | 'https://trustypkg.dev' |
+
 
 \*not supported for use with GitHub Enterprise Server
 

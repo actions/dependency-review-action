@@ -1,9 +1,14 @@
+// This code is used to fetch and process Trusty scores for a set of changes. 
+// It includes functions to fetch data with retry mechanism, process changes,
+// sort and filter changes by Trusty score, and create a summary of changes.
 import {Change, Changes, ConfigurationOptions, Trusty, TrustySummary} from './schemas'
 import * as core from '@actions/core'
 import { SummaryTableRow } from '@actions/core/lib/summary'
 
+// Default Trusty object for failed cases
 let failed_trusty: Trusty = {status: 'failed'}
 
+// Icons for summary table
 const icons = {
   check: '✅',
   cross: '❌',
@@ -12,6 +17,7 @@ const icons = {
   minus: '➖'
 };
 
+// Handle ecosystem naming differences
 function trustyEcosystem(ecosystem: string): String {
   let ret = ecosystem
   if (ecosystem === 'pip') {
@@ -20,6 +26,7 @@ function trustyEcosystem(ecosystem: string): String {
   return ret
 }
 
+// Construct API URL
 function apiUrl(change: Change, endpoint: string){
   let base_api = endpoint || 'https://api.trustypkg.dev'
   let ecosystem = trustyEcosystem(change.ecosystem)
@@ -27,6 +34,7 @@ function apiUrl(change: Change, endpoint: string){
   return url;
 }
 
+// Construct UI URL
 function uiUrl(change: Change, endpoint: string){
   let base_api = endpoint || 'https://api.trustypkg.dev'
   let ecosystem = trustyEcosystem(change.ecosystem)
@@ -35,6 +43,7 @@ function uiUrl(change: Change, endpoint: string){
   return url;
 }
 
+// Process the response from Trusty API
 function processResponse(trustyResponse: { [x: string]: { [x: string]: any } }): Trusty {
   let trusty = { ...trustyResponse['summary'],
     status: trustyResponse?.['package_data']?.['status'],
@@ -46,6 +55,7 @@ function processResponse(trustyResponse: { [x: string]: { [x: string]: any } }):
   return trusty;
 }
 
+// Function to fetch Trusty data with retries
 async function fetchWithRetry(change: Change, retries: number, config: ConfigurationOptions): Promise<Trusty> {
   let ret = failed_trusty
   const url = apiUrl(change, config.trusty_api);
@@ -74,16 +84,19 @@ async function fetchWithRetry(change: Change, retries: number, config: Configura
   return ret;
 }
 
+// Process a single change
 async function processChange(change: Change, config: ConfigurationOptions): Promise<Change> {
   change.trusty = await fetchWithRetry(change, config.trusty_retries, config);
   return change;
 }
 
+// Function to get Trusty scores for all changes
 export async function getTrustyScores(changes: Changes, config: ConfigurationOptions): Promise<Changes> {
   const results = await Promise.all(changes.map(change => processChange(change, config)));
   return results
 }
 
+// Convert Trusty description to HTML table
 function descriptionAsTable(details: TrustySummary): string {
   let rows = Object.entries(details).map(([key, value]) => {
     return `<tr><td>${key}</td><td>${value}</td></tr>`
@@ -91,11 +104,13 @@ function descriptionAsTable(details: TrustySummary): string {
   return `<details><table>${rows.join('')}</table></details>`
 }
 
+// Function to create an anchor for a change
 function nameAndLink(change: Change, endpoint: string): string {
   const url = uiUrl(change, endpoint);
   return `<a href="${url}">${change.name}</a>`
 }
 
+// Function to determine the delta icon for a change
 function delta(change: Change, config: ConfigurationOptions): string{
   let ct = {'added': icons.plus, 'removed': icons.minus}
   let icon = icons.check
@@ -110,8 +125,8 @@ function delta(change: Change, config: ConfigurationOptions): string{
   return `${ct[change.change_type]}${icon}`
 }
 
+// Function to convert a change to a summary table row
 function changeAsRow(change: Change, config: ConfigurationOptions): SummaryTableRow {
-  
   let row: SummaryTableRow = [
     delta(change, config),
     nameAndLink(change, config.trusty_ui),
@@ -128,6 +143,7 @@ function changeAsRow(change: Change, config: ConfigurationOptions): SummaryTable
   return row
 }
 
+// Function to convert all changes to a summary table
 function changesAsTable(changes: Changes, config: ConfigurationOptions): SummaryTableRow[] {
   let headings = ['+/-', 'Package', 'Version', 'Score'].map(heading => ({
     data: heading,
@@ -140,6 +156,7 @@ function changesAsTable(changes: Changes, config: ConfigurationOptions): Summary
   return rows
 }
 
+// Function to sort changes by Trusty score
 export function sortChangesByTrustyScore(changes: Changes): Changes {
   return changes.sort((a, b) => {
     const scoreA = a.trusty?.score || 0;
@@ -148,10 +165,12 @@ export function sortChangesByTrustyScore(changes: Changes): Changes {
   });
 }
 
+// Filter changes by Trusty score
 export function filterChangesByTrustyScore(changes: Changes, threshold: number): Changes {
   return changes.filter(change => (change.trusty?.score || 0) < threshold);
 }
 
+// Create a summary of changes
 function createSummary(changes: Changes, config: ConfigurationOptions): string {
   const showCount = changes.filter(change => (
     change.change_type === 'added' &&
@@ -177,6 +196,7 @@ function createSummary(changes: Changes, config: ConfigurationOptions): string {
   return ret
 }
 
+// Add Trusty scores to changes and create a summary
 export function addTrustyScores(changes: Changes, config: ConfigurationOptions): void {
   const filteredChanges = filterChangesByTrustyScore(changes, config.trusty_show);
   const sortedChanges = sortChangesByTrustyScore(filteredChanges);
