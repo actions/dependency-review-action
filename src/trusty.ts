@@ -97,6 +97,9 @@ async function fetchWithRetry(
       core.warning(`Attempt ${change.name} ${attempt} failed: ${status}`)
       ret.status = response.statusText
       ret.status_code = response.status
+      if (response.status === 422) {
+        return ret
+      }
     } catch (error) {
       core.warning(`Attempt ${change.name} ${attempt} failed: ${error}`)
     }
@@ -210,7 +213,11 @@ export function filterChangesByTrustyScore(
   changes: Changes,
   threshold: number
 ): Changes {
-  return changes.filter(change => (change.trusty?.score || 0) < threshold)
+  return changes.filter(
+    change =>
+      (change.trusty?.score || 0) < threshold &&
+      change.trusty?.status_code !== 422
+  )
 }
 
 // Create a summary of changes
@@ -232,9 +239,9 @@ function createSummary(changes: Changes, config: ConfigurationOptions): string {
   ).length
 
   let ret =
-    `There are ${showCount} additions with a score below ${config.trusty_show}, ` +
-    `${warnCount} additions with a score below ${config.trusty_warn}, and ` +
-    `${failCount} additions with a score below ${config.trusty_fail}.`
+    `There are ${showCount} ${icons.check} additions with a score below ${config.trusty_show}, ` +
+    `${warnCount} ${icons.warning} additions with a score below ${config.trusty_warn} and ` +
+    `${failCount} ${icons.cross} additions with a score below ${config.trusty_fail}.`
   if (failCount > 0) {
     ret += ` Please review the changes carefully.`
     core.setFailed(ret)
@@ -257,7 +264,7 @@ export function addTrustyScores(
   )
   const sortedChanges = sortChangesByTrustyScore(filteredChanges)
   core.summary.addHeading('Trusty Scores', 2)
-  core.summary.addRaw(`<a>${createSummary(sortedChanges, config)}</a>`)
+  core.summary.addRaw(`<div>${createSummary(sortedChanges, config)}</div>`)
   core.summary.addEOL()
   core.summary.addTable(changesAsTable(sortedChanges, config))
 }
