@@ -582,6 +582,7 @@ const git_refs_1 = __nccwpck_require__(1086);
 const utils_1 = __nccwpck_require__(918);
 const comment_pr_1 = __nccwpck_require__(5842);
 const deny_1 = __nccwpck_require__(2134);
+const trusty_1 = __nccwpck_require__(3534);
 function delay(ms) {
     return __awaiter(this, void 0, void 0, function* () {
         return new Promise(resolve => setTimeout(resolve, ms));
@@ -629,6 +630,9 @@ function run() {
                 core.info('No Dependency Changes found. Skipping Dependency Review.');
                 return;
             }
+            if (config.trusty_scores) {
+                yield (0, trusty_1.getTrustyScores)(changes, config);
+            }
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
             const failOnSeverityParams = config.fail_on_severity;
@@ -671,6 +675,9 @@ function run() {
                 summary.addScorecardToSummary(scorecard, config);
                 printScorecardBlock(scorecard, config);
                 createScorecardWarnings(scorecard, config);
+            }
+            if (config.trusty_scores) {
+                (0, trusty_1.addTrustyScores)(changes, config);
             }
             core.setOutput('dependency-changes', JSON.stringify(changes));
             summary.addScannedDependencies(changes);
@@ -973,7 +980,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.TrustySchema = exports.TrustySummarySchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(3609);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -1032,6 +1039,21 @@ const PackageURLString = z.string().superRefine((value, context) => {
         });
     }
 });
+exports.TrustySummarySchema = z.object({
+    activity_user: z.number(),
+    activity_repo: z.number(),
+    from: z.string(),
+    activity: z.number(),
+    provenance: z.number(),
+    typosquatting: z.number()
+});
+exports.TrustySchema = z.object({
+    score: z.number().optional(),
+    status: z.string().optional(),
+    status_code: z.number().optional(),
+    description: exports.TrustySummarySchema.optional(),
+    updated_at: z.string().optional() // or z.date() if you want to parse the string into a Date object
+});
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -1042,6 +1064,7 @@ exports.ChangeSchema = z.object({
     license: z.string().nullable(),
     source_repository_url: z.string().nullable(),
     scope: z.enum(exports.SCOPES).optional(),
+    trusty: exports.TrustySchema.optional(),
     vulnerabilities: z
         .array(z.object({
         severity: exports.SeveritySchema,
@@ -1076,6 +1099,13 @@ exports.ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional().default(true),
     warn_on_openssf_scorecard_level: z.number().default(3),
+    trusty_scores: z.boolean().optional().default(true),
+    trusty_retries: z.number().optional().default(3),
+    trusty_show: z.number().optional().default(7),
+    trusty_warn: z.number().optional().default(5),
+    trusty_fail: z.number().optional().default(1),
+    trusty_api: z.string().default('https://api.trustypkg.dev'),
+    trusty_ui: z.string().default('https://trustypkg.dev'),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),
@@ -1584,6 +1614,252 @@ function checkOrFailIcon(count) {
 function checkOrWarnIcon(count) {
     return count === 0 ? icons.check : icons.warning;
 }
+
+
+/***/ }),
+
+/***/ 3534:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.addTrustyScores = exports.filterChangesByTrustyScore = exports.sortChangesByTrustyScore = exports.getTrustyScores = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+// Default Trusty object for failed cases
+const failed_trusty = { status: 'failed' };
+// Icons for summary table
+const icons = {
+    check: '✅',
+    cross: '❌',
+    warning: '⚠️',
+    plus: '➕',
+    minus: '➖'
+};
+// Handle ecosystem naming differences
+function trustyEcosystem(ecosystem) {
+    let ret = ecosystem;
+    if (ecosystem === 'pip') {
+        ret = 'pypi';
+    }
+    return ret;
+}
+// Construct API URL
+function apiUrl(change, endpoint) {
+    const base_api = endpoint || 'https://api.trustypkg.dev';
+    const ecosystem = trustyEcosystem(change.ecosystem);
+    const url = `${base_api}/v1/report?package_name=${change.name}&package_type=${ecosystem}`;
+    return url;
+}
+// Construct UI URL
+function uiUrl(change, endpoint) {
+    const base_api = endpoint || 'https://api.trustypkg.dev';
+    const ecosystem = trustyEcosystem(change.ecosystem);
+    const name = encodeURIComponent(change.name);
+    const url = `${base_api}/${ecosystem}/${name}`;
+    return url;
+}
+// Process the response from Trusty API
+function processResponse(trustyResponse) {
+    var _a, _b, _c;
+    const trusty = Object.assign(Object.assign({}, trustyResponse['summary']), { status: (_a = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _a === void 0 ? void 0 : _a['status'], status_code: (_b = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _b === void 0 ? void 0 : _b['status_code'] }) || failed_trusty;
+    if (trusty && ((_c = trustyResponse['package_data']) === null || _c === void 0 ? void 0 : _c['status_code'])) {
+        trusty.status_code = trustyResponse['package_data']['status_code'];
+    }
+    return trusty;
+}
+// Function to fetch Trusty data with retries
+function fetchWithRetry(change, retries, config) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const ret = failed_trusty;
+        const url = apiUrl(change, config.trusty_api);
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                core.debug(`Fetching ${change.name} ${attempt}`);
+                const response = yield fetch(url);
+                let status = `${response.status} ${response.statusText}`;
+                if (response.ok) {
+                    const trustyResponse = yield response.json();
+                    const processed = processResponse(trustyResponse);
+                    if (processed.status === 'complete') {
+                        return processed;
+                    }
+                    status = '${processed.status_code} ${processed.status}';
+                }
+                core.warning(`Attempt ${change.name} ${attempt} failed: ${status}`);
+                ret.status = response.statusText;
+                ret.status_code = response.status;
+            }
+            catch (error) {
+                core.warning(`Attempt ${change.name} ${attempt} failed: ${error}`);
+            }
+            core.debug(`Waiting ${Math.pow(2, attempt)} seconds before retrying ${change.name}`);
+            yield new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+        return ret;
+    });
+}
+// Process a single change
+function processChange(change, config) {
+    return __awaiter(this, void 0, void 0, function* () {
+        change.trusty = yield fetchWithRetry(change, config.trusty_retries, config);
+        return change;
+    });
+}
+// Function to get Trusty scores for all changes
+function getTrustyScores(changes, config) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const results = yield Promise.all(changes.map((change) => __awaiter(this, void 0, void 0, function* () { return yield processChange(change, config); })));
+        return results;
+    });
+}
+exports.getTrustyScores = getTrustyScores;
+// Convert Trusty description to HTML table
+function descriptionAsTable(details) {
+    const rows = Object.entries(details).map(([key, value]) => {
+        return `<tr><td>${key}</td><td>${value}</td></tr>`;
+    });
+    return `<details><table>${rows.join('')}</table></details>`;
+}
+// Function to create an anchor for a change
+function nameAndLink(change, endpoint) {
+    const url = uiUrl(change, endpoint);
+    return `<a href="${url}">${change.name}</a>`;
+}
+// Function to determine the delta icon for a change
+function delta(change, config) {
+    var _a;
+    const ct = { added: icons.plus, removed: icons.minus };
+    let icon = icons.check;
+    if (change.change_type === 'added' && ((_a = change === null || change === void 0 ? void 0 : change.trusty) === null || _a === void 0 ? void 0 : _a.score)) {
+        if ((change === null || change === void 0 ? void 0 : change.trusty.score) <= config.trusty_warn) {
+            icon = icons.warning;
+        }
+        if ((change === null || change === void 0 ? void 0 : change.trusty.score) <= config.trusty_fail) {
+            icon = icons.cross;
+        }
+    }
+    return `${ct[change.change_type]}${icon}`;
+}
+// Function to convert a change to a summary table row
+function changeAsRow(change, config) {
+    var _a, _b, _c, _d, _e, _f;
+    const row = [
+        delta(change, config),
+        nameAndLink(change, config.trusty_ui),
+        change.version,
+        ((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString()) || ''
+    ];
+    if (((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.description) !== undefined) {
+        row.push({ data: descriptionAsTable(change.trusty.description) });
+    }
+    if (((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.status) !== 'complete') {
+        const status = `${(_e = change.trusty) === null || _e === void 0 ? void 0 : _e.status_code} ${(_f = change.trusty) === null || _f === void 0 ? void 0 : _f.status}`;
+        row.push(status);
+    }
+    return row;
+}
+// Function to convert all changes to a summary table
+function changesAsTable(changes, config) {
+    const headings = ['+/-', 'Package', 'Version', 'Score'].map(heading => ({
+        data: heading,
+        header: true
+    }));
+    const rows = changes.map(change => changeAsRow(change, config));
+    if (rows.length > 0) {
+        rows.unshift(headings);
+    }
+    return rows;
+}
+// Function to sort changes by Trusty score
+function sortChangesByTrustyScore(changes) {
+    return changes.sort((a, b) => {
+        var _a, _b;
+        const scoreA = ((_a = a.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0;
+        const scoreB = ((_b = b.trusty) === null || _b === void 0 ? void 0 : _b.score) || 0;
+        return scoreA - scoreB; // For descending order, swap scoreA and scoreB for ascending order
+    });
+}
+exports.sortChangesByTrustyScore = sortChangesByTrustyScore;
+// Filter changes by Trusty score
+function filterChangesByTrustyScore(changes, threshold) {
+    return changes.filter(change => { var _a; return (((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0) < threshold; });
+}
+exports.filterChangesByTrustyScore = filterChangesByTrustyScore;
+// Create a summary of changes
+function createSummary(changes, config) {
+    const showCount = changes.filter(change => {
+        var _a;
+        return ((change.change_type === 'added' && ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score)) || 0) <
+            config.trusty_show;
+    }).length;
+    const failCount = changes.filter(change => {
+        var _a;
+        return ((change.change_type === 'added' && ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score)) || 0) <
+            config.trusty_fail;
+    }).length;
+    const warnCount = changes.filter(change => {
+        var _a;
+        return ((change.change_type === 'added' && ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score)) || 0) <
+            config.trusty_warn;
+    }).length;
+    let ret = `There are ${showCount} additions with a score below ${config.trusty_show}, ` +
+        `${warnCount} additions with a score below ${config.trusty_warn}, and ` +
+        `${failCount} additions with a score below ${config.trusty_fail}.`;
+    if (failCount > 0) {
+        ret += ` Please review the changes carefully.`;
+        core.setFailed(ret);
+    }
+    else if (warnCount > 0) {
+        ret += ` You might want to review the warnings.`;
+    }
+    else {
+        ret += ` No changes require immediate attention.`;
+    }
+    return ret;
+}
+// Add Trusty scores to changes and create a summary
+function addTrustyScores(changes, config) {
+    const filteredChanges = filterChangesByTrustyScore(changes, config.trusty_show);
+    const sortedChanges = sortChangesByTrustyScore(filteredChanges);
+    core.summary.addHeading('Trusty Scores', 2);
+    core.summary.addRaw(`<a>${createSummary(sortedChanges, config)}</a>`);
+    core.summary.addEOL();
+    core.summary.addTable(changesAsTable(sortedChanges, config));
+}
+exports.addTrustyScores = addTrustyScores;
 
 
 /***/ }),
@@ -50005,7 +50281,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.TrustySchema = exports.TrustySummarySchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(4498);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -50064,6 +50340,21 @@ const PackageURLString = z.string().superRefine((value, context) => {
         });
     }
 });
+exports.TrustySummarySchema = z.object({
+    activity_user: z.number(),
+    activity_repo: z.number(),
+    from: z.string(),
+    activity: z.number(),
+    provenance: z.number(),
+    typosquatting: z.number()
+});
+exports.TrustySchema = z.object({
+    score: z.number().optional(),
+    status: z.string().optional(),
+    status_code: z.number().optional(),
+    description: exports.TrustySummarySchema.optional(),
+    updated_at: z.string().optional() // or z.date() if you want to parse the string into a Date object
+});
 exports.ChangeSchema = z.object({
     change_type: z.enum(['added', 'removed']),
     manifest: z.string(),
@@ -50074,6 +50365,7 @@ exports.ChangeSchema = z.object({
     license: z.string().nullable(),
     source_repository_url: z.string().nullable(),
     scope: z.enum(exports.SCOPES).optional(),
+    trusty: exports.TrustySchema.optional(),
     vulnerabilities: z
         .array(z.object({
         severity: exports.SeveritySchema,
@@ -50108,6 +50400,13 @@ exports.ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional().default(true),
     warn_on_openssf_scorecard_level: z.number().default(3),
+    trusty_scores: z.boolean().optional().default(true),
+    trusty_retries: z.number().optional().default(3),
+    trusty_show: z.number().optional().default(7),
+    trusty_warn: z.number().optional().default(5),
+    trusty_fail: z.number().optional().default(1),
+    trusty_api: z.string().default('https://api.trustypkg.dev'),
+    trusty_ui: z.string().default('https://trustypkg.dev'),
     comment_summary_in_pr: z
         .union([
         z.preprocess(val => (val === 'true' ? true : val === 'false' ? false : val), z.boolean()),

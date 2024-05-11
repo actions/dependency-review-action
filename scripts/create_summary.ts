@@ -6,7 +6,13 @@
  * npx ts-node scripts/create_summary.ts
  */
 
-import {Change, Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
+import {
+  Change,
+  Changes,
+  ConfigurationOptions,
+  ConfigurationOptionsSchema,
+  Scorecard
+} from '../src/schemas'
 import {createTestChange} from '../__tests__/fixtures/create-test-change'
 import {InvalidLicenseChanges} from '../src/licenses'
 import * as fs from 'fs'
@@ -14,7 +20,7 @@ import * as core from '@actions/core'
 import * as summary from '../src/summary'
 import * as path from 'path'
 
-const defaultConfig: ConfigurationOptions = {
+const defaultConfig: ConfigurationOptions = ConfigurationOptionsSchema.parse({
   vulnerability_check: true,
   license_check: true,
   fail_on_severity: 'high',
@@ -36,7 +42,7 @@ const defaultConfig: ConfigurationOptions = {
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: true
-}
+})
 
 const scorecard: Scorecard = {
   dependencies: [
