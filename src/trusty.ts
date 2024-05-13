@@ -10,6 +10,7 @@ import {
 } from './schemas'
 import * as core from '@actions/core'
 import {SummaryTableRow} from '@actions/core/lib/summary'
+import Bluebird from 'bluebird'
 
 // Default Trusty object for failed cases
 const failed_trusty: Trusty = {status: 'failed'}
@@ -127,9 +128,9 @@ export async function getTrustyScores(
   changes: Changes,
   config: ConfigurationOptions
 ): Promise<Changes> {
-  const results = await Promise.all(
-    changes.map(async change => await processChange(change, config))
-  )
+  const mapper = async (change: Change): Promise<Change> =>
+    await processChange(change, config)
+  const results = await Bluebird.Promise.map(changes, mapper, {concurrency: 15})
   return results
 }
 
