@@ -1674,23 +1674,28 @@ const icons = {
 };
 function trustyEcosystem(ecosystem) {
     const ecosystemMap = {
-        'pip': 'pypi',
-        'gomod': 'go'
+        pip: 'pypi',
+        gomod: 'go'
     };
     return ecosystemMap[ecosystem] || ecosystem;
+}
+function formatName(name) {
+    return encodeURIComponent(name.toLowerCase());
+    // .replace(/_/g, '-'));
 }
 // Construct API URL
 function apiUrl(change, endpoint) {
     const base_api = endpoint || 'https://api.trustypkg.dev';
     const ecosystem = trustyEcosystem(change.ecosystem);
-    const url = `${base_api}/v1/report?package_name=${change.name}&package_type=${ecosystem}`;
+    const name = formatName(change.name);
+    const url = `${base_api}/v1/report?package_name=${name}&package_type=${ecosystem}`;
     return url;
 }
 // Construct UI URL
 function uiUrl(change, endpoint) {
     const base_api = endpoint || 'https://api.trustypkg.dev';
     const ecosystem = trustyEcosystem(change.ecosystem);
-    const name = encodeURIComponent(change.name);
+    const name = formatName(change.name);
     const url = `${base_api}/${ecosystem}/${name}`;
     return url;
 }

@@ -32,11 +32,17 @@ function trustyEcosystem(ecosystem: string): string {
   return ecosystemMap[ecosystem] || ecosystem
 }
 
+function formatName(name: string): string {
+  return encodeURIComponent(name.toLowerCase())
+  // .replace(/_/g, '-'));
+}
+
 // Construct API URL
 function apiUrl(change: Change, endpoint: string): string {
   const base_api = endpoint || 'https://api.trustypkg.dev'
   const ecosystem = trustyEcosystem(change.ecosystem)
-  const url = `${base_api}/v1/report?package_name=${change.name}&package_type=${ecosystem}`
+  const name = formatName(change.name)
+  const url = `${base_api}/v1/report?package_name=${name}&package_type=${ecosystem}`
   return url
 }
 
@@ -44,7 +50,7 @@ function apiUrl(change: Change, endpoint: string): string {
 function uiUrl(change: Change, endpoint: string): string {
   const base_api = endpoint || 'https://api.trustypkg.dev'
   const ecosystem = trustyEcosystem(change.ecosystem)
-  const name = encodeURIComponent(change.name)
+  const name = formatName(change.name)
   const url = `${base_api}/${ecosystem}/${name}`
   return url
 }
