@@ -1672,13 +1672,12 @@ const icons = {
     plus: '➕',
     minus: '➖'
 };
-// Handle ecosystem naming differences
 function trustyEcosystem(ecosystem) {
-    let ret = ecosystem;
-    if (ecosystem === 'pip') {
-        ret = 'pypi';
-    }
-    return ret;
+    const ecosystemMap = {
+        'pip': 'pypi',
+        'gomod': 'go'
+    };
+    return ecosystemMap[ecosystem] || ecosystem;
 }
 // Construct API URL
 function apiUrl(change, endpoint) {

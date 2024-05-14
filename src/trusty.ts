@@ -24,13 +24,12 @@ const icons = {
   minus: '➖'
 }
 
-// Handle ecosystem naming differences
-function trustyEcosystem(ecosystem: string): String {
-  let ret = ecosystem
-  if (ecosystem === 'pip') {
-    ret = 'pypi'
+function trustyEcosystem(ecosystem: string): string {
+  const ecosystemMap: {[key: string]: string} = {
+    pip: 'pypi',
+    gomod: 'go'
   }
-  return ret
+  return ecosystemMap[ecosystem] || ecosystem
 }
 
 // Construct API URL
