@@ -71,6 +71,12 @@ function processResponse(trustyResponse: TrustyResponse): Trusty {
         | undefined,
       status_code: trustyResponse?.['package_data']?.['status_code'] as
         | number
+        | undefined,
+      archived: trustyResponse?.['package_data']?.['archived'] as
+        | boolean
+        | undefined,
+      deprecated: trustyResponse?.['package_data']?.['is_deprecated'] as
+        | boolean
         | undefined
     } || failed_trusty
   if (trusty && trustyResponse['package_data']?.['status_code']) {
@@ -177,7 +183,9 @@ function changeAsRow(
     delta(change, config),
     nameAndLink(change, config.trusty_ui),
     change.version,
-    change.trusty?.score?.toString() || ''
+    change.trusty?.score?.toString() || '',
+    change.trusty?.deprecated || false ? 'true' : 'false',
+    change.trusty?.archived || false ? 'true' : 'false'
   ]
   if (change.trusty?.description !== undefined) {
     row.push({data: descriptionAsTable(change.trusty.description)})
@@ -194,7 +202,14 @@ function changesAsTable(
   changes: Changes,
   config: ConfigurationOptions
 ): SummaryTableRow[] {
-  const headings = ['+/-', 'Package', 'Version', 'Score'].map(heading => ({
+  const headings = [
+    '+/-',
+    'Package',
+    'Version',
+    'Score',
+    'deprecated',
+    'archived'
+  ].map(heading => ({
     data: heading,
     header: true
   }))

@@ -72,6 +72,8 @@ export const TrustySummarySchema = z.object({
 })
 
 export const TrustySchema = z.object({
+  archived: z.boolean().optional(),
+  deprecated: z.boolean().optional(),
   score: z.number().optional(),
   status: z.string().optional(),
   status_code: z.number().optional(),

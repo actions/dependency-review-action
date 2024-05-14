@@ -1048,6 +1048,8 @@ exports.TrustySummarySchema = z.object({
     typosquatting: z.number()
 });
 exports.TrustySchema = z.object({
+    archived: z.boolean().optional(),
+    deprecated: z.boolean().optional(),
     score: z.number().optional(),
     status: z.string().optional(),
     status_code: z.number().optional(),
@@ -1701,9 +1703,9 @@ function uiUrl(change, endpoint) {
 }
 // Process the response from Trusty API
 function processResponse(trustyResponse) {
-    var _a, _b, _c;
-    const trusty = Object.assign(Object.assign({}, trustyResponse['summary']), { status: (_a = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _a === void 0 ? void 0 : _a['status'], status_code: (_b = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _b === void 0 ? void 0 : _b['status_code'] }) || failed_trusty;
-    if (trusty && ((_c = trustyResponse['package_data']) === null || _c === void 0 ? void 0 : _c['status_code'])) {
+    var _a, _b, _c, _d, _e;
+    const trusty = Object.assign(Object.assign({}, trustyResponse['summary']), { status: (_a = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _a === void 0 ? void 0 : _a['status'], status_code: (_b = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _b === void 0 ? void 0 : _b['status_code'], archived: (_c = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _c === void 0 ? void 0 : _c['archived'], deprecated: (_d = trustyResponse === null || trustyResponse === void 0 ? void 0 : trustyResponse['package_data']) === null || _d === void 0 ? void 0 : _d['is_deprecated'] }) || failed_trusty;
+    if (trusty && ((_e = trustyResponse['package_data']) === null || _e === void 0 ? void 0 : _e['status_code'])) {
         trusty.status_code = trustyResponse['package_data']['status_code'];
     }
     return trusty;
@@ -1787,25 +1789,27 @@ function delta(change, config) {
 }
 // Function to convert a change to a summary table row
 function changeAsRow(change, config) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const row = [
         delta(change, config),
         nameAndLink(change, config.trusty_ui),
         change.version,
-        ((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString()) || ''
+        ((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString()) || '',
+        ((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.deprecated) || false ? 'true' : 'false',
+        ((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.archived) || false ? 'true' : 'false'
     ];
-    if (((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.description) !== undefined) {
+    if (((_e = change.trusty) === null || _e === void 0 ? void 0 : _e.description) !== undefined) {
         row.push({ data: descriptionAsTable(change.trusty.description) });
     }
-    if (((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.status) !== 'complete') {
-        const status = `${(_e = change.trusty) === null || _e === void 0 ? void 0 : _e.status_code} ${(_f = change.trusty) === null || _f === void 0 ? void 0 : _f.status}`;
+    if (((_f = change.trusty) === null || _f === void 0 ? void 0 : _f.status) !== 'complete') {
+        const status = `${(_g = change.trusty) === null || _g === void 0 ? void 0 : _g.status_code} ${(_h = change.trusty) === null || _h === void 0 ? void 0 : _h.status}`;
         row.push(status);
     }
     return row;
 }
 // Function to convert all changes to a summary table
 function changesAsTable(changes, config) {
-    const headings = ['+/-', 'Package', 'Version', 'Score'].map(heading => ({
+    const headings = ['+/-', 'Package', 'Version', 'Score', 'deprecated', 'archived'].map(heading => ({
         data: heading,
         header: true
     }));
@@ -56328,6 +56332,8 @@ exports.TrustySummarySchema = z.object({
     typosquatting: z.number()
 });
 exports.TrustySchema = z.object({
+    archived: z.boolean().optional(),
+    deprecated: z.boolean().optional(),
     score: z.number().optional(),
     status: z.string().optional(),
     status_code: z.number().optional(),
