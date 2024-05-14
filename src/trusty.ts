@@ -207,8 +207,8 @@ function changesAsTable(
     'Package',
     'Version',
     'Score',
-    'deprecated',
-    'archived'
+    'Deprecated',
+    'Archived'
   ].map(heading => ({
     data: heading,
     header: true

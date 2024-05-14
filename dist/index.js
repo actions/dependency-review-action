@@ -1809,7 +1809,14 @@ function changeAsRow(change, config) {
 }
 // Function to convert all changes to a summary table
 function changesAsTable(changes, config) {
-    const headings = ['+/-', 'Package', 'Version', 'Score', 'deprecated', 'archived'].map(heading => ({
+    const headings = [
+        '+/-',
+        'Package',
+        'Version',
+        'Score',
+        'Deprecated',
+        'Archived'
+    ].map(heading => ({
         data: heading,
         header: true
     }));
