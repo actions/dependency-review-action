@@ -94,7 +94,7 @@ async function fetchWithRetry(
   const url = apiUrl(change, config.trusty_api)
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      core.debug(`Fetching ${change.name} ${attempt}`)
+      core.debug(`Fetching ${change.name} ${attempt} from ${url}`)
       const response = await fetch(url)
       let status = `${response.status} ${response.statusText}`
       if (response.ok) {
