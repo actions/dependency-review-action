@@ -55913,13 +55913,13 @@ function readInlineConfig() {
     const warn_only = getOptionalBoolean('warn-only');
     const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard');
     const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level');
-    const trusty_scores = getOptionalBoolean('trusty_scores');
-    const trusty_retries = getOptionalNumber('trusty_retries');
-    const trusty_show = getOptionalNumber('trusty_show');
-    const trusty_warn = getOptionalNumber('trusty_warn');
-    const trusty_fail = getOptionalNumber('trusty_fail');
-    const trusty_api = getOptionalInput('trusty_api');
-    const trusty_ui = getOptionalInput('trusty_ui');
+    const trusty_scores = getOptionalBoolean('trusty-scores');
+    const trusty_retries = getOptionalNumber('trusty-retries');
+    const trusty_show = getOptionalNumber('trusty-show');
+    const trusty_warn = getOptionalNumber('trusty-warn');
+    const trusty_fail = getOptionalNumber('trusty-fail');
+    const trusty_api = getOptionalInput('trusty-api');
+    const trusty_ui = getOptionalInput('trusty-ui');
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const keys = {
