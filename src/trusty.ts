@@ -90,7 +90,7 @@ async function fetchWithRetry(
   retries: number,
   config: ConfigurationOptions
 ): Promise<Trusty> {
-  const ret = failed_trusty
+  const ret = {...failed_trusty}
   const url = apiUrl(change, config.trusty_api)
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -105,7 +105,9 @@ async function fetchWithRetry(
         }
         if (processed.status === 'failed') {
           core.warning(`${change.name} failed on server. Not retrying.`)
-          retries = 0
+          ret.status = processed.status || ''
+          ret.status_code = processed.status_code || response.status || 0
+          return ret
         }
         status = `${processed.status_code} ${processed.status}`
       }

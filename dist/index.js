@@ -1712,7 +1712,7 @@ function processResponse(trustyResponse) {
 // Function to fetch Trusty data with retries
 function fetchWithRetry(change, retries, config) {
     return __awaiter(this, void 0, void 0, function* () {
-        const ret = failed_trusty;
+        const ret = Object.assign({}, failed_trusty);
         const url = apiUrl(change, config.trusty_api);
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
@@ -1727,7 +1727,9 @@ function fetchWithRetry(change, retries, config) {
                     }
                     if (processed.status === 'failed') {
                         core.warning(`${change.name} failed on server. Not retrying.`);
-                        retries = 0;
+                        ret.status = processed.status || '';
+                        ret.status_code = processed.status_code || response.status || 0;
+                        return ret;
                     }
                     status = `${processed.status_code} ${processed.status}`;
                 }
