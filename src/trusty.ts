@@ -187,8 +187,8 @@ function changeAsRow(
     nameAndLink(change, config.trusty_ui),
     change.version,
     change.trusty?.score?.toString() || '',
-    change.trusty?.deprecated || false ? 'true' : 'false',
-    change.trusty?.archived || false ? 'true' : 'false'
+    change.trusty?.deprecated || false ? icons.cross : icons.check,
+    change.trusty?.archived || false ? icons.cross : icons.check
   ]
   if (change.trusty?.description !== undefined) {
     row.push({data: descriptionAsTable(change.trusty.description)})
@@ -210,8 +210,8 @@ function changesAsTable(
     'Package',
     'Version',
     'Score',
-    'Deprecated',
-    'Archived'
+    'Not Deprecated',
+    'Not Archived'
   ].map(heading => ({
     data: heading,
     header: true

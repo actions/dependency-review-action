@@ -1798,8 +1798,8 @@ function changeAsRow(change, config) {
         nameAndLink(change, config.trusty_ui),
         change.version,
         ((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString()) || '',
-        ((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.deprecated) || false ? 'true' : 'false',
-        ((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.archived) || false ? 'true' : 'false'
+        ((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.deprecated) || false ? icons.cross : icons.check,
+        ((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.archived) || false ? icons.cross : icons.check
     ];
     if (((_e = change.trusty) === null || _e === void 0 ? void 0 : _e.description) !== undefined) {
         row.push({ data: descriptionAsTable(change.trusty.description) });
@@ -1817,8 +1817,8 @@ function changesAsTable(changes, config) {
         'Package',
         'Version',
         'Score',
-        'Deprecated',
-        'Archived'
+        'Not Deprecated',
+        'Not Archived'
     ].map(heading => ({
         data: heading,
         header: true
