@@ -103,7 +103,11 @@ async function fetchWithRetry(
         if (processed.status === 'complete') {
           return processed
         }
-        status = '${processed.status_code} ${processed.status}'
+        if (processed.status === 'failed') {
+          core.warning(`${change.name} failed on server. Not retrying.`)
+          retries = 0
+        }
+        status = `${processed.status_code} ${processed.status}`
       }
       core.warning(`Attempt ${change.name} ${attempt} failed: ${status}`)
       ret.status = response.statusText
@@ -140,7 +144,7 @@ export async function getTrustyScores(
 ): Promise<Changes> {
   const mapper = async (change: Change): Promise<Change> =>
     await processChange(change, config)
-  const results = await Bluebird.Promise.map(changes, mapper, {concurrency: 15})
+  const results = await Bluebird.Promise.map(changes, mapper, {concurrency: 10})
   return results
 }
 
