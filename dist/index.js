@@ -1292,7 +1292,7 @@ function getProjectUrl(ecosystem, packageName, version) {
     return __awaiter(this, void 0, void 0, function* () {
         core.debug(`Getting deps.dev data for ${packageName} ${version}`);
         const depsDevAPIRoot = 'https://api.deps.dev';
-        const url = `${depsDevAPIRoot}/v3alpha/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
+        const url = `${depsDevAPIRoot}/v3/systems/${ecosystem}/packages/${packageName}/versions/${version}`;
         const response = yield fetch(url);
         if (response.ok) {
             const data = yield response.json();
