@@ -34,7 +34,6 @@ function trustyEcosystem(ecosystem: string): string {
 
 function formatName(name: string): string {
   return encodeURIComponent(name.toLowerCase())
-  // .replace(/_/g, '-'));
 }
 
 // Construct API URL
