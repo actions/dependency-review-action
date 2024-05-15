@@ -1887,9 +1887,11 @@ function addTrustyScores(changes, config) {
     const filteredChanges = filterChangesByTrustyScore(changes, config.trusty_show);
     const sortedChanges = sortChangesByTrustyScore(filteredChanges);
     core.summary.addHeading('Trusty Scores', 2);
+    core.summary.addRaw(`<details><summary>Trusty details</summary>`);
     core.summary.addRaw(`<div>${createSummary(sortedChanges, config)}</div>`);
     core.summary.addEOL();
     core.summary.addTable(changesAsTable(sortedChanges, config));
+    core.summary.addRaw(`</details>`);
 }
 exports.addTrustyScores = addTrustyScores;
 
