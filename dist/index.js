@@ -1683,7 +1683,6 @@ function trustyEcosystem(ecosystem) {
 }
 function formatName(name) {
     return encodeURIComponent(name.toLowerCase());
-    // .replace(/_/g, '-'));
 }
 // Construct API URL
 function apiUrl(change, endpoint) {
@@ -1717,7 +1716,7 @@ function fetchWithRetry(change, retries, config) {
         const url = apiUrl(change, config.trusty_api);
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
-                core.debug(`Fetching ${change.name} ${attempt}`);
+                core.debug(`Fetching ${change.name} ${attempt} from ${url}`);
                 const response = yield fetch(url);
                 let status = `${response.status} ${response.statusText}`;
                 if (response.ok) {
@@ -1726,7 +1725,11 @@ function fetchWithRetry(change, retries, config) {
                     if (processed.status === 'complete') {
                         return processed;
                     }
-                    status = '${processed.status_code} ${processed.status}';
+                    if (processed.status === 'failed') {
+                        core.warning(`${change.name} failed on server. Not retrying.`);
+                        retries = 0;
+                    }
+                    status = `${processed.status_code} ${processed.status}`;
                 }
                 core.warning(`Attempt ${change.name} ${attempt} failed: ${status}`);
                 ret.status = response.statusText;
@@ -1755,7 +1758,7 @@ function processChange(change, config) {
 function getTrustyScores(changes, config) {
     return __awaiter(this, void 0, void 0, function* () {
         const mapper = (change) => __awaiter(this, void 0, void 0, function* () { return yield processChange(change, config); });
-        const results = yield bluebird_1.default.Promise.map(changes, mapper, { concurrency: 15 });
+        const results = yield bluebird_1.default.Promise.map(changes, mapper, { concurrency: 10 });
         return results;
     });
 }
@@ -55913,13 +55916,6 @@ function readInlineConfig() {
     const warn_only = getOptionalBoolean('warn-only');
     const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard');
     const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level');
-    const trusty_scores = getOptionalBoolean('trusty-scores');
-    const trusty_retries = getOptionalNumber('trusty-retries');
-    const trusty_show = getOptionalNumber('trusty-show');
-    const trusty_warn = getOptionalNumber('trusty-warn');
-    const trusty_fail = getOptionalNumber('trusty-fail');
-    const trusty_api = getOptionalInput('trusty-api');
-    const trusty_ui = getOptionalInput('trusty-ui');
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const keys = {
@@ -55940,14 +55936,7 @@ function readInlineConfig() {
         retry_on_snapshot_warnings_timeout,
         warn_only,
         show_openssf_scorecard,
-        warn_on_openssf_scorecard_level,
-        trusty_scores,
-        trusty_retries,
-        trusty_show,
-        trusty_warn,
-        trusty_fail,
-        trusty_api,
-        trusty_ui,
+        warn_on_openssf_scorecard_level
     };
     return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
 }
