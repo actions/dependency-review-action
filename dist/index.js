@@ -1040,6 +1040,7 @@ const PackageURLString = z.string().superRefine((value, context) => {
     }
 });
 exports.TrustySummarySchema = z.object({
+    malicious: z.boolean().optional(),
     activity_user: z.number(),
     activity_repo: z.number(),
     from: z.string(),
@@ -1101,7 +1102,7 @@ exports.ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional().default(true),
     warn_on_openssf_scorecard_level: z.number().default(3),
-    trusty_scores: z.boolean().optional().default(true),
+    trusty_scores: z.boolean().optional().default(false),
     trusty_retries: z.number().optional().default(3),
     trusty_show: z.number().optional().default(7),
     trusty_warn: z.number().optional().default(5),
@@ -1779,14 +1780,15 @@ function nameAndLink(change, endpoint) {
 }
 // Function to determine the delta icon for a change
 function delta(change, config) {
-    var _a;
+    var _a, _b;
     const ct = { added: icons.plus, removed: icons.minus };
     let icon = icons.check;
-    if (change.change_type === 'added' && ((_a = change === null || change === void 0 ? void 0 : change.trusty) === null || _a === void 0 ? void 0 : _a.score)) {
-        if ((change === null || change === void 0 ? void 0 : change.trusty.score) <= config.trusty_warn) {
+    const score = ((_a = change === null || change === void 0 ? void 0 : change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0;
+    if (change.change_type === 'added') {
+        if (score <= config.trusty_warn) {
             icon = icons.warning;
         }
-        if ((change === null || change === void 0 ? void 0 : change.trusty.score) <= config.trusty_fail) {
+        if (((_b = change === null || change === void 0 ? void 0 : change.trusty) === null || _b === void 0 ? void 0 : _b.score) !== undefined && score <= config.trusty_fail) {
             icon = icons.cross;
         }
     }
@@ -1794,20 +1796,21 @@ function delta(change, config) {
 }
 // Function to convert a change to a summary table row
 function changeAsRow(change, config) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     const row = [
         delta(change, config),
         nameAndLink(change, config.trusty_ui),
         change.version,
         ((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString()) || '',
-        ((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.deprecated) || false ? icons.cross : icons.check,
-        ((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.archived) || false ? icons.cross : icons.check
+        ((_d = (_c = change.trusty) === null || _c === void 0 ? void 0 : _c.description) === null || _d === void 0 ? void 0 : _d.malicious) || false ? icons.cross : icons.check,
+        ((_e = change.trusty) === null || _e === void 0 ? void 0 : _e.deprecated) || false ? icons.cross : icons.check,
+        ((_f = change.trusty) === null || _f === void 0 ? void 0 : _f.archived) || false ? icons.cross : icons.check
     ];
-    if (((_e = change.trusty) === null || _e === void 0 ? void 0 : _e.description) !== undefined) {
+    if (((_g = change.trusty) === null || _g === void 0 ? void 0 : _g.description) !== undefined) {
         row.push({ data: descriptionAsTable(change.trusty.description) });
     }
-    if (((_f = change.trusty) === null || _f === void 0 ? void 0 : _f.status) !== 'complete') {
-        const status = `${(_g = change.trusty) === null || _g === void 0 ? void 0 : _g.status_code} ${(_h = change.trusty) === null || _h === void 0 ? void 0 : _h.status}`;
+    if (((_h = change.trusty) === null || _h === void 0 ? void 0 : _h.status) !== 'complete') {
+        const status = `${(_j = change.trusty) === null || _j === void 0 ? void 0 : _j.status_code} ${(_k = change.trusty) === null || _k === void 0 ? void 0 : _k.status}`;
         row.push(status);
     }
     return row;
@@ -1819,6 +1822,7 @@ function changesAsTable(changes, config) {
         'Package',
         'Version',
         'Score',
+        'Not Malicious',
         'Not Deprecated',
         'Not Archived'
     ].map(heading => ({
@@ -1852,21 +1856,25 @@ function filterChangesByTrustyScore(changes, threshold) {
 exports.filterChangesByTrustyScore = filterChangesByTrustyScore;
 // Create a summary of changes
 function createSummary(changes, config) {
-    const showCount = changes.filter(change => {
+    const shows = changes.filter(change => {
         var _a;
-        return ((change.change_type === 'added' && ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score)) || 0) <
-            config.trusty_show;
-    }).length;
-    const failCount = changes.filter(change => {
+        return change.change_type === 'added' &&
+            (((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0) < config.trusty_show;
+    });
+    const showCount = shows.length;
+    const warns = changes.filter(change => {
         var _a;
-        return ((change.change_type === 'added' && ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score)) || 0) <
-            config.trusty_fail;
-    }).length;
-    const warnCount = changes.filter(change => {
-        var _a;
-        return ((change.change_type === 'added' && ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score)) || 0) <
-            config.trusty_warn;
-    }).length;
+        return change.change_type === 'added' &&
+            (((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0) < config.trusty_warn;
+    });
+    const warnCount = warns.length;
+    const fails = changes.filter(change => {
+        var _a, _b;
+        return change.change_type === 'added' &&
+            undefined !== ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) &&
+            ((_b = change.trusty) === null || _b === void 0 ? void 0 : _b.score) < config.trusty_fail;
+    });
+    const failCount = fails.length;
     let ret = `There are ${showCount} ${icons.check} additions with a score below ${config.trusty_show}, ` +
         `${warnCount} ${icons.warning} additions with a score below ${config.trusty_warn} and ` +
         `${failCount} ${icons.cross} additions with a score below ${config.trusty_fail}.`;
@@ -55920,6 +55928,13 @@ function readInlineConfig() {
     const warn_only = getOptionalBoolean('warn-only');
     const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard');
     const warn_on_openssf_scorecard_level = getOptionalNumber('warn-on-openssf-scorecard-level');
+    const trusty_scores = getOptionalBoolean('trusty-scores');
+    const trusty_retries = getOptionalNumber('trusty-retries');
+    const trusty_show = getOptionalNumber('trusty-show');
+    const trusty_warn = getOptionalNumber('trusty-warn');
+    const trusty_fail = getOptionalNumber('trusty-fail');
+    const trusty_api = getOptionalInput('trusty-api');
+    const trusty_ui = getOptionalInput('trusty-ui');
     validateLicenses('allow-licenses', allow_licenses);
     validateLicenses('deny-licenses', deny_licenses);
     const keys = {
@@ -55940,7 +55955,14 @@ function readInlineConfig() {
         retry_on_snapshot_warnings_timeout,
         warn_only,
         show_openssf_scorecard,
-        warn_on_openssf_scorecard_level
+        warn_on_openssf_scorecard_level,
+        trusty_scores,
+        trusty_retries,
+        trusty_show,
+        trusty_warn,
+        trusty_fail,
+        trusty_api,
+        trusty_ui
     };
     return Object.fromEntries(Object.entries(keys).filter(([_, value]) => value !== undefined));
 }
@@ -56338,6 +56360,7 @@ const PackageURLString = z.string().superRefine((value, context) => {
     }
 });
 exports.TrustySummarySchema = z.object({
+    malicious: z.boolean().optional(),
     activity_user: z.number(),
     activity_repo: z.number(),
     from: z.string(),
@@ -56399,7 +56422,7 @@ exports.ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional().default(true),
     warn_on_openssf_scorecard_level: z.number().default(3),
-    trusty_scores: z.boolean().optional().default(true),
+    trusty_scores: z.boolean().optional().default(false),
     trusty_retries: z.number().optional().default(3),
     trusty_show: z.number().optional().default(7),
     trusty_warn: z.number().optional().default(5),

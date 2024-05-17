@@ -63,6 +63,7 @@ const PackageURLString = z.string().superRefine((value, context) => {
 })
 
 export const TrustySummarySchema = z.object({
+  malicious: z.boolean().optional(),
   activity_user: z.number(),
   activity_repo: z.number(),
   from: z.string(),

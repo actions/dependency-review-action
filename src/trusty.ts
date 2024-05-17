@@ -168,11 +168,12 @@ function nameAndLink(change: Change, endpoint: string): string {
 function delta(change: Change, config: ConfigurationOptions): string {
   const ct = {added: icons.plus, removed: icons.minus}
   let icon = icons.check
-  if (change.change_type === 'added' && change?.trusty?.score) {
-    if (change?.trusty.score <= config.trusty_warn) {
+  const score = change?.trusty?.score || 0
+  if (change.change_type === 'added') {
+    if (score <= config.trusty_warn) {
       icon = icons.warning
     }
-    if (change?.trusty.score <= config.trusty_fail) {
+    if (change?.trusty?.score !== undefined && score <= config.trusty_fail) {
       icon = icons.cross
     }
   }
@@ -189,6 +190,7 @@ function changeAsRow(
     nameAndLink(change, config.trusty_ui),
     change.version,
     change.trusty?.score?.toString() || '',
+    change.trusty?.description?.malicious || false ? icons.cross : icons.check,
     change.trusty?.deprecated || false ? icons.cross : icons.check,
     change.trusty?.archived || false ? icons.cross : icons.check
   ]
@@ -212,6 +214,7 @@ function changesAsTable(
     'Package',
     'Version',
     'Score',
+    'Not Malicious',
     'Not Deprecated',
     'Not Archived'
   ].map(heading => ({
@@ -248,21 +251,25 @@ export function filterChangesByTrustyScore(
 
 // Create a summary of changes
 function createSummary(changes: Changes, config: ConfigurationOptions): string {
-  const showCount = changes.filter(
+  const shows = changes.filter(
     change =>
-      ((change.change_type === 'added' && change.trusty?.score) || 0) <
-      config.trusty_show
-  ).length
-  const failCount = changes.filter(
+      change.change_type === 'added' &&
+      (change.trusty?.score || 0) < config.trusty_show
+  )
+  const showCount = shows.length
+  const warns = changes.filter(
     change =>
-      ((change.change_type === 'added' && change.trusty?.score) || 0) <
-      config.trusty_fail
-  ).length
-  const warnCount = changes.filter(
+      change.change_type === 'added' &&
+      (change.trusty?.score || 0) < config.trusty_warn
+  )
+  const warnCount = warns.length
+  const fails = changes.filter(
     change =>
-      ((change.change_type === 'added' && change.trusty?.score) || 0) <
-      config.trusty_warn
-  ).length
+      change.change_type === 'added' &&
+      undefined !== change.trusty?.score &&
+      change.trusty?.score < config.trusty_fail
+  )
+  const failCount = fails.length
 
   let ret =
     `There are ${showCount} ${icons.check} additions with a score below ${config.trusty_show}, ` +
