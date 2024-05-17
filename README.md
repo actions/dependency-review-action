@@ -88,7 +88,7 @@ Configure this action by either inlining these options in your workflow file, or
 | `trusty-scores`| `trusty-scores` is a boolean to enable or disable Trusty scores | `true`, `false` | `true` |
 | `trusty-retries`| `trusty-retries` specifies the number of retries the action uses to fetch from the trusty API. | Any positive integer | 3 |
 | `trusty-show`| `trusty-show` is the minimum score package to show. | Any positive integer | 7 |
-| `trusty-warn`| `trusty-warn` is the minimum score before a wqarning is shown. | Any positive integer | 5 |
+| `trusty-warn`| `trusty-warn` is the minimum score before a warning is shown. | Any positive integer | 5 |
 | `trusty-fail`| `trusty-fail` is the minimum score before a failure is shown and the action is marked as failed. | Any positive integer | 1 |
 | `trusty-api`| `trusty-api` is the base url for API calls. There should be no need to change this. | string | 'https://api.trustypkg.dev' |
 | `trusty-ui`| `trusty-ui` is the base url for the Trusty UI. There should be no need to change this. | string | 'https://trustypkg.dev' |
