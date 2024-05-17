@@ -1781,7 +1781,6 @@ function nameAndLink(change, endpoint) {
 // Function to determine the delta icon for a change
 function delta(change, config) {
     var _a, _b;
-    const ct = { added: icons.plus, removed: icons.minus };
     let icon = icons.check;
     const score = ((_a = change === null || change === void 0 ? void 0 : change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0;
     if (change.change_type === 'added') {
@@ -1792,14 +1791,19 @@ function delta(change, config) {
             icon = icons.cross;
         }
     }
-    return `${ct[change.change_type]}${icon}`;
+    return `${icon} ${change.change_type} `;
+}
+// Return the change compiled as a string
+function dependencyChange(change, config) {
+    const action = delta(change, config);
+    const name = nameAndLink(change, config.trusty_ui);
+    return `${action} ${name}`;
 }
 // Function to convert a change to a summary table row
 function changeAsRow(change, config) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     const row = [
-        delta(change, config),
-        nameAndLink(change, config.trusty_ui),
+        dependencyChange(change, config),
         change.version,
         ((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString()) || '',
         ((_d = (_c = change.trusty) === null || _c === void 0 ? void 0 : _c.description) === null || _d === void 0 ? void 0 : _d.malicious) || false ? icons.cross : icons.check,
@@ -1818,8 +1822,7 @@ function changeAsRow(change, config) {
 // Function to convert all changes to a summary table
 function changesAsTable(changes, config) {
     const headings = [
-        '+/-',
-        'Package',
+        'Dependency Change',
         'Version',
         'Score',
         'Not Malicious',

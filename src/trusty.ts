@@ -166,7 +166,6 @@ function nameAndLink(change: Change, endpoint: string): string {
 
 // Function to determine the delta icon for a change
 function delta(change: Change, config: ConfigurationOptions): string {
-  const ct = {added: icons.plus, removed: icons.minus}
   let icon = icons.check
   const score = change?.trusty?.score || 0
   if (change.change_type === 'added') {
@@ -177,7 +176,17 @@ function delta(change: Change, config: ConfigurationOptions): string {
       icon = icons.cross
     }
   }
-  return `${ct[change.change_type]}${icon}`
+  return `${icon} ${change.change_type} `
+}
+
+// Return the change compiled as a string
+function dependencyChange(
+  change: Change,
+  config: ConfigurationOptions
+): string {
+  const action = delta(change, config)
+  const name = nameAndLink(change, config.trusty_ui)
+  return `${action} ${name}`
 }
 
 // Function to convert a change to a summary table row
@@ -186,8 +195,7 @@ function changeAsRow(
   config: ConfigurationOptions
 ): SummaryTableRow {
   const row: SummaryTableRow = [
-    delta(change, config),
-    nameAndLink(change, config.trusty_ui),
+    dependencyChange(change, config),
     change.version,
     change.trusty?.score?.toString() || '',
     change.trusty?.description?.malicious || false ? icons.cross : icons.check,
@@ -210,8 +218,7 @@ function changesAsTable(
   config: ConfigurationOptions
 ): SummaryTableRow[] {
   const headings = [
-    '+/-',
-    'Package',
+    'Dependency Change',
     'Version',
     'Score',
     'Not Malicious',
