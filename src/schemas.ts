@@ -130,7 +130,7 @@ export const ConfigurationOptionsSchema = z
     retry_on_snapshot_warnings_timeout: z.number().default(120),
     show_openssf_scorecard: z.boolean().optional().default(true),
     warn_on_openssf_scorecard_level: z.number().default(3),
-    trusty_scores: z.boolean().optional().default(true),
+    trusty_scores: z.boolean().optional().default(false),
     trusty_retries: z.number().optional().default(3),
     trusty_show: z.number().optional().default(7),
     trusty_warn: z.number().optional().default(5),
