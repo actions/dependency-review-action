@@ -31,7 +31,7 @@
     "@octokit/request-error": "^5.0.1",
     "@types/jest": "^29.5.12",
     "ansi-styles": "^6.2.1",
-    "got": "^14.2.0",
+    "got": "^14.3.0",
     "jest": "^29.7.0",
     "octokit": "^3.1.2",
     "spdx-expression-parse": "^3.0.1",
