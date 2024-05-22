@@ -4,6 +4,8 @@
 import {
   Change,
   Changes,
+  Update,
+  Updates,
   ConfigurationOptions,
   Trusty,
   TrustySummary
@@ -20,6 +22,8 @@ const icons = {
   check: '✅',
   cross: '❌',
   warning: '⚠️',
+  deprecated: '💀',
+  archived: '📦',
   plus: '➕',
   minus: '➖'
 }
@@ -164,8 +168,8 @@ function nameAndLink(change: Change, endpoint: string): string {
   return `<a href="${url}">${change.name}</a>`
 }
 
-// Function to determine the delta icon for a change
-function delta(change: Change, config: ConfigurationOptions): string {
+// Function to determine the icon for a change
+function scoreIcon(change: Change, config: ConfigurationOptions): string {
   let icon = icons.check
   const score = change?.trusty?.score || 0
   if (change.change_type === 'added') {
@@ -176,17 +180,37 @@ function delta(change: Change, config: ConfigurationOptions): string {
       icon = icons.cross
     }
   }
-  return `${icon} ${change.change_type} `
+  return icon
 }
 
-// Return the change compiled as a string
-function dependencyChange(
-  change: Change,
-  config: ConfigurationOptions
-): string {
-  const action = delta(change, config)
-  const name = nameAndLink(change, config.trusty_ui)
-  return `${action} ${name}`
+// Function to determine the score text for a change
+function scoreCell(change: Change, config: ConfigurationOptions): string {
+  const icon = scoreIcon(change, config)
+  const score = change.trusty?.score?.toString()
+  return `${icon} ${score}`
+}
+
+// Make it title case...
+function toTitleCase(str: string): string {
+  return str.replace(
+    /\w\S*/g,
+    txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+  )
+}
+
+// Function to determine the warning text for a change
+function warningCell(change: Change): string {
+  const warnings = []
+  if (change.trusty?.description?.malicious || false) {
+    warnings.push(`${icons.cross} Malicious`)
+  }
+  if (change.trusty?.deprecated || false) {
+    warnings.push(`${icons.deprecated} Deprecated`)
+  }
+  if (change.trusty?.archived || false) {
+    warnings.push(`${icons.archived} Archived`)
+  }
+  return warnings.join(' ')
 }
 
 // Function to convert a change to a summary table row
@@ -195,12 +219,11 @@ function changeAsRow(
   config: ConfigurationOptions
 ): SummaryTableRow {
   const row: SummaryTableRow = [
-    dependencyChange(change, config),
+    toTitleCase(change.change_type),
+    nameAndLink(change, config.trusty_ui),
     change.version,
-    change.trusty?.score?.toString() || '',
-    change.trusty?.description?.malicious || false ? icons.cross : icons.check,
-    change.trusty?.deprecated || false ? icons.cross : icons.check,
-    change.trusty?.archived || false ? icons.cross : icons.check
+    scoreCell(change, config),
+    warningCell(change)
   ]
   if (change.trusty?.description !== undefined) {
     row.push({data: descriptionAsTable(change.trusty.description)})
@@ -212,85 +235,147 @@ function changeAsRow(
   return row
 }
 
-// Function to convert all changes to a summary table
-function changesAsTable(
-  changes: Changes,
+// Function to convert a change to a summary table row
+function updateAsRow(
+  change: Update,
   config: ConfigurationOptions
 ): SummaryTableRow[] {
-  const headings = [
-    'Dependency Change',
-    'Version',
-    'Score',
-    'Not Malicious',
-    'Not Deprecated',
-    'Not Archived'
-  ].map(heading => ({
-    data: heading,
-    header: true
-  }))
-  const rows = changes.map(change => changeAsRow(change, config))
+  const ret = []
+  if (change.added !== undefined) {
+    ret.push(changeAsRow(change.added, config))
+  }
+  if (change.removed !== undefined) {
+    ret.push(changeAsRow(change.removed, config))
+  }
+  if (ret.length > 1) {
+    if (typeof ret[0][0] === 'string') {
+      ret[0][0] = 'Updated'
+    }
+    ret[1][0] = ''
+    ret[1][1] = ''
+  }
+  return ret
+}
+
+// Function to convert all changes to a summary table
+function changesAsTable(
+  updates: Updates,
+  config: ConfigurationOptions
+): SummaryTableRow[] {
+  const headings = ['', 'Dependency', 'Version', 'Score', 'Warnings', ''].map(
+    heading => ({
+      data: heading,
+      header: true
+    })
+  )
+  const rows = updates.flatMap(update => updateAsRow(update, config))
   if (rows.length > 0) {
     rows.unshift(headings)
   }
   return rows
 }
 
+// Helper function to calculate the score
+function getScore(change: Update): number {
+  return change.added?.trusty?.score || change.removed?.trusty?.score || 0
+}
+
+// Helper function to check if the change is a removal
+function isRemoval(change: Update): boolean {
+  return change.added === undefined && change.removed !== undefined
+}
+
 // Function to sort changes by Trusty score
-export function sortChangesByTrustyScore(changes: Changes): Changes {
+export function sortChangesByTrustyScore(changes: Updates): Updates {
   return changes.sort((a, b) => {
-    const scoreA = a.trusty?.score || 0
-    const scoreB = b.trusty?.score || 0
-    return scoreA - scoreB // For descending order, swap scoreA and scoreB for ascending order
+    const isARemoval = isRemoval(a)
+    const isBRemoval = isRemoval(b)
+
+    if (isARemoval !== isBRemoval) {
+      // If one is a removal and the other is not, the removal should come last
+      return isARemoval ? 1 : -1
+    }
+
+    // If both are removals or both are not, compare their scores
+    const scoreA = getScore(a)
+    const scoreB = getScore(b)
+    return scoreA - scoreB
   })
 }
 
 // Filter changes by Trusty score
 export function filterChangesByTrustyScore(
-  changes: Changes,
+  updates: Updates,
   threshold: number
-): Changes {
-  return changes.filter(
-    change =>
-      (change.trusty?.score || 0) < threshold &&
-      change.trusty?.status_code !== 422
+): Updates {
+  return updates.filter(
+    update =>
+      ((update.added?.trusty?.score || 0) < threshold &&
+        update.added?.trusty?.status_code !== 422) ||
+      ((update.removed?.trusty?.score || 0) < threshold &&
+        update.removed?.trusty?.status_code !== 422)
   )
 }
 
+// Merge changes into a single aggregated update
+export function aggregateChanges(changes: Changes): Updates {
+  const updates: {[key: string]: Update} = {}
+  for (const change of changes) {
+    const key = `${change.name}-${change.ecosystem}`
+    if (!updates[key]) {
+      updates[key] = {}
+    }
+    if (change.change_type === 'added') {
+      updates[key].added = change
+    }
+    if (change.change_type === 'removed') {
+      updates[key].removed = change
+    }
+  }
+  return Object.values(updates)
+}
+
 // Create a summary of changes
-function createSummary(changes: Changes, config: ConfigurationOptions): string {
-  const shows = changes.filter(
+function createSummary(changes: Updates, config: ConfigurationOptions): string {
+  const summary = []
+  const malicious = changes.filter(
     change =>
-      change.change_type === 'added' &&
-      (change.trusty?.score || 0) < config.trusty_show
+      change.added?.change_type === 'added' &&
+      (change.added?.trusty?.description?.malicious || false)
   )
-  const showCount = shows.length
-  const warns = changes.filter(
-    change =>
-      change.change_type === 'added' &&
-      (change.trusty?.score || 0) < config.trusty_warn
-  )
-  const warnCount = warns.length
+  const maliciousCount = malicious.length
+  if (maliciousCount > 0) {
+    summary.push(`${icons.cross} ${maliciousCount} malicious packages found.`)
+  }
+
   const fails = changes.filter(
     change =>
-      change.change_type === 'added' &&
-      undefined !== change.trusty?.score &&
-      change.trusty?.score < config.trusty_fail
+      change.added?.change_type === 'added' &&
+      undefined !== change.added?.trusty?.score &&
+      change.added?.trusty?.score < config.trusty_fail
   )
   const failCount = fails.length
-
-  let ret =
-    `There are ${showCount} ${icons.check} additions with a score below ${config.trusty_show}, ` +
-    `${warnCount} ${icons.warning} additions with a score below ${config.trusty_warn} and ` +
-    `${failCount} ${icons.cross} additions with a score below ${config.trusty_fail}.`
   if (failCount > 0) {
-    ret += ` Please review the changes carefully.`
-    core.setFailed(ret)
-  } else if (warnCount > 0) {
-    ret += ` You might want to review the warnings.`
-  } else {
-    ret += ` No changes require immediate attention.`
+    summary.push(`${icons.cross} ${failCount} fails found.`)
   }
-  return ret
+
+  const warns = changes.filter(
+    change =>
+      change.added?.change_type === 'added' &&
+      (change.added?.trusty?.score || 0) < config.trusty_warn
+  )
+  const warnCount = warns.length
+  if (warnCount > 0) {
+    summary.push(`${icons.warning} ${warnCount} warnings found.`)
+  }
+
+  if (warnCount + failCount + maliciousCount > 0) {
+    summary.push(`Expand to learn more.`)
+  } else {
+    summary.push('No changes require immediate attention.')
+  }
+
+  return summary.join(' ')
 }
 
 // Add Trusty scores to changes and create a summary
@@ -298,14 +383,24 @@ export function addTrustyScores(
   changes: Changes,
   config: ConfigurationOptions
 ): void {
+  const updates = aggregateChanges(changes)
   const filteredChanges = filterChangesByTrustyScore(
-    changes,
+    updates,
     config.trusty_show
   )
   const sortedChanges = sortChangesByTrustyScore(filteredChanges)
   core.summary.addHeading('Trusty Scores', 2)
-  core.summary.addRaw(`<details><summary>Trusty details</summary>`)
-  core.summary.addRaw(`<div>${createSummary(sortedChanges, config)}</div>`)
+  const summary = createSummary(sortedChanges, config)
+  core.summary.addRaw(`<details><summary>${summary}</summary>`)
+  core.summary.addRaw(
+    `
+    <div><br/>
+    Trusty is a free service that helps developers evaluate the risk profile of open-source packages.
+    Packages are rated 0 to 10 with higher ratings indicating safer packages.
+    <a href='https://docs.stacklok.com/trusty/understand/scores-and-alternatives/'>Learn how</a>.
+    </div>
+    `
+  )
   core.summary.addEOL()
   core.summary.addTable(changesAsTable(sortedChanges, config))
   core.summary.addRaw(`</details>`)

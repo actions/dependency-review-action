@@ -980,7 +980,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.TrustySchema = exports.TrustySummarySchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.UpdatesSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.UpdateSchema = exports.ChangeSchema = exports.TrustySchema = exports.TrustySummarySchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(3609);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -1078,6 +1078,10 @@ exports.ChangeSchema = z.object({
         .optional()
         .default([])
 });
+exports.UpdateSchema = z.object({
+    added: exports.ChangeSchema.optional(), // Add an empty object as an argument
+    removed: exports.ChangeSchema.optional()
+});
 exports.PullRequestSchema = z.object({
     number: z.number(),
     base: z.object({ sha: z.string() }),
@@ -1148,6 +1152,7 @@ exports.ConfigurationOptionsSchema = z
     }
 });
 exports.ChangesSchema = z.array(exports.ChangeSchema);
+exports.UpdatesSchema = z.array(exports.UpdateSchema);
 exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()
@@ -1662,7 +1667,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addTrustyScores = exports.filterChangesByTrustyScore = exports.sortChangesByTrustyScore = exports.getTrustyScores = void 0;
+exports.addTrustyScores = exports.aggregateChanges = exports.filterChangesByTrustyScore = exports.sortChangesByTrustyScore = exports.getTrustyScores = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const bluebird_1 = __importDefault(__nccwpck_require__(267));
 // Default Trusty object for failed cases
@@ -1672,6 +1677,8 @@ const icons = {
     check: '✅',
     cross: '❌',
     warning: '⚠️',
+    deprecated: '💀',
+    archived: '📦',
     plus: '➕',
     minus: '➖'
 };
@@ -1778,8 +1785,8 @@ function nameAndLink(change, endpoint) {
     const url = uiUrl(change, endpoint);
     return `<a href="${url}">${change.name}</a>`;
 }
-// Function to determine the delta icon for a change
-function delta(change, config) {
+// Function to determine the icon for a change
+function scoreIcon(change, config) {
     var _a, _b;
     let icon = icons.check;
     const score = ((_a = change === null || change === void 0 ? void 0 : change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0;
@@ -1791,115 +1798,191 @@ function delta(change, config) {
             icon = icons.cross;
         }
     }
-    return `${icon} ${change.change_type} `;
+    return icon;
 }
-// Return the change compiled as a string
-function dependencyChange(change, config) {
-    const action = delta(change, config);
-    const name = nameAndLink(change, config.trusty_ui);
-    return `${action} ${name}`;
+// Function to determine the score text for a change
+function scoreCell(change, config) {
+    var _a, _b;
+    const icon = scoreIcon(change, config);
+    const score = (_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString();
+    return `${icon} ${score}`;
+}
+// Make it title case...
+function toTitleCase(str) {
+    return str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
+// Function to determine the warning text for a change
+function warningCell(change) {
+    var _a, _b, _c, _d;
+    const warnings = [];
+    if (((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.description) === null || _b === void 0 ? void 0 : _b.malicious) || false) {
+        warnings.push(`${icons.cross} Malicious`);
+    }
+    if (((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.deprecated) || false) {
+        warnings.push(`${icons.deprecated} Deprecated`);
+    }
+    if (((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.archived) || false) {
+        warnings.push(`${icons.archived} Archived`);
+    }
+    return warnings.join(' ');
 }
 // Function to convert a change to a summary table row
 function changeAsRow(change, config) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    var _a, _b, _c, _d;
     const row = [
-        dependencyChange(change, config),
+        toTitleCase(change.change_type),
+        nameAndLink(change, config.trusty_ui),
         change.version,
-        ((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString()) || '',
-        ((_d = (_c = change.trusty) === null || _c === void 0 ? void 0 : _c.description) === null || _d === void 0 ? void 0 : _d.malicious) || false ? icons.cross : icons.check,
-        ((_e = change.trusty) === null || _e === void 0 ? void 0 : _e.deprecated) || false ? icons.cross : icons.check,
-        ((_f = change.trusty) === null || _f === void 0 ? void 0 : _f.archived) || false ? icons.cross : icons.check
+        scoreCell(change, config),
+        warningCell(change)
     ];
-    if (((_g = change.trusty) === null || _g === void 0 ? void 0 : _g.description) !== undefined) {
+    if (((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.description) !== undefined) {
         row.push({ data: descriptionAsTable(change.trusty.description) });
     }
-    if (((_h = change.trusty) === null || _h === void 0 ? void 0 : _h.status) !== 'complete') {
-        const status = `${(_j = change.trusty) === null || _j === void 0 ? void 0 : _j.status_code} ${(_k = change.trusty) === null || _k === void 0 ? void 0 : _k.status}`;
+    if (((_b = change.trusty) === null || _b === void 0 ? void 0 : _b.status) !== 'complete') {
+        const status = `${(_c = change.trusty) === null || _c === void 0 ? void 0 : _c.status_code} ${(_d = change.trusty) === null || _d === void 0 ? void 0 : _d.status}`;
         row.push(status);
     }
     return row;
 }
+// Function to convert a change to a summary table row
+function updateAsRow(change, config) {
+    const ret = [];
+    if (change.added !== undefined) {
+        ret.push(changeAsRow(change.added, config));
+    }
+    if (change.removed !== undefined) {
+        ret.push(changeAsRow(change.removed, config));
+    }
+    if (ret.length > 1) {
+        if (typeof ret[0][0] === 'string') {
+            ret[0][0] = 'Updated';
+        }
+        ret[1][0] = '';
+        ret[1][1] = '';
+    }
+    return ret;
+}
 // Function to convert all changes to a summary table
-function changesAsTable(changes, config) {
-    const headings = [
-        'Dependency Change',
-        'Version',
-        'Score',
-        'Not Malicious',
-        'Not Deprecated',
-        'Not Archived'
-    ].map(heading => ({
+function changesAsTable(updates, config) {
+    const headings = ['', 'Dependency', 'Version', 'Score', 'Warnings', ''].map(heading => ({
         data: heading,
         header: true
     }));
-    const rows = changes.map(change => changeAsRow(change, config));
+    const rows = updates.flatMap(update => updateAsRow(update, config));
     if (rows.length > 0) {
         rows.unshift(headings);
     }
     return rows;
 }
+// Helper function to calculate the score
+function getScore(change) {
+    var _a, _b, _c, _d;
+    return ((_b = (_a = change.added) === null || _a === void 0 ? void 0 : _a.trusty) === null || _b === void 0 ? void 0 : _b.score) || ((_d = (_c = change.removed) === null || _c === void 0 ? void 0 : _c.trusty) === null || _d === void 0 ? void 0 : _d.score) || 0;
+}
+// Helper function to check if the change is a removal
+function isRemoval(change) {
+    return change.added === undefined && change.removed !== undefined;
+}
 // Function to sort changes by Trusty score
 function sortChangesByTrustyScore(changes) {
     return changes.sort((a, b) => {
-        var _a, _b;
-        const scoreA = ((_a = a.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0;
-        const scoreB = ((_b = b.trusty) === null || _b === void 0 ? void 0 : _b.score) || 0;
-        return scoreA - scoreB; // For descending order, swap scoreA and scoreB for ascending order
+        const isARemoval = isRemoval(a);
+        const isBRemoval = isRemoval(b);
+        if (isARemoval !== isBRemoval) {
+            // If one is a removal and the other is not, the removal should come last
+            return isARemoval ? 1 : -1;
+        }
+        // If both are removals or both are not, compare their scores
+        const scoreA = getScore(a);
+        const scoreB = getScore(b);
+        return scoreA - scoreB;
     });
 }
 exports.sortChangesByTrustyScore = sortChangesByTrustyScore;
 // Filter changes by Trusty score
-function filterChangesByTrustyScore(changes, threshold) {
-    return changes.filter(change => {
-        var _a, _b;
-        return (((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0) < threshold &&
-            ((_b = change.trusty) === null || _b === void 0 ? void 0 : _b.status_code) !== 422;
+function filterChangesByTrustyScore(updates, threshold) {
+    return updates.filter(update => {
+        var _a, _b, _c, _d, _e, _f, _g, _h;
+        return ((((_b = (_a = update.added) === null || _a === void 0 ? void 0 : _a.trusty) === null || _b === void 0 ? void 0 : _b.score) || 0) < threshold &&
+            ((_d = (_c = update.added) === null || _c === void 0 ? void 0 : _c.trusty) === null || _d === void 0 ? void 0 : _d.status_code) !== 422) ||
+            ((((_f = (_e = update.removed) === null || _e === void 0 ? void 0 : _e.trusty) === null || _f === void 0 ? void 0 : _f.score) || 0) < threshold &&
+                ((_h = (_g = update.removed) === null || _g === void 0 ? void 0 : _g.trusty) === null || _h === void 0 ? void 0 : _h.status_code) !== 422);
     });
 }
 exports.filterChangesByTrustyScore = filterChangesByTrustyScore;
+// Merge changes into a single aggregated update
+function aggregateChanges(changes) {
+    const updates = {};
+    for (const change of changes) {
+        const key = `${change.name}-${change.ecosystem}`;
+        if (!updates[key]) {
+            updates[key] = {};
+        }
+        if (change.change_type === 'added') {
+            updates[key].added = change;
+        }
+        if (change.change_type === 'removed') {
+            updates[key].removed = change;
+        }
+    }
+    return Object.values(updates);
+}
+exports.aggregateChanges = aggregateChanges;
 // Create a summary of changes
 function createSummary(changes, config) {
-    const shows = changes.filter(change => {
-        var _a;
-        return change.change_type === 'added' &&
-            (((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0) < config.trusty_show;
+    const summary = [];
+    const malicious = changes.filter(change => {
+        var _a, _b, _c, _d;
+        return ((_a = change.added) === null || _a === void 0 ? void 0 : _a.change_type) === 'added' &&
+            (((_d = (_c = (_b = change.added) === null || _b === void 0 ? void 0 : _b.trusty) === null || _c === void 0 ? void 0 : _c.description) === null || _d === void 0 ? void 0 : _d.malicious) || false);
     });
-    const showCount = shows.length;
-    const warns = changes.filter(change => {
-        var _a;
-        return change.change_type === 'added' &&
-            (((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0) < config.trusty_warn;
-    });
-    const warnCount = warns.length;
+    const maliciousCount = malicious.length;
+    if (maliciousCount > 0) {
+        summary.push(`${icons.cross} ${maliciousCount} malicious packages found.`);
+    }
     const fails = changes.filter(change => {
-        var _a, _b;
-        return change.change_type === 'added' &&
-            undefined !== ((_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) &&
-            ((_b = change.trusty) === null || _b === void 0 ? void 0 : _b.score) < config.trusty_fail;
+        var _a, _b, _c, _d, _e;
+        return ((_a = change.added) === null || _a === void 0 ? void 0 : _a.change_type) === 'added' &&
+            undefined !== ((_c = (_b = change.added) === null || _b === void 0 ? void 0 : _b.trusty) === null || _c === void 0 ? void 0 : _c.score) &&
+            ((_e = (_d = change.added) === null || _d === void 0 ? void 0 : _d.trusty) === null || _e === void 0 ? void 0 : _e.score) < config.trusty_fail;
     });
     const failCount = fails.length;
-    let ret = `There are ${showCount} ${icons.check} additions with a score below ${config.trusty_show}, ` +
-        `${warnCount} ${icons.warning} additions with a score below ${config.trusty_warn} and ` +
-        `${failCount} ${icons.cross} additions with a score below ${config.trusty_fail}.`;
     if (failCount > 0) {
-        ret += ` Please review the changes carefully.`;
-        core.setFailed(ret);
+        summary.push(`${icons.cross} ${failCount} fails found.`);
     }
-    else if (warnCount > 0) {
-        ret += ` You might want to review the warnings.`;
+    const warns = changes.filter(change => {
+        var _a, _b, _c;
+        return ((_a = change.added) === null || _a === void 0 ? void 0 : _a.change_type) === 'added' &&
+            (((_c = (_b = change.added) === null || _b === void 0 ? void 0 : _b.trusty) === null || _c === void 0 ? void 0 : _c.score) || 0) < config.trusty_warn;
+    });
+    const warnCount = warns.length;
+    if (warnCount > 0) {
+        summary.push(`${icons.warning} ${warnCount} warnings found.`);
+    }
+    if (warnCount + failCount + maliciousCount > 0) {
+        summary.push(`Expand to learn more.`);
     }
     else {
-        ret += ` No changes require immediate attention.`;
+        summary.push('No changes require immediate attention.');
     }
-    return ret;
+    return summary.join(' ');
 }
 // Add Trusty scores to changes and create a summary
 function addTrustyScores(changes, config) {
-    const filteredChanges = filterChangesByTrustyScore(changes, config.trusty_show);
+    const updates = aggregateChanges(changes);
+    const filteredChanges = filterChangesByTrustyScore(updates, config.trusty_show);
     const sortedChanges = sortChangesByTrustyScore(filteredChanges);
     core.summary.addHeading('Trusty Scores', 2);
-    core.summary.addRaw(`<details><summary>Trusty details</summary>`);
-    core.summary.addRaw(`<div>${createSummary(sortedChanges, config)}</div>`);
+    const summary = createSummary(sortedChanges, config);
+    core.summary.addRaw(`<details><summary>${summary}</summary>`);
+    core.summary.addRaw(`
+    <div><br/>
+    Trusty is a free service that helps developers evaluate the risk profile of open-source packages.
+    Packages are rated 0 to 10 with higher ratings indicating safer packages.
+    <a href='https://docs.stacklok.com/trusty/understand/scores-and-alternatives/'>Learn how</a>.
+    </div>
+    `);
     core.summary.addEOL();
     core.summary.addTable(changesAsTable(sortedChanges, config));
     core.summary.addRaw(`</details>`);
@@ -56303,7 +56386,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.TrustySchema = exports.TrustySummarySchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.UpdatesSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.UpdateSchema = exports.ChangeSchema = exports.TrustySchema = exports.TrustySummarySchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(4498);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -56401,6 +56484,10 @@ exports.ChangeSchema = z.object({
         .optional()
         .default([])
 });
+exports.UpdateSchema = z.object({
+    added: exports.ChangeSchema.optional(), // Add an empty object as an argument
+    removed: exports.ChangeSchema.optional()
+});
 exports.PullRequestSchema = z.object({
     number: z.number(),
     base: z.object({ sha: z.string() }),
@@ -56471,6 +56558,7 @@ exports.ConfigurationOptionsSchema = z
     }
 });
 exports.ChangesSchema = z.array(exports.ChangeSchema);
+exports.UpdatesSchema = z.array(exports.UpdateSchema);
 exports.ComparisonResponseSchema = z.object({
     changes: z.array(exports.ChangeSchema),
     snapshot_warnings: z.string()

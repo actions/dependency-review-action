@@ -106,6 +106,11 @@ export const ChangeSchema = z.object({
     .default([])
 })
 
+export const UpdateSchema = z.object({
+  added: ChangeSchema.optional(), // Add an empty object as an argument
+  removed: ChangeSchema.optional()
+})
+
 export const PullRequestSchema = z.object({
   number: z.number(),
   base: z.object({sha: z.string()}),
@@ -182,6 +187,7 @@ export const ConfigurationOptionsSchema = z
   })
 
 export const ChangesSchema = z.array(ChangeSchema)
+export const UpdatesSchema = z.array(UpdateSchema)
 export const ComparisonResponseSchema = z.object({
   changes: z.array(ChangeSchema),
   snapshot_warnings: z.string()
@@ -229,6 +235,8 @@ export const ScorecardSchema = z.object({
 
 export type Change = z.infer<typeof ChangeSchema>
 export type Changes = z.infer<typeof ChangesSchema>
+export type Update = z.infer<typeof UpdateSchema>
+export type Updates = z.infer<typeof UpdatesSchema>
 export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>

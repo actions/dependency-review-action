@@ -5,7 +5,7 @@ import {
   ConfigurationOptions,
   ConfigurationOptionsSchema
 } from '../src/schemas'
-import {getTrustyScores} from '../src/trusty'
+import {aggregateChanges, getTrustyScores} from '../src/trusty'
 
 const nonExistChange: Change = {
   manifest: 'package.json',
@@ -64,6 +64,32 @@ const pipChange: Change = {
       advisory_url: 'github.com/future-funk'
     }
   ]
+}
+
+const pipV1Change: Change = {
+  change_type: 'removed',
+  manifest: 'requirements.txt',
+  ecosystem: 'pip',
+  name: 'pandas',
+  version: '1.1.1',
+  package_url: 'pkg:pypi/pandas@1.1.1',
+  license: 'MIT',
+  source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
+  vulnerabilities: []
+}
+
+const pipV2Change: Change = {
+  change_type: 'added',
+  manifest: 'requirements.txt',
+  ecosystem: 'pip',
+  name: 'pandas',
+  version: '1.1.2',
+  package_url: 'pkg:pypi/pandas@1.1.1',
+  license: 'MIT',
+  source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
+  vulnerabilities: []
 }
 
 const mavenChange: Change = {
@@ -137,4 +163,17 @@ test('Test bad list', async () => {
   expect(changed[0]).not.toBeNull()
   expect(changed).toHaveLength(changes.length)
   expect(changed[0].trusty?.score).toBeGreaterThan(0)
+})
+
+test('Test update', async () => {
+  const changes: Changes = [
+    npmChange,
+    pipV2Change,
+    mavenChange,
+    nonExistChange,
+    pipV1Change
+  ]
+  const updates = aggregateChanges(changes)
+  expect(updates[0]).not.toBeNull()
+  expect(updates).toHaveLength(changes.length - 1)
 })
