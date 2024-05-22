@@ -1778,7 +1778,7 @@ function descriptionAsTable(details) {
     const rows = Object.entries(details).map(([key, value]) => {
         return `<tr><td>${key}</td><td>${value}</td></tr>`;
     });
-    return `<span style="white-space: nowrap;"><details><table>${rows.join('')}</table></details></span>`;
+    return `<details><summary> </summary><table>${rows.join('')}</table></details>`;
 }
 // Function to create an anchor for a change
 function nameAndLink(change, endpoint) {
@@ -1805,7 +1805,7 @@ function scoreCell(change, config) {
     var _a, _b;
     const icon = scoreIcon(change, config);
     const score = (_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.score) === null || _b === void 0 ? void 0 : _b.toString();
-    return `${icon} ${score}`;
+    return `${icon}&nbsp;${score}`;
 }
 // Make it title case...
 function toTitleCase(str) {
@@ -1816,15 +1816,15 @@ function warningCell(change) {
     var _a, _b, _c, _d;
     const warnings = [];
     if (((_b = (_a = change.trusty) === null || _a === void 0 ? void 0 : _a.description) === null || _b === void 0 ? void 0 : _b.malicious) || false) {
-        warnings.push(`${icons.cross} Malicious`);
+        warnings.push(`${icons.cross}&nbsp;Malicious`);
     }
     if (((_c = change.trusty) === null || _c === void 0 ? void 0 : _c.deprecated) || false) {
-        warnings.push(`${icons.deprecated} Deprecated`);
+        warnings.push(`${icons.deprecated}&nbsp;Deprecated`);
     }
     if (((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.archived) || false) {
-        warnings.push(`${icons.archived} Archived`);
+        warnings.push(`${icons.archived}&nbsp;Archived`);
     }
-    return `<span style="white-space: nowrap;">${warnings.join(' ')}</span>`;
+    return warnings.join(' ');
 }
 // Function to convert a change to a summary table row
 function changeAsRow(change, config) {

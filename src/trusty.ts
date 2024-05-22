@@ -159,7 +159,7 @@ function descriptionAsTable(details: TrustySummary): string {
   const rows = Object.entries(details).map(([key, value]) => {
     return `<tr><td>${key}</td><td>${value}</td></tr>`
   })
-  return `<span style="white-space: nowrap;"><details><table>${rows.join('')}</table></details></span>`
+  return `<details><summary> </summary><table>${rows.join('')}</table></details>`
 }
 
 // Function to create an anchor for a change
@@ -187,7 +187,7 @@ function scoreIcon(change: Change, config: ConfigurationOptions): string {
 function scoreCell(change: Change, config: ConfigurationOptions): string {
   const icon = scoreIcon(change, config)
   const score = change.trusty?.score?.toString()
-  return `${icon} ${score}`
+  return `${icon}&nbsp;${score}`
 }
 
 // Make it title case...
@@ -202,15 +202,15 @@ function toTitleCase(str: string): string {
 function warningCell(change: Change): string {
   const warnings = []
   if (change.trusty?.description?.malicious || false) {
-    warnings.push(`${icons.cross} Malicious`)
+    warnings.push(`${icons.cross}&nbsp;Malicious`)
   }
   if (change.trusty?.deprecated || false) {
-    warnings.push(`${icons.deprecated} Deprecated`)
+    warnings.push(`${icons.deprecated}&nbsp;Deprecated`)
   }
   if (change.trusty?.archived || false) {
-    warnings.push(`${icons.archived} Archived`)
+    warnings.push(`${icons.archived}&nbsp;Archived`)
   }
-  return `<span style="white-space: nowrap;">${warnings.join(' ')}</span>`
+  return warnings.join(' ')
 }
 
 // Function to convert a change to a summary table row
