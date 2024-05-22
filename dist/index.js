@@ -1778,7 +1778,7 @@ function descriptionAsTable(details) {
     const rows = Object.entries(details).map(([key, value]) => {
         return `<tr><td>${key}</td><td>${value}</td></tr>`;
     });
-    return `<details><table>${rows.join('')}</table></details>`;
+    return `<span style="white-space: nowrap;"><details><table>${rows.join('')}</table></details></span>`;
 }
 // Function to create an anchor for a change
 function nameAndLink(change, endpoint) {
@@ -1824,7 +1824,7 @@ function warningCell(change) {
     if (((_d = change.trusty) === null || _d === void 0 ? void 0 : _d.archived) || false) {
         warnings.push(`${icons.archived} Archived`);
     }
-    return warnings.join(' ');
+    return `<span style="white-space: nowrap;">${warnings.join(' ')}</span>`;
 }
 // Function to convert a change to a summary table row
 function changeAsRow(change, config) {
