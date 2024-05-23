@@ -1112,6 +1112,7 @@ exports.ConfigurationOptionsSchema = z
     trusty_warn: z.number().optional().default(5),
     trusty_fail: z.number().optional().default(1),
     trusty_api: z.string().default('https://api.trustypkg.dev'),
+    // trusty_api: z.string().default('https://gh.trustypkg.dev'),
     trusty_ui: z.string().default('https://trustypkg.dev'),
     comment_summary_in_pr: z
         .union([
@@ -1722,10 +1723,23 @@ function fetchWithRetry(change, retries, config) {
     return __awaiter(this, void 0, void 0, function* () {
         const ret = Object.assign({}, failed_trusty);
         const url = apiUrl(change, config.trusty_api);
+        const token = process.env.GITHUB_TOKEN;
+        let headers = {};
+        if (token) {
+            headers = {
+                headers: {
+                    Authorization: `Bearer ${token}` // Add the Bearer token to the request headers
+                }
+            };
+            core.debug(`Setting Authorization header for Trusty API`);
+        }
+        else {
+            core.warning(`No GITHUB_TOKEN found. Trusty API may rate limit.`);
+        }
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
                 core.debug(`Fetching ${change.name} ${attempt} from ${url}`);
-                const response = yield fetch(url);
+                const response = yield fetch(url, headers);
                 let status = `${response.status} ${response.statusText}`;
                 if (response.ok) {
                     const trustyResponse = yield response.json();
@@ -1790,13 +1804,11 @@ function scoreIcon(change, config) {
     var _a, _b;
     let icon = icons.check;
     const score = ((_a = change === null || change === void 0 ? void 0 : change.trusty) === null || _a === void 0 ? void 0 : _a.score) || 0;
-    if (change.change_type === 'added') {
-        if (score <= config.trusty_warn) {
-            icon = icons.warning;
-        }
-        if (((_b = change === null || change === void 0 ? void 0 : change.trusty) === null || _b === void 0 ? void 0 : _b.score) !== undefined && score <= config.trusty_fail) {
-            icon = icons.cross;
-        }
+    if (score <= config.trusty_warn) {
+        icon = icons.warning;
+    }
+    if (((_b = change === null || change === void 0 ? void 0 : change.trusty) === null || _b === void 0 ? void 0 : _b.score) !== undefined && score <= config.trusty_fail) {
+        icon = icons.cross;
     }
     return icon;
 }
@@ -56518,6 +56530,7 @@ exports.ConfigurationOptionsSchema = z
     trusty_warn: z.number().optional().default(5),
     trusty_fail: z.number().optional().default(1),
     trusty_api: z.string().default('https://api.trustypkg.dev'),
+    // trusty_api: z.string().default('https://gh.trustypkg.dev'),
     trusty_ui: z.string().default('https://trustypkg.dev'),
     comment_summary_in_pr: z
         .union([

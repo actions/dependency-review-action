@@ -96,10 +96,22 @@ async function fetchWithRetry(
 ): Promise<Trusty> {
   const ret = {...failed_trusty}
   const url = apiUrl(change, config.trusty_api)
+  const token = process.env.GITHUB_TOKEN
+  let headers = {}
+  if (token) {
+    headers = {
+      headers: {
+        Authorization: `Bearer ${token}` // Add the Bearer token to the request headers
+      }
+    }
+    core.debug(`Setting Authorization header for Trusty API`)
+  } else {
+    core.warning(`No GITHUB_TOKEN found. Trusty API may rate limit.`)
+  }
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       core.debug(`Fetching ${change.name} ${attempt} from ${url}`)
-      const response = await fetch(url)
+      const response = await fetch(url, headers)
       let status = `${response.status} ${response.statusText}`
       if (response.ok) {
         const trustyResponse = await response.json()
@@ -172,13 +184,11 @@ function nameAndLink(change: Change, endpoint: string): string {
 function scoreIcon(change: Change, config: ConfigurationOptions): string {
   let icon = icons.check
   const score = change?.trusty?.score || 0
-  if (change.change_type === 'added') {
-    if (score <= config.trusty_warn) {
-      icon = icons.warning
-    }
-    if (change?.trusty?.score !== undefined && score <= config.trusty_fail) {
-      icon = icons.cross
-    }
+  if (score <= config.trusty_warn) {
+    icon = icons.warning
+  }
+  if (change?.trusty?.score !== undefined && score <= config.trusty_fail) {
+    icon = icons.cross
   }
   return icon
 }
