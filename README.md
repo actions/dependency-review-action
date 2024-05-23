@@ -63,7 +63,7 @@ You can install the action on any public repository, or any organization-owned p
 
 You can install the action on repositories on GitHub Enterprise Server. 
 
-1. Ensure [GitHub Advanced Security](https://docs.github.com/en/enterprise-server@3.12/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise) and [GitHub Connect](https://docs.github.com/en/enterprise-server@3.12/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect) are enabled for the enterprise.
+1. Ensure [GitHub Advanced Security](https://docs.github.com/en/enterprise-server@latest/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise) and [GitHub Connect](https://docs.github.com/en/enterprise-server@latest/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect) are enabled for the enterprise.
 2. Ensure you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
 3. Add a new YAML workflow to your `.github/workflows` folder:
 
