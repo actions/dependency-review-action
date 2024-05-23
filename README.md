@@ -18,16 +18,18 @@ The action is available for:
 - Public repositories
 - Private repositories with a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license.
 
-When the action runs, you can see the results on:
+### Viewing the results
 
-- The **job logs**, found ....
+When the action runs, you can see the results on:  
 
-  <img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
+- The **job logs** page. 
+  - Go to the **Actions** tab for the repository and select the relevant workflow run. Then under "Jobs", click **dependency review**.
 
-- The **job summary**, found ....
+   <img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
 
+- The **job summary** page.
+  - Go to the **Actions** tab for the repository and select the relevant workflow run. Click **Summary**, then scroll to "dependency-review summary". 
   <img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
-
 
 ## Installation
 
