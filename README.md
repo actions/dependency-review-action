@@ -14,6 +14,10 @@
 The dependency review action scans your pull requests for dependency changes, and will raise an error if any vulnerabilities or invalid licenses are being introduced. 
 The action is supported by an [API endpoint](https://docs.github.com/en/rest/dependency-graph/dependency-review?apiVersion=2022-11-28) that diffs the dependencies between any two revisions on your default branch.
 
+The action is available for: 
+- Public repositories
+- Private repositories with a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license.
+
 When the action runs, you can see the results on:
 
 - The **job logs**, found ....
@@ -24,58 +28,60 @@ When the action runs, you can see the results on:
 
   <img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
 
-The action is available for: 
-- Public repositories
-- Private repositories with a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license.
 
 ## Installation
 
-**Please keep in mind that you need a [GitHub Advanced Security](https://docs.github.com/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license if you're running this action on private repositories.**
+- [Installation (standard)](#installation)
+- [Installation (GitHub Enterprise Server)](#installation-github-enterprise-server)
+
+#### Installation (standard)
+
+You can install the action on any public repository, or any organization-owned private repository, provided the organization has a GitHub Advanced Security license. 
 
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
-```yaml
-name: 'Dependency Review'
-on: [pull_request]
+   ```yaml
+   name: 'Dependency Review'
+   on: [pull_request]
 
-permissions:
-  contents: read
+   permissions:
+     contents: read
 
-jobs:
-  dependency-review:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 'Checkout Repository'
-        uses: actions/checkout@v4
-      - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v4
-```
+   jobs:
+     dependency-review:
+       runs-on: ubuntu-latest
+       steps:
+         - name: 'Checkout Repository'
+           uses: actions/checkout@v4
+         - name: 'Dependency Review'
+           uses: actions/dependency-review-action@v4
+   ```
 
-### GitHub Enterprise Server
+#### Installation (GitHub Enterprise Server)
 
-Make sure
-[GitHub Advanced
-Security](https://docs.github.com/enterprise-server@3.8/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise)
-and [GitHub
-Connect](https://docs.github.com/enterprise-server@3.8/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect)
-are enabled, and that you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
+You can install the action on repositories on GitHub Enterprise Server. 
 
-You can use the same workflow as above, replacing the `runs-on` value
-with the label of any of your runners (the default label
-is `self-hosted`):
+1. Ensure [GitHub Advanced Security](https://docs.github.com/en/enterprise-server@3.12/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise) and [GitHub Connect](https://docs.github.com/en/enterprise-server@3.12/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect) are enabled for the enterprise.
+2. Ensure you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
+3. Add a new YAML workflow to your `.github/workflows` folder:
 
-```yaml
-# ...
+   ``` yaml
+   name: 'Dependency Review'
+   on: [pull_request]
 
-jobs:
-  dependency-review:
-    runs-on: self-hosted
-    steps:
-      - name: 'Checkout Repository'
-        uses: actions/checkout@v4
-      - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v4
-```
+   permissions:
+     contents: read
+
+   jobs:
+     dependency-review:
+       runs-on: self-hosted
+       steps:
+         - name: 'Checkout Repository'
+           uses: actions/checkout@v4
+         - name: 'Dependency Review'
+           uses: actions/dependency-review-action@v4
+   ```
+5. In the workflow file, replace the `runs-on` value with the label of any of your runners. (The default value is `self-hosted`.)
 
 ## Configuration options
 
