@@ -114,7 +114,8 @@ const mavenChange: Change = {
 }
 
 const config: ConfigurationOptions = ConfigurationOptionsSchema.parse({
-  trusty_retries: 2
+  trusty_retries: 2,
+  trusty_api: 'https://api.trustypkg.dev'
 })
 
 test('Test npm', async () => {

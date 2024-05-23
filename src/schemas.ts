@@ -141,7 +141,7 @@ export const ConfigurationOptionsSchema = z
     trusty_show: z.number().optional().default(7),
     trusty_warn: z.number().optional().default(5),
     trusty_fail: z.number().optional().default(1),
-    trusty_api: z.string().default('https://api.trustypkg.dev'),
+    trusty_api: z.string().default('https://gh.trustypkg.dev'),
     trusty_ui: z.string().default('https://trustypkg.dev'),
     comment_summary_in_pr: z
       .union([
