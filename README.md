@@ -1,17 +1,32 @@
 # dependency-review-action
 
-This action scans your pull requests for dependency changes, and will
-raise an error if any vulnerabilities or invalid licenses are being introduced. The action is supported by an [API endpoint](https://docs.github.com/rest/dependency-graph/dependency-review) that diffs the dependencies between any two revisions on your default branch.
+- [Overview](#overview)
+- [Installation](#installation)
+- [Configuration](#configuration)
 
-The action is available for all public repositories, as well as private repositories that have GitHub Advanced Security licensed.
+- [Outputs](#outputs)
+- [Getting help](#getting-help)
+- [Contributing](#contributing)
+- [License](#license)
 
-You can see the results on the job logs:
+## Overview
 
-<img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
+The dependency review action scans your pull requests for dependency changes, and will raise an error if any vulnerabilities or invalid licenses are being introduced. 
+The action is supported by an [API endpoint](https://docs.github.com/en/rest/dependency-graph/dependency-review?apiVersion=2022-11-28) that diffs the dependencies between any two revisions on your default branch.
 
-or on the job summary:
+When the action runs, you can see the results on:
 
-<img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
+- The **job logs**, found ....
+
+  <img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
+
+- The **job summary**, found ....
+
+  <img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
+
+The action is available for: 
+- Public repositories
+- Private repositories with a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license.
 
 ## Installation
 
