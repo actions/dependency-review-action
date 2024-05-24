@@ -23,13 +23,16 @@ The action is available for:
 When the action runs, you can see the results on:  
 
 - The **job logs** page. 
-  - Go to the **Actions** tab for the repository and select the relevant workflow run. Then under "Jobs", click **dependency review**.
+  1. Go to the **Actions** tab for the repository and select the relevant workflow run. 
+  1. Then under "Jobs", click **dependency review**.
 
-   <img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
+      <img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
 
 - The **job summary** page.
-  - Go to the **Actions** tab for the repository and select the relevant workflow run. Click **Summary**, then scroll to "dependency-review summary". 
-  <img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
+  1. Go to the **Actions** tab for the repository and select the relevant workflow run. 
+  1. Click **Summary**, then scroll to "dependency-review summary". 
+     
+     <img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
 
 ## Installation
 
@@ -92,7 +95,7 @@ You can install the action on repositories on GitHub Enterprise Server.
 
 ### Configuration options
 
-There are various configuration options you can use to customize the dependency review action.
+There are various configuration options you can use to specify settings for the dependency review action.
 
 All configuration options are optional. 
 
@@ -204,9 +207,10 @@ You can use an external configuration file to specify settings for this action. 
 > For external configuration files, the option names use underscores instead of dashes.
 > Example: `fail_on_severity`
 
-#### Further example configurations
+#### Further information
 
-For more examples of how to use this action and its configuration options, see the [examples](docs/examples.md) page.
+- For more examples of how to use this action and its configuration options, see the [examples](docs/examples.md) page.
+- For general information about dependency review on GitHub, see "[About dependency review](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review)" in the GitHub Docs documentation.
 
 ## Using dependency review action to block a pull request from being merged
 
@@ -214,7 +218,7 @@ You can configure your repository to block a pull request from being merged if t
 
 ## Outputs
 
-[Insert overview line here - what does output refer to? What / how it is used?]
+[TODO: Insert overview line here - what does output refer to? What / how it is used?]
 
 - `comment-content` is generated with the same content as would be present in a Dependency Review Action comment.
 - `dependency-changes` holds all dependency changes in a JSON format. The following outputs are subsets of `dependency-changes` filtered based on the configuration:
