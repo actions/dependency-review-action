@@ -218,7 +218,7 @@ You can configure your repository to block a pull request from being merged if t
 
 ## Outputs
 
-[TODO: Insert overview line here - what does output refer to? What / how it is used?]
+Dependency review action can create [outputs](https://docs.github.com/en/actions/using-jobs/defining-outputs-for-jobs), so that data from its execution can be used by other jobs in a workflow.
 
 - `comment-content` is generated with the same content as would be present in a Dependency Review Action comment.
 - `dependency-changes` holds all dependency changes in a JSON format. The following outputs are subsets of `dependency-changes` filtered based on the configuration:
