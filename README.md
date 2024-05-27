@@ -223,8 +223,8 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
 - `comment-content` is generated with the same content as would be present in a Dependency Review Action comment.
 - `dependency-changes` holds all dependency changes in a JSON format. The following outputs are subsets of `dependency-changes` filtered based on the configuration:
   - `vulnerable-changes` holds information about dependency changes with vulnerable dependencies in a JSON format.
-- `invalid-license-changes` holds information about invalid or non-compliant license dependency changes in a JSON format.
-- `denied-changes` holds information about denied dependency changes in a JSON format.
+  - `invalid-license-changes` holds information about invalid or non-compliant license dependency changes in a JSON format.
+  - `denied-changes` holds information about denied dependency changes in a JSON format.
 
 > [!NOTE]
 > Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).
