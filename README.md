@@ -123,7 +123,7 @@ All configuration options are optional.
 > - \* Not supported for use with GitHub Enterprise Server. (Checking for licenses is not supported on GitHub Enterprise Server because the API does not return license information.)
 > - \+ When `warn-only` is set to `true`, all vulnerabilities, independently of the severity, will be reported as warnings and the action will not fail.
 > - The `allow-licenses` and `deny-licenses` options are mutually exclusive; an error will be raised if you provide both.
-> - We don't have license information for all of your dependents. If we can't detect the license for a dependency **we will inform you, but the action won't fail**.
+> - If we can't detect the license for a dependency **we will inform you, but the action won't fail**.
 
 ### Configuration methods
 
