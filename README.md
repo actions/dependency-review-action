@@ -238,7 +238,8 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
 >   echo "$VULNERABLE_CHANGES" | jq
 > ```
 >
-> instead of direct `echo '${{ steps.review.outputs.vulnerable-changes }}'`. See [examples](docs/examples.md) for more.
+> instead of direct `echo '${{ steps.review.outputs.vulnerable-changes }}'`. 
+> See [examples](docs/examples.md) for more.
 
 ## Getting help
 
