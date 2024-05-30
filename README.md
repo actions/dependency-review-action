@@ -227,9 +227,8 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
   - `denied-changes` holds information about denied dependency changes in a JSON format.
 
 > [!NOTE]
-> Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).
-
-> [!NOTE]
+> Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).   
+>
 > If you use these outputs in a run-step, you must store the output data in an environment variable instead of using the output directly. Using an output directly might break shell scripts. For example:
 >
 > ```yaml
