@@ -5,6 +5,8 @@ import * as retry from '@octokit/plugin-retry'
 import {RequestError} from '@octokit/request-error'
 import {ConfigurationOptions} from './schemas'
 
+export const MAX_COMMENT_LENGTH = 65536
+
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry)
 const octo = new retryingOctokit(
   githubUtils.getOctokitOptions(core.getInput('repo-token', {required: true}))
@@ -12,19 +14,11 @@ const octo = new retryingOctokit(
 
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
-const MAX_COMMENT_LENGTH = 65536
 
 export async function commentPr(
-  summary: typeof core.summary,
+  commentContent: string,
   config: ConfigurationOptions,
-  minComment: string
 ): Promise<void> {
-  const commentContent = summary.stringify()
-
-  // this should be truncated for us if it's too long but
-  // we could check len and sub in minSummary instead
-  core.setOutput('comment-content', commentContent)
-
   if (
     !(
       config.comment_summary_in_pr === 'always' ||
@@ -43,13 +37,6 @@ export async function commentPr(
   }
 
   let commentBody = `${commentContent}\n\n${COMMENT_MARKER}`
-
-  if (commentBody.length >= MAX_COMMENT_LENGTH) {
-    core.debug(
-      'The comment was too big for the GitHub API. Falling back on a minimum comment'
-    )
-    commentBody = `${minComment}\n\n${COMMENT_MARKER}`
-  }
 
   try {
     const existingCommentId = await findCommentByMarker(COMMENT_MARKER)

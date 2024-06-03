@@ -10,81 +10,23 @@ const icons = {
   warning: '⚠️'
 }
 
-export function getMinSummaryForComment(
-  vulnerableChanges: Changes,
-  invalidLicenseChanges: InvalidLicenseChanges,
-  deniedChanges: Changes,
-  scorecard: Scorecard,
-  config: ConfigurationOptions
-): string {
-  const scorecardWarnings = countScorecardWarnings(scorecard, config)
-  const licenseIssues = countLicenseIssues(invalidLicenseChanges)
-
-  let minSummary = '# Dependency Review\n'
-
-  if (
-    vulnerableChanges.length === 0 &&
-    licenseIssues === 0 &&
-    deniedChanges.length === 0 &&
-    scorecardWarnings === 0
-  ) {
-    const issueTypes = [
-      config.vulnerability_check ? 'vulnerabilities' : '',
-      config.license_check ? 'license issues' : '',
-      config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
-    ]
-    if (issueTypes.filter(Boolean).length === 0) {
-      minSummary += `${icons.check} No issues found.`
-    } else {
-      minSummary += `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
-    }
-  }
-
-  minSummary += 'The following issues were found:\n'
-  minSummary += config.vulnerability_check
-    ? `* ${checkOrFailIcon(vulnerableChanges.length)} ${
-        vulnerableChanges.length
-      } vulnerable package(s)\n`
-    : ''
-  minSummary += config.license_check
-    ? `* ${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
-        invalidLicenseChanges.forbidden.length
-      } package(s) with incompatible licenses\n
-* ${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-        invalidLicenseChanges.unresolved.length
-      } package(s) with invalid SPDX license definitions\n
-* ${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
-        invalidLicenseChanges.unlicensed.length
-      } package(s) with unknown licenses.\n`
-    : ''
-  minSummary +=
-    deniedChanges.length > 0
-      ? `* ${checkOrWarnIcon(deniedChanges.length)} ${
-          deniedChanges.length
-        } package(s) denied.\n`
-      : ''
-  minSummary +=
-    config.show_openssf_scorecard && scorecardWarnings > 0
-      ? `* ${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.\n`
-      : ''
-
-  // Add the link to the job summary provided by GitHub Actions for this workflow run
-  minSummary += `\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
-
-  return minSummary
-}
-
+// generates the initial DR summmary and applies to the Action's core.summary
+// returns a string array of all the formatted values in the event we need
+// to replace them in the PR comment due to length restrictions
 export function addSummaryToSummary(
   vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
   scorecard: Scorecard,
-  config: ConfigurationOptions
-): void {
+  config: ConfigurationOptions,
+): string {
+  let out: string[] = [];
+
   const scorecardWarnings = countScorecardWarnings(scorecard, config)
   const licenseIssues = countLicenseIssues(invalidLicenseChanges)
 
   core.summary.addHeading('Dependency Review', 1)
+  out.push('# Dependency Review')
 
   if (
     vulnerableChanges.length === 0 &&
@@ -97,54 +39,65 @@ export function addSummaryToSummary(
       config.license_check ? 'license issues' : '',
       config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
     ]
+
+    let msg = ''
     if (issueTypes.filter(Boolean).length === 0) {
-      core.summary.addRaw(`${icons.check} No issues found.`)
+      msg = `${icons.check} No issues found.`
     } else {
-      core.summary.addRaw(
-        `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
-      )
+      msg = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
     }
 
-    return
+    core.summary.addRaw(msg)
+    out.push(msg)
+    return out.join('\n')
   }
 
-  core.summary
-    .addRaw('The following issues were found:')
-    .addList([
-      ...(config.vulnerability_check
-        ? [
-            `${checkOrFailIcon(vulnerableChanges.length)} ${
-              vulnerableChanges.length
-            } vulnerable package(s)`
-          ]
-        : []),
-      ...(config.license_check
-        ? [
-            `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
-              invalidLicenseChanges.forbidden.length
-            } package(s) with incompatible licenses`,
-            `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-              invalidLicenseChanges.unresolved.length
-            } package(s) with invalid SPDX license definitions`,
-            `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
-              invalidLicenseChanges.unlicensed.length
-            } package(s) with unknown licenses.`
-          ]
-        : []),
-      ...(deniedChanges.length > 0
-        ? [
-            `${checkOrFailIcon(deniedChanges.length)} ${
-              deniedChanges.length
-            } package(s) denied.`
-          ]
-        : []),
-      ...(config.show_openssf_scorecard && scorecardWarnings > 0
-        ? [
-            `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
-          ]
-        : [])
-    ])
-    .addRaw('See the Details below.')
+  const foundIssuesHeader =  'The following issues were found:'
+  core.summary.addRaw(foundIssuesHeader)
+  out.push(foundIssuesHeader)
+
+  const summaryList: string[] = [
+     ...(config.vulnerability_check
+      ? [
+          `${checkOrFailIcon(vulnerableChanges.length)} ${
+            vulnerableChanges.length
+          } vulnerable package(s)`
+        ]
+      : []),
+    ...(config.license_check
+      ? [
+          `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
+            invalidLicenseChanges.forbidden.length
+          } package(s) with incompatible licenses`,
+          `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
+            invalidLicenseChanges.unresolved.length
+          } package(s) with invalid SPDX license definitions`,
+          `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
+            invalidLicenseChanges.unlicensed.length
+          } package(s) with unknown licenses.`
+        ]
+      : []),
+    ...(deniedChanges.length > 0
+      ? [
+          `${checkOrWarnIcon(deniedChanges.length)} ${
+            deniedChanges.length
+          } package(s) denied.`
+        ]
+      : []),
+    ...(config.show_openssf_scorecard && scorecardWarnings > 0
+      ? [
+          `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+        ]
+      : [])
+  ];
+
+  core.summary.addList(summaryList)
+  out.push(...summaryList)
+
+  core.summary.addRaw('See the Details below.')
+  out.push(`\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`)
+
+  return out.join('\n')
 }
 
 function countScorecardWarnings(
