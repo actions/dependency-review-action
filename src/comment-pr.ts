@@ -21,6 +21,10 @@ export async function commentPr(
 ): Promise<void> {
   const commentContent = summary.stringify()
 
+  // this should be truncated for us if it's too long but
+  // we could check len and sub in minSummary instead
+  core.setOutput('comment-content', commentContent)
+
   if (
     !(
       config.comment_summary_in_pr === 'always' ||
