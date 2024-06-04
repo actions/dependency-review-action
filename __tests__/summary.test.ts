@@ -113,7 +113,7 @@ test('returns minimal summary in case the core.summary is too large for a PR com
   let changes: Changes = [
     createTestChange({name: 'lodash', version: '1.2.3'}),
     createTestChange({name: 'colors', version: '2.3.4'}),
-    createTestChange({name: '@foo/bar', version: '*'}),
+    createTestChange({name: '@foo/bar', version: '*'})
   ]
 
   let minSummary: string = summary.addSummaryToSummary(

@@ -18,9 +18,9 @@ export function addSummaryToSummary(
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
   scorecard: Scorecard,
-  config: ConfigurationOptions,
+  config: ConfigurationOptions
 ): string {
-  let out: string[] = [];
+  let out: string[] = []
 
   const scorecardWarnings = countScorecardWarnings(scorecard, config)
   const licenseIssues = countLicenseIssues(invalidLicenseChanges)
@@ -52,12 +52,12 @@ export function addSummaryToSummary(
     return out.join('\n')
   }
 
-  const foundIssuesHeader =  'The following issues were found:'
+  const foundIssuesHeader = 'The following issues were found:'
   core.summary.addRaw(foundIssuesHeader)
   out.push(foundIssuesHeader)
 
   const summaryList: string[] = [
-     ...(config.vulnerability_check
+    ...(config.vulnerability_check
       ? [
           `${checkOrFailIcon(vulnerableChanges.length)} ${
             vulnerableChanges.length
@@ -89,15 +89,17 @@ export function addSummaryToSummary(
           `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
         ]
       : [])
-  ];
+  ]
 
   core.summary.addList(summaryList)
-  summaryList.forEach( (line) => {
+  summaryList.forEach(line => {
     out.push('* ' + line)
   })
 
   core.summary.addRaw('See the Details below.')
-  out.push(`\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`)
+  out.push(
+    `\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
+  )
 
   return out.join('\n')
 }

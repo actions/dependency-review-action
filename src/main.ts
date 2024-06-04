@@ -22,12 +22,8 @@ import * as summary from './summary'
 import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
-import {
-  commentPr,
-  MAX_COMMENT_LENGTH
-} from './comment-pr'
+import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
-
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))

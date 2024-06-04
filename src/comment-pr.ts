@@ -17,7 +17,7 @@ const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
 
 export async function commentPr(
   commentContent: string,
-  config: ConfigurationOptions,
+  config: ConfigurationOptions
 ): Promise<void> {
   if (
     !(
