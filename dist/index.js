@@ -676,7 +676,7 @@ function run() {
             printScannedDependencies(changes);
             // include full summary in output; Actions will truncate if oversized
             let rendered = core.summary.stringify();
-            core.setOutput('content-comment', rendered);
+            core.setOutput('comment-content', rendered);
             // if the summary is oversized, replace with minimal version
             if (rendered.length >= comment_pr_1.MAX_COMMENT_LENGTH) {
                 core.debug('The comment was too big for the GitHub API. Falling back on a minimum comment');
