@@ -22,7 +22,7 @@ import * as summary from './summary'
 import {getRefs} from './git-refs'
 
 import {groupDependenciesByManifest} from './utils'
-import {commentPr} from './comment-pr'
+import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
 
 async function delay(ms: number): Promise<void> {
@@ -127,7 +127,7 @@ async function run(): Promise<void> {
 
     const scorecard = await getScorecardLevels(filteredChanges)
 
-    summary.addSummaryToSummary(
+    const minSummary = summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
       deniedChanges,
@@ -166,7 +166,21 @@ async function run(): Promise<void> {
     core.setOutput('dependency-changes', JSON.stringify(changes))
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
-    await commentPr(core.summary, config)
+
+    // include full summary in output; Actions will truncate if oversized
+    let rendered = core.summary.stringify()
+    core.setOutput('comment-content', rendered)
+
+    // if the summary is oversized, replace with minimal version
+    if (rendered.length >= MAX_COMMENT_LENGTH) {
+      core.debug(
+        'The comment was too big for the GitHub API. Falling back on a minimum comment'
+      )
+      rendered = minSummary
+    }
+
+    // update the PR comment if needed with the right-sized summary
+    await commentPr(rendered, config)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       core.setFailed(

@@ -46,20 +46,19 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.commentPr = void 0;
+exports.commentPr = exports.MAX_COMMENT_LENGTH = void 0;
 const github = __importStar(__nccwpck_require__(5438));
 const core = __importStar(__nccwpck_require__(2186));
 const githubUtils = __importStar(__nccwpck_require__(3030));
 const retry = __importStar(__nccwpck_require__(6298));
 const request_error_1 = __nccwpck_require__(537);
+exports.MAX_COMMENT_LENGTH = 65536;
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->';
-function commentPr(summary, config) {
+function commentPr(commentContent, config) {
     return __awaiter(this, void 0, void 0, function* () {
-        const commentContent = summary.stringify();
-        core.setOutput('comment-content', commentContent);
         if (!(config.comment_summary_in_pr === 'always' ||
             (config.comment_summary_in_pr === 'on-failure' &&
                 process.exitCode === core.ExitCode.Failure))) {
@@ -648,7 +647,7 @@ function run() {
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
             const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
-            summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config);
+            const minSummary = summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config);
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(config, snapshot_warnings);
             }
@@ -675,7 +674,16 @@ function run() {
             core.setOutput('dependency-changes', JSON.stringify(changes));
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
-            yield (0, comment_pr_1.commentPr)(core.summary, config);
+            // include full summary in output; Actions will truncate if oversized
+            let rendered = core.summary.stringify();
+            core.setOutput('comment-content', rendered);
+            // if the summary is oversized, replace with minimal version
+            if (rendered.length >= comment_pr_1.MAX_COMMENT_LENGTH) {
+                core.debug('The comment was too big for the GitHub API. Falling back on a minimum comment');
+                rendered = minSummary;
+            }
+            // update the PR comment if needed with the right-sized summary
+            yield (0, comment_pr_1.commentPr)(rendered, config);
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError && error.status === 404) {
@@ -1313,10 +1321,15 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
+// generates the DR report summmary and caches it to the Action's core.summary.
+// returns the DR summary string, ready to be posted as a PR comment if the
+// final DR report is too large
 function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
+    const out = [];
     const scorecardWarnings = countScorecardWarnings(scorecard, config);
     const licenseIssues = countLicenseIssues(invalidLicenseChanges);
     core.summary.addHeading('Dependency Review', 1);
+    out.push('# Dependency Review');
     if (vulnerableChanges.length === 0 &&
         licenseIssues === 0 &&
         deniedChanges.length === 0 &&
@@ -1326,17 +1339,21 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
             config.license_check ? 'license issues' : '',
             config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
         ];
+        let msg = '';
         if (issueTypes.filter(Boolean).length === 0) {
-            core.summary.addRaw(`${icons.check} No issues found.`);
+            msg = `${icons.check} No issues found.`;
         }
         else {
-            core.summary.addRaw(`${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`);
+            msg = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`;
         }
-        return;
+        core.summary.addRaw(msg);
+        out.push(msg);
+        return out.join('\n');
     }
-    core.summary
-        .addRaw('The following issues were found:')
-        .addList([
+    const foundIssuesHeader = 'The following issues were found:';
+    core.summary.addRaw(foundIssuesHeader);
+    out.push(foundIssuesHeader);
+    const summaryList = [
         ...(config.vulnerability_check
             ? [
                 `${checkOrFailIcon(vulnerableChanges.length)} ${vulnerableChanges.length} vulnerable package(s)`
@@ -1351,7 +1368,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
             : []),
         ...(deniedChanges.length > 0
             ? [
-                `${checkOrFailIcon(deniedChanges.length)} ${deniedChanges.length} package(s) denied.`
+                `${checkOrWarnIcon(deniedChanges.length)} ${deniedChanges.length} package(s) denied.`
             ]
             : []),
         ...(config.show_openssf_scorecard && scorecardWarnings > 0
@@ -1359,8 +1376,14 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
                 `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
             ]
             : [])
-    ])
-        .addRaw('See the Details below.');
+    ];
+    core.summary.addList(summaryList);
+    for (const line of summaryList) {
+        out.push(`* ${line}`);
+    }
+    core.summary.addRaw('See the Details below.');
+    out.push(`\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`);
+    return out.join('\n');
 }
 exports.addSummaryToSummary = addSummaryToSummary;
 function countScorecardWarnings(scorecard, config) {

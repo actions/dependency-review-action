@@ -5,6 +5,8 @@ import * as retry from '@octokit/plugin-retry'
 import {RequestError} from '@octokit/request-error'
 import {ConfigurationOptions} from './schemas'
 
+export const MAX_COMMENT_LENGTH = 65536
+
 const retryingOctokit = githubUtils.GitHub.plugin(retry.retry)
 const octo = new retryingOctokit(
   githubUtils.getOctokitOptions(core.getInput('repo-token', {required: true}))
@@ -14,13 +16,9 @@ const octo = new retryingOctokit(
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
 
 export async function commentPr(
-  summary: typeof core.summary,
+  commentContent: string,
   config: ConfigurationOptions
 ): Promise<void> {
-  const commentContent = summary.stringify()
-
-  core.setOutput('comment-content', commentContent)
-
   if (
     !(
       config.comment_summary_in_pr === 'always' ||
