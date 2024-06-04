@@ -39,14 +39,14 @@ The action then evaluates the differences between the pushes based on the the ru
 
 ### Local Development
 
-It is required to have at least [Node 18](https://nodejs.org/en/) installed.
+Before you begin, you need to have [Node.js](https://nodejs.org/en/) installed, minimum version 18.
 
 #### Bootstrapping the project
 
-0. Clone the repository: `git clone https://github.com/actions/dependency-review-action.git`
-1. Change to the working directory, and configure and install the dependencies: `cd dependency-review-action`, then `npm install`
-2. Make sure the tests pass on your machine: `npm run test`
-
+0. [Fork][fork] and clone the repository
+1. Change to the working directory: `cd dependency-review-action`
+2. Install the dependencies: `npm install`
+3. Make sure the tests pass on your machine: `npm run test`
 
 #### Manually testing for vulnerabilities
 
@@ -83,7 +83,6 @@ npm run test
 
 _Note_: We don't a very comprehensive test suite, so any contributions to the existing tests are welcome!
 
-
 ### Submitting a pull request
 
 1. Create a new branch: `git checkout -b my-branch-name`
@@ -101,6 +100,8 @@ Here are a few things you can do that will increase the likelihood of your pull 
 - Please be responsive to any questions and feedback that you get from a maintainer of the repo!
 
 ## Cutting a new release
+
+<details>
 
 _Note: these instructions are for maintainers_
 
@@ -136,10 +137,11 @@ To do this just checkout `main`, force-create a new annotated tag, and push it:
 git tag -fa v4 -m "Updating v4 to 4.0.1"
 git push origin v4 --force
 ```
-
+</details>
 
 
 ## Resources
 
+- [Creating JavaScript GitHub actions](https://docs.github.com/en/actions/creating-actions/creating-a-javascript-action)
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
 - [Using Pull Requests](https://help.github.com/articles/about-pull-requests/)
