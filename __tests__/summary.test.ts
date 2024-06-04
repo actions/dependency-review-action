@@ -131,9 +131,13 @@ test('returns minimal summary in case the core.summary is too large for a PR com
   expect(text).toContain('<h1>Dependency Review</h1>')
   expect(minSummary).toContain('# Dependency Review')
 
+  expect(text).toContain('❌ 3 vulnerable package(s)')
+  expect(text).not.toContain('* ❌ 3 vulnerable package(s)')
   expect(text).toContain('lodash')
   expect(text).toContain('colors')
   expect(text).toContain('@foo/bar')
+
+  expect(minSummary).toContain('* ❌ 3 vulnerable package(s)')
   expect(minSummary).not.toContain('lodash')
   expect(minSummary).not.toContain('colors')
   expect(minSummary).not.toContain('@foo/bar')
