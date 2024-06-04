@@ -36,7 +36,7 @@ export async function commentPr(
     return
   }
 
-  let commentBody = `${commentContent}\n\n${COMMENT_MARKER}`
+  const commentBody = `${commentContent}\n\n${COMMENT_MARKER}`
 
   try {
     const existingCommentId = await findCommentByMarker(COMMENT_MARKER)

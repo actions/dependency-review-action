@@ -20,7 +20,7 @@ export function addSummaryToSummary(
   scorecard: Scorecard,
   config: ConfigurationOptions
 ): string {
-  let out: string[] = []
+  const out: string[] = []
 
   const scorecardWarnings = countScorecardWarnings(scorecard, config)
   const licenseIssues = countLicenseIssues(invalidLicenseChanges)
@@ -92,9 +92,9 @@ export function addSummaryToSummary(
   ]
 
   core.summary.addList(summaryList)
-  summaryList.forEach(line => {
-    out.push('* ' + line)
-  })
+  for (const line of summaryList) {
+    out.push(`*  ${line}`)
+  }
 
   core.summary.addRaw('See the Details below.')
   out.push(
