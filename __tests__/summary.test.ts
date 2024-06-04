@@ -1,5 +1,5 @@
 import {expect, jest, test} from '@jest/globals'
-import {Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
+import {Change, Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -107,6 +107,38 @@ test('prints headline as h1', () => {
   const text = core.summary.stringify()
 
   expect(text).toContain('<h1>Dependency Review</h1>')
+})
+
+test('returns minimal summary in case the core.summary is too large for a PR comment', () => {
+  let changes: Changes = [
+    createTestChange({name: 'lodash', version: '1.2.3'}),
+    createTestChange({name: 'colors', version: '2.3.4'}),
+    createTestChange({name: '@foo/bar', version: '*'}),
+  ]
+
+  let minSummary: string = summary.addSummaryToSummary(
+    changes,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    scorecard,
+    defaultConfig
+  )
+
+  // side effect DR report into core.summary as happens in main.ts
+  summary.addScannedDependencies(changes)
+  const text = core.summary.stringify()
+
+  expect(text).toContain('<h1>Dependency Review</h1>')
+  expect(minSummary).toContain('# Dependency Review')
+
+  expect(text).toContain('lodash')
+  expect(text).toContain('colors')
+  expect(text).toContain('@foo/bar')
+  expect(minSummary).not.toContain('lodash')
+  expect(minSummary).not.toContain('colors')
+  expect(minSummary).not.toContain('@foo/bar')
+
+  expect(text.length).toBeGreaterThan(minSummary.length)
 })
 
 test('only includes "No vulnerabilities or license issues found"-message if both are configured and nothing was found', () => {

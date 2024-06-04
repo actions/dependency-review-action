@@ -10,9 +10,9 @@ const icons = {
   warning: '⚠️'
 }
 
-// generates the initial DR summmary and applies to the Action's core.summary
-// returns a string array of all the formatted values in the event we need
-// to replace them in the PR comment due to length restrictions
+// generates the DR report summmary and caches it to the Action's core.summary.
+// returns the DR summary string, ready to be posted as a PR comment if the
+// final DR report is too large
 export function addSummaryToSummary(
   vulnerableChanges: Changes,
   invalidLicenseChanges: InvalidLicenseChanges,
