@@ -92,7 +92,9 @@ export function addSummaryToSummary(
   ];
 
   core.summary.addList(summaryList)
-  out.push(...summaryList)
+  summaryList.forEach( (line) => {
+    out.push('* ' + line)
+  })
 
   core.summary.addRaw('See the Details below.')
   out.push(`\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`)
