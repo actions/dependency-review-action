@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Security Bug Bounty
+    url: https://bounty.github.com/
+    about: If you believe that you've found a security issue, please report security vulnerabilities here.
