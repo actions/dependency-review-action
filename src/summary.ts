@@ -93,7 +93,7 @@ export function addSummaryToSummary(
 
   core.summary.addList(summaryList)
   for (const line of summaryList) {
-    out.push(`*  ${line}`)
+    out.push(`* ${line}`)
   }
 
   core.summary.addRaw('See the Details below.')
