@@ -169,7 +169,7 @@ async function run(): Promise<void> {
 
     // include full summary in output; Actions will truncate if oversized
     let rendered = core.summary.stringify()
-    core.setOutput('content-comment', rendered)
+    core.setOutput('comment-content', rendered)
 
     // if the summary is oversized, replace with minimal version
     if (rendered.length >= MAX_COMMENT_LENGTH) {
