@@ -181,9 +181,7 @@ The following issues were found:
   `.trim()
 
   expect(minSummary).toEqual(expected)
-  })
-
-
+})
 
 test('only includes "No vulnerabilities or license issues found"-message if both are configured and nothing was found', () => {
   summary.addSummaryToSummary(
