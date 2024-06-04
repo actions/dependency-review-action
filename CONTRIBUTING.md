@@ -18,7 +18,7 @@ If you've encountered a problem, please let us know by [submitting an issue](htt
 
 If you've got an idea for a new feature, please submit as [an issue](https://github.com/actions/dependency-review-action/issues/new) so that the community can see it, and we can discuss it there. We may not be able to respond to every single issue, but will make a best effort!
 
-If you'd like to make a contribution yourself, we ask that before significant effort is put into code changes, that we have agreement that the change aligns with our strategy for the action. Since GitHub is ultimately the primary maintainer of this action, we want to make sure that contributions are high quality, and that they maintain consistency with the rest of the action's behavior.
+If you'd like to make a contribution yourself, we ask that before significant effort is put into code changes, that we have agreement that the change aligns with our strategy for the action. Since this is a verified Action owned by GitHub we want to make sure that contributions are high quality, and that they maintain consistency with the rest of the action's behavior.
 
 1. Create an [issue discussing the idea](https://github.com/actions/dependency-review-action/issues/new), so that we can discuss it there.
 2. If we agree to incorporate the idea into the action, please write-up a high level summary of the approach that you plan to take so we can review
