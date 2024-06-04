@@ -145,6 +145,46 @@ test('returns minimal summary in case the core.summary is too large for a PR com
   expect(text.length).toBeGreaterThan(minSummary.length)
 })
 
+test('returns minimal summary formatted for posting as a PR comment', () => {
+  const OLD_ENV = process.env
+
+  let changes: Changes = [
+    createTestChange({name: 'lodash', version: '1.2.3'}),
+    createTestChange({name: 'colors', version: '2.3.4'}),
+    createTestChange({name: '@foo/bar', version: '*'})
+  ]
+
+  process.env.GITHUB_SERVER_URL = 'https://github.com'
+  process.env.GITHUB_REPOSITORY = 'owner/repo'
+  process.env.GITHUB_RUN_ID = 'abc-123-xyz'
+
+  let minSummary: string = summary.addSummaryToSummary(
+    changes,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    scorecard,
+    defaultConfig
+  )
+
+  process.env = OLD_ENV
+
+  // note: no Actions context values in unit test env
+  const expected = `
+# Dependency Review
+The following issues were found:
+* ❌ 3 vulnerable package(s)
+* ✅ 0 package(s) with incompatible licenses
+* ✅ 0 package(s) with invalid SPDX license definitions
+* ✅ 0 package(s) with unknown licenses.
+
+[View full job summary](https://github.com/owner/repo/actions/runs/abc-123-xyz)
+  `.trim()
+
+  expect(minSummary).toEqual(expected)
+  })
+
+
+
 test('only includes "No vulnerabilities or license issues found"-message if both are configured and nothing was found', () => {
   summary.addSummaryToSummary(
     emptyChanges,
