@@ -64,7 +64,7 @@ $ GITHUB_TOKEN=<token> ./scripts/scan_pr <pr_url>
 Like this:
 
 ```sh
-$ GITHUB_TOKEN=my-secret-token ./scripts/scan_pr https://github.com/actions/dependency-review-action/pull/3
+$ GITHUB_TOKEN=<token> ./scripts/scan_pr https://github.com/actions/dependency-review-action/pull/3
 ```
 
 [Configuration options](README.md#configuration-options) can be set by
