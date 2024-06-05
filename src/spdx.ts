@@ -9,7 +9,7 @@ export function satisfies(
 }
 
 // can be a single license or an SPDX expression
-export function isValidSPDX(spdxExpr: string): boolean {
+export function isValid(spdxExpr: string): boolean {
   try {
     parse(spdxExpr)
     return true
