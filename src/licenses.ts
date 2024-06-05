@@ -2,7 +2,7 @@ import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
 import {octokitClient} from './utils'
 import {parsePURL} from './purl'
-import {isValidSPDX} from './spdx'
+import {isValid} from './spdx'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -166,7 +166,7 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
 // Currently Dependency Graph licenses are truncated to 255 characters
 // This possibly makes them invalid spdx ids
 const truncatedDGLicense = (license: string): boolean =>
-  license.length === 255 && !isValidSPDX(license)
+  license.length === 255 && !isValid(license)
 
 async function groupChanges(
   changes: Changes

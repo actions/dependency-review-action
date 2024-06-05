@@ -33,11 +33,6 @@ jest.mock('octokit', () => {
 
 beforeEach(async () => {
   jest.resetModules()
-  jest.doMock('spdx-satisfies', () => {
-    // mock spdx-satisfies return value
-    // true for BSD, false for all others
-    return jest.fn((license: string, _: string): boolean => license === 'BSD')
-  })
 
   npmChange = createTestChange({ecosystem: 'npm'})
   rubyChange = createTestChange({ecosystem: 'rubygems'})

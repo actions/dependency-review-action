@@ -1,7 +1,7 @@
 import {expect, jest, test} from '@jest/globals'
 import * as spdx from '../src/spdx'
 
-test('hello', () => {
+test('satisfies', () => {
   expect(spdx.satisfies('MIT', 'MIT')).toBe(true)
 })
 
