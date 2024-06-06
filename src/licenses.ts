@@ -87,11 +87,19 @@ export async function getInvalidLicenseChanges(
     } else if (validityCache.get(license) === undefined) {
       try {
         if (allow !== undefined) {
-          const found = spdx.satisfiesAny(license, allow)
-          validityCache.set(license, found)
+          if (spdx.isValid(license)) {
+            const found = spdx.satisfiesAny(license, allow)
+            validityCache.set(license, found)
+          } else {
+            invalidLicenseChanges.unresolved.push(change)
+          }
         } else if (deny !== undefined) {
-          const found = spdx.satisfiesAny(license, deny)
-          validityCache.set(license, !found)
+          if (spdx.isValid(license)) {
+            const found = spdx.satisfiesAny(license, deny)
+            validityCache.set(license, !found)
+          } else {
+            invalidLicenseChanges.unresolved.push(change)
+          }
         }
       } catch (err) {
         invalidLicenseChanges.unresolved.push(change)
