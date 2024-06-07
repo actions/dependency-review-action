@@ -646,7 +646,9 @@ function run() {
             core.debug(`Filtered Changes: ${JSON.stringify(filteredChanges)}`);
             core.debug(`Config Deny Packages: ${JSON.stringify(config)}`);
             const deniedChanges = yield (0, deny_1.getDeniedChanges)(filteredChanges, config.deny_packages, config.deny_groups);
-            const scorecard = yield (0, scorecard_1.getScorecardLevels)(filteredChanges);
+            // generate informational scorecard entries for all added changes in the PR
+            const scorecardChanges = getScorecardChanges(changes);
+            const scorecard = yield (0, scorecard_1.getScorecardLevels)(scorecardChanges);
             const minSummary = summary.addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config);
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(config, snapshot_warnings);
@@ -830,6 +832,15 @@ function printDeniedDependencies(changes, config) {
             core.info(`Change: ${change.package_url} is denied`);
         }
     }));
+}
+function getScorecardChanges(changes) {
+    const out = [];
+    for (const change of changes) {
+        if (change.change_type === 'added') {
+            out.push(change);
+        }
+    }
+    return out;
 }
 function createScorecardWarnings(scorecards, config) {
     return __awaiter(this, void 0, void 0, function* () {

@@ -125,7 +125,9 @@ async function run(): Promise<void> {
       config.deny_groups
     )
 
-    const scorecard = await getScorecardLevels(filteredChanges)
+    // generate informational scorecard entries for all added changes in the PR
+    const scorecardChanges = getScorecardChanges(changes)
+    const scorecard = await getScorecardLevels(scorecardChanges)
 
     const minSummary = summary.addSummaryToSummary(
       vulnerableChanges,
@@ -369,7 +371,7 @@ function printScannedDependencies(changes: Changes): void {
 }
 
 function printDeniedDependencies(
-  changes: Change[],
+  changes: Changes,
   config: ConfigurationOptions
 ): void {
   core.group('Denied', async () => {
@@ -382,6 +384,17 @@ function printDeniedDependencies(
       core.info(`Change: ${change.package_url} is denied`)
     }
   })
+}
+
+function getScorecardChanges(changes: Changes): Changes {
+  const out: Changes = []
+  for (const change of changes) {
+    if (change.change_type === 'added') {
+      out.push(change)
+    }
+  }
+
+  return out
 }
 
 async function createScorecardWarnings(
