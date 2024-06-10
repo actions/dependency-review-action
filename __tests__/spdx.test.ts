@@ -1,7 +1,7 @@
-import {expect, test} from '@jest/globals'
+import {expect, test, describe} from '@jest/globals'
 import * as spdx from '../src/spdx'
 
-test('satisfiesAny', () => {
+describe('satisfiesAny', () => {
   const units = [
     {
       candidate: 'MIT',
@@ -59,17 +59,14 @@ test('satisfiesAny', () => {
   ]
 
   for (const unit of units) {
-    let got: boolean = spdx.satisfiesAny(unit.candidate, unit.licenses)
-    if (got != unit.expected) {
-      console.log(
-        `failing unit test inputs: candidate(${unit.candidate}) licenses(${unit.licenses})`
-      )
-    }
-    expect(got).toBe(unit.expected)
+    const got: boolean = spdx.satisfiesAny(unit.candidate, unit.licenses)
+    test(`should return ${unit.expected} for ("${unit.candidate}", "${unit.licenses}")`, () => {
+      expect(got).toBe(unit.expected)
+    })
   }
 })
 
-test('satisfiesAll', () => {
+describe('satisfiesAll', () => {
   const units = [
     {
       candidate: 'MIT',
@@ -137,17 +134,14 @@ test('satisfiesAll', () => {
   ]
 
   for (const unit of units) {
-    let got: boolean = spdx.satisfiesAll(unit.candidate, unit.licenses)
-    if (got != unit.expected) {
-      console.log(
-        `failing unit test inputs: candidate(${unit.candidate}) licenses(${unit.licenses})`
-      )
-    }
-    expect(got).toBe(unit.expected)
+    const got: boolean = spdx.satisfiesAll(unit.candidate, unit.licenses)
+    test(`should return ${unit.expected} for ("${unit.candidate}", "${unit.licenses}")`, () => {
+      expect(got).toBe(unit.expected)
+    })
   }
 })
 
-test('satisfies', () => {
+describe('satisfies', () => {
   const units = [
     {
       candidate: 'MIT',
@@ -220,17 +214,14 @@ test('satisfies', () => {
   ]
 
   for (const unit of units) {
-    let got: boolean = spdx.satisfies(unit.candidate, unit.constraint)
-    if (got != unit.expected) {
-      console.log(
-        `failing unit test inputs: candidateExpr(${unit.candidate}) constraintExpr(${unit.constraint})`
-      )
-    }
-    expect(got).toBe(unit.expected)
+    const got: boolean = spdx.satisfies(unit.candidate, unit.constraint)
+    test(`should return ${unit.expected} for ("${unit.candidate}", "${unit.constraint}")`, () => {
+      expect(got).toBe(unit.expected)
+    })
   }
 })
 
-test('isValid', () => {
+describe('isValid', () => {
   const units = [
     {
       candidate: 'MIT',
@@ -258,10 +249,9 @@ test('isValid', () => {
     }
   ]
   for (const unit of units) {
-    let got: boolean = spdx.isValid(unit.candidate)
-    if (got != unit.expected) {
-      console.log(`failing unit test inputs: candidateExpr(${unit.candidate})`)
-    }
-    expect(got).toBe(unit.expected)
+    const got: boolean = spdx.isValid(unit.candidate)
+    test(`should return ${unit.expected} for ("${unit.candidate}")`, () => {
+      expect(got).toBe(unit.expected)
+    })
   }
 })
