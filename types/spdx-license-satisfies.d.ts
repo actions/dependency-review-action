@@ -13,6 +13,4 @@ declare module '@onebeyond/spdx-license-satisfies' {
     candidateExpr: string,
     licenses: string[]
   ): boolean
-
-  export function isValid(candidateExpr: string): boolean
 }
