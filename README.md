@@ -59,7 +59,7 @@ You can install the action on any public repository, or any organization-owned p
          - name: 'Checkout Repository'
            uses: actions/checkout@v4
          - name: 'Dependency Review'
-           uses: actions/dependency-review-action@v4
+           uses: actions/dependency-review-action@v6
    ```
 
 #### Installation (GitHub Enterprise Server)
@@ -241,7 +241,7 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
 > instead of direct `echo '${{ steps.review.outputs.vulnerable-changes }}'`. 
 > See [examples](docs/examples.md) for more.
 
-## Getting help
+## Getting help 
 
 If you have bug reports, questions or suggestions please [create a new issue](https://github.com/actions/dependency-review-action/issues/new/choose).
 
