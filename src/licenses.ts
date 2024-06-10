@@ -1,7 +1,7 @@
-import spdxSatisfies from 'spdx-satisfies'
 import {Change, Changes} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {octokitClient} from './utils'
 import {parsePURL} from './purl'
+import * as spdx from './spdx'
 
 /**
  * Loops through a list of changes, filtering and returning the
@@ -47,7 +47,7 @@ export async function getInvalidLicenseChanges(
 
     const changeAsPackageURL = parsePURL(encodeURI(change.package_url))
 
-    // We want to find if the licenseExclussion list contains the PackageURL of the Change
+    // We want to find if the licenseExclusion list contains the PackageURL of the Change
     // If it does, we want to filter it out and therefore return false
     // If it doesn't, we want to keep it and therefore return true
     if (
@@ -87,15 +87,19 @@ export async function getInvalidLicenseChanges(
     } else if (validityCache.get(license) === undefined) {
       try {
         if (allow !== undefined) {
-          const found = allow.find(spdxExpression =>
-            spdxSatisfies(license, spdxExpression)
-          )
-          validityCache.set(license, found !== undefined)
+          if (spdx.isValid(license)) {
+            const found = spdx.satisfiesAny(license, allow)
+            validityCache.set(license, found)
+          } else {
+            invalidLicenseChanges.unresolved.push(change)
+          }
         } else if (deny !== undefined) {
-          const found = deny.find(spdxExpression =>
-            spdxSatisfies(license, spdxExpression)
-          )
-          validityCache.set(license, found === undefined)
+          if (spdx.isValid(license)) {
+            const found = spdx.satisfiesAny(license, deny)
+            validityCache.set(license, !found)
+          } else {
+            invalidLicenseChanges.unresolved.push(change)
+          }
         }
       } catch (err) {
         invalidLicenseChanges.unresolved.push(change)
@@ -161,10 +165,11 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
 
   return Promise.all(updatedChanges)
 }
+
 // Currently Dependency Graph licenses are truncated to 255 characters
 // This possibly makes them invalid spdx ids
 const truncatedDGLicense = (license: string): boolean =>
-  license.length === 255 && !isSPDXValid(license)
+  license.length === 255 && !spdx.isValid(license)
 
 async function groupChanges(
   changes: Changes
