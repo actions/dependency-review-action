@@ -676,8 +676,13 @@ function run() {
             core.setOutput('dependency-changes', JSON.stringify(changes));
             summary.addScannedDependencies(changes);
             printScannedDependencies(changes);
-            // include full summary in output; Actions will truncate if oversized
+            // core.summary output must also be kept below 1024k
             let rendered = core.summary.stringify();
+            if (rendered.length >= summary.MAX_SUMMARY_LENGTH) {
+                rendered = rendered.substring(0, summary.MAX_SUMMARY_LENGTH);
+                core.summary.clear();
+                core.summary.addRaw(rendered);
+            }
             core.setOutput('comment-content', rendered);
             // if the summary is oversized, replace with minimal version
             if (rendered.length >= comment_pr_1.MAX_COMMENT_LENGTH) {
@@ -1324,7 +1329,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = exports.MAX_SUMMARY_LENGTH = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -1332,6 +1337,7 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
+exports.MAX_SUMMARY_LENGTH = 1048576;
 // generates the DR report summmary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
