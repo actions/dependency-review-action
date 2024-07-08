@@ -169,8 +169,13 @@ async function run(): Promise<void> {
     summary.addScannedDependencies(changes)
     printScannedDependencies(changes)
 
-    // include full summary in output; Actions will truncate if oversized
+    // core.summary output must also be kept below 1024k
     let rendered = core.summary.stringify()
+    if (rendered.length >= summary.MAX_SUMMARY_LENGTH) {
+      rendered = rendered.substring(0, summary.MAX_SUMMARY_LENGTH)
+      core.summary.clear()
+      core.summary.addRaw(rendered)
+    }
     core.setOutput('comment-content', rendered)
 
     // if the summary is oversized, replace with minimal version
