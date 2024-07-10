@@ -1,6 +1,5 @@
 import * as core from '@actions/core'
 import {Octokit} from 'octokit'
-import spdxParse from 'spdx-expression-parse'
 import {Changes} from './schemas'
 
 export function groupDependenciesByManifest(
@@ -31,15 +30,6 @@ export function renderUrl(url: string | null, text: string): string {
     return `<a href="${url}">${text}</a>`
   } else {
     return text
-  }
-}
-
-export function isSPDXValid(license: string): boolean {
-  try {
-    spdxParse(license)
-    return true
-  } catch (_) {
-    return false
   }
 }
 

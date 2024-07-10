@@ -4,7 +4,8 @@ import YAML from 'yaml'
 import * as core from '@actions/core'
 import * as z from 'zod'
 import {ConfigurationOptions, ConfigurationOptionsSchema} from './schemas'
-import {isSPDXValid, octokitClient} from './utils'
+import {octokitClient} from './utils'
+import {isValid} from './spdx'
 
 type ConfigurationOptionsPartial = Partial<ConfigurationOptions>
 
@@ -113,10 +114,12 @@ function validateLicenses(
     return
   }
 
-  const invalid_licenses = licenses.filter(license => !isSPDXValid(license))
+  const invalid_licenses = licenses.filter(license => !isValid(license))
 
   if (invalid_licenses.length > 0) {
-    throw new Error(`Invalid license(s) in ${key}: ${invalid_licenses}`)
+    throw new Error(
+      `Invalid license(s) in ${key}: ${invalid_licenses.join(', ')}`
+    )
   }
 }
 
