@@ -124,6 +124,51 @@ test('it raises an error when no refs are provided and the event is not a pull r
   ).toThrow()
 })
 
+const pullRequestLikeEvents = [
+  'pull_request',
+  'pull_request_target',
+  'merge_group'
+]
+
+test.each(pullRequestLikeEvents)(
+  'it uses the given refs even when the event is %s',
+  async eventName => {
+    setInput('base-ref', 'a-custom-base-ref')
+    setInput('head-ref', 'a-custom-head-ref')
+
+    const refs = getRefs(await readConfig(), {
+      payload: {
+        pull_request: {
+          number: 42,
+          base: {sha: 'pr-base-ref'},
+          head: {sha: 'pr-head-ref'}
+        }
+      },
+      eventName
+    })
+    expect(refs.base).toEqual('a-custom-base-ref')
+    expect(refs.head).toEqual('a-custom-head-ref')
+  }
+)
+
+test.each(pullRequestLikeEvents)(
+  'it uses the event refs when the event is %s and the no refs are input',
+  async eventName => {
+    const refs = getRefs(await readConfig(), {
+      payload: {
+        pull_request: {
+          number: 42,
+          base: {sha: 'pr-base-ref'},
+          head: {sha: 'pr-head-ref'}
+        }
+      },
+      eventName
+    })
+    expect(refs.base).toEqual('pr-base-ref')
+    expect(refs.head).toEqual('pr-head-ref')
+  }
+)
+
 test('it defaults to runtime scope', async () => {
   const config = await readConfig()
   expect(config.fail_on_scopes).toEqual(['runtime'])
