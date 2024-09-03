@@ -24,6 +24,7 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
+import {MAX_SUMMARY_LENGTH} from './summary'
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -200,7 +201,7 @@ async function run(): Promise<void> {
       }
     }
   } finally {
-    await core.summary.write()
+    await core.summary.write() // need to write the minSummary content to this 
   }
 }
 
