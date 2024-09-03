@@ -10,7 +10,7 @@ const icons = {
   warning: '⚠️'
 }
 
-export const MAX_SUMMARY_LENGTH = 1024
+export const MAX_SUMMARY_LENGTH = 1048576
 
 // generates the DR report summmary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
