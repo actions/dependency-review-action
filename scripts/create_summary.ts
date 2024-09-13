@@ -143,7 +143,7 @@ async function createSummary(
     ...licenseIssues.unlicensed
   ]
 
-  summary.addScannedDependencies(allChanges)
+  summary.addScannedFiles(allChanges)
 
   const text = core.summary.stringify()
   await fs.promises.writeFile(path.resolve(tmpDir, fileName), text, {

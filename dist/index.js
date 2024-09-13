@@ -705,7 +705,7 @@ function run() {
                 createScorecardWarnings(scorecard, config);
             }
             core.setOutput('dependency-changes', JSON.stringify(changes));
-            summary.addScannedDependencies(changes);
+            summary.addScannedFiles(changes);
             printScannedDependencies(changes);
             // include full summary in output; Actions will truncate if oversized
             let rendered = core.summary.stringify();
@@ -1442,7 +1442,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedFiles = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -1631,19 +1631,11 @@ function formatLicense(license) {
     }
     return license;
 }
-function addScannedDependencies(changes) {
-    const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
-    const manifests = dependencies.keys();
-    const summary = core.summary.addHeading('Scanned Manifest Files', 2);
-    for (const manifest of manifests) {
-        const deps = dependencies.get(manifest);
-        if (deps) {
-            const dependencyNames = deps.map(dependency => `<li>${dependency.name}@${dependency.version}</li>`);
-            summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`);
-        }
-    }
+function addScannedFiles(changes) {
+    const manifests = Array.from((0, utils_1.groupDependenciesByManifest)(changes).keys()).sort();
+    core.summary.addHeading('Scanned Files', 2).addList(manifests);
 }
-exports.addScannedDependencies = addScannedDependencies;
+exports.addScannedFiles = addScannedFiles;
 function snapshotWarningRecommendation(config, warnings) {
     const no_pr_snaps = warnings.includes('No snapshots were found for the head SHA');
     const retries_disabled = !config.retry_on_snapshot_warnings;

@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Changes, Change, Scorecard} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
+import {Change, Changes, ConfigurationOptions, Scorecard} from './schemas'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
 const icons = {
@@ -263,21 +263,11 @@ function formatLicense(license: string | null): string {
   return license
 }
 
-export function addScannedDependencies(changes: Changes): void {
-  const dependencies = groupDependenciesByManifest(changes)
-  const manifests = dependencies.keys()
-
-  const summary = core.summary.addHeading('Scanned Manifest Files', 2)
-
-  for (const manifest of manifests) {
-    const deps = dependencies.get(manifest)
-    if (deps) {
-      const dependencyNames = deps.map(
-        dependency => `<li>${dependency.name}@${dependency.version}</li>`
-      )
-      summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`)
-    }
-  }
+export function addScannedFiles(changes: Changes): void {
+  const manifests = Array.from(
+    groupDependenciesByManifest(changes).keys()
+  ).sort()
+  core.summary.addHeading('Scanned Files', 2).addList(manifests)
 }
 
 function snapshotWarningRecommendation(
