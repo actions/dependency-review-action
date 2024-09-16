@@ -1450,6 +1450,7 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
+const MAX_SCANNED_FILES_BYTES = 1048576;
 // generates the DR report summmary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
@@ -1633,6 +1634,24 @@ function formatLicense(license) {
 }
 function addScannedFiles(changes) {
     const manifests = Array.from((0, utils_1.groupDependenciesByManifest)(changes).keys()).sort();
+    let sf_size = 0;
+    let trunc_at = -1;
+    for (const [index, entry] of manifests.entries()) {
+        if (sf_size + entry.length >= MAX_SCANNED_FILES_BYTES) {
+            trunc_at = index;
+            break;
+        }
+        sf_size += entry.length;
+    }
+    if (trunc_at >= 0) {
+        // truncate the manifests list if it will overflow the summary output
+        manifests.slice(0, trunc_at);
+        // if there's room between cutoff size and list size, add a warning
+        const size_diff = MAX_SCANNED_FILES_BYTES - sf_size;
+        if (size_diff < 12) {
+            manifests.push('(truncated)');
+        }
+    }
     core.summary.addHeading('Scanned Files', 2).addList(manifests);
 }
 exports.addScannedFiles = addScannedFiles;
