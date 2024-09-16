@@ -10,6 +10,8 @@ const icons = {
   warning: '⚠️'
 }
 
+const MAX_SCANNED_FILES_BYTES = 1048576
+
 // generates the DR report summmary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
@@ -267,6 +269,21 @@ export function addScannedFiles(changes: Changes): void {
   const manifests = Array.from(
     groupDependenciesByManifest(changes).keys()
   ).sort()
+
+  let sf_size = 0
+  let trunc_at = -1
+
+  for (const [index, entry] of manifests.entries()) {
+    sf_size += entry.length
+    if (sf_size >= MAX_SCANNED_FILES_BYTES && trunc_at < 0) {
+      trunc_at = index
+    }
+  }
+
+  if (trunc_at >= 0) {
+    manifests.slice(0, trunc_at)
+  }
+
   core.summary.addHeading('Scanned Files', 2).addList(manifests)
 }
 
