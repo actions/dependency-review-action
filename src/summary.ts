@@ -274,14 +274,21 @@ export function addScannedFiles(changes: Changes): void {
   let trunc_at = -1
 
   for (const [index, entry] of manifests.entries()) {
-    sf_size += entry.length
-    if (sf_size >= MAX_SCANNED_FILES_BYTES && trunc_at < 0) {
+    if (sf_size + entry.length >= MAX_SCANNED_FILES_BYTES) {
       trunc_at = index
+      break
     }
+    sf_size += entry.length
   }
 
   if (trunc_at >= 0) {
+    // truncate the manifests list if it will overflow the summary output
     manifests.slice(0, trunc_at)
+    // if there's room between cutoff size and list size, add a warning
+    const size_diff = MAX_SCANNED_FILES_BYTES - sf_size
+    if (size_diff < 12) {
+      manifests.push('(truncated)')
+    }
   }
 
   core.summary.addHeading('Scanned Files', 2).addList(manifests)
