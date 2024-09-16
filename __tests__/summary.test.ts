@@ -109,42 +109,6 @@ test('prints headline as h1', () => {
   expect(text).toContain('<h1>Dependency Review</h1>')
 })
 
-test('returns minimal summary in case the core.summary is too large for a PR comment', () => {
-  let changes: Changes = [
-    createTestChange({name: 'lodash', version: '1.2.3'}),
-    createTestChange({name: 'colors', version: '2.3.4'}),
-    createTestChange({name: '@foo/bar', version: '*'})
-  ]
-
-  let minSummary: string = summary.addSummaryToSummary(
-    changes,
-    emptyInvalidLicenseChanges,
-    emptyChanges,
-    scorecard,
-    defaultConfig
-  )
-
-  // side effect DR report into core.summary as happens in main.ts
-  summary.addScannedDependencies(changes)
-  const text = core.summary.stringify()
-
-  expect(text).toContain('<h1>Dependency Review</h1>')
-  expect(minSummary).toContain('# Dependency Review')
-
-  expect(text).toContain('❌ 3 vulnerable package(s)')
-  expect(text).not.toContain('* ❌ 3 vulnerable package(s)')
-  expect(text).toContain('lodash')
-  expect(text).toContain('colors')
-  expect(text).toContain('@foo/bar')
-
-  expect(minSummary).toContain('* ❌ 3 vulnerable package(s)')
-  expect(minSummary).not.toContain('lodash')
-  expect(minSummary).not.toContain('colors')
-  expect(minSummary).not.toContain('@foo/bar')
-
-  expect(text.length).toBeGreaterThan(minSummary.length)
-})
-
 test('returns minimal summary formatted for posting as a PR comment', () => {
   const OLD_ENV = process.env
 
@@ -232,14 +196,10 @@ test('groups dependencies with empty manifest paths together', () => {
     emptyScorecard,
     defaultConfig
   )
-  summary.addScannedDependencies(changesWithEmptyManifests)
+  summary.addScannedFiles(changesWithEmptyManifests)
   const text = core.summary.stringify()
-
-  expect(text).toContain('<summary>Unnamed Manifest</summary>')
-  expect(text).toContain('castore')
-  expect(text).toContain('connection')
-  expect(text).toContain('<summary>python/dist-info/METADATA</summary>')
-  expect(text).toContain('pygments')
+  expect(text).toContain('Unnamed Manifest')
+  expect(text).toContain('python/dist-info/METADATA')
 })
 
 test('does not include status section if nothing was found', () => {

@@ -705,7 +705,7 @@ function run() {
                 createScorecardWarnings(scorecard, config);
             }
             core.setOutput('dependency-changes', JSON.stringify(changes));
-            summary.addScannedDependencies(changes);
+            summary.addScannedFiles(changes);
             printScannedDependencies(changes);
             // include full summary in output; Actions will truncate if oversized
             let rendered = core.summary.stringify();
@@ -1442,7 +1442,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedFiles = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -1450,6 +1450,7 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
+const MAX_SCANNED_FILES_BYTES = 1048576;
 // generates the DR report summmary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
@@ -1631,19 +1632,29 @@ function formatLicense(license) {
     }
     return license;
 }
-function addScannedDependencies(changes) {
-    const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
-    const manifests = dependencies.keys();
-    const summary = core.summary.addHeading('Scanned Manifest Files', 2);
-    for (const manifest of manifests) {
-        const deps = dependencies.get(manifest);
-        if (deps) {
-            const dependencyNames = deps.map(dependency => `<li>${dependency.name}@${dependency.version}</li>`);
-            summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`);
+function addScannedFiles(changes) {
+    const manifests = Array.from((0, utils_1.groupDependenciesByManifest)(changes).keys()).sort();
+    let sf_size = 0;
+    let trunc_at = -1;
+    for (const [index, entry] of manifests.entries()) {
+        if (sf_size + entry.length >= MAX_SCANNED_FILES_BYTES) {
+            trunc_at = index;
+            break;
+        }
+        sf_size += entry.length;
+    }
+    if (trunc_at >= 0) {
+        // truncate the manifests list if it will overflow the summary output
+        manifests.slice(0, trunc_at);
+        // if there's room between cutoff size and list size, add a warning
+        const size_diff = MAX_SCANNED_FILES_BYTES - sf_size;
+        if (size_diff < 12) {
+            manifests.push('(truncated)');
         }
     }
+    core.summary.addHeading('Scanned Files', 2).addList(manifests);
 }
-exports.addScannedDependencies = addScannedDependencies;
+exports.addScannedFiles = addScannedFiles;
 function snapshotWarningRecommendation(config, warnings) {
     const no_pr_snaps = warnings.includes('No snapshots were found for the head SHA');
     const retries_disabled = !config.retry_on_snapshot_warnings;
