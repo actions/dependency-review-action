@@ -36,7 +36,7 @@
     "octokit": "^3.1.2",
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^5.0.1",
-    "ts-jest": "^29.1.2",
+    "ts-jest": "^29.2.5",
     "yaml": "^2.3.4",
     "zod": "^3.23.8"
   },
