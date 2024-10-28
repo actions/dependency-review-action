@@ -124,11 +124,7 @@ test('it raises an error when no refs are provided and the event is not a pull r
   ).toThrow()
 })
 
-const pullRequestLikeEvents = [
-  'pull_request',
-  'pull_request_target',
-  'merge_group'
-]
+const pullRequestLikeEvents = ['pull_request', 'pull_request_target']
 
 test.each(pullRequestLikeEvents)(
   'it uses the given refs even when the event is %s',
@@ -152,7 +148,7 @@ test.each(pullRequestLikeEvents)(
 )
 
 test.each(pullRequestLikeEvents)(
-  'it uses the event refs when the event is %s and the no refs are input',
+  'it uses the event refs when the event is %s and no refs are provided in config',
   async eventName => {
     const refs = getRefs(await readConfig(), {
       payload: {
@@ -168,6 +164,37 @@ test.each(pullRequestLikeEvents)(
     expect(refs.head).toEqual('pr-head-ref')
   }
 )
+
+test('it uses the given refs even when the event is merge_group', async () => {
+  setInput('base-ref', 'a-custom-base-ref')
+  setInput('head-ref', 'a-custom-head-ref')
+
+  const refs = getRefs(await readConfig(), {
+    payload: {
+      merge_group: {
+        base_sha: 'pr-base-ref',
+        head_sha: 'pr-head-ref'
+      }
+    },
+    eventName: 'merge_group'
+  })
+  expect(refs.base).toEqual('a-custom-base-ref')
+  expect(refs.head).toEqual('a-custom-head-ref')
+})
+
+test('it uses the event refs when the event is %s and no refs are provided in config', async () => {
+  const refs = getRefs(await readConfig(), {
+    payload: {
+      merge_group: {
+        base_sha: 'pr-base-ref',
+        head_sha: 'pr-head-ref'
+      }
+    },
+    eventName: 'merge_group'
+  })
+  expect(refs.base).toEqual('pr-base-ref')
+  expect(refs.head).toEqual('pr-head-ref')
+})
 
 test('it defaults to runtime scope', async () => {
   const config = await readConfig()
