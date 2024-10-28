@@ -314,12 +314,18 @@ function getRefs(config, context) {
     let head_ref = config.head_ref;
     // If possible, source default base & head refs from the GitHub event.
     // The base/head ref from the config take priority, if provided.
-    if (context.eventName === 'pull_request' ||
-        context.eventName === 'pull_request_target' ||
-        context.eventName === 'merge_group') {
-        const pull_request = schemas_1.PullRequestSchema.parse(context.payload.pull_request);
-        base_ref = base_ref || pull_request.base.sha;
-        head_ref = head_ref || pull_request.head.sha;
+    if (!base_ref && !head_ref) {
+        if (context.eventName === 'pull_request' ||
+            context.eventName === 'pull_request_target') {
+            const pull_request = schemas_1.PullRequestSchema.parse(context.payload.pull_request);
+            base_ref = base_ref || pull_request.base.sha;
+            head_ref = head_ref || pull_request.head.sha;
+        }
+        else if (context.eventName === 'merge_group') {
+            const merge_group = schemas_1.MergeGroupSchema.parse(context.payload.merge_group);
+            base_ref = base_ref || merge_group.base_sha;
+            head_ref = head_ref || merge_group.head_sha;
+        }
     }
     if (!base_ref && !head_ref) {
         throw new Error('Both a base ref and head ref must be provided, either via the `base_ref`/`head_ref` ' +
@@ -1023,7 +1029,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.MergeGroupSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(3609);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -1106,6 +1112,10 @@ exports.PullRequestSchema = z.object({
     number: z.number(),
     base: z.object({ sha: z.string() }),
     head: z.object({ sha: z.string() })
+});
+exports.MergeGroupSchema = z.object({
+    base_sha: z.string(),
+    head_sha: z.string()
 });
 exports.ConfigurationOptionsSchema = z
     .object({
@@ -49922,7 +49932,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.MergeGroupSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(4498);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -50005,6 +50015,10 @@ exports.PullRequestSchema = z.object({
     number: z.number(),
     base: z.object({ sha: z.string() }),
     head: z.object({ sha: z.string() })
+});
+exports.MergeGroupSchema = z.object({
+    base_sha: z.string(),
+    head_sha: z.string()
 });
 exports.ConfigurationOptionsSchema = z
     .object({

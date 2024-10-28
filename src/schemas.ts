@@ -91,6 +91,11 @@ export const PullRequestSchema = z.object({
   head: z.object({sha: z.string()})
 })
 
+export const MergeGroupSchema = z.object({
+  base_sha: z.string(),
+  head_sha: z.string()
+})
+
 export const ConfigurationOptionsSchema = z
   .object({
     fail_on_severity: SeveritySchema,
