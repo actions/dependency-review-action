@@ -182,7 +182,7 @@ test('it uses the given refs even when the event is merge_group', async () => {
   expect(refs.head).toEqual('a-custom-head-ref')
 })
 
-test('it uses the event refs when the event is %s and no refs are provided in config', async () => {
+test('it uses the event refs when the event is merge_group and no refs are provided in config', async () => {
   const refs = getRefs(await readConfig(), {
     payload: {
       merge_group: {
