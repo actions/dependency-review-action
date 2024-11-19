@@ -57,5 +57,8 @@
     "nodemon": "^3.1.7",
     "prettier": "3.2.5",
     "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "cross-spawn": ">=7.0.5"
   }
 }
