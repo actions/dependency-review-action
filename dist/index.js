@@ -307,12 +307,18 @@ function getRefs(config, context) {
     let head_ref = config.head_ref;
     // If possible, source default base & head refs from the GitHub event.
     // The base/head ref from the config take priority, if provided.
-    if (context.eventName === 'pull_request' ||
-        context.eventName === 'pull_request_target' ||
-        context.eventName === 'merge_group') {
-        const pull_request = schemas_1.PullRequestSchema.parse(context.payload.pull_request);
-        base_ref = base_ref || pull_request.base.sha;
-        head_ref = head_ref || pull_request.head.sha;
+    if (!base_ref && !head_ref) {
+        if (context.eventName === 'pull_request' ||
+            context.eventName === 'pull_request_target') {
+            const pull_request = schemas_1.PullRequestSchema.parse(context.payload.pull_request);
+            base_ref = base_ref || pull_request.base.sha;
+            head_ref = head_ref || pull_request.head.sha;
+        }
+        else if (context.eventName === 'merge_group') {
+            const merge_group = schemas_1.MergeGroupSchema.parse(context.payload.merge_group);
+            base_ref = base_ref || merge_group.base_sha;
+            head_ref = head_ref || merge_group.head_sha;
+        }
     }
     if (!base_ref && !head_ref) {
         throw new Error('Both a base ref and head ref must be provided, either via the `base_ref`/`head_ref` ' +
@@ -699,7 +705,7 @@ function run() {
                 createScorecardWarnings(scorecard, config);
             }
             core.setOutput('dependency-changes', JSON.stringify(changes));
-            summary.addScannedDependencies(changes);
+            summary.addScannedFiles(changes);
             printScannedDependencies(changes);
             // include full summary in output; Actions will truncate if oversized
             let rendered = core.summary.stringify();
@@ -1029,7 +1035,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.MergeGroupSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(3609);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -1112,6 +1118,10 @@ exports.PullRequestSchema = z.object({
     number: z.number(),
     base: z.object({ sha: z.string() }),
     head: z.object({ sha: z.string() })
+});
+exports.MergeGroupSchema = z.object({
+    base_sha: z.string(),
+    head_sha: z.string()
 });
 exports.ConfigurationOptionsSchema = z
     .object({
@@ -1448,7 +1458,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedDependencies = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedFiles = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(918);
 const icons = {
@@ -1456,6 +1466,7 @@ const icons = {
     cross: '❌',
     warning: '⚠️'
 };
+const MAX_SCANNED_FILES_BYTES = 1048576;
 // generates the DR report summmary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
@@ -1637,19 +1648,29 @@ function formatLicense(license) {
     }
     return license;
 }
-function addScannedDependencies(changes) {
-    const dependencies = (0, utils_1.groupDependenciesByManifest)(changes);
-    const manifests = dependencies.keys();
-    const summary = core.summary.addHeading('Scanned Manifest Files', 2);
-    for (const manifest of manifests) {
-        const deps = dependencies.get(manifest);
-        if (deps) {
-            const dependencyNames = deps.map(dependency => `<li>${dependency.name}@${dependency.version}</li>`);
-            summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`);
+function addScannedFiles(changes) {
+    const manifests = Array.from((0, utils_1.groupDependenciesByManifest)(changes).keys()).sort();
+    let sf_size = 0;
+    let trunc_at = -1;
+    for (const [index, entry] of manifests.entries()) {
+        if (sf_size + entry.length >= MAX_SCANNED_FILES_BYTES) {
+            trunc_at = index;
+            break;
+        }
+        sf_size += entry.length;
+    }
+    if (trunc_at >= 0) {
+        // truncate the manifests list if it will overflow the summary output
+        manifests.slice(0, trunc_at);
+        // if there's room between cutoff size and list size, add a warning
+        const size_diff = MAX_SCANNED_FILES_BYTES - sf_size;
+        if (size_diff < 12) {
+            manifests.push('(truncated)');
         }
     }
+    core.summary.addHeading('Scanned Files', 2).addList(manifests);
 }
-exports.addScannedDependencies = addScannedDependencies;
+exports.addScannedFiles = addScannedFiles;
 function snapshotWarningRecommendation(config, warnings) {
     const no_pr_snaps = warnings.includes('No snapshots were found for the head SHA');
     const retries_disabled = !config.retry_on_snapshot_warnings;
@@ -50634,7 +50655,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
+exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.MergeGroupSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(3301));
 const purl_1 = __nccwpck_require__(4498);
 exports.SEVERITIES = ['critical', 'high', 'moderate', 'low'];
@@ -50717,6 +50738,10 @@ exports.PullRequestSchema = z.object({
     number: z.number(),
     base: z.object({ sha: z.string() }),
     head: z.object({ sha: z.string() })
+});
+exports.MergeGroupSchema = z.object({
+    base_sha: z.string(),
+    head_sha: z.string()
 });
 exports.ConfigurationOptionsSchema = z
     .object({

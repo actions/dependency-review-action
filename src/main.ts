@@ -168,7 +168,7 @@ async function run(): Promise<void> {
     }
 
     core.setOutput('dependency-changes', JSON.stringify(changes))
-    summary.addScannedDependencies(changes)
+    summary.addScannedFiles(changes)
     printScannedDependencies(changes)
 
     // include full summary in output; Actions will truncate if oversized

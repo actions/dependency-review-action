@@ -1,22 +1,34 @@
-import {PullRequestSchema, ConfigurationOptions} from './schemas'
+import {
+  PullRequestSchema,
+  ConfigurationOptions,
+  MergeGroupSchema
+} from './schemas'
 
 export function getRefs(
   config: ConfigurationOptions,
-  context: {payload: {pull_request?: unknown}; eventName: string}
+  context: {
+    payload: {pull_request?: unknown; merge_group?: unknown}
+    eventName: string
+  }
 ): {base: string; head: string} {
   let base_ref = config.base_ref
   let head_ref = config.head_ref
 
   // If possible, source default base & head refs from the GitHub event.
   // The base/head ref from the config take priority, if provided.
-  if (
-    context.eventName === 'pull_request' ||
-    context.eventName === 'pull_request_target' ||
-    context.eventName === 'merge_group'
-  ) {
-    const pull_request = PullRequestSchema.parse(context.payload.pull_request)
-    base_ref = base_ref || pull_request.base.sha
-    head_ref = head_ref || pull_request.head.sha
+  if (!base_ref && !head_ref) {
+    if (
+      context.eventName === 'pull_request' ||
+      context.eventName === 'pull_request_target'
+    ) {
+      const pull_request = PullRequestSchema.parse(context.payload.pull_request)
+      base_ref = base_ref || pull_request.base.sha
+      head_ref = head_ref || pull_request.head.sha
+    } else if (context.eventName === 'merge_group') {
+      const merge_group = MergeGroupSchema.parse(context.payload.merge_group)
+      base_ref = base_ref || merge_group.base_sha
+      head_ref = head_ref || merge_group.head_sha
+    }
   }
 
   if (!base_ref && !head_ref) {

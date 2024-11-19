@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
-import {ConfigurationOptions, Changes, Change, Scorecard} from './schemas'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
+import {Change, Changes, ConfigurationOptions, Scorecard} from './schemas'
 import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
 
 const icons = {
@@ -9,6 +9,8 @@ const icons = {
   cross: '❌',
   warning: '⚠️'
 }
+
+const MAX_SCANNED_FILES_BYTES = 1048576
 
 // generates the DR report summmary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
@@ -263,21 +265,33 @@ function formatLicense(license: string | null): string {
   return license
 }
 
-export function addScannedDependencies(changes: Changes): void {
-  const dependencies = groupDependenciesByManifest(changes)
-  const manifests = dependencies.keys()
+export function addScannedFiles(changes: Changes): void {
+  const manifests = Array.from(
+    groupDependenciesByManifest(changes).keys()
+  ).sort()
 
-  const summary = core.summary.addHeading('Scanned Manifest Files', 2)
+  let sf_size = 0
+  let trunc_at = -1
 
-  for (const manifest of manifests) {
-    const deps = dependencies.get(manifest)
-    if (deps) {
-      const dependencyNames = deps.map(
-        dependency => `<li>${dependency.name}@${dependency.version}</li>`
-      )
-      summary.addDetails(manifest, `<ul>${dependencyNames.join('')}</ul>`)
+  for (const [index, entry] of manifests.entries()) {
+    if (sf_size + entry.length >= MAX_SCANNED_FILES_BYTES) {
+      trunc_at = index
+      break
+    }
+    sf_size += entry.length
+  }
+
+  if (trunc_at >= 0) {
+    // truncate the manifests list if it will overflow the summary output
+    manifests.slice(0, trunc_at)
+    // if there's room between cutoff size and list size, add a warning
+    const size_diff = MAX_SCANNED_FILES_BYTES - sf_size
+    if (size_diff < 12) {
+      manifests.push('(truncated)')
     }
   }
+
+  core.summary.addHeading('Scanned Files', 2).addList(manifests)
 }
 
 function snapshotWarningRecommendation(
