@@ -18,12 +18,12 @@ const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
 export async function commentPr(
   commentContent: string,
   config: ConfigurationOptions,
-  failureCount: number
+  issueFound: boolean
 ): Promise<void> {
   if (
     !(
       config.comment_summary_in_pr === 'always' ||
-      (config.comment_summary_in_pr === 'on-failure' && failureCount > 0)
+      (config.comment_summary_in_pr === 'on-failure' && issueFound)
     )
   ) {
     return

@@ -141,12 +141,16 @@ async function run(): Promise<void> {
       summary.addSnapshotWarnings(config, snapshot_warnings)
     }
 
-    let failureCount = 0;
+    let issueFound = false
 
     if (config.vulnerability_check) {
       core.setOutput('vulnerable-changes', JSON.stringify(vulnerableChanges))
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      failureCount += printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly)
+      issueFound ||= printVulnerabilitiesBlock(
+        vulnerableChanges,
+        minSeverity,
+        warnOnly
+      )
     }
     if (config.license_check) {
       core.setOutput(
@@ -154,12 +158,12 @@ async function run(): Promise<void> {
         JSON.stringify(invalidLicenseChanges)
       )
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      failureCount += printLicensesBlock(invalidLicenseChanges, warnOnly)
+      issueFound ||= printLicensesBlock(invalidLicenseChanges, warnOnly)
     }
     if (config.deny_packages || config.deny_groups) {
       core.setOutput('denied-changes', JSON.stringify(deniedChanges))
       summary.addDeniedToSummary(deniedChanges)
-      failureCount += printDeniedDependencies(deniedChanges, config)
+      issueFound ||= printDeniedDependencies(deniedChanges, config)
     }
     if (config.show_openssf_scorecard) {
       summary.addScorecardToSummary(scorecard, config)
@@ -184,7 +188,7 @@ async function run(): Promise<void> {
     }
 
     // update the PR comment if needed with the right-sized summary
-    await commentPr(rendered, config, failureCount)
+    await commentPr(rendered, config, issueFound)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       core.setFailed(
@@ -210,17 +214,14 @@ function printVulnerabilitiesBlock(
   addedChanges: Changes,
   minSeverity: Severity,
   warnOnly: boolean
-): number {
-  let vulCount = 0
+): boolean {
+  let vulFound = false
   core.group('Vulnerabilities', async () => {
-    if (addedChanges.length > 0) {
-      for (const change of addedChanges) {
-        printChangeVulnerabilities(change)
-        vulCount += change.vulnerabilities.length;
-      }
+    for (const change of addedChanges) {
+      vulFound ||= printChangeVulnerabilities(change)
     }
 
-    if (vulCount > 0) {
+    if (vulFound) {
       const msg = 'Dependency review detected vulnerable packages.'
       if (warnOnly) {
         core.warning(msg)
@@ -233,10 +234,10 @@ function printVulnerabilitiesBlock(
       )
     }
   })
-  return vulCount
+  return vulFound
 }
 
-function printChangeVulnerabilities(change: Change): void {
+function printChangeVulnerabilities(change: Change): boolean {
   for (const vuln of change.vulnerabilities) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${
@@ -247,16 +248,17 @@ function printChangeVulnerabilities(change: Change): void {
     )
     core.info(`  ↪ ${vuln.advisory_url}`)
   }
+  return change.vulnerabilities.length > 0
 }
 
 function printLicensesBlock(
   invalidLicenseChanges: Record<string, Changes>,
   warnOnly: boolean
-): number {
-  let failureCount = 0;
+): boolean {
+  let issueFound = false
   core.group('Licenses', async () => {
     if (invalidLicenseChanges.forbidden.length > 0) {
-      failureCount += invalidLicenseChanges.forbidden.length;
+      issueFound = true
       core.info('\nThe following dependencies have incompatible licenses:')
       printLicensesError(invalidLicenseChanges.forbidden)
       const msg = 'Dependency review detected incompatible licenses.'
@@ -267,7 +269,7 @@ function printLicensesBlock(
       }
     }
     if (invalidLicenseChanges.unresolved.length > 0) {
-      failureCount += invalidLicenseChanges.unresolved.length;
+      issueFound = true
       core.warning(
         '\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:'
       )
@@ -278,7 +280,7 @@ function printLicensesBlock(
     }
     printNullLicenses(invalidLicenseChanges.unlicensed)
   })
-  return failureCount;
+  return issueFound
 }
 
 function printLicensesError(changes: Changes): void {
@@ -380,7 +382,8 @@ function printScannedDependencies(changes: Changes): void {
 function printDeniedDependencies(
   changes: Changes,
   config: ConfigurationOptions
-): number {
+): boolean {
+  let issueFound = false
   core.group('Denied', async () => {
     for (const denied of config.deny_packages) {
       core.info(`Config: ${denied}`)
@@ -392,12 +395,13 @@ function printDeniedDependencies(
     }
 
     if (changes.length > 0) {
+      issueFound = true
       core.setFailed('Dependency review detected denied packages.')
     } else {
       core.info('Dependency review did not detect any denied packages')
     }
   })
-  return changes.length
+  return issueFound
 }
 
 function getScorecardChanges(changes: Changes): Changes {
