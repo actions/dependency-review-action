@@ -57,10 +57,10 @@ const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
 const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('repo-token', { required: true })));
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->';
-function commentPr(commentContent, config, failureCount) {
+function commentPr(commentContent, config, issueFound) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!(config.comment_summary_in_pr === 'always' ||
-            (config.comment_summary_in_pr === 'on-failure' && failureCount > 0))) {
+            (config.comment_summary_in_pr === 'on-failure' && issueFound))) {
             return;
         }
         if (!github.context.payload.pull_request) {
@@ -683,21 +683,21 @@ function run() {
             if (snapshot_warnings) {
                 summary.addSnapshotWarnings(config, snapshot_warnings);
             }
-            let failureCount = 0;
+            let issueFound = false;
             if (config.vulnerability_check) {
                 core.setOutput('vulnerable-changes', JSON.stringify(vulnerableChanges));
                 summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity);
-                failureCount += printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly);
+                issueFound || (issueFound = printVulnerabilitiesBlock(vulnerableChanges, minSeverity, warnOnly));
             }
             if (config.license_check) {
                 core.setOutput('invalid-license-changes', JSON.stringify(invalidLicenseChanges));
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
-                failureCount += printLicensesBlock(invalidLicenseChanges, warnOnly);
+                issueFound || (issueFound = printLicensesBlock(invalidLicenseChanges, warnOnly));
             }
             if (config.deny_packages || config.deny_groups) {
                 core.setOutput('denied-changes', JSON.stringify(deniedChanges));
                 summary.addDeniedToSummary(deniedChanges);
-                failureCount += printDeniedDependencies(deniedChanges, config);
+                issueFound || (issueFound = printDeniedDependencies(deniedChanges, config));
             }
             if (config.show_openssf_scorecard) {
                 summary.addScorecardToSummary(scorecard, config);
@@ -716,7 +716,7 @@ function run() {
                 rendered = minSummary;
             }
             // update the PR comment if needed with the right-sized summary
-            yield (0, comment_pr_1.commentPr)(rendered, config, failureCount);
+            yield (0, comment_pr_1.commentPr)(rendered, config, issueFound);
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError && error.status === 404) {
@@ -740,15 +740,12 @@ function run() {
     });
 }
 function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
-    let vulCount = 0;
+    let vulFound = false;
     core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
-        if (addedChanges.length > 0) {
-            for (const change of addedChanges) {
-                printChangeVulnerabilities(change);
-                vulCount += change.vulnerabilities.length;
-            }
+        for (const change of addedChanges) {
+            vulFound || (vulFound = printChangeVulnerabilities(change));
         }
-        if (vulCount > 0) {
+        if (vulFound) {
             const msg = 'Dependency review detected vulnerable packages.';
             if (warnOnly) {
                 core.warning(msg);
@@ -761,19 +758,20 @@ function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
             core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
         }
     }));
-    return vulCount;
+    return vulFound;
 }
 function printChangeVulnerabilities(change) {
     for (const vuln of change.vulnerabilities) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close} – ${vuln.advisory_summary} ${renderSeverity(vuln.severity)}`);
         core.info(`  ↪ ${vuln.advisory_url}`);
     }
+    return change.vulnerabilities.length > 0;
 }
 function printLicensesBlock(invalidLicenseChanges, warnOnly) {
-    let failureCount = 0;
+    let issueFound = false;
     core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
         if (invalidLicenseChanges.forbidden.length > 0) {
-            failureCount += invalidLicenseChanges.forbidden.length;
+            issueFound = true;
             core.info('\nThe following dependencies have incompatible licenses:');
             printLicensesError(invalidLicenseChanges.forbidden);
             const msg = 'Dependency review detected incompatible licenses.';
@@ -785,14 +783,14 @@ function printLicensesBlock(invalidLicenseChanges, warnOnly) {
             }
         }
         if (invalidLicenseChanges.unresolved.length > 0) {
-            failureCount += invalidLicenseChanges.unresolved.length;
+            issueFound = true;
             core.warning('\nThe validity of the licenses of the dependencies below could not be determined. Ensure that they are valid SPDX licenses:');
             printLicensesError(invalidLicenseChanges.unresolved);
             core.setFailed('Dependency review could not detect the validity of all licenses.');
         }
         printNullLicenses(invalidLicenseChanges.unlicensed);
     }));
-    return failureCount;
+    return issueFound;
 }
 function printLicensesError(changes) {
     for (const change of changes) {
@@ -859,6 +857,7 @@ function printScannedDependencies(changes) {
     }));
 }
 function printDeniedDependencies(changes, config) {
+    let issueFound = false;
     core.group('Denied', () => __awaiter(this, void 0, void 0, function* () {
         for (const denied of config.deny_packages) {
             core.info(`Config: ${denied}`);
@@ -868,13 +867,14 @@ function printDeniedDependencies(changes, config) {
             core.info(`Change: ${change.package_url} is denied`);
         }
         if (changes.length > 0) {
+            issueFound = true;
             core.setFailed('Dependency review detected denied packages.');
         }
         else {
             core.info('Dependency review did not detect any denied packages');
         }
     }));
-    return changes.length;
+    return issueFound;
 }
 function getScorecardChanges(changes) {
     const out = [];

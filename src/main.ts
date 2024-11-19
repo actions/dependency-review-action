@@ -146,7 +146,7 @@ async function run(): Promise<void> {
     if (config.vulnerability_check) {
       core.setOutput('vulnerable-changes', JSON.stringify(vulnerableChanges))
       summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
-      issueFound ||= printVulnerabilitiesBlock(
+      issueFound ||= await printVulnerabilitiesBlock(
         vulnerableChanges,
         minSeverity,
         warnOnly
@@ -158,12 +158,12 @@ async function run(): Promise<void> {
         JSON.stringify(invalidLicenseChanges)
       )
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      issueFound ||= printLicensesBlock(invalidLicenseChanges, warnOnly)
+      issueFound ||= await printLicensesBlock(invalidLicenseChanges, warnOnly)
     }
     if (config.deny_packages || config.deny_groups) {
       core.setOutput('denied-changes', JSON.stringify(deniedChanges))
       summary.addDeniedToSummary(deniedChanges)
-      issueFound ||= printDeniedDependencies(deniedChanges, config)
+      issueFound ||= await printDeniedDependencies(deniedChanges, config)
     }
     if (config.show_openssf_scorecard) {
       summary.addScorecardToSummary(scorecard, config)
@@ -214,9 +214,10 @@ function printVulnerabilitiesBlock(
   addedChanges: Changes,
   minSeverity: Severity,
   warnOnly: boolean
-): boolean {
-  let vulFound = false
-  core.group('Vulnerabilities', async () => {
+): Promise<boolean> {
+  return core.group('Vulnerabilities', async () => {
+    let vulFound = false
+
     for (const change of addedChanges) {
       vulFound ||= printChangeVulnerabilities(change)
     }
@@ -233,8 +234,9 @@ function printVulnerabilitiesBlock(
         `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
       )
     }
+
+    return vulFound
   })
-  return vulFound
 }
 
 function printChangeVulnerabilities(change: Change): boolean {
@@ -254,9 +256,10 @@ function printChangeVulnerabilities(change: Change): boolean {
 function printLicensesBlock(
   invalidLicenseChanges: Record<string, Changes>,
   warnOnly: boolean
-): boolean {
-  let issueFound = false
-  core.group('Licenses', async () => {
+): Promise<boolean> {
+  return core.group('Licenses', async () => {
+    let issueFound = false
+
     if (invalidLicenseChanges.forbidden.length > 0) {
       issueFound = true
       core.info('\nThe following dependencies have incompatible licenses:')
@@ -279,8 +282,9 @@ function printLicensesBlock(
       )
     }
     printNullLicenses(invalidLicenseChanges.unlicensed)
+
+    return issueFound
   })
-  return issueFound
 }
 
 function printLicensesError(changes: Changes): void {
@@ -382,9 +386,10 @@ function printScannedDependencies(changes: Changes): void {
 function printDeniedDependencies(
   changes: Changes,
   config: ConfigurationOptions
-): boolean {
-  let issueFound = false
-  core.group('Denied', async () => {
+): Promise<boolean> {  
+  return core.group('Denied', async () => {
+    let issueFound = false
+
     for (const denied of config.deny_packages) {
       core.info(`Config: ${denied}`)
     }
@@ -400,8 +405,9 @@ function printDeniedDependencies(
     } else {
       core.info('Dependency review did not detect any denied packages')
     }
+
+    return issueFound
   })
-  return issueFound
 }
 
 function getScorecardChanges(changes: Changes): Changes {
