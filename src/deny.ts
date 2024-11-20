@@ -35,12 +35,6 @@ export async function getDeniedChanges(
     }
   }
 
-  if (hasDeniedPackage) {
-    core.setFailed('Dependency review detected denied packages.')
-  } else {
-    core.info('Dependency review did not detect any denied packages')
-  }
-
   return changesDenied
 }
 
