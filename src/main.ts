@@ -210,7 +210,7 @@ async function run(): Promise<void> {
   }
 }
 
-function printVulnerabilitiesBlock(
+async function printVulnerabilitiesBlock(
   addedChanges: Changes,
   minSeverity: Severity,
   warnOnly: boolean
@@ -253,7 +253,7 @@ function printChangeVulnerabilities(change: Change): boolean {
   return change.vulnerabilities.length > 0
 }
 
-function printLicensesBlock(
+async function printLicensesBlock(
   invalidLicenseChanges: Record<string, Changes>,
   warnOnly: boolean
 ): Promise<boolean> {
@@ -383,10 +383,10 @@ function printScannedDependencies(changes: Changes): void {
   })
 }
 
-function printDeniedDependencies(
+async function printDeniedDependencies(
   changes: Changes,
   config: ConfigurationOptions
-): Promise<boolean> {  
+): Promise<boolean> {
   return core.group('Denied', async () => {
     let issueFound = false
 
