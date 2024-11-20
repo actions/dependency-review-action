@@ -9,7 +9,6 @@ export async function getDeniedChanges(
 ): Promise<Change[]> {
   const changesDenied: Change[] = []
 
-  let hasDeniedPackage = false
   for (const change of changes) {
     for (const denied of deniedPackages) {
       if (
@@ -17,7 +16,6 @@ export async function getDeniedChanges(
         change.name === denied.name
       ) {
         changesDenied.push(change)
-        hasDeniedPackage = true
       }
     }
 
@@ -30,7 +28,6 @@ export async function getDeniedChanges(
       }
       if (namespace && namespace === denied.namespace) {
         changesDenied.push(change)
-        hasDeniedPackage = true
       }
     }
   }
