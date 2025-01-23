@@ -39,7 +39,7 @@ The action then evaluates the differences between the pushes based on the the ru
 
 ### Local Development
 
-Before you begin, you need to have [Node.js](https://nodejs.org/en/) installed, minimum version 18.
+Before you begin, you need to have [Node.js](https://nodejs.org/en/) installed, minimum version 20.
 
 #### Bootstrapping the project
 
