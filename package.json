@@ -41,7 +41,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/spdx-expression-parse": "^3.0.4",
     "@types/spdx-satisfies": "^0.1.1",
