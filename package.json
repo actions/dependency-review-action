@@ -37,7 +37,7 @@
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^5.0.1",
     "ts-jest": "^29.2.5",
-    "yaml": "^2.3.4",
+    "yaml": "^2.7.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
