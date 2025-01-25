@@ -291,7 +291,9 @@ export function addScannedFiles(changes: Changes): void {
     }
   }
 
-  core.summary.addHeading('Scanned Files', 2).addList(manifests)
+  core.summary
+    .addHeading('Scanned Files', 2)
+    .addList(manifests.length === 0 ? ['None'] : manifests)
 }
 
 function snapshotWarningRecommendation(
@@ -316,6 +318,9 @@ export function addScorecardToSummary(
   scorecard: Scorecard,
   config: ConfigurationOptions
 ): void {
+  if (scorecard.dependencies.length === 0) {
+    return
+  }
   core.summary.addHeading('OpenSSF Scorecard', 2)
   if (scorecard.dependencies.length > 10) {
     core.summary.addRaw(`<details><summary>Scorecard details</summary>`, true)
