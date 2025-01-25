@@ -3,7 +3,32 @@ import * as githubUtils from '@actions/github/lib/utils'
 import * as retry from '@octokit/plugin-retry'
 import {
   ChangesSchema,
-  ComparisonResponse,
+  ComparisonResponse,    name: Analyze
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript', 'python' ]
+
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        config-file: .github/codeql/codeql-config.yml
+
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
   ComparisonResponseSchema
 } from './schemas'
 
