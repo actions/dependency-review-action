@@ -291,9 +291,12 @@ export function addScannedFiles(changes: Changes): void {
     }
   }
 
-  core.summary
-    .addHeading('Scanned Files', 2)
-    .addList(manifests.length === 0 ? ['None'] : manifests)
+  const summary = core.summary.addHeading('Scanned Files', 2)
+  if (manifests.length === 0) {
+    summary.addRaw('None')
+  } else {
+    summary.addList(manifests)
+  }
 }
 
 function snapshotWarningRecommendation(
