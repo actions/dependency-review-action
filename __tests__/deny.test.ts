@@ -134,3 +134,62 @@ test('allows packages not defined in the deny packages and groups list', async (
 
   expect(deniedChanges.length).toEqual(0)
 })
+
+test('deny packages does not prevent removal of denied packages', async () => {
+  const changes: Changes = [
+    createTestChange({
+      change_type: 'added',
+      name: 'deny-by-name-and-version',
+      version: '1.0.0',
+      ecosystem: 'npm'
+    }),
+    createTestChange({
+      change_type: 'removed',
+      name: 'pass-by-name-and-version',
+      version: '1.0.0',
+      ecosystem: 'npm'
+    }),
+    createTestChange({
+      change_type: 'added',
+      name: 'deny-by-name',
+      version: '1.0.0',
+      ecosystem: 'npm'
+    }),
+    createTestChange({
+      change_type: 'removed',
+      name: 'pass-by-name',
+      version: '1.0.0',
+      ecosystem: 'npm'
+    }),
+    createTestChange({
+      change_type: 'added',
+      package_url: 'pkg:npm/org.test.deny.by.namespace/only@1.0.0',
+      ecosystem: 'npm'
+    }),
+    createTestChange({
+      change_type: 'removed',
+      package_url: 'pkg:npm/org.test.pass.by.namespace/only@1.0.0',
+      ecosystem: 'npm'
+    })
+  ]
+  const deniedPackages = createTestPURLs([
+    'pkg:npm/org.test.deny.by/deny-by-name-and-version@1.0.0',
+    'pkg:npm/org.test.pass.by/pass-by-name-and-version@1.0.0',
+    'pkg:npm/org.test.deny.by/deny-by-name',
+    'pkg:npm/org.test.pass.by/pass-by-name'
+  ])
+  const deniedGroups = createTestPURLs([
+    'pkg:npm/org.test.deny.by.namespace/',
+    'pkg:npm/org.test.pass.by.namespace/'
+  ])
+  const deniedChanges = await getDeniedChanges(
+    changes,
+    deniedPackages,
+    deniedGroups
+  )
+
+  expect(deniedChanges.length).toEqual(3)
+  expect(deniedChanges[0]).toBe(changes[0])
+  expect(deniedChanges[1]).toBe(changes[2])
+  expect(deniedChanges[2]).toBe(changes[4])
+})
