@@ -182,6 +182,9 @@ function getDeniedChanges(changes_1) {
     return __awaiter(this, arguments, void 0, function* (changes, deniedPackages = [], deniedGroups = []) {
         const changesDenied = [];
         for (const change of changes) {
+            if (change.change_type === 'removed') {
+                continue;
+            }
             for (const denied of deniedPackages) {
                 if ((!denied.version || change.version === denied.version) &&
                     change.name === denied.name) {

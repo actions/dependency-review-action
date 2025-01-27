@@ -10,6 +10,10 @@ export async function getDeniedChanges(
   const changesDenied: Change[] = []
 
   for (const change of changes) {
+    if (change.change_type === 'removed') {
+      continue
+    }
+
     for (const denied of deniedPackages) {
       if (
         (!denied.version || change.version === denied.version) &&
