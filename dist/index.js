@@ -720,7 +720,7 @@ function run() {
                 core.setFailed(`Dependency review could not obtain dependency data for the specified owner, repository, or revision range.`);
             }
             else if (error instanceof request_error_1.RequestError && error.status === 403) {
-                core.setFailed(`Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security on private repositories, see https://github.com/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`);
+                core.setFailed(`Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security on private repositories, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`);
             }
             else {
                 if (error instanceof Error) {
