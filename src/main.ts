@@ -196,7 +196,7 @@ async function run(): Promise<void> {
       )
     } else if (error instanceof RequestError && error.status === 403) {
       core.setFailed(
-        `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security on private repositories, see https://github.com/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
+        `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security on private repositories, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
       )
     } else {
       if (error instanceof Error) {
