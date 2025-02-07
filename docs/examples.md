@@ -1,4 +1,4 @@
-# Examples on how to use the Dependency Review Action
+# Examples of how to use the Dependency Review Action
 
 ## Basic Usage
 
@@ -89,7 +89,7 @@ The following example will use a configuration file from an external public GitH
 
 Let's say that the configuration file is located in `github/octorepo/dependency-review-config.yml@main`
 
-The Dependancy Review Action workflow file will then look like this:
+The Dependency Review Action workflow file will then look like this:
 
 ```yaml
 name: 'Dependency Review'
@@ -116,7 +116,7 @@ The following example will use a configuration file from an external private Gti
 
 Let's say that the configuration file is located in `github/octorepo-private/dependency-review-config.yml@main`
 
-The Dependancy Review Action workflow file will then look like this:
+The Dependency Review Action workflow file will then look like this:
 
 ```yaml
 name: 'Dependency Review'

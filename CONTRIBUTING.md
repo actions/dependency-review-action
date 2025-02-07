@@ -35,7 +35,7 @@ Ready to contribute to `dependency-review-action`?  Here is some information to 
 
 This action makes an authenticated query to the [Dependency Review API](https://docs.github.com/en/rest/dependency-graph/dependency-review) endpoint (`GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}`) to find out the set of added and removed dependencies for each manifest.
 
-The action then evaluates the differences between the pushes based on the the rules defined in the action configuration, and summarizes the differences and any violations of the rules you have defined as a comment in the pull request that triggered it and the action outputs.
+The action then evaluates the differences between the pushes based on the rules defined in the action configuration, and summarizes the differences and any violations of the rules you have defined as a comment in the pull request that triggered it and the action outputs.
 
 ### Local Development
 
@@ -81,7 +81,7 @@ $ GITHUB_TOKEN=<token> ./scripts/scan_pr --config-file my_custom_config.yml <pr_
 npm run test
 ```
 
-_Note_: We don't a very comprehensive test suite, so any contributions to the existing tests are welcome!
+_Note_: We don't have a very comprehensive test suite, so any contributions to the existing tests are welcome!
 
 ### Submitting a pull request
 
