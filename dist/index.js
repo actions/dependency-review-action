@@ -22,23 +22,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -56,8 +46,7 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.MAX_COMMENT_LENGTH = void 0;
-exports.commentPr = commentPr;
+exports.commentPr = exports.MAX_COMMENT_LENGTH = void 0;
 const github = __importStar(__nccwpck_require__(3228));
 const core = __importStar(__nccwpck_require__(7484));
 const githubUtils = __importStar(__nccwpck_require__(8006));
@@ -113,6 +102,7 @@ function commentPr(commentContent, config, issueFound) {
         }
     });
 }
+exports.commentPr = commentPr;
 function findCommentByMarker(commentBodyIncludes) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, e_1, _b, _c;
@@ -168,23 +158,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -195,8 +175,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getNamespace = void 0;
-exports.getDeniedChanges = getDeniedChanges;
+exports.getNamespace = exports.getDeniedChanges = void 0;
 const core = __importStar(__nccwpck_require__(7484));
 const purl_1 = __nccwpck_require__(7963);
 function getDeniedChanges(changes_1) {
@@ -225,6 +204,7 @@ function getDeniedChanges(changes_1) {
         return changesDenied;
     });
 }
+exports.getDeniedChanges = getDeniedChanges;
 const getNamespace = (change) => {
     if (change.package_url) {
         return (0, purl_1.parsePURL)(change.package_url).namespace;
@@ -261,23 +241,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -288,7 +258,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.compare = compare;
+exports.compare = void 0;
 const core = __importStar(__nccwpck_require__(7484));
 const githubUtils = __importStar(__nccwpck_require__(8006));
 const retry = __importStar(__nccwpck_require__(3450));
@@ -319,6 +289,7 @@ function compare(_a) {
         });
     });
 }
+exports.compare = compare;
 
 
 /***/ }),
@@ -329,7 +300,7 @@ function compare(_a) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getRefs = getRefs;
+exports.getRefs = void 0;
 const schemas_1 = __nccwpck_require__(3312);
 function getRefs(config, context) {
     let base_ref = config.base_ref;
@@ -369,6 +340,7 @@ function getRefs(config, context) {
         head: head_ref
     };
 }
+exports.getRefs = getRefs;
 
 
 /***/ }),
@@ -394,23 +366,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -421,7 +383,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getInvalidLicenseChanges = getInvalidLicenseChanges;
+exports.getInvalidLicenseChanges = void 0;
 const utils_1 = __nccwpck_require__(9277);
 const purl_1 = __nccwpck_require__(7963);
 const spdx = __importStar(__nccwpck_require__(2593));
@@ -501,6 +463,7 @@ function getInvalidLicenseChanges(changes, licenses) {
         return invalidLicenseChanges;
     });
 }
+exports.getInvalidLicenseChanges = getInvalidLicenseChanges;
 const fetchGHLicense = (owner, repo) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     try {
@@ -614,23 +577,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -978,26 +931,15 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PurlSchema = void 0;
-exports.parsePURL = parsePURL;
+exports.parsePURL = exports.PurlSchema = void 0;
 const z = __importStar(__nccwpck_require__(4809));
 // the basic purl type, containing type, namespace, name, and version.
 // other than type, all fields are nullable. this is for maximum flexibility
@@ -1065,6 +1007,7 @@ function parsePURL(purl) {
     // we don't parse subpath or attributes, so we're done here
     return result;
 }
+exports.parsePURL = parsePURL;
 
 
 /***/ }),
@@ -1090,23 +1033,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.MergeGroupSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(4809));
@@ -1317,23 +1250,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -1344,8 +1267,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getScorecardLevels = getScorecardLevels;
-exports.getProjectUrl = getProjectUrl;
+exports.getProjectUrl = exports.getScorecardLevels = void 0;
 const core = __importStar(__nccwpck_require__(7484));
 function getScorecardLevels(changes) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1390,6 +1312,7 @@ function getScorecardLevels(changes) {
         return data;
     });
 }
+exports.getScorecardLevels = getScorecardLevels;
 function getScorecard(repositoryUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiRoot = 'https://api.securityscorecards.dev';
@@ -1420,6 +1343,7 @@ function getProjectUrl(ecosystem, packageName, version) {
         return '';
     });
 }
+exports.getProjectUrl = getProjectUrl;
 
 
 /***/ }),
@@ -1445,31 +1369,18 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.satisfies = satisfies;
-exports.satisfiesAny = satisfiesAny;
-exports.satisfiesAll = satisfiesAll;
-exports.isValid = isValid;
+exports.isValid = exports.satisfiesAll = exports.satisfiesAny = exports.satisfies = void 0;
 const spdxlib = __importStar(__nccwpck_require__(1452));
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(3326));
 /*
@@ -1488,6 +1399,7 @@ function satisfies(candidateExpr, constraintExpr) {
         return false;
     }
 }
+exports.satisfies = satisfies;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAny(candidateExpr, licenses) {
     try {
@@ -1497,6 +1409,7 @@ function satisfiesAny(candidateExpr, licenses) {
         return false;
     }
 }
+exports.satisfiesAny = satisfiesAny;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAll(candidateExpr, licenses) {
     try {
@@ -1506,6 +1419,7 @@ function satisfiesAll(candidateExpr, licenses) {
         return false;
     }
 }
+exports.satisfiesAll = satisfiesAll;
 // accepts any SPDX expression
 function isValid(spdxExpr) {
     try {
@@ -1516,6 +1430,7 @@ function isValid(spdxExpr) {
         return false;
     }
 }
+exports.isValid = isValid;
 
 
 /***/ }),
@@ -1541,31 +1456,15 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addSummaryToSummary = addSummaryToSummary;
-exports.addChangeVulnerabilitiesToSummary = addChangeVulnerabilitiesToSummary;
-exports.addLicensesToSummary = addLicensesToSummary;
-exports.addScannedFiles = addScannedFiles;
-exports.addScorecardToSummary = addScorecardToSummary;
-exports.addSnapshotWarnings = addSnapshotWarnings;
-exports.addDeniedToSummary = addDeniedToSummary;
+exports.addDeniedToSummary = exports.addSnapshotWarnings = exports.addScorecardToSummary = exports.addScannedFiles = exports.addLicensesToSummary = exports.addChangeVulnerabilitiesToSummary = exports.addSummaryToSummary = void 0;
 const core = __importStar(__nccwpck_require__(7484));
 const utils_1 = __nccwpck_require__(9277);
 const icons = {
@@ -1638,6 +1537,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
     out.push(`\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`);
     return out.join('\n');
 }
+exports.addSummaryToSummary = addSummaryToSummary;
 function countScorecardWarnings(scorecard, config) {
     return scorecard.dependencies.reduce((total, dependency) => {
         var _a, _b;
@@ -1695,6 +1595,7 @@ function addChangeVulnerabilitiesToSummary(vulnerableChanges, severity) {
         core.summary.addQuote(`Only included vulnerabilities with severity <strong>${severity}</strong> or higher.`);
     }
 }
+exports.addChangeVulnerabilitiesToSummary = addChangeVulnerabilitiesToSummary;
 function addLicensesToSummary(invalidLicenseChanges, config) {
     if (countLicenseIssues(invalidLicenseChanges) === 0) {
         return;
@@ -1713,6 +1614,7 @@ function addLicensesToSummary(invalidLicenseChanges, config) {
     core.debug(`found ${invalidLicenseChanges.unlicensed.length} unknown licenses`);
     core.debug(`${invalidLicenseChanges.unresolved.length} licenses could not be validated`);
 }
+exports.addLicensesToSummary = addLicensesToSummary;
 const licenseIssueTypes = [
     'forbidden',
     'unresolved',
@@ -1774,6 +1676,7 @@ function addScannedFiles(changes) {
     }
     core.summary.addHeading('Scanned Files', 2).addList(manifests);
 }
+exports.addScannedFiles = addScannedFiles;
 function snapshotWarningRecommendation(config, warnings) {
     const no_pr_snaps = warnings.includes('No snapshots were found for the head SHA');
     const retries_disabled = !config.retry_on_snapshot_warnings;
@@ -1830,6 +1733,7 @@ function addScorecardToSummary(scorecard, config) {
         core.summary.addRaw(`</details>`);
     }
 }
+exports.addScorecardToSummary = addScorecardToSummary;
 function addSnapshotWarnings(config, warnings) {
     core.summary.addHeading('Snapshot Warnings', 2);
     core.summary.addQuote(`${icons.warning}: ${warnings}`);
@@ -1837,6 +1741,7 @@ function addSnapshotWarnings(config, warnings) {
     const docsLink = 'See <a href="https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review#best-practices-for-using-the-dependency-review-api-and-the-dependency-submission-api-together">the documentation</a> for more information and troubleshooting advice.';
     core.summary.addRaw(`${recommendation} ${docsLink}`);
 }
+exports.addSnapshotWarnings = addSnapshotWarnings;
 function countLicenseIssues(invalidLicenseChanges) {
     return Object.values(invalidLicenseChanges).reduce((acc, val) => acc + val.length, 0);
 }
@@ -1857,6 +1762,7 @@ function addDeniedToSummary(deniedChanges) {
         ]);
     }
 }
+exports.addDeniedToSummary = addDeniedToSummary;
 function checkOrFailIcon(count) {
     return count === 0 ? icons.check : icons.cross;
 }
@@ -1888,28 +1794,15 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.groupDependenciesByManifest = groupDependenciesByManifest;
-exports.getManifestsSet = getManifestsSet;
-exports.renderUrl = renderUrl;
-exports.octokitClient = octokitClient;
+exports.octokitClient = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(7484));
 const octokit_1 = __nccwpck_require__(2373);
 function groupDependenciesByManifest(changes) {
@@ -1926,9 +1819,11 @@ function groupDependenciesByManifest(changes) {
     }
     return dependencies;
 }
+exports.groupDependenciesByManifest = groupDependenciesByManifest;
 function getManifestsSet(changes) {
     return new Set(changes.flatMap(c => c.manifest));
 }
+exports.getManifestsSet = getManifestsSet;
 function renderUrl(url, text) {
     if (url) {
         return `<a href="${url}">${text}</a>`;
@@ -1937,6 +1832,7 @@ function renderUrl(url, text) {
         return text;
     }
 }
+exports.renderUrl = renderUrl;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
@@ -1957,6 +1853,7 @@ function octokitClient(token = 'repo-token', required = true) {
     }
     return new octokit_1.Octokit(opts);
 }
+exports.octokitClient = octokitClient;
 
 
 /***/ }),
@@ -9267,7 +9164,7 @@ __export(dist_src_exports, {
 module.exports = __toCommonJS(dist_src_exports);
 
 // pkg/dist-src/version.js
-var VERSION = "9.1.5";
+var VERSION = "9.2.2";
 
 // pkg/dist-src/normalize-paginated-list-response.js
 function normalizePaginatedListResponse(response) {
@@ -9315,7 +9212,7 @@ function iterator(octokit, route, parameters) {
           const response = await requestMethod({ method, url, headers });
           const normalizedResponse = normalizePaginatedListResponse(response);
           url = ((normalizedResponse.headers.link || "").match(
-            /<([^>]+)>;\s*rel="next"/
+            /<([^<>]+)>;\s*rel="next"/
           ) || [])[1];
           return { value: normalizedResponse };
         } catch (error) {
@@ -9428,6 +9325,8 @@ var paginatingEndpoints = [
   "GET /orgs/{org}/members/{username}/codespaces",
   "GET /orgs/{org}/migrations",
   "GET /orgs/{org}/migrations/{migration_id}/repositories",
+  "GET /orgs/{org}/organization-roles/{role_id}/teams",
+  "GET /orgs/{org}/organization-roles/{role_id}/users",
   "GET /orgs/{org}/outside_collaborators",
   "GET /orgs/{org}/packages",
   "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
@@ -49797,23 +49696,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -49827,7 +49716,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readConfig = readConfig;
+exports.readConfig = void 0;
 const fs = __importStar(__nccwpck_require__(9896));
 const path_1 = __importDefault(__nccwpck_require__(6928));
 const yaml_1 = __importDefault(__nccwpck_require__(8815));
@@ -49847,6 +49736,7 @@ function readConfig() {
         return schemas_1.ConfigurationOptionsSchema.parse(inlineConfig);
     });
 }
+exports.readConfig = readConfig;
 function readInlineConfig() {
     const fail_on_severity = getOptionalInput('fail-on-severity');
     const fail_on_scopes = parseList(getOptionalInput('fail-on-scopes'));
@@ -50017,9 +49907,7 @@ function getRemoteConfig(configOpts) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.filterChangesBySeverity = filterChangesBySeverity;
-exports.filterChangesByScopes = filterChangesByScopes;
-exports.filterAllowedAdvisories = filterAllowedAdvisories;
+exports.filterAllowedAdvisories = exports.filterChangesByScopes = exports.filterChangesBySeverity = void 0;
 const schemas_1 = __nccwpck_require__(9011);
 /**
  * Filters changes by a severity level. Only vulnerable
@@ -50053,6 +49941,7 @@ function filterChangesBySeverity(severity, changes) {
         change.vulnerabilities !== undefined &&
         change.vulnerabilities.length > 0);
 }
+exports.filterChangesBySeverity = filterChangesBySeverity;
 function filterChangesByScopes(scopes, changes) {
     if (scopes === undefined) {
         return [];
@@ -50064,6 +49953,7 @@ function filterChangesByScopes(scopes, changes) {
     });
     return filteredChanges;
 }
+exports.filterChangesByScopes = filterChangesByScopes;
 /**
  * Filter out changes that are allowed by the allow_ghsas config
  * option. We want to remove these changes before we do any
@@ -50088,6 +49978,7 @@ function filterAllowedAdvisories(ghsas, changes) {
     });
     return filteredChanges;
 }
+exports.filterAllowedAdvisories = filterAllowedAdvisories;
 
 
 /***/ }),
@@ -50113,26 +50004,15 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PurlSchema = void 0;
-exports.parsePURL = parsePURL;
+exports.parsePURL = exports.PurlSchema = void 0;
 const z = __importStar(__nccwpck_require__(4809));
 // the basic purl type, containing type, namespace, name, and version.
 // other than type, all fields are nullable. this is for maximum flexibility
@@ -50200,6 +50080,7 @@ function parsePURL(purl) {
     // we don't parse subpath or attributes, so we're done here
     return result;
 }
+exports.parsePURL = parsePURL;
 
 
 /***/ }),
@@ -50225,23 +50106,13 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScorecardSchema = exports.ScorecardApiSchema = exports.ComparisonResponseSchema = exports.ChangesSchema = exports.ConfigurationOptionsSchema = exports.MergeGroupSchema = exports.PullRequestSchema = exports.ChangeSchema = exports.SeveritySchema = exports.SCOPES = exports.SEVERITIES = void 0;
 const z = __importStar(__nccwpck_require__(4809));
@@ -50452,31 +50323,18 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.satisfies = satisfies;
-exports.satisfiesAny = satisfiesAny;
-exports.satisfiesAll = satisfiesAll;
-exports.isValid = isValid;
+exports.isValid = exports.satisfiesAll = exports.satisfiesAny = exports.satisfies = void 0;
 const spdxlib = __importStar(__nccwpck_require__(1452));
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(3326));
 /*
@@ -50495,6 +50353,7 @@ function satisfies(candidateExpr, constraintExpr) {
         return false;
     }
 }
+exports.satisfies = satisfies;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAny(candidateExpr, licenses) {
     try {
@@ -50504,6 +50363,7 @@ function satisfiesAny(candidateExpr, licenses) {
         return false;
     }
 }
+exports.satisfiesAny = satisfiesAny;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAll(candidateExpr, licenses) {
     try {
@@ -50513,6 +50373,7 @@ function satisfiesAll(candidateExpr, licenses) {
         return false;
     }
 }
+exports.satisfiesAll = satisfiesAll;
 // accepts any SPDX expression
 function isValid(spdxExpr) {
     try {
@@ -50523,6 +50384,7 @@ function isValid(spdxExpr) {
         return false;
     }
 }
+exports.isValid = isValid;
 
 
 /***/ }),
@@ -50548,28 +50410,15 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.groupDependenciesByManifest = groupDependenciesByManifest;
-exports.getManifestsSet = getManifestsSet;
-exports.renderUrl = renderUrl;
-exports.octokitClient = octokitClient;
+exports.octokitClient = exports.renderUrl = exports.getManifestsSet = exports.groupDependenciesByManifest = void 0;
 const core = __importStar(__nccwpck_require__(7484));
 const octokit_1 = __nccwpck_require__(2373);
 function groupDependenciesByManifest(changes) {
@@ -50586,9 +50435,11 @@ function groupDependenciesByManifest(changes) {
     }
     return dependencies;
 }
+exports.groupDependenciesByManifest = groupDependenciesByManifest;
 function getManifestsSet(changes) {
     return new Set(changes.flatMap(c => c.manifest));
 }
+exports.getManifestsSet = getManifestsSet;
 function renderUrl(url, text) {
     if (url) {
         return `<a href="${url}">${text}</a>`;
@@ -50597,6 +50448,7 @@ function renderUrl(url, text) {
         return text;
     }
 }
+exports.renderUrl = renderUrl;
 function isEnterprise() {
     var _a;
     const serverUrl = new URL((_a = process.env['GITHUB_SERVER_URL']) !== null && _a !== void 0 ? _a : 'https://github.com');
@@ -50617,6 +50469,7 @@ function octokitClient(token = 'repo-token', required = true) {
     }
     return new octokit_1.Octokit(opts);
 }
+exports.octokitClient = octokitClient;
 
 
 /***/ }),

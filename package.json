@@ -29,6 +29,7 @@
     "@actions/github": "^6.0.0",
     "@octokit/plugin-retry": "^6.1.0",
     "@octokit/request-error": "^5.1.1",
+    "@octokit/types": "12.5.0",
     "@onebeyond/spdx-license-satisfies": "^1.0.1",
     "ansi-styles": "^6.2.1",
     "got": "^14.4.5",
