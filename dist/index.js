@@ -1674,7 +1674,13 @@ function addScannedFiles(changes) {
             manifests.push('(truncated)');
         }
     }
-    core.summary.addHeading('Scanned Files', 2).addList(manifests);
+    const summary = core.summary.addHeading('Scanned Files', 2);
+    if (manifests.length === 0) {
+        summary.addRaw('None');
+    }
+    else {
+        summary.addList(manifests);
+    }
 }
 exports.addScannedFiles = addScannedFiles;
 function snapshotWarningRecommendation(config, warnings) {
@@ -1693,6 +1699,9 @@ function snapshotWarningRecommendation(config, warnings) {
 }
 function addScorecardToSummary(scorecard, config) {
     var _a, _b, _c, _d, _e, _f, _g, _h;
+    if (scorecard.dependencies.length === 0) {
+        return;
+    }
     core.summary.addHeading('OpenSSF Scorecard', 2);
     if (scorecard.dependencies.length > 10) {
         core.summary.addRaw(`<details><summary>Scorecard details</summary>`, true);
