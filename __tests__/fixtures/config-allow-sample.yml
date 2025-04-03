@@ -2,3 +2,4 @@ fail_on_severity: critical
 allow_licenses:
   - 'BSD-3-Clause'
   - 'GPL-2.0'
+  - 'MIT OR GPL-2.0'
