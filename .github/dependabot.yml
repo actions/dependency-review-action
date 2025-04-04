@@ -15,5 +15,11 @@ updates:
     groups:
       minor-updates:
         update-types:
-        - "minor"
-        - "patch"
+          - 'minor'
+          - 'patch'
+        exclude-patterns:
+          - '*spdx*'
+      # Pull out any updates to spdx definitions and parsing as a priority PR
+      spdx-licenses:
+        patterns:
+          - '*spdx*'
