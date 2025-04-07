@@ -101,6 +101,56 @@ beforeEach(async () => {
   jest.resetModules()
 })
 
+test('it should handle SPDX expressions in allow-list with operators when license matches', async () => {
+  const changes: Changes = [
+    npmChange // MIT license
+  ]
+
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    allow: ['MIT OR Apache-2.0', 'MIT', 'BSD-3-Clause']
+  })
+
+  expect(forbidden).toStrictEqual([])
+})
+
+test('it should handle SPDX expressions in allow-list with operators when license does not match', async () => {
+  const changes: Changes = [
+    npmChange // MIT license
+  ]
+
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    allow: ['MIT AND Apache-2.0', 'BSD-3-Clause']
+  })
+
+  expect(forbidden[0]).toBe(npmChange)
+  expect(forbidden.length).toEqual(1)
+})
+
+test('it should handle SPDX expressions in deny-list with operators when license matches deny list entry', async () => {
+  const changes: Changes = [
+    npmChange // MIT license
+  ]
+
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    deny: ['MIT OR Apache-2.0', 'BSD-3-Clause']
+  })
+
+  expect(forbidden[0]).toBe(npmChange)
+  expect(forbidden.length).toEqual(1)
+})
+
+test('it should handle SPDX expressions in deny-list with operators when license does not match any deny list entry', async () => {
+  const changes: Changes = [
+    npmChange // MIT license
+  ]
+
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    deny: ['MIT AND Apache-2.0', 'BSD-3-Clause']
+  })
+
+  expect(forbidden).toStrictEqual([])
+})
+
 test('it adds license outside the allow list to forbidden changes', async () => {
   const changes: Changes = [
     npmChange, // MIT license

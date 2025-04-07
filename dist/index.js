@@ -435,7 +435,10 @@ function getInvalidLicenseChanges(changes, licenses) {
                 try {
                     if (allow !== undefined) {
                         if (spdx.isValid(license)) {
-                            const found = spdx.satisfiesAny(license, allow);
+                            let found = false;
+                            for (const allowedLicense of allow) {
+                                found || (found = spdx.satisfiesAny(allowedLicense, [license]));
+                            }
                             validityCache.set(license, found);
                         }
                         else {
@@ -444,7 +447,10 @@ function getInvalidLicenseChanges(changes, licenses) {
                     }
                     else if (deny !== undefined) {
                         if (spdx.isValid(license)) {
-                            const found = spdx.satisfiesAny(license, deny);
+                            let found = false;
+                            for (const deniedLicense of deny) {
+                                found || (found = spdx.satisfiesAny(deniedLicense, [license]));
+                            }
                             validityCache.set(license, !found);
                         }
                         else {
