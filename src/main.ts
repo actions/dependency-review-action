@@ -24,6 +24,8 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
+import * as artifact from '@actions/artifact'
+import * as fs from 'fs'
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -59,6 +61,41 @@ async function getComparison(
   }
 
   return comparison
+}
+
+export async function handleLargeSummary(
+  summaryContent: string
+): Promise<string> {
+  const MAX_SUMMARY_SIZE = 1024 * 1024 // 1024k in bytes
+  if (Buffer.byteLength(summaryContent, 'utf8') <= MAX_SUMMARY_SIZE) {
+    return summaryContent
+  }
+
+  const artifactClient = new artifact.DefaultArtifactClient()
+  const artifactName = 'dependency-review-summary'
+  const files = ['summary.md']
+
+  try {
+    // Write the summary to a file
+    await fs.promises.writeFile('summary.md', summaryContent)
+
+    // Upload the artifact
+    await artifactClient.uploadArtifact(artifactName, files, '.', {
+      retentionDays: 1
+    })
+
+    // Return a minimal summary with a link to the artifact
+    return `# Dependency Review Summary
+
+The full dependency review summary is too large to display here. Please download the artifact named "${artifactName}" to view the complete report.
+
+[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
+  } catch (error) {
+    core.warning(
+      `Failed to handle large summary: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+    return summaryContent
+  }
 }
 
 async function run(): Promise<void> {
@@ -178,6 +215,9 @@ async function run(): Promise<void> {
     // include full summary in output; Actions will truncate if oversized
     let rendered = core.summary.stringify()
     core.setOutput('comment-content', rendered)
+
+    // Handle large summaries by uploading as artifact
+    rendered = await handleLargeSummary(rendered)
 
     // if the summary is oversized, replace with minimal version
     if (rendered.length >= MAX_COMMENT_LENGTH) {
