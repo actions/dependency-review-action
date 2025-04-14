@@ -25,6 +25,8 @@ import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
 
+import type {PayloadRepository} from '@actions/github/lib/interfaces.d'
+
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -59,6 +61,10 @@ async function getComparison(
   }
 
   return comparison
+}
+
+interface RepoWithPrivate extends PayloadRepository {
+  private: boolean
 }
 
 async function run(): Promise<void> {
@@ -195,9 +201,20 @@ async function run(): Promise<void> {
         `Dependency review could not obtain dependency data for the specified owner, repository, or revision range.`
       )
     } else if (error instanceof RequestError && error.status === 403) {
-      core.setFailed(
-        `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security on private repositories, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
-      )
+      let repoIsPrivate = false
+      if ('repository' in github.context.payload) {
+        const repo = github.context.payload.repository as RepoWithPrivate
+        repoIsPrivate = repo.private
+      }
+      if (repoIsPrivate) {
+        core.setFailed(
+          `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
+        )
+      } else {
+        core.setFailed(
+          `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
+        )
+      }
     } else {
       if (error instanceof Error) {
         core.setFailed(error.message)
