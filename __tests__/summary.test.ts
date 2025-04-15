@@ -315,7 +315,7 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
   expect(text).toContain('✅ 0 package(s) with unknown licenses')
 })
 
-test('addChangeVulnerabilitiesToSummary() - only includes section if any vulnerabilites found', () => {
+test('addChangeVulnerabilitiesToSummary() - only includes section if any vulnerabilities found', () => {
   summary.addChangeVulnerabilitiesToSummary(emptyChanges, 'low')
   const text = core.summary.stringify()
   expect(text).toEqual('')
