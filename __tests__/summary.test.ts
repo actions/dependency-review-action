@@ -385,7 +385,7 @@ test('addChangeVulnerabilitiesToSummary() - prints severity statement if above l
   )
 })
 
-test('addChangeVulnerabilitiesToSummary() - does not print severity statment if it is set to "low"', () => {
+test('addChangeVulnerabilitiesToSummary() - does not print severity statement if it is set to "low"', () => {
   const changes = [createTestChange()]
 
   summary.addChangeVulnerabilitiesToSummary(changes, 'low')
