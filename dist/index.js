@@ -1479,7 +1479,7 @@ const icons = {
     warning: '⚠️'
 };
 const MAX_SCANNED_FILES_BYTES = 1048576;
-// generates the DR report summmary and caches it to the Action's core.summary.
+// generates the DR report summary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
 function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
