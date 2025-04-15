@@ -748,11 +748,11 @@ function run() {
 function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
     return __awaiter(this, void 0, void 0, function* () {
         return core.group('Vulnerabilities', () => __awaiter(this, void 0, void 0, function* () {
-            let vulFound = false;
+            let vulnFound = false;
             for (const change of addedChanges) {
-                vulFound || (vulFound = printChangeVulnerabilities(change));
+                vulnFound || (vulnFound = printChangeVulnerabilities(change));
             }
-            if (vulFound) {
+            if (vulnFound) {
                 const msg = 'Dependency review detected vulnerable packages.';
                 if (warnOnly) {
                     core.warning(msg);
@@ -764,7 +764,7 @@ function printVulnerabilitiesBlock(addedChanges, minSeverity, warnOnly) {
             else {
                 core.info(`Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`);
             }
-            return vulFound;
+            return vulnFound;
         }));
     });
 }
