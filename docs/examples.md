@@ -112,7 +112,7 @@ jobs:
 
 ## Using a configuration file from an external repository with a personal access token
 
-The following example will use a configuration file from an external private GtiHub repository to configure the action.
+The following example will use a configuration file from an external private GitHub repository to configure the action.
 
 Let's say that the configuration file is located in `github/octorepo-private/dependency-review-config.yml@main`
 
