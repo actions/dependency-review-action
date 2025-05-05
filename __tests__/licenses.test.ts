@@ -21,6 +21,7 @@ const npmChange: Change = {
     }
   ]
 }
+
 const rubyChange: Change = {
   change_type: 'added',
   manifest: 'Gemfile.lock',
@@ -98,105 +99,6 @@ jest.mock('octokit', () => {
 
 beforeEach(async () => {
   jest.resetModules()
-})
-
-test('it should handle SPDX expressions in allow-list that matches a single license project', async () => {
-  const change: Change = getChangeWithLicense('MIT')
-  const changes: Changes = [change]
-
-  const {forbidden} = await getInvalidLicenseChanges(changes, {
-    allow: ['EPL-1.0 OR MIT']
-  })
-
-  expect(forbidden).toStrictEqual([])
-})
-
-test('it should handle SPDX expressions in allow-list with operators and a valid triple licensed project', async () => {
-  const change: Change = getChangeWithLicense(
-    'EPL-1.0 AND LGPL-2.1 AND LGPL-2.1-only'
-  )
-  const changes: Changes = [change]
-
-  const {forbidden} = await getInvalidLicenseChanges(changes, {
-    allow: ['EPL-1.0 AND LGPL-2.1 AND LGPL-2.1-only']
-  })
-
-  expect(forbidden).toStrictEqual([])
-})
-
-test('it should handle a valid triple licensed project that does not have a match in the allow-list', async () => {
-  const change = getChangeWithLicense('EPL-1.0 AND LGPL-2.1 AND LGPL-2.1-only')
-  const changes: Changes = [change]
-
-  const {forbidden} = await getInvalidLicenseChanges(changes, {
-    allow: ['EPL-1.0', 'LGPL-2.1', 'LGPL-2.1-only']
-  })
-
-  expect(forbidden[0]).toBe(change)
-  expect(forbidden.length).toEqual(1)
-})
-
-test('it should handle license with OR SPDX expression and only match on one license in the allow-list', async () => {
-  const change = getChangeWithLicense('EPL-1.0 OR LGPL-2.1')
-  const changes: Changes = [change]
-
-  for (const allowedLicense of ['EPL-1.0', 'LGPL-2.1']) {
-    const {forbidden} = await getInvalidLicenseChanges(changes, {
-      allow: [allowedLicense]
-    })
-
-    expect(forbidden).toStrictEqual([])
-  }
-})
-
-test('it should handle SPDX expressions in allow-list with operators when license matches', async () => {
-  const changes: Changes = [
-    npmChange // MIT license
-  ]
-
-  const {forbidden} = await getInvalidLicenseChanges(changes, {
-    allow: ['MIT OR Apache-2.0', 'MIT', 'BSD-3-Clause']
-  })
-
-  expect(forbidden).toStrictEqual([])
-})
-
-test('it should handle SPDX expressions in allow-list with operators when license does not match', async () => {
-  const changes: Changes = [
-    npmChange // MIT license
-  ]
-
-  const {forbidden} = await getInvalidLicenseChanges(changes, {
-    allow: ['MIT AND Apache-2.0', 'BSD-3-Clause']
-  })
-
-  expect(forbidden[0]).toBe(npmChange)
-  expect(forbidden.length).toEqual(1)
-})
-
-test('it should handle SPDX expressions in deny-list with operators when license matches deny list entry', async () => {
-  const changes: Changes = [
-    npmChange // MIT license
-  ]
-
-  const {forbidden} = await getInvalidLicenseChanges(changes, {
-    deny: ['MIT OR Apache-2.0', 'BSD-3-Clause']
-  })
-
-  expect(forbidden[0]).toBe(npmChange)
-  expect(forbidden.length).toEqual(1)
-})
-
-test('it should handle SPDX expressions in deny-list with operators when license does not match any deny list entry', async () => {
-  const changes: Changes = [
-    npmChange // MIT license
-  ]
-
-  const {forbidden} = await getInvalidLicenseChanges(changes, {
-    deny: ['MIT AND Apache-2.0', 'BSD-3-Clause']
-  })
-
-  expect(forbidden).toStrictEqual([])
 })
 
 test('it adds license outside the allow list to forbidden changes', async () => {
@@ -362,25 +264,3 @@ describe('GH License API fallback', () => {
     expect(unlicensed.length).toEqual(0)
   })
 })
-
-function getChangeWithLicense(license: string): Change {
-  return {
-    manifest: 'pom.xml',
-    change_type: 'added',
-    ecosystem: 'maven',
-    name: 'dummy-library',
-    version: '1.0.0',
-    package_url: 'pkg:org.something:sdummy-library@1.0.0',
-    license,
-    source_repository_url: 'github.com/some-repo',
-    scope: 'runtime',
-    vulnerabilities: [
-      {
-        severity: 'critical',
-        advisory_ghsa_id: 'first-random_string',
-        advisory_summary: 'very dangerous',
-        advisory_url: 'github.com/future-funk'
-      }
-    ]
-  }
-}
