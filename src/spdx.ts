@@ -1,4 +1,5 @@
 import * as spdxlib from '@onebeyond/spdx-license-satisfies'
+import spdxSatisfies from 'spdx-satisfies'
 import parse from 'spdx-expression-parse'
 
 /*
@@ -10,12 +11,9 @@ import parse from 'spdx-expression-parse'
 
 // accepts a pair of well-formed SPDX expressions. the
 // candidate is tested against the constraint
-export function satisfies(
-  candidateExpr: string,
-  constraintExpr: string
-): boolean {
+export function satisfies(candidateExpr: string, allowList: string[]): boolean {
   try {
-    return spdxlib.satisfies(candidateExpr, constraintExpr)
+    return spdxSatisfies(candidateExpr, allowList)
   } catch (_) {
     return false
   }

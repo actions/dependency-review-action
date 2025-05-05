@@ -74,6 +74,32 @@ const pipChange: Change = {
   ]
 }
 
+const complexLicenseChange: Change = {
+  change_type: 'added',
+  manifest: 'requirements.txt',
+  ecosystem: 'pip',
+  name: 'package-1',
+  version: '1.1.1',
+  package_url: 'pkg:pypi/package-1@1.1.1',
+  license: 'MIT AND Apache-2.0',
+  source_repository_url: 'github.com/some-repo',
+  scope: 'runtime',
+  vulnerabilities: [
+    {
+      severity: 'moderate',
+      advisory_ghsa_id: 'second-random_string',
+      advisory_summary: 'not so dangerous',
+      advisory_url: 'github.com/future-funk'
+    },
+    {
+      severity: 'low',
+      advisory_ghsa_id: 'third-random_string',
+      advisory_summary: 'dont page me',
+      advisory_url: 'github.com/future-funk'
+    }
+  ]
+}
+
 jest.mock('@actions/core')
 
 const mockOctokit = {
@@ -126,6 +152,30 @@ test('it adds license inside the deny list to forbidden changes', async () => {
   })
 
   expect(forbidden[0]).toBe(rubyChange)
+  expect(forbidden.length).toEqual(1)
+})
+
+test('it handles allowed complex licenses', async () => {
+  const changes: Changes = [
+    complexLicenseChange // MIT AND Apache-2.0 license
+  ]
+
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    allow: ['MIT', 'Apache-2.0']
+  })
+
+  expect(forbidden.length).toEqual(0)
+})
+
+test('it handles complex licenses not all on the allow list', async () => {
+  const changes: Changes = [
+    complexLicenseChange // MIT AND Apache-2.0 license
+  ]
+
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    allow: ['MIT']
+  })
+
   expect(forbidden.length).toEqual(1)
 })
 

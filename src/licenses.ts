@@ -88,7 +88,7 @@ export async function getInvalidLicenseChanges(
       try {
         if (allow !== undefined) {
           if (spdx.isValid(license)) {
-            const found = spdx.satisfiesAny(license, allow)
+            const found = spdx.satisfies(license, allow)
             validityCache.set(license, found)
           } else {
             invalidLicenseChanges.unresolved.push(change)

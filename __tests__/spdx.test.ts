@@ -145,47 +145,47 @@ describe('satisfies', () => {
   const units = [
     {
       candidate: 'MIT',
-      constraint: 'MIT',
+      allowList: ['MIT'],
       expected: true
     },
     {
       candidate: 'Apache-2.0',
-      constraint: 'MIT',
+      allowList: ['MIT'],
       expected: false
     },
     {
       candidate: 'MIT OR Apache-2.0',
-      constraint: 'MIT',
+      allowList: ['MIT'],
       expected: true
     },
     {
       candidate: 'MIT OR Apache-2.0',
-      constraint: 'Apache-2.0',
+      allowList: ['Apache-2.0'],
       expected: true
     },
     {
       candidate: 'MIT OR Apache-2.0',
-      constraint: 'BSD-3-Clause',
+      allowList: ['BSD-3-Clause'],
       expected: false
     },
     {
       candidate: 'MIT OR Apache-2.0',
-      constraint: 'Apache-2.0 OR BSD-3-Clause',
+      allowList: ['Apache-2.0', 'BSD-3-Clause'],
       expected: true
     },
     {
       candidate: 'MIT AND Apache-2.0',
-      constraint: 'MIT AND Apache-2.0',
+      allowList: ['MIT', 'Apache-2.0'],
       expected: true
     },
     {
       candidate: 'MIT OR Apache-2.0',
-      constraint: 'MIT AND Apache-2.0',
-      expected: false
+      allowList: ['MIT', 'Apache-2.0'],
+      expected: true
     },
     {
       candidate: 'ISC OR (MIT AND Apache-2.0)',
-      constraint: 'MIT AND Apache-2.0',
+      allowList: ['MIT', 'Apache-2.0'],
       expected: true
     },
 
@@ -193,29 +193,29 @@ describe('satisfies', () => {
     // or unknown licenses will return 'false'
     {
       candidate: 'MIT',
-      constraint: 'MiT',
+      allowList: ['MiT'],
       expected: false
     },
     {
       candidate: 'MIT AND (ISC OR',
-      constraint: 'MIT',
+      allowList: ['MIT'],
       expected: false
     },
     {
       candidate: 'MIT OR ISC OR Apache-2.0',
-      constraint: '',
+      allowList: [],
       expected: false
     },
     {
       candidate: '',
-      constraint: '(BSD-3-Clause AND ISC) OR MIT',
+      allowList: ['BSD-3-Clause', 'ISC', 'MIT'],
       expected: false
     }
   ]
 
   for (const unit of units) {
-    const got: boolean = spdx.satisfies(unit.candidate, unit.constraint)
-    test(`should return ${unit.expected} for ("${unit.candidate}", "${unit.constraint}")`, () => {
+    const got: boolean = spdx.satisfies(unit.candidate, unit.allowList)
+    test(`should return ${unit.expected} for ("${unit.candidate}", "${unit.allowList}")`, () => {
       expect(got).toBe(unit.expected)
     })
   }
