@@ -83,7 +83,6 @@ describe('satisfiesAll', () => {
       licenses: ['MIT'],
       expected: true
     },
-    // TODO(dangoor): this does not seem correct to me: the only license is Apache-2.0 and it's on the list
     {
       candidate: 'Apache-2.0',
       licenses: ['MIT', 'ISC', 'Apache-2.0'],
@@ -234,7 +233,12 @@ describe('satisfies', () => {
     },
     {
       candidate: 'MIT OR OTHER',
-      constraint: 'MIT OR LicenseRef-clearlydefined-OTHER',
+      allowList: ['MIT', 'LicenseRef-clearlydefined-OTHER'],
+      expected: true
+    },
+    {
+      candidate: '(Apache-2.0 AND OTHER) OR (MIT AND OTHER)',
+      allowList: ['Apache-2.0', 'LicenseRef-clearlydefined-OTHER'],
       expected: true
     }
   ]
@@ -286,7 +290,7 @@ describe('isValid', () => {
   }
 })
 
-describe('removeInvalidSPDX', () => {
+describe('cleanInvalidSPDX', () => {
   const units = [
     {
       candidate: 'MIT',
@@ -314,7 +318,7 @@ describe('removeInvalidSPDX', () => {
     }
   ]
   for (const unit of units) {
-    const got: string = spdx.removeInvalidSPDX(unit.candidate)
+    const got: string = spdx.cleanInvalidSPDX(unit.candidate)
     test(`should return ${unit.expected} for ("${unit.candidate}")`, () => {
       expect(got).toBe(unit.expected)
     })
