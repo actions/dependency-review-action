@@ -1380,7 +1380,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isValid = exports.satisfiesAll = exports.satisfiesAny = exports.satisfies = void 0;
+exports.cleanInvalidSPDX = exports.isValid = exports.satisfiesAll = exports.satisfiesAny = exports.satisfies = void 0;
 const spdxlib = __importStar(__nccwpck_require__(1452));
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(5131));
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(3326));
@@ -1393,6 +1393,7 @@ const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(3326));
 // accepts a pair of well-formed SPDX expressions. the
 // candidate is tested against the constraint
 function satisfies(candidateExpr, allowList) {
+    candidateExpr = cleanInvalidSPDX(candidateExpr);
     try {
         return (0, spdx_satisfies_1.default)(candidateExpr, allowList);
     }
@@ -1403,6 +1404,7 @@ function satisfies(candidateExpr, allowList) {
 exports.satisfies = satisfies;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAny(candidateExpr, licenses) {
+    candidateExpr = cleanInvalidSPDX(candidateExpr);
     try {
         return spdxlib.satisfiesAny(candidateExpr, licenses);
     }
@@ -1413,6 +1415,7 @@ function satisfiesAny(candidateExpr, licenses) {
 exports.satisfiesAny = satisfiesAny;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAll(candidateExpr, licenses) {
+    candidateExpr = cleanInvalidSPDX(candidateExpr);
     try {
         return spdxlib.satisfiesAll(candidateExpr, licenses);
     }
@@ -1423,6 +1426,7 @@ function satisfiesAll(candidateExpr, licenses) {
 exports.satisfiesAll = satisfiesAll;
 // accepts any SPDX expression
 function isValid(spdxExpr) {
+    spdxExpr = cleanInvalidSPDX(spdxExpr);
     try {
         (0, spdx_expression_parse_1.default)(spdxExpr);
         return true;
@@ -1432,6 +1436,13 @@ function isValid(spdxExpr) {
     }
 }
 exports.isValid = isValid;
+const replaceOtherRegex = /(?<![\w-])OTHER(?![\w-])/g;
+// adjusts license expressions to not include the invalid `OTHER`
+// which ClearlyDefined adds to license strings
+function cleanInvalidSPDX(spdxExpr) {
+    return spdxExpr.replace(replaceOtherRegex, 'LicenseRef-clearlydefined-OTHER');
+}
+exports.cleanInvalidSPDX = cleanInvalidSPDX;
 
 
 /***/ }),
@@ -50493,7 +50504,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isValid = exports.satisfiesAll = exports.satisfiesAny = exports.satisfies = void 0;
+exports.cleanInvalidSPDX = exports.isValid = exports.satisfiesAll = exports.satisfiesAny = exports.satisfies = void 0;
 const spdxlib = __importStar(__nccwpck_require__(1452));
 const spdx_satisfies_1 = __importDefault(__nccwpck_require__(5131));
 const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(3326));
@@ -50506,6 +50517,7 @@ const spdx_expression_parse_1 = __importDefault(__nccwpck_require__(3326));
 // accepts a pair of well-formed SPDX expressions. the
 // candidate is tested against the constraint
 function satisfies(candidateExpr, allowList) {
+    candidateExpr = cleanInvalidSPDX(candidateExpr);
     try {
         return (0, spdx_satisfies_1.default)(candidateExpr, allowList);
     }
@@ -50516,6 +50528,7 @@ function satisfies(candidateExpr, allowList) {
 exports.satisfies = satisfies;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAny(candidateExpr, licenses) {
+    candidateExpr = cleanInvalidSPDX(candidateExpr);
     try {
         return spdxlib.satisfiesAny(candidateExpr, licenses);
     }
@@ -50526,6 +50539,7 @@ function satisfiesAny(candidateExpr, licenses) {
 exports.satisfiesAny = satisfiesAny;
 // accepts an SPDX expression and a non-empty list of licenses (not expressions)
 function satisfiesAll(candidateExpr, licenses) {
+    candidateExpr = cleanInvalidSPDX(candidateExpr);
     try {
         return spdxlib.satisfiesAll(candidateExpr, licenses);
     }
@@ -50536,6 +50550,7 @@ function satisfiesAll(candidateExpr, licenses) {
 exports.satisfiesAll = satisfiesAll;
 // accepts any SPDX expression
 function isValid(spdxExpr) {
+    spdxExpr = cleanInvalidSPDX(spdxExpr);
     try {
         (0, spdx_expression_parse_1.default)(spdxExpr);
         return true;
@@ -50545,6 +50560,13 @@ function isValid(spdxExpr) {
     }
 }
 exports.isValid = isValid;
+const replaceOtherRegex = /(?<![\w-])OTHER(?![\w-])/g;
+// adjusts license expressions to not include the invalid `OTHER`
+// which ClearlyDefined adds to license strings
+function cleanInvalidSPDX(spdxExpr) {
+    return spdxExpr.replace(replaceOtherRegex, 'LicenseRef-clearlydefined-OTHER');
+}
+exports.cleanInvalidSPDX = cleanInvalidSPDX;
 
 
 /***/ }),

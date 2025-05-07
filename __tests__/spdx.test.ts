@@ -55,6 +55,16 @@ describe('satisfiesAny', () => {
       candidate: 'MIT OR ISC',
       licenses: ['MiT'],
       expected: false
+    },
+    {
+      candidate: 'MIT AND OTHER',
+      licenses: ['MIT'],
+      expected: false
+    },
+    {
+      candidate: 'MIT OR OTHER',
+      licenses: ['MIT', 'LicenseRef-clearlydefined-OTHER'],
+      expected: true
     }
   ]
 
@@ -130,6 +140,16 @@ describe('satisfiesAll', () => {
       candidate: 'MIT OR ISC',
       licenses: ['MiT'],
       expected: false
+    },
+    {
+      candidate: 'MIT AND OTHER',
+      licenses: ['MIT'],
+      expected: false
+    },
+    {
+      candidate: 'MIT AND OTHER',
+      licenses: ['MIT', 'LicenseRef-clearlydefined-OTHER'],
+      expected: true
     }
   ]
 
@@ -210,6 +230,16 @@ describe('satisfies', () => {
       candidate: '',
       allowList: ['BSD-3-Clause', 'ISC', 'MIT'],
       expected: false
+    },
+    {
+      candidate: 'MIT OR OTHER',
+      allowList: ['MIT', 'LicenseRef-clearlydefined-OTHER'],
+      expected: true
+    },
+    {
+      candidate: '(Apache-2.0 AND OTHER) OR (MIT AND OTHER)',
+      allowList: ['Apache-2.0', 'LicenseRef-clearlydefined-OTHER'],
+      expected: true
     }
   ]
 
@@ -246,10 +276,49 @@ describe('isValid', () => {
     {
       candidate: '',
       expected: false
+    },
+    {
+      candidate: 'MIT AND OTHER',
+      expected: true
     }
   ]
   for (const unit of units) {
     const got: boolean = spdx.isValid(unit.candidate)
+    test(`should return ${unit.expected} for ("${unit.candidate}")`, () => {
+      expect(got).toBe(unit.expected)
+    })
+  }
+})
+
+describe('cleanInvalidSPDX', () => {
+  const units = [
+    {
+      candidate: 'MIT',
+      expected: 'MIT'
+    },
+    {
+      candidate: 'OTHER',
+      expected: 'LicenseRef-clearlydefined-OTHER'
+    },
+    {
+      candidate: 'LicenseRef-clearlydefined-OTHER',
+      expected: 'LicenseRef-clearlydefined-OTHER'
+    },
+    {
+      candidate: 'OTHER AND MIT',
+      expected: 'LicenseRef-clearlydefined-OTHER AND MIT'
+    },
+    {
+      candidate: 'MIT AND OTHER',
+      expected: 'MIT AND LicenseRef-clearlydefined-OTHER'
+    },
+    {
+      candidate: 'MIT AND SomethingElse-OTHER',
+      expected: 'MIT AND SomethingElse-OTHER'
+    }
+  ]
+  for (const unit of units) {
+    const got: string = spdx.cleanInvalidSPDX(unit.candidate)
     test(`should return ${unit.expected} for ("${unit.candidate}")`, () => {
       expect(got).toBe(unit.expected)
     })
