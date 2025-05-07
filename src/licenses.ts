@@ -88,20 +88,14 @@ export async function getInvalidLicenseChanges(
       try {
         if (allow !== undefined) {
           if (spdx.isValid(license)) {
-            let found = false
-            for (const allowedLicense of allow) {
-              found ||= spdx.satisfies(allowedLicense, license)
-            }
+            const found = spdx.satisfies(license, allow)
             validityCache.set(license, found)
           } else {
             invalidLicenseChanges.unresolved.push(change)
           }
         } else if (deny !== undefined) {
           if (spdx.isValid(license)) {
-            let found = false
-            for (const deniedLicense of deny) {
-              found ||= spdx.satisfies(deniedLicense, license)
-            }
+            const found = spdx.satisfiesAny(license, deny)
             validityCache.set(license, !found)
           } else {
             invalidLicenseChanges.unresolved.push(change)

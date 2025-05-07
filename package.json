@@ -36,7 +36,7 @@
     "jest": "^29.7.0",
     "octokit": "^3.1.2",
     "spdx-expression-parse": "^3.0.1",
-    "spdx-satisfies": "^5.0.1",
+    "spdx-satisfies": "^6.0.0",
     "ts-jest": "^29.2.5",
     "yaml": "^2.3.4",
     "zod": "^3.24.1"
@@ -45,7 +45,6 @@
     "@types/jest": "^29.5.12",
     "@types/node": "^20",
     "@types/spdx-expression-parse": "^3.0.4",
-    "@types/spdx-satisfies": "^0.1.1",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vercel/ncc": "^0.38.3",
