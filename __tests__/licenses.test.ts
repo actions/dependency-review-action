@@ -338,4 +338,15 @@ describe('GH License API fallback', () => {
     expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
     expect(unlicensed.length).toEqual(0)
   })
+
+  test('it checks namespaces when doing exclusions', async () => {
+    const {unlicensed} = await getInvalidLicenseChanges([unlicensedChange], {
+      licenseExclusions: [
+        'pkg:githubactions/bar-org/actions-repo/.github/workflows/some-action.yml'
+      ]
+    })
+
+    expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
+    expect(unlicensed.length).toEqual(1)
+  })
 })

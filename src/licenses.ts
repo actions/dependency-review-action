@@ -174,6 +174,7 @@ async function groupChanges(
         licenseExclusions.findIndex(
           exclusion =>
             exclusion.type === changeAsPackageURL.type &&
+            exclusion.namespace === changeAsPackageURL.namespace &&
             exclusion.name === changeAsPackageURL.name
         ) !== -1
       ) {
