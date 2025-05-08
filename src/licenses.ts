@@ -1,6 +1,6 @@
 import {Change, Changes} from './schemas'
 import {octokitClient} from './utils'
-import {parsePURL} from './purl'
+import {parsePURL, PackageURL} from './purl'
 import * as spdx from './spdx'
 
 /**
@@ -36,34 +36,8 @@ export async function getInvalidLicenseChanges(
     }
   )
 
-  const groupedChanges = await groupChanges(changes)
+  const groupedChanges = await groupChanges(changes, licenseExclusions)
 
-  // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
-  // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
-  groupedChanges.licensed = groupedChanges.licensed.filter(change => {
-    if (change.package_url.length === 0) {
-      return true
-    }
-
-    const changeAsPackageURL = parsePURL(encodeURI(change.package_url))
-
-    // We want to find if the licenseExclusion list contains the PackageURL of the Change
-    // If it does, we want to filter it out and therefore return false
-    // If it doesn't, we want to keep it and therefore return true
-    if (
-      licenseExclusions !== null &&
-      licenseExclusions !== undefined &&
-      licenseExclusions.findIndex(
-        exclusion =>
-          exclusion.type === changeAsPackageURL.type &&
-          exclusion.name === changeAsPackageURL.name
-      ) !== -1
-    ) {
-      return false
-    } else {
-      return true
-    }
-  })
   const licensedChanges: Changes = groupedChanges.licensed
 
   const invalidLicenseChanges: InvalidLicenseChanges = {
@@ -172,16 +146,48 @@ const truncatedDGLicense = (license: string): boolean =>
   license.length === 255 && !spdx.isValid(license)
 
 async function groupChanges(
-  changes: Changes
+  changes: Changes,
+  licenseExclusions: PackageURL[] | null = null
 ): Promise<Record<string, Changes>> {
   const result: Record<string, Changes> = {
     licensed: [],
     unlicensed: []
   }
 
+  let candidateChanges = changes
+
+  // If a package is excluded from license checking, we don't bother trying to
+  // fetch the license for it and we leave it off of the `licensed` and
+  // `unlicensed` lists.
+  if (licenseExclusions !== null && licenseExclusions !== undefined) {
+    candidateChanges = candidateChanges.filter(change => {
+      if (change.package_url.length === 0) {
+        return true
+      }
+
+      const changeAsPackageURL = parsePURL(encodeURI(change.package_url))
+
+      // We want to find if the licenseExclusion list contains the PackageURL of the Change
+      // If it does, we want to filter it out and therefore return false
+      // If it doesn't, we want to keep it and therefore return true
+      if (
+        licenseExclusions.findIndex(
+          exclusion =>
+            exclusion.type === changeAsPackageURL.type &&
+            exclusion.namespace === changeAsPackageURL.namespace &&
+            exclusion.name === changeAsPackageURL.name
+        ) !== -1
+      ) {
+        return false
+      } else {
+        return true
+      }
+    })
+  }
+
   const ghChanges = []
 
-  for (const change of changes) {
+  for (const change of candidateChanges) {
     if (change.change_type === 'removed') {
       continue
     }

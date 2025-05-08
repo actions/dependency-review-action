@@ -394,27 +394,7 @@ function getInvalidLicenseChanges(changes, licenses) {
         const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
             return (0, purl_1.parsePURL)(pkgUrl);
         });
-        const groupedChanges = yield groupChanges(changes);
-        // Takes the changes from the groupedChanges object and filters out the ones that are part of the exclusions list
-        // It does by creating a new PackageURL object from the change and comparing it to the exclusions list
-        groupedChanges.licensed = groupedChanges.licensed.filter(change => {
-            if (change.package_url.length === 0) {
-                return true;
-            }
-            const changeAsPackageURL = (0, purl_1.parsePURL)(encodeURI(change.package_url));
-            // We want to find if the licenseExclusion list contains the PackageURL of the Change
-            // If it does, we want to filter it out and therefore return false
-            // If it doesn't, we want to keep it and therefore return true
-            if (licenseExclusions !== null &&
-                licenseExclusions !== undefined &&
-                licenseExclusions.findIndex(exclusion => exclusion.type === changeAsPackageURL.type &&
-                    exclusion.name === changeAsPackageURL.name) !== -1) {
-                return false;
-            }
-            else {
-                return true;
-            }
-        });
+        const groupedChanges = yield groupChanges(changes, licenseExclusions);
         const licensedChanges = groupedChanges.licensed;
         const invalidLicenseChanges = {
             unlicensed: groupedChanges.unlicensed,
@@ -509,14 +489,37 @@ const setGHLicenses = (changes) => __awaiter(void 0, void 0, void 0, function* (
 // Currently Dependency Graph licenses are truncated to 255 characters
 // This possibly makes them invalid spdx ids
 const truncatedDGLicense = (license) => license.length === 255 && !spdx.isValid(license);
-function groupChanges(changes) {
-    return __awaiter(this, void 0, void 0, function* () {
+function groupChanges(changes_1) {
+    return __awaiter(this, arguments, void 0, function* (changes, licenseExclusions = null) {
         const result = {
             licensed: [],
             unlicensed: []
         };
+        let candidateChanges = changes;
+        // If a package is excluded from license checking, we don't bother trying to
+        // fetch the license for it and we leave it off of the `licensed` and
+        // `unlicensed` lists.
+        if (licenseExclusions !== null && licenseExclusions !== undefined) {
+            candidateChanges = candidateChanges.filter(change => {
+                if (change.package_url.length === 0) {
+                    return true;
+                }
+                const changeAsPackageURL = (0, purl_1.parsePURL)(encodeURI(change.package_url));
+                // We want to find if the licenseExclusion list contains the PackageURL of the Change
+                // If it does, we want to filter it out and therefore return false
+                // If it doesn't, we want to keep it and therefore return true
+                if (licenseExclusions.findIndex(exclusion => exclusion.type === changeAsPackageURL.type &&
+                    exclusion.namespace === changeAsPackageURL.namespace &&
+                    exclusion.name === changeAsPackageURL.name) !== -1) {
+                    return false;
+                }
+                else {
+                    return true;
+                }
+            });
+        }
         const ghChanges = [];
-        for (const change of changes) {
+        for (const change of candidateChanges) {
             if (change.change_type === 'removed') {
                 continue;
             }
