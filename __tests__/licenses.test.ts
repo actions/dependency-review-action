@@ -100,6 +100,20 @@ const complexLicenseChange: Change = {
   ]
 }
 
+const unlicensedChange: Change = {
+  change_type: 'added',
+  manifest: '.github/workflows/ci.yml',
+  ecosystem: 'actions',
+  name: 'foo-org/actions-repo/.github/workflows/some-action.yml',
+  version: '1.1.1',
+  package_url:
+    'pkg:githubactions/foo-org/actions-repo/.github/workflows/some-action.yml@1.1.1',
+  license: null,
+  source_repository_url: 'github.com/some-repo',
+  scope: 'development',
+  vulnerabilities: []
+}
+
 jest.mock('@actions/core')
 
 const mockOctokit = {
@@ -309,6 +323,17 @@ describe('GH License API fallback', () => {
       [npmChange, rubyChange],
       {}
     )
+
+    expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
+    expect(unlicensed.length).toEqual(0)
+  })
+
+  test('it does not call licenses API if the package is excluded', async () => {
+    const {unlicensed} = await getInvalidLicenseChanges([unlicensedChange], {
+      licenseExclusions: [
+        'pkg:githubactions/foo-org/actions-repo/.github/workflows/some-action.yml'
+      ]
+    })
 
     expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
     expect(unlicensed.length).toEqual(0)
