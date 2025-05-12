@@ -29,7 +29,16 @@ export async function getInvalidLicenseChanges(
     licenseExclusions?: string[]
   }
 ): Promise<InvalidLicenseChanges> {
-  const {allow, deny} = licenses
+  const deny = licenses.deny
+  let allow = licenses.allow
+
+  // Filter out elements of the allow list that include AND
+  // or OR because the list should be simple license IDs and
+  // not expressions.
+  allow = allow?.filter(license => {
+    return !license.includes(' AND ') && !license.includes(' OR ')
+  })
+
   const licenseExclusions = licenses.licenseExclusions?.map(
     (pkgUrl: string) => {
       return parsePURL(pkgUrl)
