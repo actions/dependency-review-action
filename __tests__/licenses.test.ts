@@ -290,6 +290,19 @@ test('it does filters out changes if they are not on the exclusions list', async
   expect(invalidLicenses.forbidden[1]).toBe(npmChange)
 })
 
+test('it does not fail if there is a license expression in the allow list', async () => {
+  const changes: Changes = [
+    {...npmChange, license: 'MIT AND Apache-2.0'},
+    {...rubyChange, license: 'BSD-3-Clause'}
+  ]
+
+  const {forbidden} = await getInvalidLicenseChanges(changes, {
+    allow: ['BSD-3-Clause', 'MIT AND Apache-2.0', 'MIT', 'Apache-2.0']
+  })
+
+  expect(forbidden.length).toEqual(0)
+})
+
 describe('GH License API fallback', () => {
   test('it calls licenses endpoint if atleast one of the changes has null license and valid source_repository_url', async () => {
     const nullLicenseChange = {

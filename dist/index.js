@@ -390,7 +390,14 @@ const spdx = __importStar(__nccwpck_require__(2593));
 function getInvalidLicenseChanges(changes, licenses) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
-        const { allow, deny } = licenses;
+        const deny = licenses.deny;
+        let allow = licenses.allow;
+        // Filter out elements of the allow list that include AND
+        // or OR because the list should be simple license IDs and
+        // not expressions.
+        allow = allow === null || allow === void 0 ? void 0 : allow.filter(license => {
+            return !license.includes(' AND ') && !license.includes(' OR ');
+        });
         const licenseExclusions = (_a = licenses.licenseExclusions) === null || _a === void 0 ? void 0 : _a.map((pkgUrl) => {
             return (0, purl_1.parsePURL)(pkgUrl);
         });
