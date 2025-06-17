@@ -59,8 +59,15 @@ const octo = new retryingOctokit(githubUtils.getOctokitOptions(core.getInput('re
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->';
 function commentPr(commentContent, config, issueFound) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!(config.comment_summary_in_pr === 'always' ||
-            (config.comment_summary_in_pr === 'on-failure' && issueFound))) {
+        // For 'on-failure' mode, we need to handle both failure and success cases
+        // - On failure: create/update comment with issues
+        // - On success: update existing comment to show resolution (if one exists)
+        const shouldComment = config.comment_summary_in_pr === 'always' ||
+            (config.comment_summary_in_pr === 'on-failure' && issueFound) ||
+            (config.comment_summary_in_pr === 'on-failure' &&
+                !issueFound &&
+                (yield hasExistingComment()));
+        if (!shouldComment) {
             return;
         }
         if (!github.context.payload.pull_request) {
@@ -103,6 +110,15 @@ function commentPr(commentContent, config, issueFound) {
     });
 }
 exports.commentPr = commentPr;
+function hasExistingComment() {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!github.context.payload.pull_request) {
+            return false;
+        }
+        const existingCommentId = yield findCommentByMarker(COMMENT_MARKER);
+        return existingCommentId !== undefined;
+    });
+}
 function findCommentByMarker(commentBodyIncludes) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, e_1, _b, _c;
