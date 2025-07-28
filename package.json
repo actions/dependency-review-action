@@ -45,7 +45,7 @@
     "@types/jest": "^29.5.12",
     "@types/node": "^20",
     "@types/spdx-expression-parse": "^3.0.4",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vercel/ncc": "^0.38.3",
     "esbuild-register": "^3.6.0",
