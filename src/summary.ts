@@ -129,13 +129,13 @@ export function addChangeVulnerabilitiesToSummary(
     return
   }
 
-  const rows: SummaryTableRow[] = []
-
   const manifests = getManifestsSet(vulnerableChanges)
 
   core.summary.addHeading('Vulnerabilities', 2)
 
   for (const manifest of manifests) {
+    const rows: SummaryTableRow[] = []
+    
     for (const change of vulnerableChanges.filter(
       pkg => pkg.manifest === manifest
     )) {
