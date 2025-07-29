@@ -456,3 +456,179 @@ test('addLicensesToSummary() - includes configured denied license', () => {
   const text = core.summary.stringify()
   expect(text).toContain('<strong>Denied Licenses</strong>: MIT')
 })
+
+test('addChangeVulnerabilitiesToSummary() - creates separate tables for different manifests', () => {
+  const changes = [
+    createTestChange({
+      name: 'lodash',
+      manifest: 'package.json',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'Package.json vulnerability',
+          severity: 'high'
+        })
+      ]
+    }),
+    createTestChange({
+      name: 'django',
+      manifest: 'requirements.txt',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'Requirements.txt vulnerability',
+          severity: 'moderate'
+        })
+      ]
+    })
+  ]
+
+  summary.addChangeVulnerabilitiesToSummary(changes, 'low')
+
+  const text = core.summary.stringify()
+  
+  expect(text).toContain('<h4><em>package.json</em></h4>')
+  expect(text).toContain('<h4><em>requirements.txt</em></h4>')
+  
+  const tableMatches = text.match(/<table>/g)
+  expect(tableMatches).toHaveLength(2)
+  
+  expect(text.match(/Package\.json vulnerability/g)).toHaveLength(1)
+  expect(text.match(/Requirements\.txt vulnerability/g)).toHaveLength(1)
+})
+
+test('addChangeVulnerabilitiesToSummary() - does not duplicate vulnerabilities across manifest tables', () => {
+  const changes = [
+    createTestChange({
+      name: 'lodash',
+      manifest: 'package.json',
+      source_repository_url: 'https://github.com/lodash/lodash',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'First vulnerability',
+          severity: 'high'
+        })
+      ]
+    }),
+    createTestChange({
+      name: 'express',
+      manifest: 'package.json',
+      source_repository_url: 'https://github.com/expressjs/express',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'Second vulnerability',
+          severity: 'moderate'
+        })
+      ]
+    }),
+    createTestChange({
+      name: 'django',
+      manifest: 'requirements.txt',
+      ecosystem: 'pip',
+      source_repository_url: 'https://github.com/django/django',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'Third vulnerability',
+          severity: 'low'
+        })
+      ]
+    })
+  ]
+
+  summary.addChangeVulnerabilitiesToSummary(changes, 'low')
+
+  const text = core.summary.stringify()
+  
+  const tableMatches = text.match(/<table>/g)
+  expect(tableMatches).toHaveLength(2)
+  
+  expect(text.match(/First vulnerability/g)).toHaveLength(1)
+  expect(text.match(/Second vulnerability/g)).toHaveLength(1)
+  expect(text.match(/Third vulnerability/g)).toHaveLength(1)
+  
+  expect(text).toContain('lodash')
+  expect(text).toContain('express') 
+  expect(text).toContain('django')
+})
+
+test('addChangeVulnerabilitiesToSummary() - handles multiple vulnerabilities per package in different manifests', () => {
+  const changes = [
+    createTestChange({
+      name: 'lodash',
+      manifest: 'package.json',
+      source_repository_url: 'https://github.com/lodash/lodash',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'Lodash vuln 1',
+          severity: 'high'
+        }),
+        createTestVulnerability({
+          advisory_summary: 'Lodash vuln 2',
+          severity: 'moderate'
+        })
+      ]
+    }),
+    createTestChange({
+      name: 'requests',
+      manifest: 'requirements.txt',
+      ecosystem: 'pip',
+      source_repository_url: 'https://github.com/psf/requests',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'Requests vuln 1',
+          severity: 'high'
+        }),
+        createTestVulnerability({
+          advisory_summary: 'Requests vuln 2',
+          severity: 'low'
+        })
+      ]
+    })
+  ]
+
+  summary.addChangeVulnerabilitiesToSummary(changes, 'low')
+
+  const text = core.summary.stringify()
+  
+  const tableMatches = text.match(/<table>/g)
+  expect(tableMatches).toHaveLength(2)
+  
+  expect(text.match(/Lodash vuln 1/g)).toHaveLength(1)
+  expect(text.match(/Lodash vuln 2/g)).toHaveLength(1)
+  expect(text.match(/Requests vuln 1/g)).toHaveLength(1)
+  expect(text.match(/Requests vuln 2/g)).toHaveLength(1)
+  
+  expect(text).toContain('lodash')
+  expect(text).toContain('requests')
+})
+
+test('addChangeVulnerabilitiesToSummary() - maintains correct vulnerability grouping within manifests', () => {
+  const changes = [
+    createTestChange({
+      name: 'lodash',
+      manifest: 'package.json',
+      version: '1.0.0',
+      source_repository_url: 'https://github.com/lodash/lodash',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_summary: 'Lodash vuln 1',
+          severity: 'high'
+        }),
+        createTestVulnerability({
+          advisory_summary: 'Lodash vuln 2',
+          severity: 'moderate'
+        })
+      ]
+    })
+  ]
+
+  summary.addChangeVulnerabilitiesToSummary(changes, 'low')
+
+  const text = core.summary.stringify()
+  
+  const tableMatches = text.match(/<table>/g)
+  expect(tableMatches).toHaveLength(1)
+  
+  expect(text).toContain('Lodash vuln 1')
+  expect(text).toContain('Lodash vuln 2')
+
+  expect(text).toContain('colspan')
+})
