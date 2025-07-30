@@ -464,7 +464,9 @@ test('addLicensesToSummary() - includes list of configured allowed licenses', ()
   summary.addLicensesToSummary(licenseIssues, config)
 
   const text = core.summary.stringify()
-  expect(text).toContain('<strong>Allowed Licenses</strong>: MIT, Apache-2.0')
+  expect(text).toContain(
+    '<details><summary><strong>Allowed Licenses</strong>:</summary> MIT, Apache-2.0</details>'
+  )
 })
 
 test('addLicensesToSummary() - includes configured denied license', () => {
@@ -476,11 +478,33 @@ test('addLicensesToSummary() - includes configured denied license', () => {
 
   const config: ConfigurationOptions = {
     ...defaultConfig,
-    deny_licenses: ['MIT']
+    deny_licenses: ['MIT', 'Apache-2.0']
   }
 
   summary.addLicensesToSummary(licenseIssues, config)
 
   const text = core.summary.stringify()
-  expect(text).toContain('<strong>Denied Licenses</strong>: MIT')
+  expect(text).toContain(
+    '<details><summary><strong>Denied Licenses</strong>:</summary> MIT, Apache-2.0</details>'
+  )
+})
+
+test('addLicensesToSummary() - includes allowed dependency licences', () => {
+  const licenseIssues = {
+    forbidden: [createTestChange()],
+    unresolved: [],
+    unlicensed: []
+  }
+
+  const config: ConfigurationOptions = {
+    ...defaultConfig,
+    allow_dependencies_licenses: ['MIT', 'Apache-2.0']
+  }
+
+  summary.addLicensesToSummary(licenseIssues, config)
+
+  const text = core.summary.stringify()
+  expect(text).toContain(
+    '<details><summary><strong>Excluded from license check</strong>:</summary> MIT, Apache-2.0</details>'
+  )
 })
