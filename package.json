@@ -37,7 +37,7 @@
     "octokit": "^3.1.2",
     "spdx-expression-parse": "^3.0.1",
     "spdx-satisfies": "^6.0.0",
-    "ts-jest": "^29.4.0",
+    "ts-jest": "^29.4.1",
     "yaml": "^2.8.0",
     "zod": "^3.24.1"
   },
@@ -52,11 +52,11 @@
     "eslint": "^8.57.0",
     "eslint-plugin-github": "^4.10.2",
     "eslint-plugin-jest": "^28.8.3",
-    "eslint-plugin-prettier": "^5.5.1",
+    "eslint-plugin-prettier": "^5.5.3",
     "js-yaml": "^4.1.0",
     "nodemon": "^3.1.10",
     "prettier": "3.6.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.2"
   },
   "overrides": {
     "cross-spawn": ">=7.0.5",
