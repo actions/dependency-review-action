@@ -3,6 +3,9 @@
   "version": "4.7.1",
   "private": true,
   "description": "A GitHub Action for Dependency Review",
+    "engines": {
+    "node": ">=24"
+  },
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -43,7 +46,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
-    "@types/node": "^20",
+    "@types/node": "^24.1.0",
     "@types/spdx-expression-parse": "^3.0.4",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
