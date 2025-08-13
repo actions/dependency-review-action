@@ -13,3 +13,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Dependency Review
         uses: ./
+        with:
+          deny-licenses: MIT
