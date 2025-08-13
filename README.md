@@ -11,27 +11,30 @@
 
 ## Overview
 
-The dependency review action scans your pull requests for dependency changes, and will raise an error if any vulnerabilities or invalid licenses are being introduced. 
+The dependency review action scans your pull requests for dependency changes, and will raise an error if any vulnerabilities or invalid licenses are being introduced.
 The action is supported by an [API endpoint](https://docs.github.com/en/rest/dependency-graph/dependency-review?apiVersion=2022-11-28) that diffs the dependencies between any two revisions on your default branch.
 
-The action is available for: 
+The action is available for:
+
 - Public repositories
 - Private repositories with a [GitHub Advanced Security](https://docs.github.com/en/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security) license.
 
 ### Viewing the results
 
-When the action runs, you can see the results on:  
+When the action runs, you can see the results on:
 
-- The **job logs** page. 
-  1. Go to the **Actions** tab for the repository and select the relevant workflow run. 
+- The **job logs** page.
+
+  1. Go to the **Actions** tab for the repository and select the relevant workflow run.
   1. Then under "Jobs", click **dependency review**.
 
-      <img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
+  <img width="850" alt="GitHub workflow run log showing Dependency Review job output" src="https://user-images.githubusercontent.com/2161/161042286-b22d7dd3-13cb-458d-8744-ce70ed9bf562.png">
 
 - The **job summary** page.
-  1. Go to the **Actions** tab for the repository and select the relevant workflow run. 
-  1. Click **Summary**, then scroll to "dependency-review summary". 
-     
+
+  1. Go to the **Actions** tab for the repository and select the relevant workflow run.
+  1. Click **Summary**, then scroll to "dependency-review summary".
+
      <img width="850" alt="GitHub job summary showing Dependency Review output" src="https://github.com/actions/dependency-review-action/assets/2161/42fbed1d-64a7-42bf-9b05-c416bc67493f">
 
 ## Installation
@@ -41,7 +44,7 @@ When the action runs, you can see the results on:
 
 #### Installation (standard)
 
-You can install the action on any public repository, or any organization-owned private repository, provided the organization has a GitHub Advanced Security license. 
+You can install the action on any public repository, or any organization-owned private repository, provided the organization has a GitHub Advanced Security license.
 
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
@@ -54,7 +57,7 @@ You can install the action on any public repository, or any organization-owned p
 
    jobs:
      dependency-review:
-       runs-on: ubuntu-latest
+       runs-on: small
        steps:
          - name: 'Checkout Repository'
            uses: actions/checkout@v4
@@ -64,13 +67,13 @@ You can install the action on any public repository, or any organization-owned p
 
 #### Installation (GitHub Enterprise Server)
 
-You can install the action on repositories on GitHub Enterprise Server. 
+You can install the action on repositories on GitHub Enterprise Server.
 
 1. Ensure [GitHub Advanced Security](https://docs.github.com/en/enterprise-server@latest/admin/code-security/managing-github-advanced-security-for-your-enterprise/enabling-github-advanced-security-for-your-enterprise) and [GitHub Connect](https://docs.github.com/en/enterprise-server@latest/admin/github-actions/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect) are enabled for the enterprise.
 2. Ensure you have installed the [dependency-review-action](https://github.com/actions/dependency-review-action) on the server.
 3. Add a new YAML workflow to your `.github/workflows` folder:
 
-   ``` yaml
+   ```yaml
    name: 'Dependency Review'
    on: [pull_request]
 
@@ -86,7 +89,8 @@ You can install the action on repositories on GitHub Enterprise Server.
          - name: 'Dependency Review'
            uses: actions/dependency-review-action@v4
    ```
-5. In the workflow file, replace the `runs-on` value with the label of any of your runners. (The default value is `self-hosted`.)
+
+4. In the workflow file, replace the `runs-on` value with the label of any of your runners. (The default value is `self-hosted`.)
 
 ## Configuration
 
@@ -97,7 +101,7 @@ You can install the action on repositories on GitHub Enterprise Server.
 
 There are various configuration options you can use to specify settings for the dependency review action.
 
-All configuration options are optional. 
+All configuration options are optional.
 
 | Option                                 | Usage                                                                                                                                                                                                      | Possible values                                                                                              | Default value |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------- |
@@ -116,10 +120,11 @@ All configuration options are optional.
 | `retry-on-snapshot-warnings`\*         | Enable or disable retrying the action every 10 seconds while waiting for dependency submission actions to complete.                                                                                        | `true`, `false`                                                                                              | `false`       |
 | `retry-on-snapshot-warnings-timeout`\* | Maximum amount of time (in seconds) to retry the action while waiting for dependency submission actions to complete.                                                                                       | Any positive integer                                                                                         | 120           |
 | `warn-only`+                           | When set to `true`, the action will log all vulnerabilities as warnings regardless of the severity, and the action will complete with a `success` status. This overrides the `fail-on-severity` option.    | `true`, `false`                                                                                              | `false`       |
-| `show-openssf-scorecard`        | When set to `true`, the action will output information about all the known OpenSSF Scorecard scores for the dependencies changed in this pull request.                                                     | `true`, `false`                                                                                              | `true`        |
+| `show-openssf-scorecard`               | When set to `true`, the action will output information about all the known OpenSSF Scorecard scores for the dependencies changed in this pull request.                                                     | `true`, `false`                                                                                              | `true`        |
 | `warn-on-openssf-scorecard-level`      | When `show-openssf-scorecard-levels` is set to `true`, this option lets you configure the threshold for when a score is considered too low and gets a :warning: warning in the CI.                         | Any positive integer                                                                                         | 3             |
 
 > [!NOTE]
+>
 > - \* Not supported for use with GitHub Enterprise Server. (Checking for licenses is not supported on GitHub Enterprise Server because the API does not return license information.)
 > - \+ When `warn-only` is set to `true`, all vulnerabilities, independently of the severity, will be reported as warnings and the action will not fail.
 > - The `allow-licenses` and `deny-licenses` options are mutually exclusive; an error will be raised if you provide both.
@@ -128,6 +133,7 @@ All configuration options are optional.
 ### Configuration methods
 
 To specify settings for the dependency review action, you can choose from two options:
+
 - [Option 1: Inline the configuration options]() in your workflow file.
 - [Option 2: Reference an external configuration file]() in your workflow file.
 
@@ -136,6 +142,7 @@ To specify settings for the dependency review action, you can choose from two op
 You can pass configuration options to the dependency review action using your workflow file.
 
 1. In the same YAML workflow file you created during installation, use the `with:` key to specify your chosen settings:
+
    ```yaml
    name: 'Dependency Review'
    on: [pull_request]
@@ -143,7 +150,7 @@ You can pass configuration options to the dependency review action using your wo
      contents: read
    jobs:
      dependency-review:
-       runs-on: ubuntu-latest
+       runs-on: small
        steps:
          - name: 'Checkout Repository'
            uses: actions/checkout@v4
@@ -158,7 +165,7 @@ You can pass configuration options to the dependency review action using your wo
 
 #### Option 2: Using an external configuration file
 
-You can use an external configuration file to specify settings for this action. The file can be a local file or a file in an external repository. 
+You can use an external configuration file to specify settings for this action. The file can be a local file or a file in an external repository.
 
 1. In the same YAML workflow file you created during installation, use `config-file` to specify that you are using an external configuration file.
 
@@ -169,7 +176,7 @@ You can use an external configuration file to specify settings for this action. 
      contents: read
    jobs:
      dependency-review:
-       runs-on: ubuntu-latest
+       runs-on: small
        steps:
          - name: 'Checkout Repository'
            uses: actions/checkout@v4
@@ -178,22 +185,25 @@ You can use an external configuration file to specify settings for this action. 
            with:
              config-file: './.github/dependency-review-config.yml'
    ```
-   | Option                | Usage    | Possible values | 
-   |--------------------- | ----------- | ----------------------------- |
-   | `config-file`         | A path to a file in the current repository or an external repository. Use this syntax for external files: `OWNER/REPOSITORY/FILENAME@BRANCH`                                                                                                              | **Local file**: `./.github/dependency-review-config.yml` <br> **External repo**: `github/octorepo/dependency-review-config.yml@main` |
+
+   | Option        | Usage                                                                                                                                        | Possible values                                                                                                                      |
+   | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+   | `config-file` | A path to a file in the current repository or an external repository. Use this syntax for external files: `OWNER/REPOSITORY/FILENAME@BRANCH` | **Local file**: `./.github/dependency-review-config.yml` <br> **External repo**: `github/octorepo/dependency-review-config.yml@main` |
+
 2. Optionally, if the file resides in a private external repository, and for all GitHub Enterprise Server repositories, use `external-repo-token` to specify a token for fetching the file.
 
    ```yaml
-    - name: Dependency Review
-      uses: actions/dependency-review-action@v4
-      with:
-        config-file: 'github/octorepo/dependency-review-config.yml@main'
-        external-repo-token: 'ghp_123456789abcde'
+   - name: Dependency Review
+     uses: actions/dependency-review-action@v4
+     with:
+       config-file: 'github/octorepo/dependency-review-config.yml@main'
+       external-repo-token: 'ghp_123456789abcde'
    ```
 
-   | Option                | Usage    | Possible values | 
-   |--------------------- | ----------- | ----------------------------- |
+   | Option                | Usage                                                                                                                                                                                                                                                     | Possible values                                                              |
+   | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
    | `external-repo-token` | Specifies a token for fetching the configuration file. It is required if the file resides in a private external repository and for all GitHub Enterprise Server repositories. Create a token in [developer settings](https://github.com/settings/tokens). | Any token with `read` permissions to the repository hosting the config file. |
+
 3. Create the configuration file in the path you specified for `config-file`.
 4. In the configuration file, specify your chosen settings.
    ```yaml
@@ -203,9 +213,9 @@ You can use an external configuration file to specify settings for this action. 
      - 'BSD-3-Clause'
      - 'MIT'
    ```
-> [!NOTE]
-> For external configuration files, the option names use underscores instead of dashes.
-> Example: `fail_on_severity`
+   > [!NOTE]
+   > For external configuration files, the option names use underscores instead of dashes.
+   > Example: `fail_on_severity`
 
 #### Further information
 
@@ -214,7 +224,7 @@ You can use an external configuration file to specify settings for this action. 
 
 ## Using dependency review action to block a pull request from being merged
 
-You can configure your repository to block a pull request from being merged if the pull request fails the dependency review action check. To do this, the repository owner must configure branch protection settings that require the check to pass before merging. For more information, see "[Require status checks before merging](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging)" in GitHub Docs documentation.   
+You can configure your repository to block a pull request from being merged if the pull request fails the dependency review action check. To do this, the repository owner must configure branch protection settings that require the check to pass before merging. For more information, see "[Require status checks before merging](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches#require-status-checks-before-merging)" in GitHub Docs documentation.
 
 ## Outputs
 
@@ -227,7 +237,7 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
   - `denied-changes` holds information about denied dependency changes in a JSON format.
 
 > [!NOTE]
-> Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).   
+> Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).
 >
 > If you use these outputs in a run-step, you must store the output data in an environment variable instead of using the output directly. Using an output directly might break shell scripts. For example:
 >
@@ -238,7 +248,7 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
 >   echo "$VULNERABLE_CHANGES" | jq
 > ```
 >
-> instead of direct `echo '${{ steps.review.outputs.vulnerable-changes }}'`. 
+> instead of direct `echo '${{ steps.review.outputs.vulnerable-changes }}'`.
 > See [examples](docs/examples.md) for more.
 
 ## Getting help

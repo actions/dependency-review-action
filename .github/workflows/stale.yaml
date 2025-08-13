@@ -10,7 +10,7 @@ on:
 
 jobs:
   stale:
-    runs-on: ubuntu-latest
+    runs-on: micro
     steps:
     - uses: actions/stale@v9.0.0
       name: Clean up stale PRs and Issues
