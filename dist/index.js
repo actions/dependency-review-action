@@ -1605,6 +1605,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
     const licenseIssues = countLicenseIssues(invalidLicenseChanges);
     core.summary.addHeading('Dependency Review', 1);
     out.push('# Dependency Review');
+    addDenyListsDeprecationWarningToSummary();
     if (vulnerableChanges.length === 0 &&
         licenseIssues === 0 &&
         deniedChanges.length === 0 &&
@@ -1659,6 +1660,9 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
     core.summary.addRaw('See the Details below.');
     out.push(`\n[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`);
     return out.join('\n');
+}
+function addDenyListsDeprecationWarningToSummary() {
+    core.summary.addRaw(`${icons.warning} The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.<br>`);
 }
 function countScorecardWarnings(scorecard, config) {
     return scorecard.dependencies.reduce((total, dependency) => {
