@@ -30,6 +30,8 @@ export function addSummaryToSummary(
   core.summary.addHeading('Dependency Review', 1)
   out.push('# Dependency Review')
 
+  addDenyListsDeprecationWarningToSummary()
+
   if (
     vulnerableChanges.length === 0 &&
     licenseIssues === 0 &&
@@ -104,6 +106,12 @@ export function addSummaryToSummary(
   )
 
   return out.join('\n')
+}
+
+function addDenyListsDeprecationWarningToSummary(): void {
+  core.summary.addRaw(
+    `${icons.warning} The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.<br>`
+  )
 }
 
 function countScorecardWarnings(
