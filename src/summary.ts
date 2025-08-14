@@ -22,6 +22,8 @@ export function addSummaryToSummary(
   scorecard: Scorecard,
   config: ConfigurationOptions
 ): string {
+  addDenyListsDeprecationWarningToSummary()
+
   const out: string[] = []
 
   const scorecardWarnings = countScorecardWarnings(scorecard, config)
@@ -29,8 +31,6 @@ export function addSummaryToSummary(
 
   core.summary.addHeading('Dependency Review', 1)
   out.push('# Dependency Review')
-
-  addDenyListsDeprecationWarningToSummary()
 
   if (
     vulnerableChanges.length === 0 &&
@@ -110,10 +110,9 @@ export function addSummaryToSummary(
 
 function addDenyListsDeprecationWarningToSummary(): void {
   core.summary.addRaw(
-    `${icons.warning} The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.<br>`,
+    `${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.`,
     true
   )
-  core.summary.addEOL()
 }
 
 function countScorecardWarnings(

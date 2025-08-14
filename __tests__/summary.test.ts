@@ -120,7 +120,7 @@ test('adds deprecation warning for deny-licenses option', () => {
   const text = core.summary.stringify()
 
   expect(text).toContain(
-    '⚠️ The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.'
+    '⚠️ <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.'
   )
 })
 

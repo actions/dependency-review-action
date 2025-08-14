@@ -1600,12 +1600,12 @@ const MAX_SCANNED_FILES_BYTES = 1048576;
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
 function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
+    addDenyListsDeprecationWarningToSummary();
     const out = [];
     const scorecardWarnings = countScorecardWarnings(scorecard, config);
     const licenseIssues = countLicenseIssues(invalidLicenseChanges);
     core.summary.addHeading('Dependency Review', 1);
     out.push('# Dependency Review');
-    addDenyListsDeprecationWarningToSummary();
     if (vulnerableChanges.length === 0 &&
         licenseIssues === 0 &&
         deniedChanges.length === 0 &&
@@ -1662,8 +1662,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
     return out.join('\n');
 }
 function addDenyListsDeprecationWarningToSummary() {
-    core.summary.addRaw(`${icons.warning} The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.<br>`, true);
-    core.summary.addEOL();
+    core.summary.addRaw(`${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.`, true);
 }
 function countScorecardWarnings(scorecard, config) {
     return scorecard.dependencies.reduce((total, dependency) => {
