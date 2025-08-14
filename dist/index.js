@@ -1663,6 +1663,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
 }
 function addDenyListsDeprecationWarningToSummary() {
     core.summary.addRaw(`${icons.warning} The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.<br>`, true);
+    core.summary.addEOL();
 }
 function countScorecardWarnings(scorecard, config) {
     return scorecard.dependencies.reduce((total, dependency) => {
