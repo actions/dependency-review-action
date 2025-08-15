@@ -1600,7 +1600,9 @@ const MAX_SCANNED_FILES_BYTES = 1048576;
 // returns the DR summary string, ready to be posted as a PR comment if the
 // final DR report is too large
 function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedChanges, scorecard, config) {
-    addDenyListsDeprecationWarningToSummary();
+    if (config.deny_licenses && config.deny_licenses.length > 0) {
+        addDenyListsDeprecationWarningToSummary();
+    }
     const out = [];
     const scorecardWarnings = countScorecardWarnings(scorecard, config);
     const licenseIssues = countLicenseIssues(invalidLicenseChanges);
@@ -1662,7 +1664,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
     return out.join('\n');
 }
 function addDenyListsDeprecationWarningToSummary() {
-    core.summary.addRaw(`${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.`, true);
+    core.summary.addRaw(`${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. See [Deprecate the deny-licenses option #938](https://github.com/actions/dependency-review-action/issues/938) for more information.`, true);
 }
 function countScorecardWarnings(scorecard, config) {
     return scorecard.dependencies.reduce((total, dependency) => {

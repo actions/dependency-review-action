@@ -109,7 +109,7 @@ test('prints headline as h1', () => {
   expect(text).toContain('<h1>Dependency Review</h1>')
 })
 
-test('adds deprecation warning for deny-licenses option', () => {
+test('does not add deprecation warning for deny-licenses option if not set', () => {
   summary.addSummaryToSummary(
     emptyChanges,
     emptyInvalidLicenseChanges,
@@ -119,8 +119,25 @@ test('adds deprecation warning for deny-licenses option', () => {
   )
   const text = core.summary.stringify()
 
+  expect(text).not.toContain(
+    '⚠️ <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated and will be removed in the next major version release, use <em>allow-licenses</em> instead.'
+  )
+})
+
+test('adds deprecation warning for deny-licenses option if set', () => {
+  const config = {...defaultConfig, deny_licenses: ['MIT']}
+
+  summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    scorecard,
+    config
+  )
+  const text = core.summary.stringify()
+
   expect(text).toContain(
-    '⚠️ <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated and will be removed in a future version, use <em>allow-licenses</em> instead.'
+    '⚠️ <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. See [Deprecate the deny-licenses option #938](https://github.com/actions/dependency-review-action/issues/938) for more information.'
   )
 })
 
