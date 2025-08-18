@@ -1,13 +1,23 @@
 # dependency-review-action
 
-- [Overview](#overview)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Using dependency review action to block a pull request from being merged](#using-dependency-review-action-to-block-a-pull-request-from-being-merged)
-- [Outputs](#outputs)
-- [Getting help](#getting-help)
-- [Contributing](#contributing)
-- [License](#license)
+- [dependency-review-action](#dependency-review-action)
+  - [Overview](#overview)
+    - [Viewing the results](#viewing-the-results)
+  - [Installation](#installation)
+      - [Installation (standard)](#installation-standard)
+      - [Installation (GitHub Enterprise Server)](#installation-github-enterprise-server)
+  - [Configuration](#configuration)
+    - [Configuration options](#configuration-options)
+    - [Configuration methods](#configuration-methods)
+      - [Option 1: Using inline configuration](#option-1-using-inline-configuration)
+      - [Option 2: Using an external configuration file](#option-2-using-an-external-configuration-file)
+      - [`OTHER` in license strings](#other-in-license-strings)
+      - [Further information](#further-information)
+  - [Using dependency review action to block a pull request from being merged](#using-dependency-review-action-to-block-a-pull-request-from-being-merged)
+  - [Outputs](#outputs)
+  - [Getting help](#getting-help)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Overview
 
@@ -205,15 +215,12 @@ You can use an external configuration file to specify settings for this action. 
 3. Create the configuration file in the path you specified for `config-file`.
 4. In the configuration file, specify your chosen settings.
    ```yaml
-   fail_on_severity: 'critical'
-   allow_licenses:
+   fail-on-severity: 'critical'
+   allow-licenses:
      - 'GPL-3.0'
      - 'BSD-3-Clause'
      - 'MIT'
    ```
-   > [!NOTE]
-   > For external configuration files, the option names use underscores instead of dashes.
-   > Example: `fail_on_severity`
 
 #### `OTHER` in license strings
 
