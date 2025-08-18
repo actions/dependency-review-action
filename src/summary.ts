@@ -22,6 +22,10 @@ export function addSummaryToSummary(
   scorecard: Scorecard,
   config: ConfigurationOptions
 ): string {
+  if (config.deny_licenses && config.deny_licenses.length > 0) {
+    addDenyListsDeprecationWarningToSummary()
+  }
+
   const out: string[] = []
 
   const scorecardWarnings = countScorecardWarnings(scorecard, config)
@@ -104,6 +108,13 @@ export function addSummaryToSummary(
   )
 
   return out.join('\n')
+}
+
+function addDenyListsDeprecationWarningToSummary(): void {
+  core.summary.addRaw(
+    `${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. See [Deprecate the deny-licenses option #938](https://github.com/actions/dependency-review-action/issues/938) for more information.`,
+    true
+  )
 }
 
 function countScorecardWarnings(

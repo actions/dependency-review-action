@@ -1,5 +1,5 @@
 import {expect, jest, test} from '@jest/globals'
-import {Change, Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
+import {Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -109,10 +109,38 @@ test('prints headline as h1', () => {
   expect(text).toContain('<h1>Dependency Review</h1>')
 })
 
+test('does not add deprecation warning for deny-licenses option if not set', () => {
+  summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    scorecard,
+    defaultConfig
+  )
+  const text = core.summary.stringify()
+
+  expect(text).not.toContain('deny-licenses')
+})
+
+test('adds deprecation warning for deny-licenses option if set', () => {
+  const config = {...defaultConfig, deny_licenses: ['MIT']}
+
+  summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    scorecard,
+    config
+  )
+  const text = core.summary.stringify()
+
+  expect(text).toContain('deny-licenses')
+})
+
 test('returns minimal summary formatted for posting as a PR comment', () => {
   const OLD_ENV = process.env
 
-  let changes: Changes = [
+  const changes: Changes = [
     createTestChange({name: 'lodash', version: '1.2.3'}),
     createTestChange({name: 'colors', version: '2.3.4'}),
     createTestChange({name: '@foo/bar', version: '*'})
@@ -122,7 +150,7 @@ test('returns minimal summary formatted for posting as a PR comment', () => {
   process.env.GITHUB_REPOSITORY = 'owner/repo'
   process.env.GITHUB_RUN_ID = 'abc-123-xyz'
 
-  let minSummary: string = summary.addSummaryToSummary(
+  const minSummary: string = summary.addSummaryToSummary(
     changes,
     emptyInvalidLicenseChanges,
     emptyChanges,
