@@ -206,19 +206,17 @@ export function addLicensesToSummary(
 
   if (config.allow_licenses && config.allow_licenses.length > 0) {
     core.summary.addQuote(
-      `<strong>Allowed Licenses</strong>: ${config.allow_licenses.join(', ')}`
+      `<details><summary><strong>Allowed Licenses</strong>:</summary> ${config.allow_licenses.join(', ')}</details>`
     )
   }
   if (config.deny_licenses && config.deny_licenses.length > 0) {
     core.summary.addQuote(
-      `<strong>Denied Licenses</strong>: ${config.deny_licenses.join(', ')}`
+      `<details><summary><strong>Denied Licenses</strong>:</summary> ${config.deny_licenses.join(', ')}</details>`
     )
   }
   if (config.allow_dependencies_licenses) {
     core.summary.addQuote(
-      `<strong>Excluded from license check</strong>: ${config.allow_dependencies_licenses.join(
-        ', '
-      )}`
+      `<details><summary><strong>Excluded from license check</strong>:</summary> ${config.allow_dependencies_licenses.join(', ')}</details>`
     )
   }
 
