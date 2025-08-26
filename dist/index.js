@@ -1664,7 +1664,7 @@ function addSummaryToSummary(vulnerableChanges, invalidLicenseChanges, deniedCha
     return out.join('\n');
 }
 function addDenyListsDeprecationWarningToSummary() {
-    core.summary.addRaw(`${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. See [Deprecate the deny-licenses option #938](https://github.com/actions/dependency-review-action/issues/938) for more information.`, true);
+    core.summary.addRaw(`${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. See #938 Deprecate the deny-licenses option for more information.`, true);
 }
 function countScorecardWarnings(scorecard, config) {
     return scorecard.dependencies.reduce((total, dependency) => {
