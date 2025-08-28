@@ -104,13 +104,22 @@ EOF
       "GITHUB_STEP_SUMMARY" => "/dev/null"
     }
 
-    # bash does not like variable names with dashes like the ones Actions
-    # uses (e.g. INPUT_REPO-TOKEN). Passing them through `env` instead of
-    # manually setting them does the job.
-    action_inputs_env_str = action_inputs.map { |name, value| "\"INPUT_#{name.upcase}=#{value}\"" }.join(" ")
-    dev_cmd = "./node_modules/.bin/nodemon --exec \"env #{action_inputs_env_str} node -r esbuild-register\" src/main.ts"
+    # Merge action inputs into environment, formatting keys as INPUT_...
+    action_inputs_env = action_inputs.each_with_object({}) do |(name, value), h|
+      h["INPUT_#{name.to_s.upcase}"] = value unless value.nil?
+    end
+    env = dev_cmd_env.merge(action_inputs_env)
 
-    Open3.popen2e(dev_cmd_env, dev_cmd) do |stdin, out|
+    dev_cmd = [
+      "./node_modules/.bin/nodemon",
+      "--exec",
+      "node",
+      "-r",
+      "esbuild-register",
+      "src/main.ts"
+    ]
+
+    Open3.popen2e(env, *dev_cmd) do |stdin, out|
       while line = out.gets
         puts line.gsub(@github_token, "<REDACTED>")
       end
