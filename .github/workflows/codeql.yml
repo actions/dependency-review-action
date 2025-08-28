@@ -41,6 +41,8 @@ jobs:
           paths-ignore: 
             - dist/index.js
             - dist/sourcemap-register.js
+          paths:
+            - scripts/scan_pr
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
