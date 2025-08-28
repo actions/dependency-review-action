@@ -1,0 +1,119 @@
+require 'json'
+require 'tempfile'
+require 'open3'
+require 'bundler/inline'
+require 'optparse'
+
+gemfile do
+  source 'https://rubygems.org'
+  gem 'octokit'
+end
+
+class ScanPr
+  def initialize
+    @config_file = nil
+    @github_token = ENV["GITHUB_TOKEN"]
+
+    validate_token
+  end
+
+  def run(args)
+    parse_options(args)
+    repo_nwo, pr_number = extract_repo_and_pr(args)
+
+    pr = fetch_pull_request(repo_nwo, pr_number)
+    event_file = create_event_file(pr)
+
+    execute_dependency_review(repo_nwo, event_file)
+  ensure
+    event_file&.unlink
+  end
+
+  private
+
+  def validate_token
+    if !@github_token || @github_token.empty?
+      puts "Please set the GITHUB_TOKEN environment variable"
+      exit -1
+    end
+  end
+
+  def parse_options(args)
+    op = OptionParser.new do |opts|
+      usage = <<EOF
+Run Dependency Review on a repository.
+
+\e[1mUsage:\e[22m
+  scripts/scan_pr [options] <pr_url>
+
+\e[1mExample:\e[22m
+  scripts/scan_pr https://github.com/actions/dependency-review-action/pull/294
+
+EOF
+
+      opts.banner = usage
+
+      opts.on('-c', '--config-file <FILE>', 'Use an external configuration file') do |cf|
+        @config_file = cf
+      end
+
+      opts.on("-h", "--help", "Prints this help") do
+        puts opts
+        exit
+      end
+    end
+
+    op.parse!(args)
+    @option_parser = op
+  end
+
+  def extract_repo_and_pr(args)
+    # make sure we have a NWO somewhere in the parameters
+    arg = /(?<repo_nwo>[\w\-]+\/[\w\-]+)\/pull\/(?<pr_number>\d+)/.match(args.join(" "))
+
+    if arg.nil?
+      puts @option_parser
+      exit -1
+    end
+
+    [arg[:repo_nwo], arg[:pr_number]]
+  end
+
+  def fetch_pull_request(repo_nwo, pr_number)
+    octo = Octokit::Client.new(access_token: @github_token)
+    octo.pull_request(repo_nwo, pr_number)
+  end
+
+  def create_event_file(pr)
+    event_file = Tempfile.new
+    event_file.write("{ \"pull_request\": #{pr.to_h.to_json}}")
+    event_file.close
+    event_file
+  end
+
+  def execute_dependency_review(repo_nwo, event_file)
+    action_inputs = {
+      "repo-token": @github_token,
+      "config-file": @config_file
+    }
+
+    dev_cmd_env = {
+      "GITHUB_REPOSITORY" => repo_nwo,
+      "GITHUB_EVENT_NAME" => "pull_request",
+      "GITHUB_EVENT_PATH" => event_file.path,
+      "GITHUB_STEP_SUMMARY" => "/dev/null"
+    }
+
+    # bash does not like variable names with dashes like the ones Actions
+    # uses (e.g. INPUT_REPO-TOKEN). Passing them through `env` instead of
+    # manually setting them does the job.
+    action_inputs_env_str = action_inputs.map { |name, value| "\"INPUT_#{name.upcase}=#{value}\"" }.join(" ")
+    dev_cmd = "./node_modules/.bin/nodemon --exec \"env #{action_inputs_env_str} node -r esbuild-register\" src/main.ts"
+
+    Open3.popen2e(dev_cmd_env, dev_cmd) do |stdin, out|
+      while line = out.gets
+        puts line.gsub(@github_token, "<REDACTED>")
+      end
+    end
+  end
+end
