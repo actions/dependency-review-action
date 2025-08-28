@@ -42,7 +42,7 @@ jobs:
             - dist/index.js
             - dist/sourcemap-register.js
           paths:
-            - scripts/scan_pr
+            - scripts
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
