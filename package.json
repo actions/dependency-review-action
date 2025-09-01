@@ -32,7 +32,7 @@
     "@octokit/types": "12.5.0",
     "@onebeyond/spdx-license-satisfies": "^1.0.1",
     "ansi-styles": "^6.2.1",
-    "got": "^14.4.7",
+    "got": "^14.4.8",
     "jest": "^29.7.0",
     "octokit": "^3.1.2",
     "spdx-expression-parse": "^3.0.1",
