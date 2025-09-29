@@ -1,3 +1,4 @@
+tab
 # dependency-review-action
 
 - [dependency-review-action](#dependency-review-action)
