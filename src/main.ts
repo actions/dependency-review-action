@@ -96,7 +96,6 @@ The full dependency review summary is too large to display here. Please download
     // Set core.summary to the shorter summary value to avoid exceeding MAX_SUMMARY_SIZE
     core.summary.emptyBuffer()
     core.summary.addRaw(shortSummary)
-  
     return shortSummary
   } catch (error) {
     core.warning(
