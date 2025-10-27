@@ -86,12 +86,17 @@ export async function handleLargeSummary(
       retentionDays: 1
     })
 
-    // Return a minimal summary with a link to the artifact
-    return `# Dependency Review Summary
+    // Return a shorter summary with a link to the artifact
+    const shortSummary = `# Dependency Review Summary
 
 The full dependency review summary is too large to display here. Please download the artifact named "${artifactName}" to view the complete report.
 
 [View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
+
+    // Set core.summary to the shorter summary value to avoid exceeding MAX_SUMMARY_SIZE
+    core.summary.emptyBuffer()
+    core.summary.addRaw(shortSummary)
+    return shortSummary
   } catch (error) {
     core.warning(
       `Failed to handle large summary: ${error instanceof Error ? error.message : 'Unknown error'}`
