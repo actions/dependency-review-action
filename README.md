@@ -169,6 +169,7 @@ You can pass configuration options to the dependency review action using your wo
 
              # Use comma-separated names to pass list arguments:
              deny-licenses: LGPL-2.0, BSD-2-Clause
+             allow-dependencies-licenses: "pkg:npm/@myorg/mypackage, pkg:npm/packagename, pkg:githubactions/owner/repo@2.0.0"
    ```
 
 #### Option 2: Using an external configuration file
