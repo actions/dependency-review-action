@@ -315,7 +315,7 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
   expect(text).toContain('✅ 0 package(s) with unknown licenses')
 })
 
-test('addChangeVulnerabilitiesToSummary() - only includes section if any vulnerabilites found', () => {
+test('addChangeVulnerabilitiesToSummary() - only includes section if any vulnerabilities found', () => {
   summary.addChangeVulnerabilitiesToSummary(emptyChanges, 'low')
   const text = core.summary.stringify()
   expect(text).toEqual('')
@@ -385,7 +385,7 @@ test('addChangeVulnerabilitiesToSummary() - prints severity statement if above l
   )
 })
 
-test('addChangeVulnerabilitiesToSummary() - does not print severity statment if it is set to "low"', () => {
+test('addChangeVulnerabilitiesToSummary() - does not print severity statement if it is set to "low"', () => {
   const changes = [createTestChange()]
 
   summary.addChangeVulnerabilitiesToSummary(changes, 'low')

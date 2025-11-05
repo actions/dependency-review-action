@@ -25,7 +25,7 @@ If you'd like to make a contribution yourself, we ask that before significant ef
 
 ## Stalebot
 
-We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see the configuration [here](.github/workflows/stalebot.yml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
+We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see [the configuration](.github/workflows/stalebot.yml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
 
 ## Development lifecycle
 
@@ -53,7 +53,7 @@ Before you begin, you need to have [Node.js](https://nodejs.org/en/) installed, 
 We have a script to scan a given PR for vulnerabilities, this will
 help you test your local changes. Make sure to [grab a Personal Access Token (PAT)](https://github.com/settings/tokens) before proceeding (you'll need `repo` permissions for private repos):
 
-<img width="480" alt="Screenshot 2022-05-12 at 10 22 21" src="https://user-images.githubusercontent.com/2161/168026161-16788a0a-b6c8-428e-bb6a-83ea2a403070.png">
+<img width="480" alt="Screen to create a PAT with a note of `dr-token`, 30 day duration (expiring Jun 11, 2022), with `repo` scopes selected" src="https://user-images.githubusercontent.com/2161/168026161-16788a0a-b6c8-428e-bb6a-83ea2a403070.png">
 
 The syntax of the script is:
 
@@ -112,13 +112,13 @@ _Note: these instructions are for maintainers_
 1. Make sure that the `Publish this Action to the GitHub Marketplace`
    checkbox is enabled
 
-<img width="481" alt="Screenshot 2022-06-15 at 12 08 19" src="https://user-images.githubusercontent.com/2161/173822484-4b60d8b4-c674-4bff-b5ff-b0c4a3650ab7.png">
+<img width="481" alt="Screen showing Release Action with Publish this Action to the GitHub Marketplace checked" src="https://user-images.githubusercontent.com/2161/173822484-4b60d8b4-c674-4bff-b5ff-b0c4a3650ab7.png">
 
 3. Click "Choose a tag" and then "Create new tag", where the tag name
    will be your version prefixed by a `v` (e.g. `v1.2.3`).
 4. Use a version number for the release title (e.g. "1.2.3").
 
-<img width="700" alt="Screenshot 2022-06-15 at 12 08 36" src="https://user-images.githubusercontent.com/2161/173822548-33ab3432-d679-4dc1-adf8-b50fdaf47de3.png">
+<img width="700" alt="Create an action release in categories Security + Dependency management from branch main creating tag v2.0.0 on publish" src="https://user-images.githubusercontent.com/2161/173822548-33ab3432-d679-4dc1-adf8-b50fdaf47de3.png">
 
 5. Add your release notes. If this is a major version make sure to
    include a small description of the biggest changes in the new version.

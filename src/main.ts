@@ -278,13 +278,13 @@ async function printVulnerabilitiesBlock(
   warnOnly: boolean
 ): Promise<boolean> {
   return core.group('Vulnerabilities', async () => {
-    let vulFound = false
+    let vulnFound = false
 
     for (const change of addedChanges) {
-      vulFound ||= printChangeVulnerabilities(change)
+      vulnFound ||= printChangeVulnerabilities(change)
     }
 
-    if (vulFound) {
+    if (vulnFound) {
       const msg = 'Dependency review detected vulnerable packages.'
       if (warnOnly) {
         core.warning(msg)
@@ -297,7 +297,7 @@ async function printVulnerabilitiesBlock(
       )
     }
 
-    return vulFound
+    return vulnFound
   })
 }
 
