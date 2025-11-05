@@ -53,7 +53,7 @@ Before you begin, you need to have [Node.js](https://nodejs.org/en/) installed, 
 We have a script to scan a given PR for vulnerabilities, this will
 help you test your local changes. Make sure to [grab a Personal Access Token (PAT)](https://github.com/settings/tokens) before proceeding (you'll need `repo` permissions for private repos):
 
-<img width="480" alt="Screenshot 2022-05-12 at 10 22 21" src="https://user-images.githubusercontent.com/2161/168026161-16788a0a-b6c8-428e-bb6a-83ea2a403070.png">
+<img width="480" alt="Screen to create a PAT with a note of `dr-token`, 30 day duration (expiring Jun 11, 2022), with `repo` scopes selected" src="https://user-images.githubusercontent.com/2161/168026161-16788a0a-b6c8-428e-bb6a-83ea2a403070.png">
 
 The syntax of the script is:
 
