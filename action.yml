@@ -53,7 +53,7 @@ inputs:
     description: A boolean to determine if vulnerability checks should be performed
     required: false
   comment-summary-in-pr:
-    description: Determines if the summary is posted as a comment in the PR itself. Setting this to `always` or `on-failure` requires you to give the workflow the write permissions for pull-requests
+    description: "Determines if the summary is posted as a comment in the PR itself. Setting this to `always` or `on-failure` requires you to give the workflow `pull-requests: write` permissions"
     required: false
   deny-packages:
     description: A comma-separated list of package URLs to deny (e.g. "pkg:npm/express, pkg:pypi/pycrypto"). If version specified, only deny matching packages and version; else, deny all regardless of version.
