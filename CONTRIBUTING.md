@@ -112,7 +112,7 @@ _Note: these instructions are for maintainers_
 1. Make sure that the `Publish this Action to the GitHub Marketplace`
    checkbox is enabled
 
-<img width="481" alt="Screenshot 2022-06-15 at 12 08 19" src="https://user-images.githubusercontent.com/2161/173822484-4b60d8b4-c674-4bff-b5ff-b0c4a3650ab7.png">
+<img width="481" alt="Screen showing Release Action with Publish this Action to the GitHub Marketplace checked" src="https://user-images.githubusercontent.com/2161/173822484-4b60d8b4-c674-4bff-b5ff-b0c4a3650ab7.png">
 
 3. Click "Choose a tag" and then "Create new tag", where the tag name
    will be your version prefixed by a `v` (e.g. `v1.2.3`).
