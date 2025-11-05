@@ -1,57 +1,40 @@
-# `dist/index.js` is a special file in Actions.
-# When you reference an action with `uses:` in a workflow,
-# `index.js` is the code that will run.
-# For our project, we generate this file through a build process from other source files.
-# We need to make sure the checked-in `index.js` actually matches what we expect it to be.
-name: Check dist/
+name: CI-check-no-dist-update
 
+# Prohibit any change to 'dist/**' on a non-release branch
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - '**.md'
-  pull_request:
-    paths-ignore:
-      - '**.md'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'dist/**'
 
 permissions:
   contents: read
 
 jobs:
-  check-dist:
+  fail-on-dist-update:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set Node.js 20.x
-        uses: actions/setup-node@v4
+      - name: Checkout sources
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          node-version: 20.x
-          cache: npm
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Rebuild the dist/ directory
-        run: |
-          npm run build
-          npm run package
-
-      - name: Compare the expected and actual dist/ directories
-        run: |
-          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
-            echo "Detected uncommitted changes after build.  See status below:"
-            git diff
-            exit 1
-          fi
-        id: diff
-
-      # If index.js was different than expected, upload the expected version as an artifact
-      - uses: actions/upload-artifact@v4
-        if: ${{ failure() && steps.diff.conclusion == 'failure' }}
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47.0.0
         with:
-          name: dist
-          path: dist/
+          files: |
+            dist/**
+
+      - name: Print changes to dist directory
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file was changed"
+          done
+
+      - run: |
+          echo "The 'dist' directory is automatically updated by the release process."
+          echo "It should not be updated manually in a non-release branch or a pull request."
+          exit 1
