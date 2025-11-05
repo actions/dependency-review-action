@@ -118,7 +118,7 @@ _Note: these instructions are for maintainers_
    will be your version prefixed by a `v` (e.g. `v1.2.3`).
 4. Use a version number for the release title (e.g. "1.2.3").
 
-<img width="700" alt="Screenshot 2022-06-15 at 12 08 36" src="https://user-images.githubusercontent.com/2161/173822548-33ab3432-d679-4dc1-adf8-b50fdaf47de3.png">
+<img width="700" alt="Create an action release in categories Security + Dependency management from branch main creating tag v2.0.0 on publish" src="https://user-images.githubusercontent.com/2161/173822548-33ab3432-d679-4dc1-adf8-b50fdaf47de3.png">
 
 5. Add your release notes. If this is a major version make sure to
    include a small description of the biggest changes in the new version.
