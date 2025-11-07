@@ -174,7 +174,7 @@ async function groupChanges(
         return true
       }
 
-      const changeAsPackageURL = parsePURL(encodeURI(change.package_url))
+      const changeAsPackageURL = parsePURL(change.package_url)
 
       // We want to find if the licenseExclusion list contains the PackageURL of the Change
       // If it does, we want to filter it out and therefore return false
