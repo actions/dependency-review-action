@@ -29,7 +29,7 @@ We have begun using a [Stalebot action](https://github.com/actions/stale) to hel
 
 ## Development lifecycle
 
-Ready to contribute to `dependency-review-action`?  Here is some information to help you get started.
+Ready to contribute to `dependency-review-action`? Here is some information to help you get started.
 
 ### High level overview of the action
 
@@ -106,6 +106,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 _Note: these instructions are for maintainers_
 
 1. Update the version number in [package.json](https://github.com/actions/dependency-review-action/blob/main/package.json) and run `npm i` to update the lockfile.
+1. Update the dist files by running `npm run build` and `npm run package`
 1. Go to [Draft a new
    release](https://github.com/actions/dependency-review-action/releases/new)
    in the Releases page.
@@ -137,8 +138,8 @@ To do this just checkout `main`, force-create a new annotated tag, and push it:
 git tag -fa v4 -m "Updating v4 to 4.0.1"
 git push origin v4 --force
 ```
-</details>
 
+</details>
 
 ## Resources
 
