@@ -87,8 +87,9 @@ _Note_: We don't have a very comprehensive test suite, so any contributions to t
 
 1. Create a new branch: `git checkout -b my-branch-name`
 2. Make your change, add tests, and make sure the tests still pass
-3. Make sure to build and package before pushing: `npm run build && npm run package`
-4. Push to your fork and [submit a pull request][pr]
+3. Push to your fork and [submit a pull request][pr]
+
+(note: we don't recommend including changes to the `dist` directory in your pull request, because changes there have an increased likelihood of conflicts.)
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 
