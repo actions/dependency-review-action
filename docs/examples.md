@@ -207,6 +207,46 @@ jobs:
           echo "$VULNERABLE_CHANGES" | jq '.[].package_url'
 ```
 
+## Accessing resolved vulnerabilities output
+
+When dependencies with vulnerabilities are removed or upgraded in your PR, the action now provides information about these resolved vulnerabilities through the `resolved-vulnerabilities` output. This helps teams understand the positive security impact of their changes.
+
+```yaml
+name: 'Dependency Review with Resolved Vulnerabilities'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+      - name: 'Dependency Review'
+        id: review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+      - name: 'Celebrate Resolved Vulnerabilities'
+        if: steps.review.outputs.resolved-vulnerabilities != '[]'
+        env:
+          RESOLVED_VULNERABILITIES: ${{ steps.review.outputs.resolved-vulnerabilities }}
+        run: |
+          echo "🎉 Great job! This PR resolves vulnerabilities:"
+          echo "$RESOLVED_VULNERABILITIES" | jq -r '.[] | "- \(.severity | ascii_upcase): \(.advisory_summary) in \(.package_name)@\(.package_version)"'
+```
+
+The `resolved-vulnerabilities` output is a JSON array containing information about vulnerabilities that were resolved by removing or upgrading packages. Each resolved vulnerability includes:
+- `severity`: The severity level of the resolved vulnerability
+- `advisory_ghsa_id`: The GitHub Advisory Database ID
+- `advisory_summary`: A summary of the vulnerability
+- `advisory_url`: URL to the advisory
+- `package_name`: Name of the package that had the vulnerability
+- `package_version`: Version of the package that had the vulnerability
+
 ## Exclude dependencies from the license check
 
 Using the `allow-dependencies-licenses` you can exclude dependencies from the license check. The values should be provided in [purl](https://github.com/package-url/purl-spec) format.

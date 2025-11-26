@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
-import {Change, Changes, ConfigurationOptions, Scorecard} from './schemas'
+import {Change, Changes, ConfigurationOptions, Scorecard, ResolvedVulnerabilities} from './schemas'
 import {
   groupDependenciesByManifest,
   getManifestsSet,
@@ -150,6 +150,7 @@ export function addSummaryToSummary(
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
   scorecard: Scorecard,
+  resolvedVulnerabilities: ResolvedVulnerabilities,
   config: ConfigurationOptions
 ): string {
   if (config.deny_licenses && config.deny_licenses.length > 0) {
@@ -163,6 +164,13 @@ export function addSummaryToSummary(
 
   core.summary.addHeading('Dependency Review', 1)
   out.push('# Dependency Review')
+
+  // Add resolved vulnerabilities section first for positive feedback
+  if (resolvedVulnerabilities.length > 0) {
+    const resolvedSection = `${icons.check} **${resolvedVulnerabilities.length}** vulnerabilities resolved`
+    core.summary.addRaw(resolvedSection)
+    out.push(resolvedSection)
+  }
 
   if (
     vulnerableChanges.length === 0 &&
@@ -183,6 +191,11 @@ export function addSummaryToSummary(
       msg = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
     }
 
+    // Add extra positive message if vulnerabilities were resolved
+    if (resolvedVulnerabilities.length > 0) {
+      msg += ` Additionally, this PR resolves ${resolvedVulnerabilities.length} existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
+    }
+
     core.summary.addRaw(msg)
     out.push(msg)
     return out.join('\n')
@@ -193,6 +206,12 @@ export function addSummaryToSummary(
   out.push(foundIssuesHeader)
 
   const summaryList: string[] = [
+    // Add resolved vulnerabilities as positive feedback first
+    ...(resolvedVulnerabilities.length > 0
+      ? [
+          `${icons.check} ${resolvedVulnerabilities.length} vulnerability(ies) resolved 🎉`
+        ]
+      : []),
     ...(config.vulnerability_check
       ? [
           `${checkOrFailIcon(vulnerableChanges.length)} ${
@@ -752,4 +771,36 @@ function checkOrFailIcon(count: number): string {
 
 function checkOrWarnIcon(count: number): string {
   return count === 0 ? icons.check : icons.warning
+}
+
+export function addResolvedVulnerabilitiesToSummary(
+  resolvedVulnerabilities: ResolvedVulnerabilities
+): void {
+  if (resolvedVulnerabilities.length === 0) {
+    return
+  }
+
+  core.summary.addHeading('✅ Resolved Vulnerabilities', 2)
+  core.summary.addRaw(`Great job! This PR resolves **${resolvedVulnerabilities.length}** ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`)
+
+  const tableRows: SummaryTableRow[] = [
+    [
+      {data: 'Package', header: true},
+      {data: 'Version', header: true},
+      {data: 'Vulnerability', header: true},
+      {data: 'Severity', header: true}
+    ]
+  ]
+
+  for (const vuln of resolvedVulnerabilities) {
+    tableRows.push([
+      `${vuln.manifest} » **${vuln.package_name}**`,
+      vuln.package_version,
+      renderUrl(vuln.advisory_url, vuln.advisory_summary),
+      vuln.severity
+    ])
+  }
+
+  core.summary.addTable(tableRows)
+  core.summary.addRaw('Keep up the great work securing your dependencies! 🎉')
 }
