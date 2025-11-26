@@ -35,14 +35,6 @@ export function addSummaryToSummary(
   core.summary.addHeading('Dependency Review', 1)
   out.push('# Dependency Review')
 
-  // Add resolved vulnerabilities section first for positive feedback
-  if (resolvedVulnerabilities.length > 0) {
-    const resolvedSectionHtml = `${icons.check} <strong>${resolvedVulnerabilities.length}</strong> vulnerabilities resolved 🎉`
-    const resolvedSectionMarkdown = `${icons.check} **${resolvedVulnerabilities.length}** vulnerabilities resolved 🎉`
-    core.summary.addRaw(resolvedSectionHtml)
-    out.push(resolvedSectionMarkdown)
-  }
-
   if (
     vulnerableChanges.length === 0 &&
     licenseIssues === 0 &&
@@ -80,7 +72,48 @@ export function addSummaryToSummary(
   core.summary.addRaw(foundIssuesHeader)
   out.push(foundIssuesHeader)
 
-  const summaryList: string[] = [
+  const summaryListHtml: string[] = [
+    // Add resolved vulnerabilities as positive feedback first
+    ...(resolvedVulnerabilities.length > 0
+      ? [
+          `${icons.check} <strong>${resolvedVulnerabilities.length}</strong> vulnerability(ies) resolved 🎉`
+        ]
+      : []),
+    ...(config.vulnerability_check
+      ? [
+          `${checkOrFailIcon(vulnerableChanges.length)} ${
+            vulnerableChanges.length
+          } vulnerable package(s)`
+        ]
+      : []),
+    ...(config.license_check
+      ? [
+          `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
+            invalidLicenseChanges.forbidden.length
+          } package(s) with incompatible licenses`,
+          `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
+            invalidLicenseChanges.unresolved.length
+          } package(s) with invalid SPDX license definitions`,
+          `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
+            invalidLicenseChanges.unlicensed.length
+          } package(s) with unknown licenses.`
+        ]
+      : []),
+    ...(deniedChanges.length > 0
+      ? [
+          `${checkOrWarnIcon(deniedChanges.length)} ${
+            deniedChanges.length
+          } package(s) denied.`
+        ]
+      : []),
+    ...(config.show_openssf_scorecard && scorecardWarnings > 0
+      ? [
+          `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+        ]
+      : [])
+  ]
+
+  const summaryListMarkdown: string[] = [
     // Add resolved vulnerabilities as positive feedback first
     ...(resolvedVulnerabilities.length > 0
       ? [
@@ -121,8 +154,8 @@ export function addSummaryToSummary(
       : [])
   ]
 
-  core.summary.addList(summaryList)
-  for (const line of summaryList) {
+  core.summary.addList(summaryListHtml)
+  for (const line of summaryListMarkdown) {
     out.push(`* ${line}`)
   }
 
@@ -469,6 +502,7 @@ export function addResolvedVulnerabilitiesToSummary(
 
   core.summary.addHeading('Resolved Vulnerabilities', 2)
   core.summary.addRaw(`${icons.check} Great job! This PR resolves <strong>${resolvedVulnerabilities.length}</strong> ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`)
+  core.summary.addRaw('')
 
   const tableRows: SummaryTableRow[] = [
     [
