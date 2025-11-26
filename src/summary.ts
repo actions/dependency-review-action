@@ -37,7 +37,7 @@ export function addSummaryToSummary(
 
   // Add resolved vulnerabilities section first for positive feedback
   if (resolvedVulnerabilities.length > 0) {
-    const resolvedSection = `${icons.check} **${resolvedVulnerabilities.length}** vulnerabilities resolved`
+    const resolvedSection = `${icons.check} ${resolvedVulnerabilities.length} vulnerabilities resolved 🎉`
     core.summary.addRaw(resolvedSection)
     out.push(resolvedSection)
   }
@@ -462,8 +462,8 @@ export function addResolvedVulnerabilitiesToSummary(
     return
   }
 
-  core.summary.addHeading('✅ Resolved Vulnerabilities', 2)
-  core.summary.addRaw(`Great job! This PR resolves **${resolvedVulnerabilities.length}** ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`)
+  core.summary.addHeading('Resolved Vulnerabilities', 2)
+  core.summary.addRaw(`${icons.check} Great job! This PR resolves <strong>${resolvedVulnerabilities.length}</strong> ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`)
 
   const tableRows: SummaryTableRow[] = [
     [
@@ -476,7 +476,7 @@ export function addResolvedVulnerabilitiesToSummary(
 
   for (const vuln of resolvedVulnerabilities) {
     tableRows.push([
-      `${vuln.manifest} » **${vuln.package_name}**`,
+      `${vuln.manifest} » <strong>${vuln.package_name}</strong>`,
       vuln.package_version,
       renderUrl(vuln.advisory_url, vuln.advisory_summary),
       vuln.severity
