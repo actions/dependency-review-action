@@ -167,9 +167,10 @@ export function addSummaryToSummary(
 
   // Add resolved vulnerabilities section first for positive feedback
   if (resolvedVulnerabilities.length > 0) {
-    const resolvedSection = `${icons.check} ${resolvedVulnerabilities.length} vulnerabilities resolved 🎉`
-    core.summary.addRaw(resolvedSection)
-    out.push(resolvedSection)
+    const resolvedSectionHtml = `${icons.check} <strong>${resolvedVulnerabilities.length}</strong> vulnerabilities resolved 🎉`
+    const resolvedSectionMarkdown = `${icons.check} **${resolvedVulnerabilities.length}** vulnerabilities resolved 🎉`
+    core.summary.addRaw(resolvedSectionHtml)
+    out.push(resolvedSectionMarkdown)
   }
 
   if (
@@ -184,20 +185,24 @@ export function addSummaryToSummary(
       config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
     ]
 
-    let msg = ''
+    let msgHtml = ''
+    let msgMarkdown = ''
     if (issueTypes.filter(Boolean).length === 0) {
-      msg = `${icons.check} No issues found.`
+      msgHtml = `${icons.check} No issues found.`
+      msgMarkdown = `${icons.check} No issues found.`
     } else {
-      msg = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
+      msgHtml = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
+      msgMarkdown = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
     }
 
     // Add extra positive message if vulnerabilities were resolved
     if (resolvedVulnerabilities.length > 0) {
-      msg += ` Additionally, this PR resolves ${resolvedVulnerabilities.length} existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
+      msgHtml += ` Additionally, this PR resolves <strong>${resolvedVulnerabilities.length}</strong> existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
+      msgMarkdown += ` Additionally, this PR resolves **${resolvedVulnerabilities.length}** existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
     }
 
-    core.summary.addRaw(msg)
-    out.push(msg)
+    core.summary.addRaw(msgHtml)
+    out.push(msgMarkdown)
     return out.join('\n')
   }
 
@@ -209,7 +214,7 @@ export function addSummaryToSummary(
     // Add resolved vulnerabilities as positive feedback first
     ...(resolvedVulnerabilities.length > 0
       ? [
-          `${icons.check} ${resolvedVulnerabilities.length} vulnerability(ies) resolved 🎉`
+          `${icons.check} **${resolvedVulnerabilities.length}** vulnerability(ies) resolved 🎉`
         ]
       : []),
     ...(config.vulnerability_check
@@ -803,4 +808,32 @@ export function addResolvedVulnerabilitiesToSummary(
 
   core.summary.addTable(tableRows)
   core.summary.addRaw('Keep up the great work securing your dependencies! 🎉')
+}
+
+// Generate markdown version for PR comments
+export function getResolvedVulnerabilitiesMarkdown(
+  resolvedVulnerabilities: ResolvedVulnerabilities
+): string {
+  if (resolvedVulnerabilities.length === 0) {
+    return ''
+  }
+
+  const lines: string[] = []
+  lines.push(`## ${icons.check} Resolved Vulnerabilities`)
+  lines.push(`Great job! This PR resolves **${resolvedVulnerabilities.length}** ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`)
+  lines.push('')
+  lines.push('| Package | Version | Vulnerability | Severity |')
+  lines.push('|---------|---------|---------------|----------|')
+  
+  for (const vuln of resolvedVulnerabilities) {
+    const packageCell = `${vuln.manifest} » **${vuln.package_name}**`
+    const vulnCell = vuln.advisory_url ? `[${vuln.advisory_summary}](${vuln.advisory_url})` : vuln.advisory_summary
+    lines.push(`| ${packageCell} | ${vuln.package_version} | ${vulnCell} | ${vuln.severity} |`)
+  }
+  
+  lines.push('')
+  lines.push('Keep up the great work securing your dependencies! 🎉')
+  lines.push('')
+  
+  return lines.join('\n')
 }
