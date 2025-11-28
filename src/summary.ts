@@ -112,7 +112,7 @@ export function addSummaryToSummary(
 
 function addDenyListsDeprecationWarningToSummary(): void {
   core.summary.addRaw(
-    `${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. For more information, see issue 997.`,
+    `${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. For more information, see issue https://github.com/actions/dependency-review-action/issues/997.`,
     true
   )
 }
