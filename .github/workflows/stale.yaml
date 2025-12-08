@@ -12,7 +12,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/stale@v10.1.0
+    - uses: actions/stale@v10.1.1
       name: Clean up stale PRs and Issues
       with:
         stale-pr-message: "👋 This pull request has been marked as stale because it has been open with no activity for 180 days. You can: comment on the PR or remove the stale label to hold stalebot off for a while, add the `Keep` label to hold stale off permanently, or do nothing. If you do nothing, this pull request will be closed eventually by the stalebot. Please see CONTRIBUTING.md for more policy details."
