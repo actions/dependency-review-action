@@ -526,30 +526,3 @@ export function addResolvedVulnerabilitiesToSummary(
   core.summary.addRaw('Keep up the great work securing your dependencies! 🎉')
 }
 
-// Generate markdown version for PR comments
-export function getResolvedVulnerabilitiesMarkdown(
-  resolvedVulnerabilities: ResolvedVulnerabilities
-): string {
-  if (resolvedVulnerabilities.length === 0) {
-    return ''
-  }
-
-  const lines: string[] = []
-  lines.push(`## ${icons.check} Resolved Vulnerabilities`)
-  lines.push(`Great job! This PR resolves **${resolvedVulnerabilities.length}** ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`)
-  lines.push('')
-  lines.push('| Package | Version | Vulnerability | Severity |')
-  lines.push('|---------|---------|---------------|----------|')
-  
-  for (const vuln of resolvedVulnerabilities) {
-    const packageCell = `${vuln.manifest} » **${vuln.package_name}**`
-    const vulnCell = vuln.advisory_url ? `[${vuln.advisory_summary}](${vuln.advisory_url})` : vuln.advisory_summary
-    lines.push(`| ${packageCell} | ${vuln.package_version} | ${vulnCell} | ${vuln.severity} |`)
-  }
-  
-  lines.push('')
-  lines.push('Keep up the great work securing your dependencies! 🎉')
-  lines.push('')
-  
-  return lines.join('\n')
-}
