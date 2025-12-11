@@ -1,5 +1,5 @@
 import {expect, jest, test} from '@jest/globals'
-import {Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
+import {Changes, ConfigurationOptions, Scorecard, ResolvedVulnerabilities} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -19,6 +19,7 @@ const emptyInvalidLicenseChanges = {
 const emptyScorecard: Scorecard = {
   dependencies: []
 }
+const emptyResolvedVulnerabilities: ResolvedVulnerabilities = []
 const defaultConfig: ConfigurationOptions = {
   vulnerability_check: true,
   license_check: true,
@@ -102,6 +103,7 @@ test('prints headline as h1', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -115,6 +117,7 @@ test('does not add deprecation warning for deny-licenses option if not set', () 
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -130,6 +133,7 @@ test('adds deprecation warning for deny-licenses option if set', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     config
   )
   const text = core.summary.stringify()
@@ -155,6 +159,7 @@ test('returns minimal summary formatted for posting as a PR comment', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
@@ -181,6 +186,7 @@ test('only includes "No vulnerabilities or license issues found"-message if both
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -195,6 +201,7 @@ test('only includes "No vulnerabilities found"-message if "license_check" is set
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     config
   )
   const text = core.summary.stringify()
@@ -209,6 +216,7 @@ test('only includes "No license issues found"-message if "vulnerability_check" i
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     config
   )
   const text = core.summary.stringify()
@@ -222,6 +230,7 @@ test('groups dependencies with empty manifest paths together', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   summary.addScannedFiles(changesWithEmptyManifests)
@@ -236,6 +245,7 @@ test('does not include status section if nothing was found', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -259,6 +269,7 @@ test('includes count and status icons for all findings', () => {
     licenseIssues,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
@@ -279,6 +290,7 @@ test('uses checkmarks for license issues if only vulnerabilities were found', ()
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
@@ -303,6 +315,7 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
     licenseIssues,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
