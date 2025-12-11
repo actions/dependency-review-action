@@ -58,7 +58,7 @@ export function addSummaryToSummary(
     }
 
     // Add extra positive message if vulnerabilities were resolved
-    if (resolvedVulnerabilities.length > 0) {
+    if (config.vulnerability_check && resolvedVulnerabilities.length > 0) {
       msgHtml += ` Additionally, this PR resolves <strong>${resolvedVulnerabilities.length}</strong> existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
       msgMarkdown += ` Additionally, this PR resolves **${resolvedVulnerabilities.length}** existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
     }
