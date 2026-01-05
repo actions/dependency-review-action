@@ -24,7 +24,7 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
-import * as artifact from '@actions/artifact'
+import {DefaultArtifactClient} from '@actions/artifact'
 import * as fs from 'fs'
 
 import type {PayloadRepository} from '@actions/github/lib/interfaces.d'
@@ -73,7 +73,7 @@ export async function handleLargeSummary(
     return summaryContent
   }
 
-  const artifactClient = new artifact.DefaultArtifactClient()
+  const artifactClient = new DefaultArtifactClient()
   const artifactName = 'dependency-review-summary'
   const files = ['summary.md']
 
