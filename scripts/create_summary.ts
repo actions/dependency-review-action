@@ -130,7 +130,7 @@ async function createSummary(
     scorecard,
     config
   )
-  summary.addChangeVulnerabilitiesToSummary(
+  await summary.addChangeVulnerabilitiesToSummary(
     vulnerabilities,
     config.fail_on_severity
   )
