@@ -8,6 +8,7 @@ import {
   renderUrl,
   octokitClient
 } from './utils'
+import * as semver from 'semver'
 
 const icons = {
   check: '✅',
@@ -17,47 +18,81 @@ const icons = {
 
 const MAX_SCANNED_FILES_BYTES = 1048576
 
-// Helper to check if a version falls within a vulnerable range
-// Supports basic semver comparisons like ">= 8.0.0, <= 8.0.20"
-function versionInRange(version: string, range: string): boolean {
-  if (!version || !range) return false
+/**
+ * Helper to check if a version falls within a vulnerable range.
+ * Uses the `semver` library for proper prerelease handling and range parsing.
+ *
+ * @param version - The version to check (can be pre-trimmed).
+ * @param range - The version range to check against (can be pre-trimmed and/or pre-normalized).
+ * @param options - Configuration options.
+ * @param options.preTrimmed - If true, assumes inputs are already trimmed (optimization).
+ * @param options.preNormalized - If true, assumes range is already normalized (comma-to-space conversion done).
+ * @param options.failClosed - If true, returns true (vulnerable) on errors; if false, returns false (no match).
+ * @returns `true` if the version is considered within the vulnerable range (or on fail-closed), otherwise `false`.
+ */
+function versionInRange(
+  version: string | undefined,
+  range: string | undefined,
+  options: {
+    preTrimmed?: boolean
+    preNormalized?: boolean
+    failClosed?: boolean
+  } = {}
+): boolean {
+  const {preTrimmed = false, preNormalized = false, failClosed = true} = options
 
-  // Parse version into comparable parts
-  const vParts = version.split('.').map(p => parseInt(p, 10))
+  // Trim inputs if not pre-trimmed
+  const trimmedVersion = preTrimmed ? version : version?.trim() || ''
+  const trimmedRange = preTrimmed ? range : range?.trim() || ''
 
-  // Handle range formats like ">= 8.0.0, <= 8.0.20"
-  const conditions = range.split(',').map(c => c.trim())
-
-  for (const condition of conditions) {
-    const match = condition.match(/([><=]+)\s*(\d+(?:\.\d+)*)/)
-    if (!match) continue
-
-    const [, operator, rangeVer] = match
-    const rParts = rangeVer.split('.').map(p => parseInt(p, 10))
-
-    // Compare versions part by part
-    let cmp = 0
-    for (let i = 0; i < Math.max(vParts.length, rParts.length); i++) {
-      const v = vParts[i] || 0
-      const r = rParts[i] || 0
-      if (v > r) {
-        cmp = 1
-        break
-      } else if (v < r) {
-        cmp = -1
-        break
-      }
+  if (!trimmedVersion) {
+    if (failClosed) {
+      core.debug(
+        `Empty or missing version for range "${range}". Treating as vulnerable (fail closed).`
+      )
     }
-
-    // Check if condition is satisfied
-    if (operator === '>=' && cmp < 0) return false
-    if (operator === '>' && cmp <= 0) return false
-    if (operator === '<=' && cmp > 0) return false
-    if (operator === '<' && cmp >= 0) return false
-    if (operator === '=' && cmp !== 0) return false
+    return failClosed
+  }
+  if (!trimmedRange) {
+    if (failClosed) {
+      core.debug(
+        `Empty or missing version range for version "${version}". Treating as vulnerable (fail closed).`
+      )
+    }
+    return failClosed
   }
 
-  return true
+  // Convert GitHub API range format to semver-compatible format if not already normalized
+  // GitHub uses: ">= 8.0.0, <= 8.0.20"
+  // Semver accepts: ">= 8.0.0 <= 8.0.20" (operators may be followed by a space)
+  const semverRange = preNormalized
+    ? trimmedRange
+    : trimmedRange.replace(/,\s*/g, ' ')
+
+  // Validate version and range explicitly to enforce fail-closed semantics
+  // semver.satisfies() typically returns false for invalid inputs without throwing
+  const validVersion = semver.valid(trimmedVersion)
+  const validRange = semver.validRange(semverRange)
+
+  if (!validVersion || !validRange) {
+    if (failClosed) {
+      const issues: string[] = []
+      if (!validVersion) issues.push('version')
+      if (!validRange) issues.push('version range')
+      core.debug(
+        `Invalid ${issues.join(' and ')}: version="${version}", range="${range}". Treating as vulnerable (fail closed).`
+      )
+    }
+    return failClosed
+  }
+
+  // Both version and range are valid; perform the satisfies check
+  // Only include prereleases when the version being checked is itself a prerelease
+  // to avoid changing range semantics globally
+  const isPrerelease = semver.prerelease(validVersion) !== null
+  return semver.satisfies(validVersion, validRange, {
+    includePrerelease: isPrerelease
+  })
 }
 
 function extractPatchVersionId(patchData: unknown): string | null {
@@ -201,7 +236,6 @@ export async function addChangeVulnerabilitiesToSummary(
     return
   }
 
-  const rows: SummaryTableRow[] = []
   const manifests = getManifestsSet(vulnerableChanges)
 
   // Build set of unique advisories to query
@@ -258,7 +292,8 @@ export async function addChangeVulnerabilitiesToSummary(
           }
         }
       } catch (e) {
-        core.debug(`API call failed for ${advId}: ${e}`)
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        core.debug(`API call failed for ${advId}: ${errorMessage}`)
         patchInfo[advId] = []
       }
     })
@@ -267,6 +302,9 @@ export async function addChangeVulnerabilitiesToSummary(
   core.summary.addHeading('Vulnerabilities', 2)
 
   for (const manifest of manifests) {
+    // Create fresh rows array for each manifest to avoid accumulation
+    const rows: SummaryTableRow[] = []
+
     for (const change of vulnerableChanges.filter(
       pkg => pkg.manifest === manifest
     )) {
@@ -279,27 +317,50 @@ export async function addChangeVulnerabilitiesToSummary(
 
         // Look up patch version by matching package name, ecosystem, and version range
         let patchVer = 'N/A'
-        const advData = patchInfo[vuln.advisory_ghsa_id]
-        if (advData && advData.length > 0) {
-          const normalizedEco = change.ecosystem.toLowerCase()
+        const advisoryEntries = patchInfo[vuln.advisory_ghsa_id]
+        if (advisoryEntries && advisoryEntries.length > 0) {
+          const ecoLowercase = change.ecosystem.toLowerCase()
+          const packageLowercase = change.name.toLowerCase()
+          const normalizedChangeVersion = change.version.trim()
           core.debug(
-            `Looking up patch for ${change.name}@${change.version} (${normalizedEco}) in ${vuln.advisory_ghsa_id}`
+            `Looking up patch for ${change.name}@${change.version} (${ecoLowercase}) in ${vuln.advisory_ghsa_id}`
           )
-          // Find matching entry by ecosystem, package name, and version range
-          const matchingEntry = advData.find(
-            entry =>
-              entry.eco === normalizedEco &&
-              entry.pkg === change.name &&
-              versionInRange(change.version, entry.range)
-          )
-          if (matchingEntry) {
-            patchVer = matchingEntry.patch
+
+          // Find matching entry by ecosystem, package name (case-insensitive), and version range
+          let foundEntry:
+            | {eco: string; pkg: string; range: string; patch: string}
+            | undefined
+          for (const vulnEntry of advisoryEntries) {
+            if (vulnEntry.eco.toLowerCase() !== ecoLowercase) continue
+            if (vulnEntry.pkg.toLowerCase() !== packageLowercase) continue
+
+            // Normalize range once for both cache key and function call
+            const trimmedRangeOnce = vulnEntry.range.trim()
+            const normalizedRange = trimmedRangeOnce.replace(/,\s*/g, ' ')
+
+            // Use fail-open (failClosed: false) for patch selection to avoid
+            // incorrectly matching on invalid ranges
+            // Use preTrimmed and preNormalized optimizations since we've done both
+            const isInRange = versionInRange(
+              normalizedChangeVersion,
+              normalizedRange,
+              {preTrimmed: true, preNormalized: true, failClosed: false}
+            )
+
+            if (isInRange) {
+              foundEntry = vulnEntry
+              break
+            }
+          }
+
+          if (foundEntry) {
+            patchVer = foundEntry.patch
             core.debug(
               `Found patch version ${patchVer} for ${change.name}@${change.version}`
             )
           } else {
             core.debug(
-              `No matching patch found for ${change.name}@${change.version}. Available entries: ${JSON.stringify(advData)}`
+              `No matching patch found for ${change.name}@${change.version}. Available entries: ${JSON.stringify(advisoryEntries)}`
             )
           }
         } else {
