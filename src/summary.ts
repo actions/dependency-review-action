@@ -17,6 +17,7 @@ const icons = {
 }
 
 const MAX_SCANNED_FILES_BYTES = 1048576
+const API_CONCURRENCY_LIMIT = 10 // Limit concurrent API requests to avoid rate limiting
 
 /**
  * Helper to check if a version falls within a vulnerable range.
@@ -71,8 +72,20 @@ function versionInRange(
 
   // Validate version and range explicitly to enforce fail-closed semantics
   // semver.satisfies() typically returns false for invalid inputs without throwing
-  const validVersion = semver.valid(trimmedVersion)
+  let validVersion = semver.valid(trimmedVersion)
   const validRange = semver.validRange(semverRange)
+
+  // For fail-open mode (patch selection), try coercing invalid versions
+  // to handle common real-world formats like "8.0", date-based versions, etc.
+  if (!validVersion && !failClosed) {
+    const coerced = semver.coerce(trimmedVersion)
+    if (coerced) {
+      validVersion = coerced.version
+      core.debug(
+        `Coerced version "${trimmedVersion}" to "${validVersion}" for range matching`
+      )
+    }
+  }
 
   if (!validVersion || !validRange) {
     if (failClosed) {
@@ -228,6 +241,46 @@ function countScorecardWarnings(
   )
 }
 
+/**
+ * Execute promises with a concurrency limit to avoid overwhelming APIs.
+ * @param tasks - Array of functions that return promises
+ * @param limit - Maximum number of concurrent promises
+ */
+async function promisePool<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number
+): Promise<T[]> {
+  const results: T[] = []
+  const executing: Set<Promise<void>> = new Set()
+
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i]
+    const index = i
+
+    // Wrap task execution to store result and clean up
+    const wrappedPromise = (async () => {
+      const result = await task()
+      results[index] = result
+    })()
+
+    executing.add(wrappedPromise)
+
+    // When promise completes, remove it from the executing set
+    wrappedPromise.finally(() => {
+      executing.delete(wrappedPromise)
+    })
+
+    // Wait if we've hit the concurrency limit
+    if (executing.size >= limit) {
+      await Promise.race(executing)
+    }
+  }
+
+  // Wait for all remaining promises
+  await Promise.all(executing)
+  return results
+}
+
 export async function addChangeVulnerabilitiesToSummary(
   vulnerableChanges: Changes,
   severity: string
@@ -246,7 +299,7 @@ export async function addChangeVulnerabilitiesToSummary(
     }
   }
 
-  // Query GitHub API for patch info in parallel
+  // Query GitHub API for patch info with concurrency limiting
   // Store all vulnerability entries (may be multiple per package with different ranges)
   const patchInfo: Record<
     string,
@@ -254,50 +307,50 @@ export async function addChangeVulnerabilitiesToSummary(
   > = {}
   const apiClient = octokitClient()
 
-  await Promise.all(
-    Array.from(advisorySet).map(async advId => {
-      try {
-        core.debug(`Fetching advisory data for ${advId}`)
-        const apiResult = await apiClient.request('GET /advisories/{ghsa_id}', {
-          ghsa_id: advId
-        })
+  // Create tasks for promise pool
+  const tasks = Array.from(advisorySet).map(advId => async () => {
+    try {
+      core.debug(`Fetching advisory data for ${advId}`)
+      const apiResult = await apiClient.request('GET /advisories/{ghsa_id}', {
+        ghsa_id: advId
+      })
 
-        patchInfo[advId] = []
-        const vulnList = apiResult.data.vulnerabilities || []
-        core.debug(
-          `Found ${vulnList.length} vulnerability entries for ${advId}`
-        )
+      patchInfo[advId] = []
+      const vulnList = apiResult.data.vulnerabilities || []
+      core.debug(`Found ${vulnList.length} vulnerability entries for ${advId}`)
 
-        for (const v of vulnList) {
-          if (v.package && v.package.ecosystem) {
-            const normalizedEco = v.package.ecosystem.toLowerCase()
-            const pkgName = v.package.name || ''
-            const vulnRange = v.vulnerable_version_range || ''
-            const patchVerId = extractPatchVersionId(v.first_patched_version)
-            if (patchVerId) {
-              patchInfo[advId].push({
-                eco: normalizedEco,
-                pkg: pkgName,
-                range: vulnRange,
-                patch: patchVerId
-              })
-              core.debug(
-                `Added patch info for ${pkgName} (${normalizedEco}): ${patchVerId} for range ${vulnRange}`
-              )
-            } else {
-              core.debug(
-                `No patch version found for ${pkgName} (${normalizedEco}) in ${advId}`
-              )
-            }
+      for (const v of vulnList) {
+        if (v.package && v.package.ecosystem) {
+          const normalizedEco = v.package.ecosystem.toLowerCase()
+          const pkgName = v.package.name || ''
+          const vulnRange = v.vulnerable_version_range || ''
+          const patchVerId = extractPatchVersionId(v.first_patched_version)
+          if (patchVerId) {
+            patchInfo[advId].push({
+              eco: normalizedEco,
+              pkg: pkgName,
+              range: vulnRange,
+              patch: patchVerId
+            })
+            core.debug(
+              `Added patch info for ${pkgName} (${normalizedEco}): ${patchVerId} for range ${vulnRange}`
+            )
+          } else {
+            core.debug(
+              `No patch version found for ${pkgName} (${normalizedEco}) in ${advId}`
+            )
           }
         }
-      } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : String(e)
-        core.debug(`API call failed for ${advId}: ${errorMessage}`)
-        patchInfo[advId] = []
       }
-    })
-  )
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      core.debug(`API call failed for ${advId}: ${errorMessage}`)
+      patchInfo[advId] = []
+    }
+  })
+
+  // Execute API calls with concurrency limit
+  await promisePool(tasks, API_CONCURRENCY_LIMIT)
 
   core.summary.addHeading('Vulnerabilities', 2)
 
@@ -359,8 +412,15 @@ export async function addChangeVulnerabilitiesToSummary(
               `Found patch version ${patchVer} for ${change.name}@${change.version}`
             )
           } else {
+            const maxLoggedEntries = 5
+            const entriesPreview = advisoryEntries
+              .slice(0, maxLoggedEntries)
+              .map(
+                entry =>
+                  `${entry.eco}:${entry.pkg} ${entry.range} -> ${entry.patch}`
+              )
             core.debug(
-              `No matching patch found for ${change.name}@${change.version}. Available entries: ${JSON.stringify(advisoryEntries)}`
+              `No matching patch found for ${change.name}@${change.version}. Available entries (showing up to ${Math.min(advisoryEntries.length, maxLoggedEntries)} of ${advisoryEntries.length}): ${entriesPreview.join('; ')}`
             )
           }
         } else {

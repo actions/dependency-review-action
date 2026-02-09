@@ -19,7 +19,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  jest.clearAllMocks()
+  jest.restoreAllMocks()
   core.summary.emptyBuffer()
 })
 
@@ -638,4 +638,185 @@ test('addChangeVulnerabilitiesToSummary() - handles RestSharp GHSA-4rr6-2v9v-wcp
   expect(mockOctokitRequest).toHaveBeenCalledWith('GET /advisories/{ghsa_id}', {
     ghsa_id: 'GHSA-4rr6-2v9v-wcpc'
   })
+})
+
+test('addChangeVulnerabilitiesToSummary() - handles version coercion for non-strict semver versions', async () => {
+  // Test that versions like "8.0" (without patch version) can be coerced to "8.0.0"
+  // for successful range matching in fail-open mode (patch selection)
+  const pkg = createTestChange({
+    ecosystem: 'npm',
+    name: 'test-package',
+    version: '8.0', // Non-strict semver version
+    vulnerabilities: [
+      createTestVulnerability({
+        advisory_ghsa_id: 'GHSA-test-1234',
+        advisory_summary: 'Test vulnerability',
+        severity: 'high'
+      })
+    ]
+  })
+
+  mockOctokitRequest.mockResolvedValueOnce({
+    data: {
+      vulnerabilities: [
+        {
+          package: {
+            ecosystem: 'npm',
+            name: 'test-package'
+          },
+          vulnerable_version_range: '>= 8.0.0, < 9.0.0',
+          first_patched_version: '9.0.0'
+        }
+      ]
+    }
+  })
+
+  const changes = [pkg]
+  await summary.addChangeVulnerabilitiesToSummary(changes, 'low')
+
+  const text = core.summary.stringify()
+
+  // Should coerce "8.0" to "8.0.0" and successfully match the range,
+  // showing the patched version instead of N/A
+  expect(text).toContain('9.0.0')
+  expect(text).not.toContain('N/A')
+})
+
+test('addChangeVulnerabilitiesToSummary() - handles invalid versions in fail-open mode', async () => {
+  // Test that completely invalid versions that can't be coerced
+  // still return N/A gracefully in fail-open mode
+  const pkg = createTestChange({
+    ecosystem: 'npm',
+    name: 'test-package',
+    version: 'invalid-version-string',
+    vulnerabilities: [
+      createTestVulnerability({
+        advisory_ghsa_id: 'GHSA-test-5678',
+        advisory_summary: 'Test vulnerability',
+        severity: 'high'
+      })
+    ]
+  })
+
+  mockOctokitRequest.mockResolvedValueOnce({
+    data: {
+      vulnerabilities: [
+        {
+          package: {
+            ecosystem: 'npm',
+            name: 'test-package'
+          },
+          vulnerable_version_range: '>= 1.0.0, < 2.0.0',
+          first_patched_version: '2.0.0'
+        }
+      ]
+    }
+  })
+
+  const changes = [pkg]
+  await summary.addChangeVulnerabilitiesToSummary(changes, 'low')
+
+  const text = core.summary.stringify()
+
+  // Should show N/A since version can't be coerced or matched
+  expect(text).toContain('N/A')
+})
+
+test('addChangeVulnerabilitiesToSummary() - respects concurrency limit for API calls', async () => {
+  // Create 15 packages with different vulnerabilities to test concurrency limiting
+  const packages = Array.from({length: 15}, (_, i) =>
+    createTestChange({
+      ecosystem: 'npm',
+      name: `package-${i}`,
+      version: '1.0.0',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_ghsa_id: `GHSA-test-${i.toString().padStart(4, '0')}`,
+          advisory_summary: `Vulnerability ${i}`,
+          severity: 'high'
+        })
+      ]
+    })
+  )
+
+  // Track concurrent calls
+  let maxConcurrent = 0
+  let currentConcurrent = 0
+
+  mockOctokitRequest.mockImplementation(async () => {
+    currentConcurrent++
+    maxConcurrent = Math.max(maxConcurrent, currentConcurrent)
+
+    // Simulate async API call with variable delay
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 10))
+
+    currentConcurrent--
+
+    return {
+      data: {
+        vulnerabilities: [
+          {
+            package: {ecosystem: 'npm', name: 'test'},
+            vulnerable_version_range: '>= 1.0.0, < 2.0.0',
+            first_patched_version: '2.0.0'
+          }
+        ]
+      }
+    }
+  })
+
+  await summary.addChangeVulnerabilitiesToSummary(packages, 'low')
+
+  // Verify that concurrency limit (10) was respected
+  expect(maxConcurrent).toBeLessThanOrEqual(10)
+  // Verify all 15 unique advisories were fetched
+  expect(mockOctokitRequest).toHaveBeenCalledTimes(15)
+})
+
+test('addChangeVulnerabilitiesToSummary() - completes all tasks even with varying durations', async () => {
+  // Test that promise pool doesn't lose tasks when some complete faster than others
+  const packages = Array.from({length: 20}, (_, i) =>
+    createTestChange({
+      ecosystem: 'npm',
+      name: `package-${i}`,
+      version: '1.0.0',
+      vulnerabilities: [
+        createTestVulnerability({
+          advisory_ghsa_id: `GHSA-vary-${i.toString().padStart(4, '0')}`,
+          advisory_summary: `Vulnerability ${i}`,
+          severity: 'high'
+        })
+      ]
+    })
+  )
+
+  const completedAdvisories = new Set<string>()
+
+  mockOctokitRequest.mockImplementation(
+    async (path: string, params: {ghsa_id: string}) => {
+      // Variable delay to simulate real-world API response times
+      const delay = Math.random() * 50
+      await new Promise(resolve => setTimeout(resolve, delay))
+
+      completedAdvisories.add(params.ghsa_id)
+
+      return {
+        data: {
+          vulnerabilities: [
+            {
+              package: {ecosystem: 'npm', name: 'test'},
+              vulnerable_version_range: '>= 1.0.0, < 2.0.0',
+              first_patched_version: '2.0.0'
+            }
+          ]
+        }
+      }
+    }
+  )
+
+  await summary.addChangeVulnerabilitiesToSummary(packages, 'low')
+
+  // Verify all 20 unique advisories were fetched and completed
+  expect(completedAdvisories.size).toBe(20)
+  expect(mockOctokitRequest).toHaveBeenCalledTimes(20)
 })
