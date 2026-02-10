@@ -160,7 +160,7 @@ async function run(): Promise<void> {
       {
         allow: config.allow_licenses,
         deny: config.deny_licenses,
-        licenseExclusions: config.allow_dependencies_licenses
+        allowedDependenciesLicenses: config.allow_dependencies_licenses
       }
     )
 

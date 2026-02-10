@@ -244,7 +244,10 @@ test('it does not filter out changes that are on the exclusions list', async () 
   const changes: Changes = [pipChange, npmChange, rubyChange]
   const licensesConfig = {
     allow: ['BSD-3-Clause'],
-    licenseExclusions: ['pkg:pypi/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
+    allowedDependenciesLicenses: [
+      'pkg:pypi/package-1@1.1.1',
+      'pkg:npm/reeuhq@1.0.2'
+    ]
   }
   const invalidLicenses = await getInvalidLicenseChanges(
     changes,
@@ -254,13 +257,16 @@ test('it does not filter out changes that are on the exclusions list', async () 
 })
 
 test('it does not fail when the packages dont have a valid PURL', async () => {
-  const emptyPurlChange = pipChange
+  const emptyPurlChange = {...pipChange}
   emptyPurlChange.package_url = ''
 
   const changes: Changes = [emptyPurlChange, npmChange, rubyChange]
   const licensesConfig = {
     allow: ['BSD-3-Clause'],
-    licenseExclusions: ['pkg:pypi/package-1@1.1.1', 'pkg:npm/reeuhq@1.0.2']
+    allowedDependenciesLicenses: [
+      'pkg:pypi/package-1@1.1.1',
+      'pkg:npm/reeuhq@1.0.2'
+    ]
   }
 
   const invalidLicenses = await getInvalidLicenseChanges(
@@ -274,7 +280,7 @@ test('it does filters out changes if they are not on the exclusions list', async
   const changes: Changes = [pipChange, npmChange, rubyChange]
   const licensesConfig = {
     allow: ['BSD-3-Clause'],
-    licenseExclusions: [
+    allowedDependenciesLicenses: [
       'pkg:pypi/notmypackage-1@1.1.1',
       'pkg:npm/alsonot@1.0.2'
     ]
@@ -288,6 +294,40 @@ test('it does filters out changes if they are not on the exclusions list', async
   expect(invalidLicenses.forbidden.length).toEqual(2)
   expect(invalidLicenses.forbidden[0]).toBe(pipChange)
   expect(invalidLicenses.forbidden[1]).toBe(npmChange)
+})
+
+test('it does filter out changes that are on the exclusions list with license qualifier', async () => {
+  const changes: Changes = [pipChange, npmChange, rubyChange]
+  const licensesConfig = {
+    allow: ['BSD-3-Clause'],
+    // Will filter out pipChange as license matches
+    allowedDependenciesLicenses: [
+      'pkg:pypi/package-1@1.1.1?license=MIT',
+      'pkg:npm/reeuhq@1.0.2?license=MIT'
+    ]
+  }
+  const invalidLicenses = await getInvalidLicenseChanges(
+    changes,
+    licensesConfig
+  )
+  expect(invalidLicenses.forbidden.length).toEqual(0)
+})
+
+test('it does not filter out changes that are on the exclusions list with license qualifier', async () => {
+  const changes: Changes = [pipChange, npmChange, rubyChange]
+  const licensesConfig = {
+    allow: ['BSD-3-Clause'],
+    // Will not filter out pipChange as license does not match
+    allowedDependenciesLicenses: [
+      'pkg:pypi/package-1@1.1.1?license=Apache-2.0',
+      'pkg:npm/reeuhq@1.0.2'
+    ]
+  }
+  const invalidLicenses = await getInvalidLicenseChanges(
+    changes,
+    licensesConfig
+  )
+  expect(invalidLicenses.forbidden).toEqual([pipChange])
 })
 
 test('it does not fail if there is a license expression in the allow list', async () => {
@@ -342,24 +382,24 @@ describe('GH License API fallback', () => {
   })
 
   test('it does not call licenses API if the package is excluded', async () => {
-    const {unlicensed} = await getInvalidLicenseChanges([unlicensedChange], {
-      licenseExclusions: [
+    const result = await getInvalidLicenseChanges([unlicensedChange], {
+      allowedDependenciesLicenses: [
         'pkg:githubactions/foo-org/actions-repo/.github/workflows/some-action.yml'
       ]
     })
 
     expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
-    expect(unlicensed.length).toEqual(0)
+    expect(result.unlicensed.length).toEqual(0)
   })
 
   test('it checks namespaces when doing exclusions', async () => {
-    const {unlicensed} = await getInvalidLicenseChanges([unlicensedChange], {
-      licenseExclusions: [
+    const result = await getInvalidLicenseChanges([unlicensedChange], {
+      allowedDependenciesLicenses: [
         'pkg:githubactions/bar-org/actions-repo/.github/workflows/some-action.yml'
       ]
     })
 
     expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
-    expect(unlicensed.length).toEqual(1)
+    expect(result.unlicensed.length).toEqual(1)
   })
 })
