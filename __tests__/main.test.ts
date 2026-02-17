@@ -132,9 +132,13 @@ describe('handleLargeSummary', () => {
     expect(result).toContain('actions/runs/12345')
   })
 
-  test('returns original summary and logs a warning when artifact handling fails', async () => {
+  test('returns truncated summary and replaces buffer when artifact upload fails', async () => {
     const warningMock = core.warning as jest.Mock
+    const emptyBufferMock = core.summary.emptyBuffer as jest.Mock
+    const addRawMock = core.summary.addRaw as jest.Mock
     warningMock.mockClear()
+    emptyBufferMock.mockClear()
+    addRawMock.mockClear()
     const largeSummary = 'b'.repeat(1024 * 1024 + 1)
 
     DefaultArtifactClientMock.mockImplementation(() => ({
@@ -145,9 +149,16 @@ describe('handleLargeSummary', () => {
 
     const result = await handleLargeSummary(largeSummary)
 
-    expect(result).toBe(largeSummary)
+    // Should NOT return the original oversized content
+    expect(result).not.toBe(largeSummary)
+    // Should return a truncated summary
+    expect(result).toContain('Dependency Review Summary')
+    expect(result).toContain('too large to display')
+    // Should replace the core.summary buffer to prevent write() from failing
+    expect(emptyBufferMock).toHaveBeenCalled()
+    expect(addRawMock).toHaveBeenCalledWith(result)
     expect(warningMock).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to handle large summary')
+      expect.stringContaining('Failed to upload large summary as artifact')
     )
   })
 })
