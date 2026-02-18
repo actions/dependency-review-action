@@ -34,13 +34,14 @@ test('parsePURL returns a PURL with the correct values in the happy case', () =>
 test('parsePURL table test', () => {
   const examples = [
     {
-      purl: 'pkg:npm/@n4m3SPACE/Name@^1.2.3',
+      purl: 'pkg:npm/@n4m3SPACE/Name@^1.2.3?license=MIT&foo=bar',
       expected: {
         type: 'npm',
         namespace: '@n4m3SPACE',
         name: 'Name',
         version: '^1.2.3',
-        original: 'pkg:npm/@n4m3SPACE/Name@^1.2.3',
+        license: 'MIT',
+        original: 'pkg:npm/@n4m3SPACE/Name@^1.2.3?license=MIT&foo=bar',
         error: null
       }
     },
@@ -52,6 +53,7 @@ test('parsePURL table test', () => {
         namespace: 'gopkg.in',
         name: 'DataDog/dd-trace-go.v1',
         version: '1.63.1',
+        license: null,
         original: 'pkg:golang/gopkg.in/DataDog/dd-trace-go.v1@1.63.1',
         error: null
       }
@@ -64,6 +66,7 @@ test('parsePURL table test', () => {
         namespace: 'github.com',
         name: 'pelletier/go-toml/v2',
         version: null,
+        license: null,
         original: 'pkg:golang/github.com/pelletier/go-toml/v2',
         error: null
       }
@@ -75,6 +78,7 @@ test('parsePURL table test', () => {
         namespace: '@ns foo',
         name: 'n@me',
         version: '1./2.3',
+        license: null,
         original: 'pkg:npm/%40ns%20foo/n%40me@1.%2f2.3',
         error: null
       }
@@ -86,6 +90,7 @@ test('parsePURL table test', () => {
         namespace: null,
         name: 'name',
         version: 'version',
+        license: null,
         original: 'pkg:ecosystem/name@version',
         error: null
       }
@@ -97,6 +102,7 @@ test('parsePURL table test', () => {
         namespace: 'namespace',
         name: null,
         version: null,
+        license: null,
         original: 'pkg:npm/namespace/',
         error: null
       }
@@ -108,6 +114,7 @@ test('parsePURL table test', () => {
         namespace: null,
         name: 'name',
         version: null,
+        license: null,
         original: 'pkg:ecosystem/name',
         error: null
       }
@@ -119,6 +126,7 @@ test('parsePURL table test', () => {
         namespace: null,
         name: null,
         version: null,
+        license: null,
         original: 'pkg:/?',
         error: 'package-url must contain a type'
       }
@@ -130,6 +138,7 @@ test('parsePURL table test', () => {
         namespace: null,
         name: null,
         version: null,
+        license: null,
         original: 'pkg:ecosystem/#',
         error: 'package-url must contain a namespace or name'
       }
@@ -141,6 +150,7 @@ test('parsePURL table test', () => {
         namespace: null,
         name: 'name',
         version: 'version',
+        license: null,
         original: 'pkg:ecosystem/name@version#subpath?attributes=123',
         error: null
       }
@@ -152,6 +162,7 @@ test('parsePURL table test', () => {
         namespace: null,
         name: 'name',
         version: 'version',
+        license: null,
         original: 'pkg:ecosystem/name@version#subpath',
         error: null
       }
@@ -163,6 +174,7 @@ test('parsePURL table test', () => {
         namespace: 'namespace',
         name: 'name',
         version: 'version',
+        license: null,
         original: 'pkg:ecosystem/namespace/name@version?attributes',
         error: null
       }
@@ -174,7 +186,20 @@ test('parsePURL table test', () => {
         namespace: null,
         name: 'name',
         version: null,
+        license: null,
         original: 'pkg:ecosystem/name#subpath?attributes',
+        error: null
+      }
+    },
+    {
+      purl: 'pkg:ecosystem/name#subpath?license=MIT&foo=bar',
+      expected: {
+        type: 'ecosystem',
+        namespace: null,
+        name: 'name',
+        version: null,
+        license: 'MIT',
+        original: 'pkg:ecosystem/name#subpath?license=MIT&foo=bar',
         error: null
       }
     }

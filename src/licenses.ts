@@ -6,27 +6,30 @@ import * as spdx from './spdx'
 /**
  * Loops through a list of changes, filtering and returning the
  * ones that don't conform to the licenses allow/deny lists.
- * It will also filter out the changes which are defined in the licenseExclusions list.
+ * It will also filter out the changes which are defined in the allowedDependenciesLicenses list.
  *
  * Keep in mind that we don't let users specify both an allow and a deny
  * list in their config files, so this code works under the assumption that
  * one of the two list parameters will be empty. If both lists are provided,
  * we will ignore the deny list.
  * @param {Change[]} changes The list of changes to filter.
- * @param { { allow?: string[], deny?: string[], licenseExclusions?: string[]}} licenses An object with `allow`/`deny`/`licenseExclusions` keys, each containing a list of licenses.
+ * @param { { allow?: string[], deny?: string[], allowedDependenciesLicenses?: string[]}} licenses An object with `allow`/`deny`/`allowedDependenciesLicenses` keys, each containing a list of licenses.
  * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
  */
-export type InvalidLicenseChangeTypes =
-  | 'unlicensed'
-  | 'unresolved'
-  | 'forbidden'
-export type InvalidLicenseChanges = Record<InvalidLicenseChangeTypes, Changes>
+
+export type InvalidLicenseChanges = {
+  unlicensed: Changes
+  unresolved: Changes
+  forbidden: Changes
+}
+export type InvalidLicenseChangeTypes = keyof InvalidLicenseChanges
+
 export async function getInvalidLicenseChanges(
   changes: Change[],
   licenses: {
     allow?: string[]
     deny?: string[]
-    licenseExclusions?: string[]
+    allowedDependenciesLicenses?: string[]
   }
 ): Promise<InvalidLicenseChanges> {
   const deny = licenses.deny
@@ -39,15 +42,33 @@ export async function getInvalidLicenseChanges(
     return !license.includes(' AND ') && !license.includes(' OR ')
   })
 
-  const licenseExclusions = licenses.licenseExclusions?.map(
+  const allowedDepLicenses = licenses.allowedDependenciesLicenses?.map(
     (pkgUrl: string) => {
       return parsePURL(pkgUrl)
     }
   )
 
-  const groupedChanges = await groupChanges(changes, licenseExclusions)
+  // Allow-list/Filter entries without a license are technically wildcards, so they apply
+  // to any matching packages regardless of their license.
+  // So we apply this filter before any operations that pull license information.
+  const filtersWithNoLicenseQualifier = allowedDepLicenses?.filter(
+    allowed => allowed.license == null
+  )
+  const preFilteredChanges = changes.filter(change =>
+    filterLicenseChange(change, filtersWithNoLicenseQualifier)
+  )
 
-  const licensedChanges: Changes = groupedChanges.licensed
+  // Group changes after initial filtering to ensure we don't pull unnecessary licenses from GH.
+  const groupedChanges = await groupChanges(preFilteredChanges)
+
+  // Secondary filter to apply allow-list entries with a license qualifier.
+  // We have to do this after as the groupChanges function pulls license information from GH.
+  const filtersWithLicenseQualifier = allowedDepLicenses?.filter(
+    allowedDep => allowedDep.license != null
+  )
+  const filteredLicensedChanges = groupedChanges.licensed.filter(change =>
+    filterLicenseChange(change, filtersWithLicenseQualifier)
+  )
 
   const invalidLicenseChanges: InvalidLicenseChanges = {
     unlicensed: groupedChanges.unlicensed,
@@ -57,7 +78,7 @@ export async function getInvalidLicenseChanges(
 
   const validityCache = new Map<string, boolean>()
 
-  for (const change of licensedChanges) {
+  for (const change of filteredLicensedChanges) {
     const license = change.license
 
     // should never happen since licensedChanges always have licenses but license is nullable in changes schema
@@ -95,6 +116,55 @@ export async function getInvalidLicenseChanges(
   }
 
   return invalidLicenseChanges
+}
+
+/**
+ * Filters out changes that are on the allowed dependencies licenses list.
+ *
+ * @param change The change to check if it should be filtered out or not.
+ * @param allowedDependenciesLicenses The list of allowed dependencies licenses, represented as parsed package URLs.
+ * @returns true if the change should be kept, false if it should be filtered out.
+ */
+const filterLicenseChange = (
+  change: Change,
+  allowedDependenciesLicenses?: PackageURL[]
+): boolean => {
+  if (
+    change.package_url.length === 0 ||
+    allowedDependenciesLicenses === undefined ||
+    allowedDependenciesLicenses?.length === 0
+  ) {
+    return true
+  }
+
+  const changeAsPackageURL = parsePURL(change.package_url)
+
+  for (const allowedDep of allowedDependenciesLicenses) {
+    if (
+      allowedDep.type !== changeAsPackageURL.type ||
+      allowedDep.namespace !== changeAsPackageURL.namespace ||
+      allowedDep.name !== changeAsPackageURL.name
+    ) {
+      continue
+    }
+
+    // Any license is allowed if the allow-list entry doesn't specify one
+    if (allowedDep.license == null) {
+      return false
+    }
+
+    // If no license specified, remove it from the list of changes
+    // This maintains backwards compatibility
+    if (change.license == null) {
+      return false
+    }
+
+    if (allowedDep.license === change.license) {
+      return false
+    }
+  }
+
+  return true
 }
 
 const fetchGHLicense = async (
@@ -154,49 +224,20 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
 const truncatedDGLicense = (license: string): boolean =>
   license.length === 255 && !spdx.isValid(license)
 
-async function groupChanges(
-  changes: Changes,
-  licenseExclusions: PackageURL[] | null = null
-): Promise<Record<string, Changes>> {
-  const result: Record<string, Changes> = {
+type GroupedChanges = {
+  licensed: Changes
+  unlicensed: Changes
+}
+
+async function groupChanges(changes: Changes): Promise<GroupedChanges> {
+  const result: GroupedChanges = {
     licensed: [],
     unlicensed: []
   }
 
-  let candidateChanges = changes
-
-  // If a package is excluded from license checking, we don't bother trying to
-  // fetch the license for it and we leave it off of the `licensed` and
-  // `unlicensed` lists.
-  if (licenseExclusions !== null && licenseExclusions !== undefined) {
-    candidateChanges = candidateChanges.filter(change => {
-      if (change.package_url.length === 0) {
-        return true
-      }
-
-      const changeAsPackageURL = parsePURL(change.package_url)
-
-      // We want to find if the licenseExclusion list contains the PackageURL of the Change
-      // If it does, we want to filter it out and therefore return false
-      // If it doesn't, we want to keep it and therefore return true
-      if (
-        licenseExclusions.findIndex(
-          exclusion =>
-            exclusion.type === changeAsPackageURL.type &&
-            exclusion.namespace === changeAsPackageURL.namespace &&
-            exclusion.name === changeAsPackageURL.name
-        ) !== -1
-      ) {
-        return false
-      } else {
-        return true
-      }
-    })
-  }
-
   const ghChanges = []
 
-  for (const change of candidateChanges) {
+  for (const change of changes) {
     if (change.change_type === 'removed') {
       continue
     }

@@ -248,6 +248,40 @@ allow-dependencies-licenses:
   - 'pkg:pypi/requests'
 ```
 
+### Exclude dependencies and specific licenses
+
+The above example excludes the dependency entirely, which leaves you blind to changes in licenses for those dependencies. If you want to exclude a dependency and license combo, you can use the `license` PURL qualifier.
+
+This example excludes specific dependency/license pairs from the license check:
+1. `lodash` from `npm` as long as it is `MIT` licensed
+2. `requests` from `pip` as long as it is `MIT` or `Apache-2.0` licensed
+
+```yaml
+name: 'Dependency Review'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+          deny-licenses: LGPL-2.0, BSD-2-Clause
+          comment-summary-in-pr: always
+          allow-dependencies-licenses: |
+            pkg:npm/lodash?license=MIT
+            pkg:pypi/requests?license=MIT
+            pkg:pypi/requests?license=Apache-2.0
+```
+
 ## Only check for vulnerabilities
 
 To only do the vulnerability check you can use the `license-check` to disable the license compatibility check (which is done by default).
