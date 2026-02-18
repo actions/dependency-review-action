@@ -246,21 +246,16 @@ function countScorecardWarnings(
  * @param tasks - Array of functions that return promises
  * @param limit - Maximum number of concurrent promises
  */
-async function promisePool<T>(
-  tasks: (() => Promise<T>)[],
+async function promisePool(
+  tasks: (() => Promise<void>)[],
   limit: number
-): Promise<T[]> {
-  const results: T[] = []
+): Promise<void> {
   const executing: Set<Promise<void>> = new Set()
 
-  for (let i = 0; i < tasks.length; i++) {
-    const task = tasks[i]
-    const index = i
-
-    // Wrap task execution to store result and clean up
+  for (const task of tasks) {
+    // Execute task and clean up
     const wrappedPromise = (async () => {
-      const result = await task()
-      results[index] = result
+      await task()
     })()
 
     executing.add(wrappedPromise)
@@ -278,7 +273,6 @@ async function promisePool<T>(
 
   // Wait for all remaining promises
   await Promise.all(executing)
-  return results
 }
 
 export async function addChangeVulnerabilitiesToSummary(
@@ -301,9 +295,18 @@ export async function addChangeVulnerabilitiesToSummary(
 
   // Query GitHub API for patch info with concurrency limiting
   // Store all vulnerability entries (may be multiple per package with different ranges)
+  // Pre-normalize ecosystem, package name, and range to avoid repeated work in rendering
   const patchInfo: Record<
     string,
-    {eco: string; pkg: string; range: string; patch: string}[]
+    {
+      eco: string
+      pkg: string
+      range: string
+      patch: string
+      ecoLower: string
+      pkgLower: string
+      normalizedRange: string
+    }[]
   > = {}
   const apiClient = octokitClient()
 
@@ -326,11 +329,17 @@ export async function addChangeVulnerabilitiesToSummary(
           const vulnRange = v.vulnerable_version_range || ''
           const patchVerId = extractPatchVersionId(v.first_patched_version)
           if (patchVerId) {
+            // Pre-normalize and cache values to avoid repeated work in rendering loop
+            const trimmedRange = vulnRange.trim()
+            const normalizedRange = trimmedRange.replace(/,\s*/g, ' ')
             patchInfo[advId].push({
               eco: normalizedEco,
               pkg: pkgName,
               range: vulnRange,
-              patch: patchVerId
+              patch: patchVerId,
+              ecoLower: normalizedEco, // Ecosystem already normalized to lowercase
+              pkgLower: pkgName.toLowerCase(),
+              normalizedRange
             })
             core.debug(
               `Added patch info for ${pkgName} (${normalizedEco}): ${patchVerId} for range ${vulnRange}`
@@ -380,23 +389,20 @@ export async function addChangeVulnerabilitiesToSummary(
           )
 
           // Find matching entry by ecosystem, package name (case-insensitive), and version range
+          // Use pre-normalized values from cache to avoid repeated lowercasing and range conversion
           let foundEntry:
             | {eco: string; pkg: string; range: string; patch: string}
             | undefined
           for (const vulnEntry of advisoryEntries) {
-            if (vulnEntry.eco.toLowerCase() !== ecoLowercase) continue
-            if (vulnEntry.pkg.toLowerCase() !== packageLowercase) continue
-
-            // Normalize range once for both cache key and function call
-            const trimmedRangeOnce = vulnEntry.range.trim()
-            const normalizedRange = trimmedRangeOnce.replace(/,\s*/g, ' ')
+            if (vulnEntry.ecoLower !== ecoLowercase) continue
+            if (vulnEntry.pkgLower !== packageLowercase) continue
 
             // Use fail-open (failClosed: false) for patch selection to avoid
             // incorrectly matching on invalid ranges
             // Use preTrimmed and preNormalized optimizations since we've done both
             const isInRange = versionInRange(
               normalizedChangeVersion,
-              normalizedRange,
+              vulnEntry.normalizedRange,
               {preTrimmed: true, preNormalized: true, failClosed: false}
             )
 

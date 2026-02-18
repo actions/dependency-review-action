@@ -747,8 +747,8 @@ test('addChangeVulnerabilitiesToSummary() - respects concurrency limit for API c
     currentConcurrent++
     maxConcurrent = Math.max(maxConcurrent, currentConcurrent)
 
-    // Simulate async API call with variable delay
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 10))
+    // Simulate async API call with a small deterministic delay
+    await new Promise(resolve => setTimeout(resolve, 5))
 
     currentConcurrent--
 
