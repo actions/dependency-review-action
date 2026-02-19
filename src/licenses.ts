@@ -41,7 +41,7 @@ export async function getInvalidLicenseChanges(
 
   const licenseExclusions = licenses.licenseExclusions?.map(
     (pkgUrl: string) => {
-      return parsePURL(pkgUrl)
+      return parsePURL(encodeURI(pkgUrl))
     }
   )
 
