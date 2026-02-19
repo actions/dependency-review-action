@@ -73,6 +73,13 @@ export async function handleLargeSummary(
     return summaryContent
   }
 
+  const summarySize = Math.round(
+    Buffer.byteLength(summaryContent, 'utf8') / 1024
+  )
+  const truncatedSummary = `# Dependency Review Summary
+
+The full dependency review summary was too large to display here (${summarySize}KB, limit is 1024KB).`
+
   const artifactClient = new DefaultArtifactClient()
   const artifactName = 'dependency-review-summary'
   const files = ['summary.md']
@@ -87,9 +94,9 @@ export async function handleLargeSummary(
     })
 
     // Return a shorter summary with a link to the artifact
-    const shortSummary = `# Dependency Review Summary
+    const shortSummary = `${truncatedSummary}
 
-The full dependency review summary is too large to display here. Please download the artifact named "${artifactName}" to view the complete report.
+Please download the artifact named "${artifactName}" to view the complete report.
 
 [View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
 
@@ -99,9 +106,14 @@ The full dependency review summary is too large to display here. Please download
     return shortSummary
   } catch (error) {
     core.warning(
-      `Failed to handle large summary: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to upload large summary as artifact: ${error instanceof Error ? error.message : 'Unknown error'}`
     )
-    return summaryContent
+    // Even though artifact upload failed, we must still replace the buffer
+    // with a truncated summary to prevent core.summary.write() from failing
+    // with the oversized content (see issue #867)
+    core.summary.emptyBuffer()
+    core.summary.addRaw(truncatedSummary)
+    return truncatedSummary
   }
 }
 
@@ -268,7 +280,13 @@ async function run(): Promise<void> {
       }
     }
   } finally {
-    await core.summary.write()
+    try {
+      await core.summary.write()
+    } catch (error) {
+      core.warning(
+        `Failed to write job summary: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
   }
 }
 
