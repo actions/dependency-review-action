@@ -225,3 +225,25 @@ test('purlsMatch matches packages without namespaces', () => {
   const b = parsePURL('pkg:npm/lodash@5.0.0')
   expect(purlsMatch(a, b)).toBe(true)
 })
+
+test('purlsMatch is case-insensitive for GitHub Actions', () => {
+  const a = parsePURL('pkg:githubactions/MyOrg/MyAction@1.0.0')
+  const b = parsePURL('pkg:githubactions/myorg/myaction@1.0.0')
+  expect(purlsMatch(a, b)).toBe(true)
+})
+
+test('purlsMatch is case-insensitive for scoped npm packages', () => {
+  const a = parsePURL('pkg:npm/@MyScope/MyPackage')
+  const b = parsePURL('pkg:npm/@myscope/mypackage')
+  expect(purlsMatch(a, b)).toBe(true)
+})
+
+test('purlsMatch is case-insensitive for GitHub Actions with file paths', () => {
+  const a = parsePURL(
+    'pkg:githubactions/MyOrg/MyWorkflows/.github/workflows/general.yml'
+  )
+  const b = parsePURL(
+    'pkg:githubactions/myorg/myworkflows/.github/workflows/general.yml'
+  )
+  expect(purlsMatch(a, b)).toBe(true)
+})
