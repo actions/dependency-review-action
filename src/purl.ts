@@ -70,3 +70,25 @@ export function parsePURL(purl: string): PackageURL {
   // we don't parse subpath or attributes, so we're done here
   return result
 }
+
+// Returns the full name of a package, combining namespace and name.
+// This normalizes PURLs where the namespace separator '/' may have been
+// percent-encoded as '%2F', causing it to be parsed as part of the name
+// rather than splitting namespace and name.
+function fullName(purl: PackageURL): string | null {
+  if (purl.namespace && purl.name) {
+    return `${purl.namespace}/${purl.name}`
+  }
+  return purl.name ?? purl.namespace
+}
+
+// Compare two PackageURLs for equality, ignoring version and normalizing
+// namespace/name splits. This handles the case where a PURL like
+// 'pkg:npm/%40scope%2Fname' is parsed as {namespace: null, name: '@scope/name'}
+// while 'pkg:npm/%40scope/name' is parsed as {namespace: '@scope', name: 'name'}.
+export function purlsMatch(a: PackageURL, b: PackageURL): boolean {
+  if (a.type !== b.type) {
+    return false
+  }
+  return fullName(a) === fullName(b)
+}

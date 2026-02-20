@@ -253,6 +253,33 @@ test('it does not filter out changes that are on the exclusions list', async () 
   expect(invalidLicenses.forbidden.length).toEqual(0)
 })
 
+test('it excludes scoped npm packages when namespace separator is percent-encoded', async () => {
+  const scopedNpmChange: Change = {
+    manifest: 'package.json',
+    change_type: 'added',
+    ecosystem: 'npm',
+    name: '@lancedb/lancedb',
+    version: '0.14.3',
+    package_url: 'pkg:npm/%40lancedb/lancedb@0.14.3',
+    license: 'Apache-2.0',
+    source_repository_url: 'github.com/lancedb/lancedb',
+    scope: 'runtime',
+    vulnerabilities: []
+  }
+  const changes: Changes = [scopedNpmChange, rubyChange]
+  const licensesConfig = {
+    allow: ['BSD-3-Clause'],
+    // user provides %2F-encoded version
+    licenseExclusions: ['pkg:npm/%40lancedb%2Flancedb']
+  }
+  const invalidLicenses = await getInvalidLicenseChanges(
+    changes,
+    licensesConfig
+  )
+  // scoped package should be excluded, only rubyChange remains (allowed)
+  expect(invalidLicenses.forbidden.length).toEqual(0)
+})
+
 test('it does not fail when the packages dont have a valid PURL', async () => {
   const emptyPurlChange = pipChange
   emptyPurlChange.package_url = ''
