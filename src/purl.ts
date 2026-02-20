@@ -86,9 +86,12 @@ function fullName(purl: PackageURL): string | null {
 // namespace/name splits. This handles the case where a PURL like
 // 'pkg:npm/%40scope%2Fname' is parsed as {namespace: null, name: '@scope/name'}
 // while 'pkg:npm/%40scope/name' is parsed as {namespace: '@scope', name: 'name'}.
+//
+// The comparison is case-insensitive because most ecosystems and registries
+// treat names that way (npm, PyPI, GitHub org/repo names, etc.).
 export function purlsMatch(a: PackageURL, b: PackageURL): boolean {
-  if (a.type !== b.type) {
+  if (a.type.toLowerCase() !== b.type.toLowerCase()) {
     return false
   }
-  return fullName(a) === fullName(b)
+  return fullName(a)?.toLowerCase() === fullName(b)?.toLowerCase()
 }
