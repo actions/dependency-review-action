@@ -1,6 +1,6 @@
 import {Change, Changes} from './schemas'
 import {octokitClient} from './utils'
-import {parsePURL, PackageURL} from './purl'
+import {parsePURL, PackageURL, purlsMatch} from './purl'
 import * as spdx from './spdx'
 
 /**
@@ -180,11 +180,8 @@ async function groupChanges(
       // If it does, we want to filter it out and therefore return false
       // If it doesn't, we want to keep it and therefore return true
       if (
-        licenseExclusions.findIndex(
-          exclusion =>
-            exclusion.type === changeAsPackageURL.type &&
-            exclusion.namespace === changeAsPackageURL.namespace &&
-            exclusion.name === changeAsPackageURL.name
+        licenseExclusions.findIndex(exclusion =>
+          purlsMatch(exclusion, changeAsPackageURL)
         ) !== -1
       ) {
         return false
