@@ -33,7 +33,7 @@ export function renderUrl(url: string | null, text: string): string {
   }
 }
 
-function isEnterprise(): boolean {
+export function isEnterprise(): boolean {
   const serverUrl = new URL(
     process.env['GITHUB_SERVER_URL'] ?? 'https://github.com'
   )

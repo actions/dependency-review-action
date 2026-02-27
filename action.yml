@@ -76,6 +76,9 @@ inputs:
   warn-on-openssf-scorecard-level:
     description: Numeric threshold for the OpenSSF Scorecard score. If the score is below this threshold, the action will warn you.
     required: false
+  show-patched-versions:
+    description: When set to `true`, the vulnerability summary table will include a column showing the first patched version for each vulnerability.
+    required: false
 outputs:
   comment-content:
     description: Prepared dependency report comment

@@ -4,8 +4,8 @@
   - [Overview](#overview)
     - [Viewing the results](#viewing-the-results)
   - [Installation](#installation)
-      - [Installation (standard)](#installation-standard)
-      - [Installation (GitHub Enterprise Server)](#installation-github-enterprise-server)
+    - [Installation (standard)](#installation-standard)
+    - [Installation (GitHub Enterprise Server)](#installation-github-enterprise-server)
   - [Configuration](#configuration)
     - [Configuration options](#configuration-options)
     - [Configuration methods](#configuration-methods)
@@ -130,6 +130,7 @@ All configuration options are optional.
 | `warn-only`+                           | When set to `true`, the action will log all vulnerabilities as warnings regardless of the severity, and the action will complete with a `success` status. This overrides the `fail-on-severity` option.                                                                                                                                                            | `true`, `false`                                                                                              | `false`       |
 | `show-openssf-scorecard`               | When set to `true`, the action will output information about all the known OpenSSF Scorecard scores for the dependencies changed in this pull request.                                                                                                                                                                                                             | `true`, `false`                                                                                              | `true`        |
 | `warn-on-openssf-scorecard-level`      | When `show-openssf-scorecard-levels` is set to `true`, this option lets you configure the threshold for when a score is considered too low and gets a :warning: warning in the CI.                                                                                                                                                                                 | Any positive integer                                                                                         | 3             |
+| `show-patched-versions`\*              | When set to `true`, the vulnerability summary table will include an additional column showing the first patched version for each vulnerability. This requires additional API calls to fetch advisory data.                                                                                                                                                          | `true`, `false`                                                                                              | `false`       |
 
 > [!NOTE]
 >
@@ -215,6 +216,7 @@ You can use an external configuration file to specify settings for this action. 
 
 3. Create the configuration file in the path you specified for `config-file`.
 4. In the configuration file, specify your chosen settings.
+
    ```yaml
    fail-on-severity: 'critical'
    allow-licenses:

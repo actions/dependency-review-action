@@ -2,7 +2,14 @@ import * as core from '@actions/core'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
 import {Change, Changes, ConfigurationOptions, Scorecard} from './schemas'
-import {groupDependenciesByManifest, getManifestsSet, renderUrl} from './utils'
+import {
+  groupDependenciesByManifest,
+  getManifestsSet,
+  renderUrl,
+  octokitClient,
+  isEnterprise
+} from './utils'
+import * as semver from 'semver'
 
 const icons = {
   check: '✅',
@@ -11,6 +18,109 @@ const icons = {
 }
 
 const MAX_SCANNED_FILES_BYTES = 1048576
+const API_CONCURRENCY_LIMIT = 10 // Limit concurrent API requests to avoid rate limiting
+
+/**
+ * Helper to check if a version falls within a vulnerable range.
+ * Uses the `semver` library for proper prerelease handling and range parsing.
+ *
+ * @param version - The version to check (can be pre-trimmed).
+ * @param range - The version range to check against (can be pre-trimmed and/or pre-normalized).
+ * @param options - Configuration options.
+ * @param options.preTrimmed - If true, assumes inputs are already trimmed (optimization).
+ * @param options.preNormalized - If true, assumes range is already normalized (comma-to-space conversion done).
+ * @param options.failClosed - If true, returns true (vulnerable) on errors; if false, returns false (no match).
+ * @returns `true` if the version is considered within the vulnerable range (or on fail-closed), otherwise `false`.
+ */
+function versionInRange(
+  version: string | undefined,
+  range: string | undefined,
+  options: {
+    preTrimmed?: boolean
+    preNormalized?: boolean
+    failClosed?: boolean
+  } = {}
+): boolean {
+  const {preTrimmed = false, preNormalized = false, failClosed = true} = options
+
+  // Trim inputs if not pre-trimmed
+  const trimmedVersion = preTrimmed ? version : version?.trim() || ''
+  const trimmedRange = preTrimmed ? range : range?.trim() || ''
+
+  if (!trimmedVersion) {
+    if (failClosed) {
+      core.debug(
+        `Empty or missing version for range "${range}". Treating as vulnerable (fail closed).`
+      )
+    }
+    return failClosed
+  }
+  if (!trimmedRange) {
+    if (failClosed) {
+      core.debug(
+        `Empty or missing version range for version "${version}". Treating as vulnerable (fail closed).`
+      )
+    }
+    return failClosed
+  }
+
+  // Convert GitHub API range format to semver-compatible format if not already normalized
+  // GitHub uses: ">= 8.0.0, <= 8.0.20"
+  // Semver accepts: ">= 8.0.0 <= 8.0.20" (operators may be followed by a space)
+  const semverRange = preNormalized
+    ? trimmedRange
+    : trimmedRange.replace(/,\s*/g, ' ')
+
+  // Validate version and range explicitly to enforce fail-closed semantics
+  // semver.satisfies() typically returns false for invalid inputs without throwing
+  let validVersion = semver.valid(trimmedVersion)
+  const validRange = semver.validRange(semverRange)
+
+  // For fail-open mode (patch selection), try coercing invalid versions
+  // to handle common real-world formats like "8.0", date-based versions, etc.
+  if (!validVersion && !failClosed) {
+    const coerced = semver.coerce(trimmedVersion)
+    if (coerced) {
+      validVersion = coerced.version
+      core.debug(
+        `Coerced version "${trimmedVersion}" to "${validVersion}" for range matching`
+      )
+    }
+  }
+
+  if (!validVersion || !validRange) {
+    if (failClosed) {
+      const issues: string[] = []
+      if (!validVersion) issues.push('version')
+      if (!validRange) issues.push('version range')
+      core.debug(
+        `Invalid ${issues.join(' and ')}: version="${version}", range="${range}". Treating as vulnerable (fail closed).`
+      )
+    }
+    return failClosed
+  }
+
+  // Both version and range are valid; perform the satisfies check
+  // Only include prereleases when the version being checked is itself a prerelease
+  // to avoid changing range semantics globally
+  const isPrerelease = semver.prerelease(validVersion) !== null
+  return semver.satisfies(validVersion, validRange, {
+    includePrerelease: isPrerelease
+  })
+}
+
+function extractPatchVersionId(patchData: unknown): string | null {
+  // Handle string format (current API response)
+  if (typeof patchData === 'string') return patchData
+
+  // Handle object format with identifier field (for backward compatibility)
+  if (patchData && typeof patchData === 'object' && 'identifier' in patchData) {
+    const id = (patchData as {identifier: unknown}).identifier
+    return typeof id === 'string' ? id : null
+  }
+
+  return null
+}
 
 // generates the DR report summary and caches it to the Action's core.summary.
 // returns the DR summary string, ready to be posted as a PR comment if the
@@ -132,21 +242,142 @@ function countScorecardWarnings(
   )
 }
 
-export function addChangeVulnerabilitiesToSummary(
+/**
+ * Execute promises with a concurrency limit to avoid overwhelming APIs.
+ * @param tasks - Array of functions that return promises
+ * @param limit - Maximum number of concurrent promises
+ */
+async function promisePool(
+  tasks: (() => Promise<void>)[],
+  limit: number
+): Promise<void> {
+  const executing: Set<Promise<void>> = new Set()
+
+  for (const task of tasks) {
+    // Execute task and clean up
+    const wrappedPromise = (async () => {
+      await task()
+    })()
+
+    executing.add(wrappedPromise)
+
+    // When promise completes, remove it from the executing set
+    wrappedPromise.finally(() => {
+      executing.delete(wrappedPromise)
+    })
+
+    // Wait if we've hit the concurrency limit
+    if (executing.size >= limit) {
+      await Promise.race(executing)
+    }
+  }
+
+  // Wait for all remaining promises
+  await Promise.all(executing)
+}
+
+export async function addChangeVulnerabilitiesToSummary(
   vulnerableChanges: Changes,
-  severity: string
-): void {
+  severity: string,
+  showPatchedVersions = false
+): Promise<void> {
   if (vulnerableChanges.length === 0) {
     return
   }
 
-  const rows: SummaryTableRow[] = []
-
   const manifests = getManifestsSet(vulnerableChanges)
+
+  // Build set of unique advisories to query
+  const advisorySet = new Set<string>()
+  if (showPatchedVersions) {
+    if (isEnterprise()) {
+      core.warning(
+        'show-patched-versions is not supported on GitHub Enterprise Server. The Patched Version column will be omitted.'
+      )
+      showPatchedVersions = false
+    } else {
+      for (const pkg of vulnerableChanges) {
+        for (const vuln of pkg.vulnerabilities) {
+          advisorySet.add(vuln.advisory_ghsa_id)
+        }
+      }
+    }
+  }
+
+  // Query GitHub API for patch info with concurrency limiting
+  // Store all vulnerability entries (may be multiple per package with different ranges)
+  // Pre-normalize ecosystem, package name, and range to avoid repeated work in rendering
+  const patchInfo: Record<
+    string,
+    {
+      eco: string
+      pkg: string
+      range: string
+      patch: string
+      ecoLower: string
+      pkgLower: string
+      normalizedRange: string
+    }[]
+  > = {}
+  const apiClient = octokitClient()
+
+  // Create tasks for promise pool
+  const tasks = Array.from(advisorySet).map(advId => async () => {
+    try {
+      core.debug(`Fetching advisory data for ${advId}`)
+      const apiResult = await apiClient.request('GET /advisories/{ghsa_id}', {
+        ghsa_id: advId
+      })
+
+      patchInfo[advId] = []
+      const vulnList = apiResult.data.vulnerabilities || []
+      core.debug(`Found ${vulnList.length} vulnerability entries for ${advId}`)
+
+      for (const v of vulnList) {
+        if (v.package && v.package.ecosystem) {
+          const normalizedEco = v.package.ecosystem.toLowerCase()
+          const pkgName = v.package.name || ''
+          const vulnRange = v.vulnerable_version_range || ''
+          const patchVerId = extractPatchVersionId(v.first_patched_version)
+          if (patchVerId) {
+            // Pre-normalize and cache values to avoid repeated work in rendering loop
+            const trimmedRange = vulnRange.trim()
+            const normalizedRange = trimmedRange.replace(/,\s*/g, ' ')
+            patchInfo[advId].push({
+              eco: normalizedEco,
+              pkg: pkgName,
+              range: vulnRange,
+              patch: patchVerId,
+              ecoLower: normalizedEco, // Ecosystem already normalized to lowercase
+              pkgLower: pkgName.toLowerCase(),
+              normalizedRange
+            })
+            core.debug(
+              `Added patch info for ${pkgName} (${normalizedEco}): ${patchVerId} for range ${vulnRange}`
+            )
+          } else {
+            core.debug(
+              `No patch version found for ${pkgName} (${normalizedEco}) in ${advId}`
+            )
+          }
+        }
+      }
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      core.debug(`API call failed for ${advId}: ${errorMessage}`)
+      patchInfo[advId] = []
+    }
+  })
+
+  // Execute API calls with concurrency limit
+  await promisePool(tasks, API_CONCURRENCY_LIMIT)
 
   core.summary.addHeading('Vulnerabilities', 2)
 
   for (const manifest of manifests) {
+    // Create fresh rows array for each manifest to avoid accumulation
+    const rows: SummaryTableRow[] = []
+
     for (const change of vulnerableChanges.filter(
       pkg => pkg.manifest === manifest
     )) {
@@ -157,33 +388,100 @@ export function addChangeVulnerabilitiesToSummary(
           previous_package === change.name &&
           previous_version === change.version
 
+        // Look up patch version by matching package name, ecosystem, and version range
+        let patchVer = 'N/A'
+        const advisoryEntries = patchInfo[vuln.advisory_ghsa_id]
+        if (advisoryEntries && advisoryEntries.length > 0) {
+          const ecoLowercase = change.ecosystem.toLowerCase()
+          const packageLowercase = change.name.toLowerCase()
+          const normalizedChangeVersion = change.version.trim()
+          core.debug(
+            `Looking up patch for ${change.name}@${change.version} (${ecoLowercase}) in ${vuln.advisory_ghsa_id}`
+          )
+
+          // Find matching entry by ecosystem, package name (case-insensitive), and version range
+          // Use pre-normalized values from cache to avoid repeated lowercasing and range conversion
+          let foundEntry:
+            | {eco: string; pkg: string; range: string; patch: string}
+            | undefined
+          for (const vulnEntry of advisoryEntries) {
+            if (vulnEntry.ecoLower !== ecoLowercase) continue
+            if (vulnEntry.pkgLower !== packageLowercase) continue
+
+            // Use fail-open (failClosed: false) for patch selection to avoid
+            // incorrectly matching on invalid ranges
+            // Use preTrimmed and preNormalized optimizations since we've done both
+            const isInRange = versionInRange(
+              normalizedChangeVersion,
+              vulnEntry.normalizedRange,
+              {preTrimmed: true, preNormalized: true, failClosed: false}
+            )
+
+            if (isInRange) {
+              foundEntry = vulnEntry
+              break
+            }
+          }
+
+          if (foundEntry) {
+            patchVer = foundEntry.patch
+            core.debug(
+              `Found patch version ${patchVer} for ${change.name}@${change.version}`
+            )
+          } else {
+            const maxLoggedEntries = 5
+            const entriesPreview = advisoryEntries
+              .slice(0, maxLoggedEntries)
+              .map(
+                entry =>
+                  `${entry.eco}:${entry.pkg} ${entry.range} -> ${entry.patch}`
+              )
+            core.debug(
+              `No matching patch found for ${change.name}@${change.version}. Available entries (showing up to ${Math.min(advisoryEntries.length, maxLoggedEntries)} of ${advisoryEntries.length}): ${entriesPreview.join('; ')}`
+            )
+          }
+        } else {
+          core.debug(`No advisory data available for ${vuln.advisory_ghsa_id}`)
+        }
+
         if (!sameAsPrevious) {
-          rows.push([
+          const row: SummaryTableRow = [
             renderUrl(change.source_repository_url, change.name),
             change.version,
             renderUrl(vuln.advisory_url, vuln.advisory_summary),
             vuln.severity
-          ])
+          ]
+          if (showPatchedVersions) {
+            row.push(patchVer)
+          }
+          rows.push(row)
         } else {
-          rows.push([
+          const row: SummaryTableRow = [
             {data: '', colspan: '2'},
             renderUrl(vuln.advisory_url, vuln.advisory_summary),
             vuln.severity
-          ])
+          ]
+          if (showPatchedVersions) {
+            row.push(patchVer)
+          }
+          rows.push(row)
         }
         previous_package = change.name
         previous_version = change.version
       }
     }
-    core.summary.addHeading(`<em>${manifest}</em>`, 4).addTable([
-      [
-        {data: 'Name', header: true},
-        {data: 'Version', header: true},
-        {data: 'Vulnerability', header: true},
-        {data: 'Severity', header: true}
-      ],
-      ...rows
-    ])
+    const headerRow: SummaryTableRow = [
+      {data: 'Name', header: true},
+      {data: 'Version', header: true},
+      {data: 'Vulnerability', header: true},
+      {data: 'Severity', header: true}
+    ]
+    if (showPatchedVersions) {
+      headerRow.push({data: 'Patched Version', header: true})
+    }
+    core.summary
+      .addHeading(`<em>${manifest}</em>`, 4)
+      .addTable([headerRow, ...rows])
   }
 
   if (severity !== 'low') {
