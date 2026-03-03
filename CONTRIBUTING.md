@@ -108,7 +108,8 @@ _Note: these instructions are for maintainers_
 - Create a local branch based on the `main` of the upstream repo.
 - Update the version number in [package.json](https://github.com/actions/dependency-review-action/blob/main/package.json) and run `npm i` to update the lockfile.
 - Update the dist files by running `npm run build` and `npm run package`
-- Go to [Draft a new release](https://github.com/actions/dependency-review-action/releases/new) in the Releases page.
+- Submit a PR based on your branch and have another maintainer review/approve it.
+- Once merged, go to [Draft a new release](https://github.com/actions/dependency-review-action/releases/new) in the Releases page.
 - Make sure that the `Publish this Action to the GitHub Marketplace` checkbox is enabled
 
 <img width="481" alt="Screen showing Release Action with Publish this Action to the GitHub Marketplace checked" src="https://user-images.githubusercontent.com/2161/173822484-4b60d8b4-c674-4bff-b5ff-b0c4a3650ab7.png">
