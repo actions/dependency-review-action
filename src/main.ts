@@ -242,7 +242,7 @@ async function run(): Promise<void> {
     summary.addScannedFiles(changes)
     printScannedDependencies(changes)
 
-    // include full summary in output; Actions will truncate if oversized
+    // PR comment/summary handling
     let rendered = core.summary.stringify()
 
     // Handle large summaries by uploading as artifact
