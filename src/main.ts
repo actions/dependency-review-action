@@ -242,9 +242,8 @@ async function run(): Promise<void> {
     summary.addScannedFiles(changes)
     printScannedDependencies(changes)
 
-    // include full summary in output; Actions will truncate if oversized
+    // PR comment/summary handling
     let rendered = core.summary.stringify()
-    core.setOutput('comment-content', rendered)
 
     // Handle large summaries by uploading as artifact
     rendered = await handleLargeSummary(rendered)
@@ -256,6 +255,9 @@ async function run(): Promise<void> {
       )
       rendered = minSummary
     }
+
+    // Set the actual PR comment as output (minimal version if too large for a comment on GitHub)
+    core.setOutput('comment-content', rendered)
 
     // update the PR comment if needed with the right-sized summary
     await commentPr(rendered, config, issueFound)
