@@ -8,18 +8,18 @@ Trust these instructions. Only search the codebase if information here is incomp
 
 ## Build & Validation Commands
 
-Always run `npm ci --ignore-scripts` before any other command. This is the install step used in CI.
+For CI-parity installs and local validation, run `npm ci --ignore-scripts` before other commands. This is the install step used in CI; release workflows may follow different install instructions (see CONTRIBUTING).
 
-| Task         | Command                   | Notes                                                                                          |
-| ------------ | ------------------------- | ---------------------------------------------------------------------------------------------- |
-| Install      | `npm ci --ignore-scripts` | ~45s. Always use `--ignore-scripts`.                                                           |
-| Build        | `npm run build`           | Compiles `src/*.ts` → `lib/*.js` via `tsc -p tsconfig.build.json`. ~5s.                        |
-| Test         | `npm test`                | Runs Jest. ~8s. All 188 tests should pass.                                                     |
-| Lint         | `npm run lint`            | ESLint on `src/**/*.ts`. Ignore the TS version warning—it still passes.                        |
-| Format check | `npm run format-check`    | Prettier check on `**/*.ts`.                                                                   |
-| Format fix   | `npm run format`          | Auto-fix formatting with Prettier.                                                             |
-| Package      | `npm run package`         | Bundles `lib/main.js` → `dist/index.js` via `ncc`. ~7s. Do NOT include `dist/` changes in PRs. |
-| All          | `npm run all`             | Runs: build → format → lint → package → test (in that order).                                  |
+| Task         | Command                   | Notes                                                                                                                                    |
+| ------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Install      | `npm ci --ignore-scripts` | ~45s. Use `--ignore-scripts` for CI-parity installs; release workflows may use `npm i` per CONTRIBUTING.                                 |
+| Build        | `npm run build`           | Compiles `src/*.ts` → `lib/*.js` via `tsc -p tsconfig.build.json`. ~5s.                                                                  |
+| Test         | `npm test`                | Runs Jest. ~8s. All tests should pass.                                                                                                   |
+| Lint         | `npm run lint`            | ESLint on `src/**/*.ts`. Ignore the TS version warning—it still passes.                                                                  |
+| Format check | `npm run format-check`    | Prettier check on `**/*.ts`.                                                                                                             |
+| Format fix   | `npm run format`          | Auto-fix formatting with Prettier.                                                                                                       |
+| Package      | `npm run package`         | Bundles the action entrypoint (`package.json#main`) → `dist/index.js` via `ncc`. ~7s. Do NOT include `dist/` changes in non-release PRs. |
+| All          | `npm run all`             | Runs: build → format → lint → package → test (in that order).                                                                            |
 
 ### Validation Sequence After Making Changes
 
@@ -89,7 +89,7 @@ action.yml            # Action metadata — inputs, outputs, and `runs.main: dis
 - Single quotes, no trailing commas
 - `@typescript-eslint/no-explicit-any: error` — never use `any`
 - `@typescript-eslint/explicit-function-return-type: error` — all functions need return types (expressions exempt)
-- Unused variables must be prefixed with `_` (e.g. `_unused`)
+- Unused function parameters/args must be prefixed with `_` (e.g. `_unused`); unused variables should be removed
 - Use Zod schemas (in `src/schemas.ts`) for all data validation and type definitions
 - Config option defaults belong in Zod schemas, NOT in `action.yml`
 
