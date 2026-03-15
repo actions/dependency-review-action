@@ -20,6 +20,7 @@ import {getInvalidLicenseChanges} from './licenses'
 import {getScorecardLevels} from './scorecard'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
+import {initializeProxySupport} from './proxy'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
@@ -123,6 +124,8 @@ interface RepoWithPrivate extends PayloadRepository {
 
 async function run(): Promise<void> {
   try {
+    initializeProxySupport()
+
     const config = await readConfig()
 
     const refs = getRefs(config, github.context)
