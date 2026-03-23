@@ -74,7 +74,7 @@ function versionInRange(
   // Validate version and range explicitly to enforce fail-closed semantics
   // semver.satisfies() typically returns false for invalid inputs without throwing
   let validVersion = semver.valid(trimmedVersion)
-  const validRange = semver.validRange(semverRange)
+  let validRange = semver.validRange(semverRange)
 
   // For fail-open mode (patch selection), try coercing invalid versions
   // to handle common real-world formats like "8.0", date-based versions, etc.
@@ -85,6 +85,26 @@ function versionInRange(
       core.debug(
         `Coerced version "${trimmedVersion}" to "${validVersion}" for range matching`
       )
+    }
+  }
+
+  // For fail-open mode, try coercing invalid version components within the range string
+  // to handle formats like "2.0-beta9" which should be "2.0.0-beta9" for strict semver
+  if (!validRange && !failClosed) {
+    const coercedRangeStr = semverRange.replace(
+      /(?<=[><=~^\s]|^)(\d+\.\d+(?:\.\d+)?(?:-[^\s]*)?)(?=\s|$)/g,
+      match => {
+        const coerced = semver.coerce(match)
+        return coerced ? coerced.version : match
+      }
+    )
+    if (coercedRangeStr !== semverRange) {
+      validRange = semver.validRange(coercedRangeStr)
+      if (validRange) {
+        core.debug(
+          `Coerced range "${semverRange}" to "${coercedRangeStr}" for range matching`
+        )
+      }
     }
   }
 

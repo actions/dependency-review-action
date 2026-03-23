@@ -696,6 +696,49 @@ test('addChangeVulnerabilitiesToSummary() - handles RestSharp GHSA-4rr6-2v9v-wcp
   })
 })
 
+test('addChangeVulnerabilitiesToSummary() - handles GHSA-vc5p-v9hr-52mj maven range', async () => {
+  const pkg = createTestChange({
+    ecosystem: 'maven',
+    name: 'org.apache.logging.log4j:log4j-core',
+    version: '2.12.4',
+    vulnerabilities: [
+      createTestVulnerability({
+        advisory_ghsa_id: 'GHSA-vc5p-v9hr-52mj',
+        advisory_summary: 'Apache Log4j vulnerable to XXE in JDBC Appender',
+        severity: 'high'
+      })
+    ]
+  })
+
+  // Mock API response from https://api.github.com/advisories/GHSA-vc5p-v9hr-52mj
+  mockOctokitRequest.mockResolvedValueOnce({
+    data: {
+      vulnerabilities: [
+        {
+          package: {
+            ecosystem: 'maven',
+            name: 'org.apache.logging.log4j:log4j-core'
+          },
+          vulnerable_version_range: '>= 2.0-beta9, < 2.25.3',
+          first_patched_version: '2.25.3'
+        }
+      ]
+    }
+  })
+
+  const changes = [pkg]
+  await summary.addChangeVulnerabilitiesToSummary(changes, 'low', true)
+
+  const text = core.summary.stringify()
+
+  // Should show the correct patched version for this advisory range
+  expect(text).toContain('2.25.3')
+  expect(text).not.toContain('N/A')
+  expect(mockOctokitRequest).toHaveBeenCalledWith('GET /advisories/{ghsa_id}', {
+    ghsa_id: 'GHSA-vc5p-v9hr-52mj'
+  })
+})
+
 test('addChangeVulnerabilitiesToSummary() - handles version coercion for non-strict semver versions', async () => {
   // Test that versions like "8.0" (without patch version) can be coerced to "8.0.0"
   // for successful range matching in fail-open mode (patch selection)
@@ -776,6 +819,50 @@ test('addChangeVulnerabilitiesToSummary() - handles invalid versions in fail-ope
 
   // Should show N/A since version can't be coerced or matched
   expect(text).toContain('N/A')
+})
+
+test('addChangeVulnerabilitiesToSummary() - handles GHSA-r9w3-57w2-gch2 go pseudo-version range', async () => {
+  const pkg = createTestChange({
+    ecosystem: 'go',
+    name: 'github.com/ory/hydra',
+    version: '2.1.0-pre.2',
+    vulnerabilities: [
+      createTestVulnerability({
+        advisory_ghsa_id: 'GHSA-r9w3-57w2-gch2',
+        advisory_summary:
+          'Ory Hydra has a SQL injection via forged pagination tokens',
+        severity: 'high'
+      })
+    ]
+  })
+
+  // Mock API response from https://api.github.com/advisories/GHSA-r9w3-57w2-gch2
+  mockOctokitRequest.mockResolvedValueOnce({
+    data: {
+      vulnerabilities: [
+        {
+          package: {
+            ecosystem: 'go',
+            name: 'github.com/ory/hydra'
+          },
+          vulnerable_version_range: '< 2.3.1-0.20260320110106-0b84568fffcc',
+          first_patched_version: '2.3.1-0.20260320110106-0b84568fffcc'
+        }
+      ]
+    }
+  })
+
+  const changes = [pkg]
+  await summary.addChangeVulnerabilitiesToSummary(changes, 'low', true)
+
+  const text = core.summary.stringify()
+
+  // Should show the correct patched version for this advisory range
+  expect(text).toContain('2.3.1-0.20260320110106-0b84568fffcc')
+  expect(text).not.toContain('N/A')
+  expect(mockOctokitRequest).toHaveBeenCalledWith('GET /advisories/{ghsa_id}', {
+    ghsa_id: 'GHSA-r9w3-57w2-gch2'
+  })
 })
 
 test('addChangeVulnerabilitiesToSummary() - respects concurrency limit for API calls', async () => {
