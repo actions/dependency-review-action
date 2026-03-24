@@ -68,7 +68,7 @@ You can install the action on any public repository, or any organization-owned p
        runs-on: ubuntu-latest
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: 'Dependency Review'
            uses: actions/dependency-review-action@v4
    ```
@@ -93,7 +93,7 @@ You can install the action on repositories on GitHub Enterprise Server.
        runs-on: self-hosted
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: 'Dependency Review'
            uses: actions/dependency-review-action@v4
    ```
@@ -162,7 +162,7 @@ You can pass configuration options to the dependency review action using your wo
        runs-on: ubuntu-latest
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: Dependency Review
            uses: actions/dependency-review-action@v4
            with:
@@ -189,7 +189,7 @@ You can use an external configuration file to specify settings for this action. 
        runs-on: ubuntu-latest
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: Dependency Review
            uses: actions/dependency-review-action@v4
            with:
