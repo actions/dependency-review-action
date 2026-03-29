@@ -24,6 +24,9 @@
   ],
   "author": "GitHub",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
   "dependencies": {
     "@actions/artifact": "^5.0.1",
     "@actions/core": "^1.11.1",
@@ -45,7 +48,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/spdx-expression-parse": "^3.0.4",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
