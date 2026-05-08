@@ -40,6 +40,7 @@
     "spdx-expression-parse": "^4.0.0",
     "spdx-satisfies": "^6.0.0",
     "ts-jest": "^29.4.1",
+    "undici": "^6.23.0",
     "yaml": "^2.8.1",
     "zod": "^3.24.1"
   },
