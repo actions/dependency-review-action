@@ -59,6 +59,7 @@ const defaultConfig: ConfigurationOptions = {
   warn_on_openssf_scorecard_level: 3,
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
+  show_patched_versions: false,
   base_ref: '',
   head_ref: '',
   deny_packages: [],
