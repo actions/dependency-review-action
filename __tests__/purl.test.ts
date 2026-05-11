@@ -1,5 +1,5 @@
 import {expect, test} from '@jest/globals'
-import {parsePURL} from '../src/purl'
+import {parsePURL, purlsMatch} from '../src/purl'
 
 test('parsePURL returns an error if the purl does not start with "pkg:"', () => {
   const purl = 'not-a-purl'
@@ -183,4 +183,67 @@ test('parsePURL table test', () => {
     const result = parsePURL(example.purl)
     expect(result).toEqual(example.expected)
   }
+})
+
+test('purlsMatch matches identical PURLs', () => {
+  const a = parsePURL('pkg:npm/@scope/name@1.0.0')
+  const b = parsePURL('pkg:npm/@scope/name@2.0.0')
+  expect(purlsMatch(a, b)).toBe(true)
+})
+
+test('purlsMatch matches when namespace separator is percent-encoded', () => {
+  // %2F-encoded separator puts everything in name with no namespace
+  const encoded = parsePURL('pkg:npm/%40lancedb%2Flancedb')
+  // literal / splits into namespace + name
+  const literal = parsePURL('pkg:npm/%40lancedb/lancedb')
+  expect(purlsMatch(encoded, literal)).toBe(true)
+})
+
+test('purlsMatch matches scoped npm packages regardless of encoding', () => {
+  const a = parsePURL('pkg:npm/%40lancedb%2Flancedb')
+  const b = parsePURL('pkg:npm/@lancedb/lancedb')
+  const c = parsePURL('pkg:npm/%40lancedb/lancedb@0.14.3')
+  expect(purlsMatch(a, b)).toBe(true)
+  expect(purlsMatch(a, c)).toBe(true)
+  expect(purlsMatch(b, c)).toBe(true)
+})
+
+test('purlsMatch does not match different packages', () => {
+  const a = parsePURL('pkg:npm/@scope/foo')
+  const b = parsePURL('pkg:npm/@scope/bar')
+  expect(purlsMatch(a, b)).toBe(false)
+})
+
+test('purlsMatch does not match different types', () => {
+  const a = parsePURL('pkg:npm/@scope/name')
+  const b = parsePURL('pkg:pypi/@scope/name')
+  expect(purlsMatch(a, b)).toBe(false)
+})
+
+test('purlsMatch matches packages without namespaces', () => {
+  const a = parsePURL('pkg:npm/lodash@4.0.0')
+  const b = parsePURL('pkg:npm/lodash@5.0.0')
+  expect(purlsMatch(a, b)).toBe(true)
+})
+
+test('purlsMatch is case-insensitive for GitHub Actions', () => {
+  const a = parsePURL('pkg:githubactions/MyOrg/MyAction@1.0.0')
+  const b = parsePURL('pkg:githubactions/myorg/myaction@1.0.0')
+  expect(purlsMatch(a, b)).toBe(true)
+})
+
+test('purlsMatch is case-insensitive for scoped npm packages', () => {
+  const a = parsePURL('pkg:npm/@MyScope/MyPackage')
+  const b = parsePURL('pkg:npm/@myscope/mypackage')
+  expect(purlsMatch(a, b)).toBe(true)
+})
+
+test('purlsMatch is case-insensitive for GitHub Actions with file paths', () => {
+  const a = parsePURL(
+    'pkg:githubactions/MyOrg/MyWorkflows/.github/workflows/general.yml'
+  )
+  const b = parsePURL(
+    'pkg:githubactions/myorg/myworkflows/.github/workflows/general.yml'
+  )
+  expect(purlsMatch(a, b)).toBe(true)
 })

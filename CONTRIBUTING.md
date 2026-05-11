@@ -25,11 +25,11 @@ If you'd like to make a contribution yourself, we ask that before significant ef
 
 ## Stalebot
 
-We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see the configuration [here](.github/workflows/stalebot.yml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
+We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see [the configuration](.github/workflows/stalebot.yml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
 
 ## Development lifecycle
 
-Ready to contribute to `dependency-review-action`?  Here is some information to help you get started.
+Ready to contribute to `dependency-review-action`? Here is some information to help you get started.
 
 ### High level overview of the action
 
@@ -50,10 +50,9 @@ Before you begin, you need to have [Node.js](https://nodejs.org/en/) installed, 
 
 #### Manually testing for vulnerabilities
 
-We have a script to scan a given PR for vulnerabilities, this will
-help you test your local changes. Make sure to [grab a Personal Access Token (PAT)](https://github.com/settings/tokens) before proceeding (you'll need `repo` permissions for private repos):
+We have a script to scan a given PR for vulnerabilities, which will help you test your local changes. Make sure to [grab a Personal Access Token (PAT)](https://github.com/settings/tokens) before proceeding (you'll need `repo` permissions for private repos):
 
-<img width="480" alt="Screenshot 2022-05-12 at 10 22 21" src="https://user-images.githubusercontent.com/2161/168026161-16788a0a-b6c8-428e-bb6a-83ea2a403070.png">
+<img width="480" alt="Screen to create a PAT with a note of `dr-token`, 30 day duration (expiring Jun 11, 2022), with `repo` scopes selected" src="https://user-images.githubusercontent.com/2161/168026161-16788a0a-b6c8-428e-bb6a-83ea2a403070.png">
 
 The syntax of the script is:
 
@@ -87,8 +86,9 @@ _Note_: We don't have a very comprehensive test suite, so any contributions to t
 
 1. Create a new branch: `git checkout -b my-branch-name`
 2. Make your change, add tests, and make sure the tests still pass
-3. Make sure to build and package before pushing: `npm run build && npm run package`
-4. Push to your fork and [submit a pull request][pr]
+3. Push to your fork and [submit a pull request][pr]
+
+(note: we don't recommend including changes to the `dist` directory in your pull request, because changes there have an increased likelihood of conflicts.)
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 
@@ -105,40 +105,38 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 _Note: these instructions are for maintainers_
 
-1. Update the version number in [package.json](https://github.com/actions/dependency-review-action/blob/main/package.json) and run `npm i` to update the lockfile.
-1. Go to [Draft a new
-   release](https://github.com/actions/dependency-review-action/releases/new)
-   in the Releases page.
-1. Make sure that the `Publish this Action to the GitHub Marketplace`
-   checkbox is enabled
+- Create a local branch based on the `main` of the upstream repo.
+- Update the version number in [package.json](https://github.com/actions/dependency-review-action/blob/main/package.json) and run `npm i` to update the lockfile.
+- Update the dist files by running `npm run build` and `npm run package`
+- Submit a PR based on your branch and have another maintainer review/approve it.
+- Once merged, go to [Draft a new release](https://github.com/actions/dependency-review-action/releases/new) in the Releases page.
+- Make sure that the `Publish this Action to the GitHub Marketplace` checkbox is enabled
 
-<img width="481" alt="Screenshot 2022-06-15 at 12 08 19" src="https://user-images.githubusercontent.com/2161/173822484-4b60d8b4-c674-4bff-b5ff-b0c4a3650ab7.png">
+<img width="481" alt="Screen showing Release Action with Publish this Action to the GitHub Marketplace checked" src="https://user-images.githubusercontent.com/2161/173822484-4b60d8b4-c674-4bff-b5ff-b0c4a3650ab7.png">
 
-3. Click "Choose a tag" and then "Create new tag", where the tag name
-   will be your version prefixed by a `v` (e.g. `v1.2.3`).
-4. Use a version number for the release title (e.g. "1.2.3").
+- Click "Choose a tag" and then "Create new tag", where the tag name
+  will be your version prefixed by a `v` (e.g. `v1.2.3`).
+- Use a version number for the release title (e.g. "1.2.3").
 
-<img width="700" alt="Screenshot 2022-06-15 at 12 08 36" src="https://user-images.githubusercontent.com/2161/173822548-33ab3432-d679-4dc1-adf8-b50fdaf47de3.png">
+<img width="700" alt="Create an action release in categories Security + Dependency management from branch main creating tag v2.0.0 on publish" src="https://user-images.githubusercontent.com/2161/173822548-33ab3432-d679-4dc1-adf8-b50fdaf47de3.png">
 
-5. Add your release notes. If this is a major version make sure to
-   include a small description of the biggest changes in the new version.
-6. Click "Publish Release".
+- Add your release notes. If this is a major version make sure to include details about any breaking changes in the new version.
+- Click "Publish Release".
 
-You now have a tag and release using the semver version you used
-above. The last remaining thing to do is to move the dynamic version
-identifier to match the current SHA. This allows users to adopt a
-major version number (e.g. `v1`) in their workflows while
-automatically getting all the
-minor/patch updates.
+You now have a tag and release using the semver version you used above. The last remaining thing to do is to update the major version branch to match the current release. This allows users to adopt a major version number (e.g. `v4`) in their workflows while automatically getting all the minor/patch updates.
 
-To do this just checkout `main`, force-create a new annotated tag, and push it:
+As of v4.8.3, we use a **branch** (not a force-pushed tag) for the major version pointer. This is important because force-pushing tags breaks GitHub's auto-generated release changelog links (see [#1035](https://github.com/actions/dependency-review-action/issues/1035)) and violates git's (unenforced) expectation that tags are immutable.
+
+To update the major version branch:
 
 ```
-git tag -fa v4 -m "Updating v4 to 4.0.1"
-git push origin v4 --force
+git checkout main
+git pull origin main
+git branch -f v4 HEAD
+git push origin v4
 ```
+
 </details>
-
 
 ## Resources
 

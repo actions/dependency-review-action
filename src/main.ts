@@ -24,6 +24,10 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
+import {DefaultArtifactClient} from '@actions/artifact'
+import * as fs from 'fs'
+
+import type {PayloadRepository} from '@actions/github/lib/interfaces.d'
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -59,6 +63,62 @@ async function getComparison(
   }
 
   return comparison
+}
+
+export async function handleLargeSummary(
+  summaryContent: string
+): Promise<string> {
+  const MAX_SUMMARY_SIZE = 1024 * 1024 // 1024k in bytes
+  if (Buffer.byteLength(summaryContent, 'utf8') <= MAX_SUMMARY_SIZE) {
+    return summaryContent
+  }
+
+  const summarySize = Math.round(
+    Buffer.byteLength(summaryContent, 'utf8') / 1024
+  )
+  const truncatedSummary = `# Dependency Review Summary
+
+The full dependency review summary was too large to display here (${summarySize}KB, limit is 1024KB).`
+
+  const artifactClient = new DefaultArtifactClient()
+  const artifactName = 'dependency-review-summary'
+  const files = ['summary.md']
+
+  try {
+    // Write the summary to a file
+    await fs.promises.writeFile('summary.md', summaryContent)
+
+    // Upload the artifact
+    await artifactClient.uploadArtifact(artifactName, files, '.', {
+      retentionDays: 1
+    })
+
+    // Return a shorter summary with a link to the artifact
+    const shortSummary = `${truncatedSummary}
+
+Please download the artifact named "${artifactName}" to view the complete report.
+
+[View full job summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
+
+    // Set core.summary to the shorter summary value to avoid exceeding MAX_SUMMARY_SIZE
+    core.summary.emptyBuffer()
+    core.summary.addRaw(shortSummary)
+    return shortSummary
+  } catch (error) {
+    core.warning(
+      `Failed to upload large summary as artifact: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+    // Even though artifact upload failed, we must still replace the buffer
+    // with a truncated summary to prevent core.summary.write() from failing
+    // with the oversized content (see issue #867)
+    core.summary.emptyBuffer()
+    core.summary.addRaw(truncatedSummary)
+    return truncatedSummary
+  }
+}
+
+interface RepoWithPrivate extends PayloadRepository {
+  private: boolean
 }
 
 async function run(): Promise<void> {
@@ -126,8 +186,11 @@ async function run(): Promise<void> {
     )
 
     // generate informational scorecard entries for all added changes in the PR
-    const scorecardChanges = getScorecardChanges(changes)
-    const scorecard = await getScorecardLevels(scorecardChanges)
+    let scorecard: Scorecard = {dependencies: []}
+    if (config.show_openssf_scorecard) {
+      const scorecardChanges = getScorecardChanges(changes)
+      scorecard = await getScorecardLevels(scorecardChanges)
+    }
 
     const minSummary = summary.addSummaryToSummary(
       vulnerableChanges,
@@ -145,7 +208,11 @@ async function run(): Promise<void> {
 
     if (config.vulnerability_check) {
       core.setOutput('vulnerable-changes', JSON.stringify(vulnerableChanges))
-      summary.addChangeVulnerabilitiesToSummary(vulnerableChanges, minSeverity)
+      await summary.addChangeVulnerabilitiesToSummary(
+        vulnerableChanges,
+        minSeverity,
+        config.show_patched_versions
+      )
       issueFound ||= await printVulnerabilitiesBlock(
         vulnerableChanges,
         minSeverity,
@@ -179,6 +246,9 @@ async function run(): Promise<void> {
     let rendered = core.summary.stringify()
     core.setOutput('comment-content', rendered)
 
+    // Handle large summaries by uploading as artifact
+    rendered = await handleLargeSummary(rendered)
+
     // if the summary is oversized, replace with minimal version
     if (rendered.length >= MAX_COMMENT_LENGTH) {
       core.debug(
@@ -195,9 +265,20 @@ async function run(): Promise<void> {
         `Dependency review could not obtain dependency data for the specified owner, repository, or revision range.`
       )
     } else if (error instanceof RequestError && error.status === 403) {
-      core.setFailed(
-        `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security on private repositories, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
-      )
+      let repoIsPrivate = false
+      if ('repository' in github.context.payload) {
+        const repo = github.context.payload.repository as RepoWithPrivate
+        repoIsPrivate = repo.private
+      }
+      if (repoIsPrivate) {
+        core.setFailed(
+          `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
+        )
+      } else {
+        core.setFailed(
+          `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
+        )
+      }
     } else {
       if (error instanceof Error) {
         core.setFailed(error.message)
@@ -206,7 +287,13 @@ async function run(): Promise<void> {
       }
     }
   } finally {
-    await core.summary.write()
+    try {
+      await core.summary.write()
+    } catch (error) {
+      core.warning(
+        `Failed to write job summary: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
   }
 }
 
@@ -216,13 +303,13 @@ async function printVulnerabilitiesBlock(
   warnOnly: boolean
 ): Promise<boolean> {
   return core.group('Vulnerabilities', async () => {
-    let vulFound = false
+    let vulnFound = false
 
     for (const change of addedChanges) {
-      vulFound ||= printChangeVulnerabilities(change)
+      vulnFound ||= printChangeVulnerabilities(change)
     }
 
-    if (vulFound) {
+    if (vulnFound) {
       const msg = 'Dependency review detected vulnerable packages.'
       if (warnOnly) {
         core.warning(msg)
@@ -235,7 +322,7 @@ async function printVulnerabilitiesBlock(
       )
     }
 
-    return vulFound
+    return vulnFound
   })
 }
 

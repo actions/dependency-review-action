@@ -4,7 +4,7 @@
 
 A very basic example of how to use the action. This will run the action with the default configuration.
 
-The full list of configuration options can be found [here](../README.md#configuration-options).
+See the [full list of configuration options](../README.md#configuration-options).
 
 ```yaml
 name: 'Dependency Review'
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
 ```
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
@@ -112,7 +112,7 @@ jobs:
 
 ## Using a configuration file from an external repository with a personal access token
 
-The following example will use a configuration file from an external private GtiHub repository to configure the action.
+The following example will use a configuration file from an external private GitHub repository to configure the action.
 
 Let's say that the configuration file is located in `github/octorepo-private/dependency-review-config.yml@main`
 
@@ -130,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
@@ -155,7 +155,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
@@ -182,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         id: review
         uses: actions/dependency-review-action@v4
@@ -226,14 +226,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           deny-licenses: LGPL-2.0, BSD-2-Clause
           comment-summary-in-pr: always
-          allow-dependencies-licenses: 'pkg:npm/loadash, pkg:pypi/requests'
+          allow-dependencies-licenses: 'pkg:npm/lodash, pkg:pypi/requests'
 ```
 
 If we were to use configuration file, the configuration would look like this:
@@ -244,7 +244,7 @@ allow-licenses:
   - 'LGPL-2.0'
   - 'BSD-2-Clause'
 allow-dependencies-licenses:
-  - 'pkg:npm/loadash'
+  - 'pkg:npm/lodash'
   - 'pkg:pypi/requests'
 ```
 
@@ -265,7 +265,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
@@ -295,7 +295,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
@@ -329,7 +329,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
