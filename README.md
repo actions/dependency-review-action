@@ -1,4 +1,4 @@
-# dependency-review-action
+# ugba-dependency-review-action
 
 - [dependency-review-action](#dependency-review-action)
   - [Overview](#overview)
@@ -280,3 +280,6 @@ We are grateful for any contributions made to this project. Please read [CONTRIB
 ## License
 
 This project is released under the [MIT License](https://github.com/actions/dependency-review-action/blob/main/LICENSE).
+
+## uses 
+ugba908@gmail.com, dianesterling11@gmail.com
