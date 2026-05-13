@@ -48,7 +48,8 @@ const defaultConfig: ConfigurationOptions = {
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: false,
-  show_patched_versions: false
+  show_patched_versions: false,
+  show_fixes_in_summary: false
 }
 
 const changesWithEmptyManifests: Changes = [
@@ -875,4 +876,182 @@ test('addChangeVulnerabilitiesToSummary() - completes all tasks even with varyin
   // Verify all 20 unique advisories were fetched and completed
   expect(completedAdvisories.size).toBe(20)
   expect(mockOctokitRequest).toHaveBeenCalledTimes(20)
+})
+
+test('addSummaryToSummary() - shows three-section layout when show_fixes_in_summary is true and fixes exist', () => {
+  const config = {...defaultConfig, show_fixes_in_summary: true}
+  const vulnerabilities = [createTestChange({name: 'lodash'})]
+  const fixedVulns = [
+    createTestChange({
+      name: 'some-package',
+      version: '1.0.0',
+      change_type: 'removed',
+      vulnerabilities: [
+        {
+          severity: 'high',
+          advisory_ghsa_id: 'GHSA-1234-abcd',
+          advisory_summary: 'Insecure Temporary File',
+          advisory_url: 'https://github.com/advisories/GHSA-1234-abcd'
+        }
+      ]
+    })
+  ]
+
+  summary.addSummaryToSummary(
+    vulnerabilities,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    config,
+    fixedVulns
+  )
+
+  const text = core.summary.stringify()
+  expect(text).toContain('Action Needed')
+  expect(text).toContain('Issues Fixed')
+  expect(text).toContain('Checks Passed')
+  expect(text).not.toContain('The following issues were found:')
+})
+
+test('addSummaryToSummary() - shows fixed vuln details in Issues Fixed section', () => {
+  const config = {...defaultConfig, show_fixes_in_summary: true}
+  const fixedVulns = [
+    createTestChange({
+      name: 'other-package',
+      version: '2.0.0',
+      change_type: 'removed',
+      vulnerabilities: [
+        {
+          severity: 'critical',
+          advisory_ghsa_id: 'GHSA-5678-efgh',
+          advisory_summary: 'CVE-2022-XXXX',
+          advisory_url: 'https://github.com/advisories/GHSA-5678-efgh'
+        }
+      ]
+    })
+  ]
+
+  summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    config,
+    fixedVulns
+  )
+
+  const text = core.summary.stringify()
+  expect(text).toContain('CVE-2022-XXXX')
+  expect(text).toContain('other-package@2.0.0')
+  expect(text).toContain('critical severity')
+})
+
+test('addSummaryToSummary() - does not show three-section layout when show_fixes_in_summary is false', () => {
+  const config = {...defaultConfig, show_fixes_in_summary: false}
+  const vulnerabilities = [createTestChange({name: 'lodash'})]
+  const fixedVulns = [
+    createTestChange({
+      name: 'some-package',
+      change_type: 'removed'
+    })
+  ]
+
+  summary.addSummaryToSummary(
+    vulnerabilities,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    config,
+    fixedVulns
+  )
+
+  const text = core.summary.stringify()
+  expect(text).toContain('The following issues were found:')
+  expect(text).not.toContain('Issues Fixed')
+  expect(text).not.toContain('Action Needed')
+})
+
+test('addSummaryToSummary() - does not show three-section layout when there are no fixed vulns', () => {
+  const config = {...defaultConfig, show_fixes_in_summary: true}
+  const vulnerabilities = [createTestChange({name: 'lodash'})]
+
+  summary.addSummaryToSummary(
+    vulnerabilities,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    config,
+    [] // no fixed vulns
+  )
+
+  const text = core.summary.stringify()
+  expect(text).toContain('The following issues were found:')
+  expect(text).not.toContain('Issues Fixed')
+})
+
+test('addSummaryToSummary() - shows only Issues Fixed and Checks Passed when no action needed but fixes exist', () => {
+  const config = {...defaultConfig, show_fixes_in_summary: true}
+  const fixedVulns = [
+    createTestChange({
+      name: 'fixed-package',
+      version: '1.0.0',
+      change_type: 'removed',
+      vulnerabilities: [
+        {
+          severity: 'moderate',
+          advisory_ghsa_id: 'GHSA-abcd-1234',
+          advisory_summary: 'Some advisory',
+          advisory_url: 'https://github.com/advisories/GHSA-abcd-1234'
+        }
+      ]
+    })
+  ]
+
+  summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    config,
+    fixedVulns
+  )
+
+  const text = core.summary.stringify()
+  expect(text).toContain('Issues Fixed')
+  expect(text).toContain('Checks Passed')
+  expect(text).not.toContain('Action Needed')
+  expect(text).not.toContain('The following issues were found:')
+})
+
+test('addFixedVulnerabilitiesToSummary() - does nothing when no fixed vulns', () => {
+  summary.addFixedVulnerabilitiesToSummary([])
+  const text = core.summary.stringify()
+  expect(text).toEqual('')
+})
+
+test('addFixedVulnerabilitiesToSummary() - renders fixed vulnerabilities table', () => {
+  const fixedVulns = [
+    createTestChange({
+      name: 'some-package',
+      version: '1.0.0',
+      change_type: 'removed',
+      source_repository_url: 'https://github.com/some/package',
+      vulnerabilities: [
+        {
+          severity: 'high',
+          advisory_ghsa_id: 'GHSA-1234-abcd',
+          advisory_summary: 'Insecure Temporary File',
+          advisory_url: 'https://github.com/advisories/GHSA-1234-abcd'
+        }
+      ]
+    })
+  ]
+
+  summary.addFixedVulnerabilitiesToSummary(fixedVulns)
+
+  const text = core.summary.stringify()
+  expect(text).toContain('<h2>Fixed Vulnerabilities</h2>')
+  expect(text).toContain('some-package')
+  expect(text).toContain('Insecure Temporary File')
+  expect(text).toContain('high')
 })
