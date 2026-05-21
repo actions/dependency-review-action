@@ -17,6 +17,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # TODO(security): Pin external actions to full-length commit SHAs after owner/update process review.
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
@@ -30,6 +31,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
+      # TODO(security): Pin external actions to full-length commit SHAs after owner/update process review.
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:

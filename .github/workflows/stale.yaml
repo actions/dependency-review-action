@@ -12,6 +12,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
+    # TODO(security): Pin external actions to full-length commit SHAs after owner/update process review.
     - uses: actions/stale@v10.2.0
       name: Clean up stale PRs and Issues
       with:

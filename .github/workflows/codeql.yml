@@ -23,6 +23,7 @@ jobs:
         language: [ 'javascript-typescript', 'actions', 'ruby' ]
 
     steps:
+    # TODO(security): Pin external actions to full-length commit SHAs after owner/update process review.
     - name: Checkout repository
       uses: actions/checkout@v6
 

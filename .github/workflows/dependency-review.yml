@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
+        # TODO(security): Pin external actions to full-length commit SHAs after owner/update process review.
         uses: actions/checkout@v6
       - name: Dependency Review
         uses: ./
