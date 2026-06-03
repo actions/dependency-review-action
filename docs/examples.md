@@ -209,7 +209,9 @@ jobs:
 
 ## Accessing resolved vulnerabilities output
 
-When dependencies with vulnerabilities are removed or upgraded in your PR, the action now provides information about these resolved vulnerabilities through the `resolved-vulnerabilities` output. This helps teams understand the positive security impact of their changes.
+When dependencies with known vulnerabilities are removed in your PR, the action can report these as "resolved vulnerabilities" through the `resolved-vulnerabilities` output. This feature is opt-in via the `show-resolved-vulnerabilities` input.
+
+A vulnerability is considered "resolved" when the advisory that affected a removed dependency does not appear on any remaining or newly-added dependency. This avoids false positives during upgrades where the same advisory may still apply to the new version.
 
 ```yaml
 name: 'Dependency Review with Resolved Vulnerabilities'
@@ -227,9 +229,10 @@ jobs:
         uses: actions/checkout@v4
       - name: 'Dependency Review'
         id: review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: critical
+          show-resolved-vulnerabilities: true
       - name: 'Celebrate Resolved Vulnerabilities'
         if: steps.review.outputs.resolved-vulnerabilities != '[]'
         env:
@@ -239,7 +242,7 @@ jobs:
           echo "$RESOLVED_VULNERABILITIES" | jq -r '.[] | "- \(.severity | ascii_upcase): \(.advisory_summary) in \(.package_name)@\(.package_version)"'
 ```
 
-The `resolved-vulnerabilities` output is a JSON array containing information about vulnerabilities that were resolved by removing or upgrading packages. Each resolved vulnerability includes:
+The `resolved-vulnerabilities` output is a JSON array (always set to `'[]'` when no vulnerabilities are resolved, so downstream conditions are reliable). Each resolved vulnerability includes:
 - `severity`: The severity level of the resolved vulnerability
 - `advisory_ghsa_id`: The GitHub Advisory Database ID
 - `advisory_summary`: A summary of the vulnerability

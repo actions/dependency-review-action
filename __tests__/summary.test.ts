@@ -1,5 +1,10 @@
 import {expect, jest, test, beforeEach} from '@jest/globals'
-import {Changes, ConfigurationOptions, Scorecard, ResolvedVulnerabilities} from '../src/schemas'
+import {
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  ResolvedVulnerabilities
+} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -49,7 +54,8 @@ const defaultConfig: ConfigurationOptions = {
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: false,
-  show_patched_versions: false
+  show_patched_versions: false,
+  show_resolved_vulnerabilities: false
 }
 
 const changesWithEmptyManifests: Changes = [
@@ -975,4 +981,119 @@ test('addChangeVulnerabilitiesToSummary() - completes all tasks even with varyin
   // Verify all 20 unique advisories were fetched and completed
   expect(completedAdvisories.size).toBe(20)
   expect(mockOctokitRequest).toHaveBeenCalledTimes(20)
+})
+
+test('addResolvedVulnerabilitiesToSummary renders table with correct heading', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Prototype pollution in lodash',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  expect(rendered).toContain('Resolved Vulnerabilities')
+  expect(rendered).toContain('1')
+  expect(rendered).toContain('vulnerability')
+  expect(rendered).toContain('lodash')
+  expect(rendered).toContain('4.17.20')
+  expect(rendered).toContain('high')
+})
+
+test('addResolvedVulnerabilitiesToSummary uses plural for multiple vulns', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Vuln 1',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    },
+    {
+      severity: 'critical',
+      advisory_ghsa_id: 'GHSA-4444-5555-6666',
+      advisory_summary: 'Vuln 2',
+      advisory_url: 'https://github.com/advisories/GHSA-4444-5555-6666',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  expect(rendered).toContain('2')
+  expect(rendered).toContain('vulnerabilities')
+})
+
+test('addSummaryToSummary does not show resolved vulns when show_resolved_vulnerabilities is false', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Test vuln',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  const result = summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    resolvedVulns,
+    {...defaultConfig, show_resolved_vulnerabilities: false}
+  )
+
+  expect(result).not.toContain('resolved')
+  expect(result).not.toContain('🎉')
+})
+
+test('addSummaryToSummary shows resolved vulns when show_resolved_vulnerabilities is true', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Test vuln',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  const result = summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    resolvedVulns,
+    {...defaultConfig, show_resolved_vulnerabilities: true}
+  )
+
+  expect(result).toContain('resolves')
+  expect(result).toContain('🎉')
 })

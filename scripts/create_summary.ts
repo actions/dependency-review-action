@@ -6,7 +6,13 @@
  * npx ts-node scripts/create_summary.ts
  */
 
-import {Change, Changes, ConfigurationOptions, Scorecard, ResolvedVulnerabilities} from '../src/schemas'
+import {
+  Change,
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  ResolvedVulnerabilities
+} from '../src/schemas'
 import {createTestChange} from '../__tests__/fixtures/create-test-change'
 import {InvalidLicenseChanges} from '../src/licenses'
 import * as fs from 'fs'

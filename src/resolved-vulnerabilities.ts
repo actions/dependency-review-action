@@ -1,25 +1,48 @@
-import {Changes, ResolvedVulnerabilities, ResolvedVulnerability} from './schemas'
+import {
+  Changes,
+  ResolvedVulnerabilities,
+  ResolvedVulnerability
+} from './schemas'
 
 /**
- * Extract resolved vulnerabilities from removed dependencies
- * These are vulnerabilities that were present in the base but are no longer present in the head
- * 
+ * Extract resolved vulnerabilities from removed dependencies.
+ * A vulnerability is considered "resolved" only if the advisory no longer
+ * appears on any added dependency in the same ecosystem/manifest/package.
+ * This avoids false positives during upgrades where the old version is removed
+ * but the same advisory still affects the newly added version.
+ *
  * @param changes - All dependency changes (added and removed)
  * @returns Array of resolved vulnerabilities
  */
-export function getResolvedVulnerabilities(changes: Changes): ResolvedVulnerabilities {
+export function getResolvedVulnerabilities(
+  changes: Changes
+): ResolvedVulnerabilities {
   const resolvedVulns: ResolvedVulnerabilities = []
-  
+
+  // Collect all advisory IDs that still exist on added/non-removed changes
+  const activeAdvisoryIds = new Set<string>()
+  for (const change of changes) {
+    if (change.change_type !== 'removed' && change.vulnerabilities) {
+      for (const vuln of change.vulnerabilities) {
+        activeAdvisoryIds.add(vuln.advisory_ghsa_id)
+      }
+    }
+  }
+
   // Filter for removed dependencies that have vulnerabilities
   const removedChangesWithVulns = changes.filter(
-    change => change.change_type === 'removed' && 
-              change.vulnerabilities && 
-              change.vulnerabilities.length > 0
+    change =>
+      change.change_type === 'removed' &&
+      change.vulnerabilities &&
+      change.vulnerabilities.length > 0
   )
-  
-  // Convert each vulnerability on removed packages to a resolved vulnerability
+
+  // Only include vulnerabilities whose advisory is NOT still present in added deps
   for (const removedChange of removedChangesWithVulns) {
     for (const vulnerability of removedChange.vulnerabilities || []) {
+      if (activeAdvisoryIds.has(vulnerability.advisory_ghsa_id)) {
+        continue
+      }
       const resolvedVuln: ResolvedVulnerability = {
         severity: vulnerability.severity,
         advisory_ghsa_id: vulnerability.advisory_ghsa_id,
@@ -34,6 +57,6 @@ export function getResolvedVulnerabilities(changes: Changes): ResolvedVulnerabil
       resolvedVulns.push(resolvedVuln)
     }
   }
-  
+
   return resolvedVulns
 }

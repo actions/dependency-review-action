@@ -1,7 +1,13 @@
 import * as core from '@actions/core'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
-import {Change, Changes, ConfigurationOptions, Scorecard, ResolvedVulnerabilities} from './schemas'
+import {
+  Change,
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  ResolvedVulnerabilities
+} from './schemas'
 import {
   groupDependenciesByManifest,
   getManifestsSet,
@@ -188,7 +194,11 @@ export function addSummaryToSummary(
     }
 
     // Add extra positive message if vulnerabilities were resolved
-    if (config.vulnerability_check && resolvedVulnerabilities.length > 0) {
+    if (
+      config.show_resolved_vulnerabilities &&
+      config.vulnerability_check &&
+      resolvedVulnerabilities.length > 0
+    ) {
       msgHtml += ` Additionally, this PR resolves <strong>${resolvedVulnerabilities.length}</strong> existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
       msgMarkdown += ` Additionally, this PR resolves **${resolvedVulnerabilities.length}** existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
     }
@@ -204,7 +214,9 @@ export function addSummaryToSummary(
 
   const summaryListHtml: string[] = [
     // Add resolved vulnerabilities as positive feedback first
-    ...(resolvedVulnerabilities.length > 0
+    ...(config.show_resolved_vulnerabilities &&
+    config.vulnerability_check &&
+    resolvedVulnerabilities.length > 0
       ? [
           `${icons.check} <strong>${resolvedVulnerabilities.length}</strong> vulnerability(ies) resolved 🎉`
         ]
@@ -245,7 +257,9 @@ export function addSummaryToSummary(
 
   const summaryListMarkdown: string[] = [
     // Add resolved vulnerabilities as positive feedback first
-    ...(resolvedVulnerabilities.length > 0
+    ...(config.show_resolved_vulnerabilities &&
+    config.vulnerability_check &&
+    resolvedVulnerabilities.length > 0
       ? [
           `${icons.check} **${resolvedVulnerabilities.length}** vulnerability(ies) resolved 🎉`
         ]
@@ -819,7 +833,9 @@ export function addResolvedVulnerabilitiesToSummary(
   }
 
   core.summary.addHeading('Resolved Vulnerabilities', 2)
-  core.summary.addRaw(`${icons.check} Great job! This PR resolves <strong>${resolvedVulnerabilities.length}</strong> ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`)
+  core.summary.addRaw(
+    `${icons.check} Great job! This PR resolves <strong>${resolvedVulnerabilities.length}</strong> ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`
+  )
   core.summary.addRaw('')
 
   const tableRows: SummaryTableRow[] = [
@@ -843,4 +859,3 @@ export function addResolvedVulnerabilitiesToSummary(
   core.summary.addTable(tableRows)
   core.summary.addRaw('Keep up the great work securing your dependencies! 🎉')
 }
-

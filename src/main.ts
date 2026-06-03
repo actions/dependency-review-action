@@ -213,10 +213,15 @@ async function run(): Promise<void> {
     let issueFound = false
 
     // Show resolved vulnerabilities first to give positive feedback
-    if (config.vulnerability_check && resolvedVulnerabilities.length > 0) {
-      core.setOutput('resolved-vulnerabilities', JSON.stringify(resolvedVulnerabilities))
-      summary.addResolvedVulnerabilitiesToSummary(resolvedVulnerabilities)
-      printResolvedVulnerabilitiesBlock(resolvedVulnerabilities)
+    if (config.show_resolved_vulnerabilities && config.vulnerability_check) {
+      core.setOutput(
+        'resolved-vulnerabilities',
+        JSON.stringify(resolvedVulnerabilities)
+      )
+      if (resolvedVulnerabilities.length > 0) {
+        summary.addResolvedVulnerabilitiesToSummary(resolvedVulnerabilities)
+        printResolvedVulnerabilitiesBlock(resolvedVulnerabilities)
+      }
     }
 
     if (config.vulnerability_check) {
@@ -545,16 +550,20 @@ async function printResolvedVulnerabilitiesBlock(
   resolvedVulnerabilities: ResolvedVulnerabilities
 ): Promise<void> {
   return core.group('✅ Resolved Vulnerabilities', async () => {
-    core.info(`${styles.color.green.open}Great job! This PR resolves ${resolvedVulnerabilities.length} ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:${styles.color.green.close}`)
-    
+    core.info(
+      `${styles.color.green.open}Great job! This PR resolves ${resolvedVulnerabilities.length} ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:${styles.color.green.close}`
+    )
+
     for (const vuln of resolvedVulnerabilities) {
       core.info(
         `${styles.color.green.open}✅ ${vuln.manifest} » ${vuln.package_name}@${vuln.package_version}${styles.color.green.close} – ${vuln.advisory_summary} ${renderSeverity(vuln.severity)}`
       )
       core.info(`  ↪ ${vuln.advisory_url}`)
     }
-    
-    core.info(`${styles.color.green.open}Keep up the great work securing your dependencies! 🎉${styles.color.green.close}`)
+
+    core.info(
+      `${styles.color.green.open}Keep up the great work securing your dependencies! 🎉${styles.color.green.close}`
+    )
   })
 }
 
