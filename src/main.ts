@@ -213,12 +213,12 @@ async function run(): Promise<void> {
     let issueFound = false
 
     // Show resolved vulnerabilities first to give positive feedback
-    if (config.show_resolved_vulnerabilities && config.vulnerability_check) {
+    if (config.show_resolved_vulnerabilities) {
       core.setOutput(
         'resolved-vulnerabilities',
         JSON.stringify(resolvedVulnerabilities)
       )
-      if (resolvedVulnerabilities.length > 0) {
+      if (config.vulnerability_check && resolvedVulnerabilities.length > 0) {
         summary.addResolvedVulnerabilitiesToSummary(resolvedVulnerabilities)
         printResolvedVulnerabilitiesBlock(resolvedVulnerabilities)
       }

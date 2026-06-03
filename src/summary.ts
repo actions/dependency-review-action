@@ -212,91 +212,69 @@ export function addSummaryToSummary(
   core.summary.addRaw(foundIssuesHeader)
   out.push(foundIssuesHeader)
 
-  const summaryListHtml: string[] = [
-    // Add resolved vulnerabilities as positive feedback first
-    ...(config.show_resolved_vulnerabilities &&
-    config.vulnerability_check &&
-    resolvedVulnerabilities.length > 0
-      ? [
-          `${icons.check} <strong>${resolvedVulnerabilities.length}</strong> vulnerability(ies) resolved 🎉`
-        ]
-      : []),
-    ...(config.vulnerability_check
-      ? [
-          `${checkOrFailIcon(vulnerableChanges.length)} ${
-            vulnerableChanges.length
-          } vulnerable package(s)`
-        ]
-      : []),
-    ...(config.license_check
-      ? [
-          `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
-            invalidLicenseChanges.forbidden.length
-          } package(s) with incompatible licenses`,
-          `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-            invalidLicenseChanges.unresolved.length
-          } package(s) with invalid SPDX license definitions`,
-          `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
-            invalidLicenseChanges.unlicensed.length
-          } package(s) with unknown licenses.`
-        ]
-      : []),
-    ...(deniedChanges.length > 0
-      ? [
-          `${checkOrWarnIcon(deniedChanges.length)} ${
-            deniedChanges.length
-          } package(s) denied.`
-        ]
-      : []),
-    ...(config.show_openssf_scorecard && scorecardWarnings > 0
-      ? [
-          `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
-        ]
-      : [])
-  ]
+  // Build a single structured list of summary items, then render for each context
+  const summaryItems: {icon: string; label: string; count?: number}[] = []
 
-  const summaryListMarkdown: string[] = [
-    // Add resolved vulnerabilities as positive feedback first
-    ...(config.show_resolved_vulnerabilities &&
+  if (
+    config.show_resolved_vulnerabilities &&
     config.vulnerability_check &&
     resolvedVulnerabilities.length > 0
-      ? [
-          `${icons.check} **${resolvedVulnerabilities.length}** vulnerability(ies) resolved 🎉`
-        ]
-      : []),
-    ...(config.vulnerability_check
-      ? [
-          `${checkOrFailIcon(vulnerableChanges.length)} ${
-            vulnerableChanges.length
-          } vulnerable package(s)`
-        ]
-      : []),
-    ...(config.license_check
-      ? [
-          `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
-            invalidLicenseChanges.forbidden.length
-          } package(s) with incompatible licenses`,
-          `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-            invalidLicenseChanges.unresolved.length
-          } package(s) with invalid SPDX license definitions`,
-          `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
-            invalidLicenseChanges.unlicensed.length
-          } package(s) with unknown licenses.`
-        ]
-      : []),
-    ...(deniedChanges.length > 0
-      ? [
-          `${checkOrWarnIcon(deniedChanges.length)} ${
-            deniedChanges.length
-          } package(s) denied.`
-        ]
-      : []),
-    ...(config.show_openssf_scorecard && scorecardWarnings > 0
-      ? [
-          `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
-        ]
-      : [])
-  ]
+  ) {
+    const count = resolvedVulnerabilities.length
+    summaryItems.push({
+      icon: icons.check,
+      label: `${count} ${count === 1 ? 'vulnerability' : 'vulnerabilities'} resolved 🎉`,
+      count
+    })
+  }
+  if (config.vulnerability_check) {
+    summaryItems.push({
+      icon: checkOrFailIcon(vulnerableChanges.length),
+      label: `${vulnerableChanges.length} vulnerable package(s)`
+    })
+  }
+  if (config.license_check) {
+    summaryItems.push(
+      {
+        icon: checkOrFailIcon(invalidLicenseChanges.forbidden.length),
+        label: `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`
+      },
+      {
+        icon: checkOrFailIcon(invalidLicenseChanges.unresolved.length),
+        label: `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`
+      },
+      {
+        icon: checkOrWarnIcon(invalidLicenseChanges.unlicensed.length),
+        label: `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+      }
+    )
+  }
+  if (deniedChanges.length > 0) {
+    summaryItems.push({
+      icon: checkOrWarnIcon(deniedChanges.length),
+      label: `${deniedChanges.length} package(s) denied.`
+    })
+  }
+  if (config.show_openssf_scorecard && scorecardWarnings > 0) {
+    summaryItems.push({
+      icon: checkOrWarnIcon(scorecardWarnings),
+      label: `${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+    })
+  }
+
+  // Render for HTML (Action summary) — uses <strong> for count in resolved line
+  const summaryListHtml = summaryItems.map(item =>
+    item.count !== undefined
+      ? `${item.icon} <strong>${item.count}</strong> ${item.label.replace(`${item.count} `, '')}`
+      : `${item.icon} ${item.label}`
+  )
+
+  // Render for Markdown (PR comment) — uses **bold** for count in resolved line
+  const summaryListMarkdown = summaryItems.map(item =>
+    item.count !== undefined
+      ? `${item.icon} **${item.count}** ${item.label.replace(`${item.count} `, '')}`
+      : `${item.icon} ${item.label}`
+  )
 
   core.summary.addList(summaryListHtml)
   for (const line of summaryListMarkdown) {
@@ -836,7 +814,7 @@ export function addResolvedVulnerabilitiesToSummary(
   core.summary.addRaw(
     `${icons.check} Great job! This PR resolves <strong>${resolvedVulnerabilities.length}</strong> ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`
   )
-  core.summary.addRaw('')
+  core.summary.addBreak()
 
   const tableRows: SummaryTableRow[] = [
     [

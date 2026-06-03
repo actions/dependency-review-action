@@ -177,3 +177,56 @@ test('filters out advisories that still exist on added packages', () => {
   expect(resolvedVulns).toHaveLength(1)
   expect(resolvedVulns[0].advisory_ghsa_id).toBe('GHSA-unique-resolved')
 })
+
+test('does not suppress resolution when same GHSA exists on a different package', () => {
+  const sharedAdvisoryId = 'GHSA-shared-across-pkgs'
+
+  const removedLodash: Change = {
+    change_type: 'removed',
+    manifest: 'package.json',
+    ecosystem: 'npm',
+    name: 'lodash',
+    version: '4.17.20',
+    package_url: 'pkg:npm/lodash@4.17.20',
+    license: 'MIT',
+    source_repository_url: 'https://github.com/lodash/lodash',
+    scope: 'runtime',
+    vulnerabilities: [
+      {
+        severity: 'high',
+        advisory_ghsa_id: sharedAdvisoryId,
+        advisory_summary: 'Shared advisory affecting multiple packages',
+        advisory_url: `https://github.com/advisories/${sharedAdvisoryId}`
+      }
+    ]
+  }
+
+  // Same GHSA on a completely different package — should NOT suppress lodash resolution
+  const addedUnrelatedPkg: Change = {
+    change_type: 'added',
+    manifest: 'package.json',
+    ecosystem: 'npm',
+    name: 'underscore',
+    version: '1.13.0',
+    package_url: 'pkg:npm/underscore@1.13.0',
+    license: 'MIT',
+    source_repository_url: 'https://github.com/jashkenas/underscore',
+    scope: 'runtime',
+    vulnerabilities: [
+      {
+        severity: 'high',
+        advisory_ghsa_id: sharedAdvisoryId,
+        advisory_summary: 'Shared advisory affecting multiple packages',
+        advisory_url: `https://github.com/advisories/${sharedAdvisoryId}`
+      }
+    ]
+  }
+
+  const changes: Changes = [removedLodash, addedUnrelatedPkg]
+  const resolvedVulns = getResolvedVulnerabilities(changes)
+
+  // lodash resolution should NOT be suppressed by underscore having the same GHSA
+  expect(resolvedVulns).toHaveLength(1)
+  expect(resolvedVulns[0].package_name).toBe('lodash')
+  expect(resolvedVulns[0].advisory_ghsa_id).toBe(sharedAdvisoryId)
+})
