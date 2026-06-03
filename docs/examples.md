@@ -226,10 +226,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'Dependency Review'
         id: review
-        uses: actions/dependency-review-action@v5
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
           show-resolved-vulnerabilities: true
@@ -242,7 +242,7 @@ jobs:
           echo "$RESOLVED_VULNERABILITIES" | jq -r '.[] | "- \(.severity | ascii_upcase): \(.advisory_summary) in \(.package_name)@\(.package_version)"'
 ```
 
-The `resolved-vulnerabilities` output is a JSON array (always set to `'[]'` when no vulnerabilities are resolved, so downstream conditions are reliable). Each resolved vulnerability includes:
+When `show-resolved-vulnerabilities` is enabled, the `resolved-vulnerabilities` output is always set — to `'[]'` when no vulnerabilities were resolved, so downstream conditions are reliable. When the input is omitted or `false`, the output is not set. Each resolved vulnerability includes:
 - `severity`: The severity level of the resolved vulnerability
 - `advisory_ghsa_id`: The GitHub Advisory Database ID
 - `advisory_summary`: A summary of the vulnerability

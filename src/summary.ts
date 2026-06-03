@@ -183,15 +183,16 @@ export function addSummaryToSummary(
       config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
     ]
 
-    let msgHtml = ''
-    let msgMarkdown = ''
-    if (issueTypes.filter(Boolean).length === 0) {
-      msgHtml = `${icons.check} No issues found.`
-      msgMarkdown = `${icons.check} No issues found.`
+    const activeIssueTypes = issueTypes.filter(Boolean)
+    let msg = ''
+    if (activeIssueTypes.length === 0) {
+      msg = `${icons.check} No issues found.`
     } else {
-      msgHtml = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
-      msgMarkdown = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
+      msg = `${icons.check} No ${activeIssueTypes.join(' or ')} found.`
     }
+
+    let msgHtml = msg
+    let msgMarkdown = msg
 
     // Add extra positive message if vulnerabilities were resolved
     if (
@@ -212,8 +213,10 @@ export function addSummaryToSummary(
   core.summary.addRaw(foundIssuesHeader)
   out.push(foundIssuesHeader)
 
-  // Build a single structured list of summary items, then render for each context
-  const summaryItems: {icon: string; label: string; count?: number}[] = []
+  // Build a single structured list of summary items, then render for each context.
+  // Items with a `count` get bold formatting (HTML <strong> / Markdown **);
+  // items without are rendered as plain text.
+  const summaryItems: {icon: string; text: string; count?: number}[] = []
 
   if (
     config.show_resolved_vulnerabilities &&
@@ -223,57 +226,57 @@ export function addSummaryToSummary(
     const count = resolvedVulnerabilities.length
     summaryItems.push({
       icon: icons.check,
-      label: `${count} ${count === 1 ? 'vulnerability' : 'vulnerabilities'} resolved 🎉`,
+      text: `${count === 1 ? 'vulnerability' : 'vulnerabilities'} resolved 🎉`,
       count
     })
   }
   if (config.vulnerability_check) {
     summaryItems.push({
       icon: checkOrFailIcon(vulnerableChanges.length),
-      label: `${vulnerableChanges.length} vulnerable package(s)`
+      text: `${vulnerableChanges.length} vulnerable package(s)`
     })
   }
   if (config.license_check) {
     summaryItems.push(
       {
         icon: checkOrFailIcon(invalidLicenseChanges.forbidden.length),
-        label: `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`
+        text: `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`
       },
       {
         icon: checkOrFailIcon(invalidLicenseChanges.unresolved.length),
-        label: `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`
+        text: `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`
       },
       {
         icon: checkOrWarnIcon(invalidLicenseChanges.unlicensed.length),
-        label: `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+        text: `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
       }
     )
   }
   if (deniedChanges.length > 0) {
     summaryItems.push({
       icon: checkOrWarnIcon(deniedChanges.length),
-      label: `${deniedChanges.length} package(s) denied.`
+      text: `${deniedChanges.length} package(s) denied.`
     })
   }
   if (config.show_openssf_scorecard && scorecardWarnings > 0) {
     summaryItems.push({
       icon: checkOrWarnIcon(scorecardWarnings),
-      label: `${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+      text: `${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
     })
   }
 
-  // Render for HTML (Action summary) — uses <strong> for count in resolved line
+  // Render for HTML (Action summary) — uses <strong> for count
   const summaryListHtml = summaryItems.map(item =>
     item.count !== undefined
-      ? `${item.icon} <strong>${item.count}</strong> ${item.label.replace(`${item.count} `, '')}`
-      : `${item.icon} ${item.label}`
+      ? `${item.icon} <strong>${item.count}</strong> ${item.text}`
+      : `${item.icon} ${item.text}`
   )
 
-  // Render for Markdown (PR comment) — uses **bold** for count in resolved line
+  // Render for Markdown (PR comment) — uses **bold** for count
   const summaryListMarkdown = summaryItems.map(item =>
     item.count !== undefined
-      ? `${item.icon} **${item.count}** ${item.label.replace(`${item.count} `, '')}`
-      : `${item.icon} ${item.label}`
+      ? `${item.icon} **${item.count}** ${item.text}`
+      : `${item.icon} ${item.text}`
   )
 
   core.summary.addList(summaryListHtml)

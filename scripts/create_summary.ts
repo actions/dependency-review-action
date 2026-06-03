@@ -42,7 +42,8 @@ const defaultConfig: ConfigurationOptions = {
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: true,
-  show_patched_versions: false
+  show_patched_versions: false,
+  show_resolved_vulnerabilities: false
 }
 
 const scorecard: Scorecard = {

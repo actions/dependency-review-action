@@ -348,6 +348,42 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
   expect(text).toContain('✅ 0 package(s) with unknown licenses')
 })
 
+test('includes resolved vulnerabilities in summary list when issues are also found', () => {
+  const vulnerabilities = [createTestChange()]
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Test vuln',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  const result = summary.addSummaryToSummary(
+    vulnerabilities,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    resolvedVulns,
+    {...defaultConfig, show_resolved_vulnerabilities: true}
+  )
+
+  const text = core.summary.stringify()
+  // HTML summary should bold the count
+  expect(text).toContain('<strong>1</strong>')
+  expect(text).toContain('vulnerability resolved')
+  // Markdown output should use ** for bold
+  expect(result).toContain('**1**')
+  expect(result).toContain('vulnerability resolved')
+  // Should also contain vulnerability issues
+  expect(text).toContain('vulnerable package(s)')
+})
+
 test('addChangeVulnerabilitiesToSummary() - only includes section if any vulnerabilities found', async () => {
   await summary.addChangeVulnerabilitiesToSummary(emptyChanges, 'low')
   const text = core.summary.stringify()

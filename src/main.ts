@@ -149,7 +149,9 @@ async function run(): Promise<void> {
       return
     }
 
-    // Extract resolved vulnerabilities from removed dependencies
+    // Extract resolved vulnerabilities from the full (unfiltered) change set.
+    // This intentionally runs before scope/advisory filtering so that all
+    // resolutions are reported regardless of fail_on_scopes or allow_ghsas.
     const resolvedVulnerabilities = getResolvedVulnerabilities(changes)
 
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
