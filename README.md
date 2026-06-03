@@ -133,6 +133,7 @@ All configuration options are optional.
 | `show-openssf-scorecard`               | When set to `true`, the action will output information about all the known OpenSSF Scorecard scores for the dependencies changed in this pull request.                                                                                                                                                                                                             | `true`, `false`                                                                                              | `true`        |
 | `warn-on-openssf-scorecard-level`      | When `show-openssf-scorecard-levels` is set to `true`, this option lets you configure the threshold for when a score is considered too low and gets a :warning: warning in the CI.                                                                                                                                                                                 | Any positive integer                                                                                         | 3             |
 | `show-patched-versions`\*              | When set to `true`, the vulnerability summary table will include an additional column showing the first patched version for each vulnerability. This requires additional API calls to fetch advisory data.                                                                                                                                                          | `true`, `false`                                                                                              | `false`       |
+| `show-resolved-vulnerabilities`        | When set to `true`, the action will report vulnerabilities resolved by this PR (removed from previously-vulnerable dependencies whose advisories no longer appear on any added dependency).                                                                                                                                                                         | `true`, `false`                                                                                              | `false`       |
 
 > [!NOTE]
 >
@@ -253,7 +254,7 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
   - `vulnerable-changes` holds information about dependency changes with vulnerable dependencies in a JSON format.
   - `invalid-license-changes` holds information about invalid or non-compliant license dependency changes in a JSON format.
   - `denied-changes` holds information about denied dependency changes in a JSON format.
-  - `resolved-vulnerabilities` holds information about vulnerabilities that have been resolved by removing or upgrading packages in a JSON format.
+  - `resolved-vulnerabilities` holds information about vulnerabilities resolved in this PR (advisories on removed dependencies that no longer appear on any added dependency). Only set when `show-resolved-vulnerabilities` is enabled.
 
 > [!NOTE]
 > Action outputs are unicode strings [with a 1MB size limit](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).
