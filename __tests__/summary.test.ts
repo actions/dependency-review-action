@@ -1194,3 +1194,66 @@ test('addResolvedVulnerabilitiesToSummary uses flat table for few packages', () 
   expect(rendered).toContain('<th>Package</th>')
   expect(rendered).not.toContain('<details>')
 })
+
+test('addResolvedVulnerabilitiesToSummary warns when updated version still has vulns', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Old vuln in lodash',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  // lodash was updated but still has a different vulnerability
+  const vulnerableChanges: Changes = [
+    createTestChange({
+      name: 'lodash',
+      version: '4.17.21',
+      ecosystem: 'npm',
+      change_type: 'added',
+      vulnerabilities: [
+        createTestVulnerability({
+          severity: 'moderate',
+          advisory_ghsa_id: 'GHSA-9999-8888-7777',
+          advisory_summary: 'New vuln in lodash',
+          advisory_url: 'https://github.com/advisories/GHSA-9999-8888-7777'
+        })
+      ]
+    })
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns, vulnerableChanges)
+
+  const rendered = core.summary.stringify()
+  expect(rendered).toContain('still has unresolved vulnerabilities')
+  expect(rendered).toContain('lodash')
+  expect(rendered).toContain('⚠️')
+})
+
+test('addResolvedVulnerabilitiesToSummary does not warn when package is fully resolved', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Old vuln in lodash',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  // No vulnerable changes remain
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns, [])
+
+  const rendered = core.summary.stringify()
+  expect(rendered).not.toContain('still has unresolved vulnerabilities')
+})

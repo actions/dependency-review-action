@@ -807,7 +807,8 @@ function checkOrWarnIcon(count: number): string {
 }
 
 export function addResolvedVulnerabilitiesToSummary(
-  resolvedVulnerabilities: ResolvedVulnerabilities
+  resolvedVulnerabilities: ResolvedVulnerabilities,
+  vulnerableChanges: Changes = []
 ): void {
   if (resolvedVulnerabilities.length === 0) {
     return
@@ -822,6 +823,14 @@ export function addResolvedVulnerabilitiesToSummary(
   )
   core.summary.addBreak()
 
+  // Build a set of packages that still have vulnerabilities in the updated version
+  const stillVulnerablePackages = new Set<string>()
+  for (const change of vulnerableChanges) {
+    if (change.change_type === 'added' && change.vulnerabilities.length > 0) {
+      stillVulnerablePackages.add(`${change.name}|${change.ecosystem}`)
+    }
+  }
+
   // Group vulnerabilities by package (name + version + manifest)
   const grouped = new Map<
     string,
@@ -829,6 +838,7 @@ export function addResolvedVulnerabilitiesToSummary(
       manifest: string
       name: string
       version: string
+      ecosystem: string
       vulns: typeof resolvedVulnerabilities
     }
   >()
@@ -840,6 +850,7 @@ export function addResolvedVulnerabilitiesToSummary(
         manifest: vuln.manifest,
         name: vuln.package_name,
         version: vuln.package_version,
+        ecosystem: vuln.ecosystem,
         vulns: []
       }
       grouped.set(key, entry)
@@ -869,17 +880,33 @@ export function addResolvedVulnerabilitiesToSummary(
       ])
     }
     core.summary.addTable(tableRows)
+
+    // Add per-package warnings for packages that still have vulnerabilities
+    for (const [, pkg] of grouped) {
+      if (stillVulnerablePackages.has(`${pkg.name}|${pkg.ecosystem}`)) {
+        core.summary.addRaw(
+          `<blockquote>${icons.warning} <strong>${pkg.name}</strong> still has unresolved vulnerabilities in the updated version. Consider upgrading further.</blockquote>`,
+          true
+        )
+      }
+    }
   } else {
     // Many packages — group by package inside collapsible sections
     for (const [, pkg] of grouped) {
-      const label = `${pkg.manifest} » <strong>${pkg.name}</strong>@${pkg.version} — ${pkg.vulns.length} ${pkg.vulns.length === 1 ? 'vulnerability' : 'vulnerabilities'}`
+      const hasRemaining = stillVulnerablePackages.has(
+        `${pkg.name}|${pkg.ecosystem}`
+      )
+      const label = `${pkg.manifest} » <strong>${pkg.name}</strong>@${pkg.version} — ${pkg.vulns.length} ${pkg.vulns.length === 1 ? 'vulnerability' : 'vulnerabilities'} resolved`
       let tableHtml = '<table><tr><th>Vulnerability</th><th>Severity</th></tr>'
       for (const vuln of pkg.vulns) {
         tableHtml += `<tr><td>${renderUrl(vuln.advisory_url, vuln.advisory_summary)}</td><td>${vuln.severity}</td></tr>`
       }
       tableHtml += '</table>'
+      if (hasRemaining) {
+        tableHtml += `<blockquote>${icons.warning} This package still has unresolved vulnerabilities in the updated version. Consider upgrading further.</blockquote>`
+      }
       core.summary.addRaw(
-        `<details><summary>${icons.check} ${label}</summary>${tableHtml}</details>`,
+        `<details><summary>${label}</summary>${tableHtml}</details>`,
         true
       )
     }

@@ -221,7 +221,10 @@ async function run(): Promise<void> {
         JSON.stringify(resolvedVulnerabilities)
       )
       if (config.vulnerability_check && resolvedVulnerabilities.length > 0) {
-        summary.addResolvedVulnerabilitiesToSummary(resolvedVulnerabilities)
+        summary.addResolvedVulnerabilitiesToSummary(
+          resolvedVulnerabilities,
+          vulnerableChanges
+        )
         printResolvedVulnerabilitiesBlock(resolvedVulnerabilities)
       }
     }
