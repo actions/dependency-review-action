@@ -1133,3 +1133,64 @@ test('addSummaryToSummary shows resolved vulns when show_resolved_vulnerabilitie
   expect(result).toContain('resolves')
   expect(result).toContain('🎉')
 })
+
+test('addResolvedVulnerabilitiesToSummary uses collapsible sections for many packages', () => {
+  const packages = ['lodash', 'express', 'axios', 'moment', 'underscore']
+  const resolvedVulns: ResolvedVulnerabilities = packages.map((pkg, i) => ({
+    severity: 'high' as const,
+    advisory_ghsa_id: `GHSA-${i}-${i}-${i}`,
+    advisory_summary: `Vuln in ${pkg}`,
+    advisory_url: `https://github.com/advisories/GHSA-${i}`,
+    package_name: pkg,
+    package_version: '1.0.0',
+    package_url: `pkg:npm/${pkg}@1.0.0`,
+    manifest: 'package.json',
+    ecosystem: 'npm'
+  }))
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  // Should use collapsible <details> sections, not a flat table
+  expect(rendered).toContain('<details>')
+  expect(rendered).toContain('</details>')
+  for (const pkg of packages) {
+    expect(rendered).toContain(pkg)
+  }
+  // Should NOT contain <th>Package</th> (that's the flat table header)
+  expect(rendered).not.toContain('<th>Package</th>')
+})
+
+test('addResolvedVulnerabilitiesToSummary uses flat table for few packages', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Vuln 1',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    },
+    {
+      severity: 'critical',
+      advisory_ghsa_id: 'GHSA-4444-5555-6666',
+      advisory_summary: 'Vuln 2',
+      advisory_url: 'https://github.com/advisories/GHSA-4444-5555-6666',
+      package_name: 'express',
+      package_version: '4.17.1',
+      package_url: 'pkg:npm/express@4.17.1',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  // Should use flat table, not collapsible sections
+  expect(rendered).toContain('<th>Package</th>')
+  expect(rendered).not.toContain('<details>')
+})

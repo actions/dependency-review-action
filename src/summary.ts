@@ -813,30 +813,77 @@ export function addResolvedVulnerabilitiesToSummary(
     return
   }
 
+  const vulnCount = resolvedVulnerabilities.length
+  const vulnWord = vulnCount === 1 ? 'vulnerability' : 'vulnerabilities'
+
   core.summary.addHeading('Resolved Vulnerabilities', 2)
   core.summary.addRaw(
-    `${icons.check} Great job! This PR resolves <strong>${resolvedVulnerabilities.length}</strong> ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:`
+    `${icons.check} Great job! This PR resolves <strong>${vulnCount}</strong> ${vulnWord}:`
   )
   core.summary.addBreak()
 
-  const tableRows: SummaryTableRow[] = [
-    [
-      {data: 'Package', header: true},
-      {data: 'Version', header: true},
-      {data: 'Vulnerability', header: true},
-      {data: 'Severity', header: true}
-    ]
-  ]
-
+  // Group vulnerabilities by package (name + version + manifest)
+  const grouped = new Map<
+    string,
+    {
+      manifest: string
+      name: string
+      version: string
+      vulns: typeof resolvedVulnerabilities
+    }
+  >()
   for (const vuln of resolvedVulnerabilities) {
-    tableRows.push([
-      `${vuln.manifest} » <strong>${vuln.package_name}</strong>`,
-      vuln.package_version,
-      renderUrl(vuln.advisory_url, vuln.advisory_summary),
-      vuln.severity
-    ])
+    const key = `${vuln.manifest}|${vuln.package_name}|${vuln.package_version}`
+    let entry = grouped.get(key)
+    if (!entry) {
+      entry = {
+        manifest: vuln.manifest,
+        name: vuln.package_name,
+        version: vuln.package_version,
+        vulns: []
+      }
+      grouped.set(key, entry)
+    }
+    entry.vulns.push(vuln)
   }
 
-  core.summary.addTable(tableRows)
+  const packageCount = grouped.size
+  const COLLAPSE_THRESHOLD = 4
+
+  if (packageCount <= COLLAPSE_THRESHOLD) {
+    // Small number of packages — render a flat table
+    const tableRows: SummaryTableRow[] = [
+      [
+        {data: 'Package', header: true},
+        {data: 'Version', header: true},
+        {data: 'Vulnerability', header: true},
+        {data: 'Severity', header: true}
+      ]
+    ]
+    for (const vuln of resolvedVulnerabilities) {
+      tableRows.push([
+        `${vuln.manifest} » <strong>${vuln.package_name}</strong>`,
+        vuln.package_version,
+        renderUrl(vuln.advisory_url, vuln.advisory_summary),
+        vuln.severity
+      ])
+    }
+    core.summary.addTable(tableRows)
+  } else {
+    // Many packages — group by package inside collapsible sections
+    for (const [, pkg] of grouped) {
+      const label = `${pkg.manifest} » <strong>${pkg.name}</strong>@${pkg.version} — ${pkg.vulns.length} ${pkg.vulns.length === 1 ? 'vulnerability' : 'vulnerabilities'}`
+      let tableHtml = '<table><tr><th>Vulnerability</th><th>Severity</th></tr>'
+      for (const vuln of pkg.vulns) {
+        tableHtml += `<tr><td>${renderUrl(vuln.advisory_url, vuln.advisory_summary)}</td><td>${vuln.severity}</td></tr>`
+      }
+      tableHtml += '</table>'
+      core.summary.addRaw(
+        `<details><summary>${icons.check} ${label}</summary>${tableHtml}</details>`,
+        true
+      )
+    }
+  }
+
   core.summary.addRaw('Keep up the great work securing your dependencies! 🎉')
 }
