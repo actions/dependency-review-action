@@ -46,7 +46,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^24",
-    "@types/spdx-expression-parse": "^3.0.4",
+    "@types/spdx-expression-parse": "^4.0.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vercel/ncc": "^0.44.0",
