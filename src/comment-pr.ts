@@ -20,12 +20,19 @@ export async function commentPr(
   config: ConfigurationOptions,
   issueFound: boolean
 ): Promise<void> {
-  if (
-    !(
-      config.comment_summary_in_pr === 'always' ||
-      (config.comment_summary_in_pr === 'on-failure' && issueFound)
-    )
-  ) {
+  // Whether a comment should be posted (created if missing, updated if present).
+  const shouldComment =
+    config.comment_summary_in_pr === 'always' ||
+    (config.comment_summary_in_pr === 'on-failure' && issueFound)
+
+  // When configured to only comment on failure and no issue was found, we still
+  // want to update an existing comment from a previous failing run so it no
+  // longer shows stale failures once the issues have been resolved. We only
+  // update in this case, we never create a new comment.
+  const shouldUpdateExisting =
+    config.comment_summary_in_pr === 'on-failure' && !issueFound
+
+  if (!shouldComment && !shouldUpdateExisting) {
     return
   }
 
@@ -48,7 +55,7 @@ export async function commentPr(
         comment_id: existingCommentId,
         body: commentBody
       })
-    } else {
+    } else if (shouldComment) {
       await octo.rest.issues.createComment({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
