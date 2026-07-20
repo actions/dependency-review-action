@@ -53,11 +53,11 @@ function config(
 // Makes paginate.iterator yield a single page of comments.
 function mockExistingComments(comments: {id: number; body: string}[]): void {
   octoMock.paginate.iterator.mockReturnValue({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async *[Symbol.asyncIterator](): any {
+    async *[Symbol.asyncIterator](): AsyncGenerator<{data: typeof comments}, void, unknown> {
       yield {data: comments}
+      return
     }
-  } as never)
+  } as unknown as AsyncIterable<{data: typeof comments}>)
 }
 
 describe('commentPr', () => {
