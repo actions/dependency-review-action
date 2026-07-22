@@ -53,7 +53,11 @@ function config(
 // Makes paginate.iterator yield a single page of comments.
 function mockExistingComments(comments: {id: number; body: string}[]): void {
   octoMock.paginate.iterator.mockReturnValue({
-    async *[Symbol.asyncIterator](): AsyncGenerator<{data: typeof comments}, void, unknown> {
+    async *[Symbol.asyncIterator](): AsyncGenerator<
+      {data: typeof comments},
+      void,
+      unknown
+    > {
       yield {data: comments}
       return
     }
@@ -114,14 +118,23 @@ describe('commentPr', () => {
       expect(octoMock.rest.issues.createComment).not.toHaveBeenCalled()
     })
 
-    test('updates the existing comment when issues have cleared', async () => {
+    test('updates the existing comment with a resolved note when issues have cleared', async () => {
       mockExistingComments([{id: EXISTING_COMMENT_ID, body: MARKER}])
 
       await commentPr('summary', config('on-failure'), false)
 
       expect(octoMock.rest.issues.updateComment).toHaveBeenCalledTimes(1)
       expect(octoMock.rest.issues.updateComment).toHaveBeenCalledWith(
-        expect.objectContaining({comment_id: EXISTING_COMMENT_ID})
+        expect.objectContaining({
+          comment_id: EXISTING_COMMENT_ID,
+          body: expect.stringContaining(
+            '✅ Previously flagged dependency issues have been resolved.'
+          )
+        })
+      )
+      // The full summary should not be re-posted in the resolved case.
+      expect(octoMock.rest.issues.updateComment).not.toHaveBeenCalledWith(
+        expect.objectContaining({body: expect.stringContaining('summary')})
       )
       expect(octoMock.rest.issues.createComment).not.toHaveBeenCalled()
     })

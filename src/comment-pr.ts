@@ -15,24 +15,17 @@ const octo = new retryingOctokit(
 // Comment Marker to identify an existing comment to update, so we don't spam the PR with comments
 const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
 
+// Body used to refresh a stale comment once previously-flagged issues are gone.
+const RESOLVED_MESSAGE =
+  '✅ Previously flagged dependency issues have been resolved.'
+
 export async function commentPr(
   commentContent: string,
   config: ConfigurationOptions,
   issueFound: boolean
 ): Promise<void> {
-  // Whether a comment should be posted (created if missing, updated if present).
-  const shouldComment =
-    config.comment_summary_in_pr === 'always' ||
-    (config.comment_summary_in_pr === 'on-failure' && issueFound)
-
-  // When configured to only comment on failure and no issue was found, we still
-  // want to update an existing comment from a previous failing run so it no
-  // longer shows stale failures once the issues have been resolved. We only
-  // update in this case, we never create a new comment.
-  const shouldUpdateExisting =
-    config.comment_summary_in_pr === 'on-failure' && !issueFound
-
-  if (!shouldComment && !shouldUpdateExisting) {
+  // `never` is the only mode where we neither create nor update a comment.
+  if (config.comment_summary_in_pr === 'never') {
     return
   }
 
@@ -43,7 +36,16 @@ export async function commentPr(
     return
   }
 
-  const commentBody = `${commentContent}\n\n${COMMENT_MARKER}`
+  // In `on-failure` mode with no issues, we only refresh an existing comment
+  // from a previous failing run so it no longer shows stale failures — we never
+  // create a new one. In that case we replace the full summary with a short
+  // note rather than a large "no issues found" report.
+  const resolvedCleanup =
+    config.comment_summary_in_pr === 'on-failure' && !issueFound
+
+  const commentBody = `${
+    resolvedCleanup ? RESOLVED_MESSAGE : commentContent
+  }\n\n${COMMENT_MARKER}`
 
   try {
     const existingCommentId = await findCommentByMarker(COMMENT_MARKER)
@@ -55,7 +57,7 @@ export async function commentPr(
         comment_id: existingCommentId,
         body: commentBody
       })
-    } else if (shouldComment) {
+    } else if (config.comment_summary_in_pr === 'always' || issueFound) {
       await octo.rest.issues.createComment({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
