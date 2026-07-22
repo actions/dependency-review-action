@@ -17,7 +17,7 @@ const COMMENT_MARKER = '<!-- dependency-review-pr-comment-marker -->'
 
 // Body used to refresh a stale comment once previously-flagged issues are gone.
 const RESOLVED_MESSAGE =
-  '✅ Previously flagged dependency issues have been resolved.'
+  '# Dependency Review\n\n✅ Previously flagged dependency issues have been resolved.'
 
 export async function commentPr(
   commentContent: string,
