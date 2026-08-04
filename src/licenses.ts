@@ -154,6 +154,45 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
 const truncatedDGLicense = (license: string): boolean =>
   license.length === 255 && !spdx.isValid(license)
 
+// Builds a key identifying a package across manifest and lock files, so that
+// duplicate entries for the same package (differing only by version specifier)
+// can be matched. Changes are keyed by their parsed PURL type and full name,
+// ignoring the version.
+function packageKey(change: Change): string {
+  const purl = parsePURL(change.package_url)
+  const type = purl.type.toLowerCase()
+  const name = (
+    purl.namespace ? `${purl.namespace}/${purl.name}` : purl.name
+  )?.toLowerCase()
+  if (name) {
+    return `${type}/${name}`
+  }
+  // Fall back to ecosystem + name when the PURL can't be parsed.
+  return `${change.ecosystem.toLowerCase()}/${change.name.toLowerCase()}`
+}
+
+// The dependency graph API can list the same package more than once: e.g. from
+// a manifest file (like pyproject.toml) with a version range and a null
+// license, and from a lock file (like poetry.lock) with a pinned version and a
+// resolved license. This drops the null-license entries for a package when
+// another entry of the same change_type resolves a license for it, so the
+// package is not incorrectly reported as unlicensed.
+function filterLicensedDuplicates(changes: Changes): Changes {
+  const licensedKeys = new Set<string>()
+  for (const change of changes) {
+    if (change.change_type !== 'removed' && change.license !== null) {
+      licensedKeys.add(`${change.change_type}/${packageKey(change)}`)
+    }
+  }
+
+  return changes.filter(change => {
+    if (change.change_type === 'removed' || change.license !== null) {
+      return true
+    }
+    return !licensedKeys.has(`${change.change_type}/${packageKey(change)}`)
+  })
+}
+
 async function groupChanges(
   changes: Changes,
   licenseExclusions: PackageURL[] | null = null
@@ -190,6 +229,14 @@ async function groupChanges(
       }
     })
   }
+
+  // The dependency graph API can return the same package multiple times, e.g.
+  // once from a manifest file (such as pyproject.toml) with a version range
+  // specifier and a null license, and once from a lock file (such as
+  // poetry.lock) with a pinned version and a resolved license. To avoid
+  // flagging the manifest entry as unlicensed, drop null-license changes when
+  // another candidate change resolves a license for the same package.
+  candidateChanges = filterLicensedDuplicates(candidateChanges)
 
   const ghChanges = []
 
