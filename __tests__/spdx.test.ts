@@ -1,5 +1,8 @@
 import {expect, test, describe} from '@jest/globals'
 import * as spdx from '../src/spdx'
+import licenseIds from 'spdx-license-ids'
+import deprecatedLicenseIds from 'spdx-license-ids/deprecated'
+import exceptionIds from 'spdx-exceptions'
 
 describe('satisfiesAny', () => {
   const units = [
@@ -280,6 +283,10 @@ describe('isValid', () => {
     {
       candidate: 'MIT AND OTHER',
       expected: true
+    },
+    {
+      candidate: 'GPL-2.0 WITH Classpath-exception-2.0',
+      expected: true
     }
   ]
   for (const unit of units) {
@@ -288,6 +295,89 @@ describe('isValid', () => {
       expect(got).toBe(unit.expected)
     })
   }
+})
+
+describe('normalizeLicenseCase', () => {
+  const units = [
+    {
+      candidate: 'MIT',
+      expected: 'MIT'
+    },
+    {
+      candidate: 'bsd-3-clause',
+      expected: 'BSD-3-Clause'
+    },
+    {
+      candidate: 'mit OR apache-2.0',
+      expected: 'MIT OR Apache-2.0'
+    },
+    {
+      candidate: 'mit or apache-2.0',
+      expected: 'MIT OR Apache-2.0'
+    },
+    {
+      candidate: 'gpl-2.0 with classpath-exception-2.0',
+      expected: 'GPL-2.0 WITH Classpath-exception-2.0'
+    },
+    {
+      candidate: '(mit AND isc) OR BSD-3-CLAUSE',
+      expected: '(MIT AND ISC) OR BSD-3-Clause'
+    },
+    {
+      candidate: 'apache-2.0+',
+      expected: 'Apache-2.0+'
+    },
+    {
+      candidate: 'gpl-2.0 WITH classpath-exception-2.0',
+      expected: 'GPL-2.0 WITH Classpath-exception-2.0'
+    },
+    {
+      candidate: 'NOASSERTION',
+      expected: 'NOASSERTION'
+    },
+    {
+      candidate: 'Foobar',
+      expected: 'Foobar'
+    },
+    {
+      candidate: 'LicenseRef-clearlydefined-OTHER',
+      expected: 'LicenseRef-clearlydefined-OTHER'
+    },
+    {
+      candidate: '',
+      expected: ''
+    }
+  ]
+  for (const unit of units) {
+    const got: string = spdx.normalizeLicenseCase(unit.candidate)
+    test(`should return ${unit.expected} for ("${unit.candidate}")`, () => {
+      expect(got).toBe(unit.expected)
+    })
+  }
+})
+
+describe('normalizeLicenseCase round-trips every known ID', () => {
+  const allIds = [...licenseIds, ...deprecatedLicenseIds, ...exceptionIds]
+
+  test('lowercase and uppercase variants normalize to the canonical ID', () => {
+    for (const id of allIds) {
+      expect(spdx.normalizeLicenseCase(id.toLowerCase())).toBe(id)
+      expect(spdx.normalizeLicenseCase(id.toUpperCase())).toBe(id)
+    }
+  })
+
+  test('canonical IDs pass through unchanged', () => {
+    for (const id of allIds) {
+      expect(spdx.normalizeLicenseCase(id)).toBe(id)
+    }
+  })
+
+  test('normalized lowercase WITH expressions are valid', () => {
+    for (const exception of exceptionIds) {
+      const expr = `gpl-2.0 with ${exception}`.toLowerCase()
+      expect(spdx.isValid(spdx.normalizeLicenseCase(expr))).toBe(true)
+    }
+  })
 })
 
 describe('cleanInvalidSPDX', () => {
