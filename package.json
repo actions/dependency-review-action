@@ -53,7 +53,7 @@
     "esbuild-register": "^3.6.0",
     "eslint": "^8.57.0",
     "eslint-plugin-github": "^4.10.2",
-    "eslint-plugin-jest": "^28.8.3",
+    "eslint-plugin-jest": "^29.16.6",
     "eslint-plugin-prettier": "^5.5.6",
     "js-yaml": "^4.3.1",
     "nodemon": "^3.1.14",
