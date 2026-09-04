@@ -161,12 +161,16 @@ const truncatedDGLicense = (license: string): boolean =>
 function packageKey(change: Change): string {
   const purl = parsePURL(change.package_url)
   const type = purl.type.toLowerCase()
-  const name = (
-    purl.namespace ? `${purl.namespace}/${purl.name}` : purl.name
-  )?.toLowerCase()
-  if (name) {
-    return `${type}/${name}`
+
+  const fullName =
+    purl.namespace && purl.name
+      ? `${purl.namespace}/${purl.name}`
+      : purl.name ?? purl.namespace
+
+  if (type && fullName) {
+    return `${type}/${fullName.toLowerCase()}`
   }
+
   // Fall back to ecosystem + name when the PURL can't be parsed.
   return `${change.ecosystem.toLowerCase()}/${change.name.toLowerCase()}`
 }
