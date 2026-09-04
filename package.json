@@ -39,7 +39,7 @@
     "semver": "^7.8.5",
     "spdx-expression-parse": "^5.0.0",
     "spdx-satisfies": "^6.0.0",
-    "ts-jest": "^29.4.11",
+    "ts-jest": "^29.4.12",
     "yaml": "^2.9.0",
     "zod": "^3.24.1"
   },
@@ -49,7 +49,7 @@
     "@types/spdx-expression-parse": "^4.0.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@vercel/ncc": "^0.44.0",
+    "@vercel/ncc": "^0.45.0",
     "esbuild-register": "^3.6.0",
     "eslint": "^8.57.0",
     "eslint-plugin-github": "^4.10.2",
@@ -57,7 +57,7 @@
     "eslint-plugin-prettier": "^5.5.6",
     "js-yaml": "^4.3.1",
     "nodemon": "^3.1.14",
-    "prettier": "3.8.4",
+    "prettier": "3.9.6",
     "typescript": "^5.9.2"
   },
   "overrides": {
