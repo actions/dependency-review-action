@@ -20,12 +20,10 @@ export async function commentPr(
   config: ConfigurationOptions,
   issueFound: boolean
 ): Promise<void> {
-  if (
-    !(
-      config.comment_summary_in_pr === 'always' ||
-      (config.comment_summary_in_pr === 'on-failure' && issueFound)
-    )
-  ) {
+  if (!(
+    config.comment_summary_in_pr === 'always' ||
+    (config.comment_summary_in_pr === 'on-failure' && issueFound)
+  )) {
     return
   }
 

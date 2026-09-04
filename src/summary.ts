@@ -135,7 +135,7 @@ function extractPatchVersionId(patchData: unknown): string | null {
 
   // Handle object format with identifier field (for backward compatibility)
   if (patchData && typeof patchData === 'object' && 'identifier' in patchData) {
-    const id = (patchData as {identifier: unknown}).identifier
+    const id = patchData.identifier
     return typeof id === 'string' ? id : null
   }
 
@@ -422,8 +422,7 @@ export async function addChangeVulnerabilitiesToSummary(
           // Find matching entry by ecosystem, package name (case-insensitive), and version range
           // Use pre-normalized values from cache to avoid repeated lowercasing and range conversion
           let foundEntry:
-            | {eco: string; pkg: string; range: string; patch: string}
-            | undefined
+            {eco: string; pkg: string; range: string; patch: string} | undefined
           for (const vulnEntry of advisoryEntries) {
             if (vulnEntry.ecoLower !== ecoLowercase) continue
             if (vulnEntry.pkgLower !== packageLowercase) continue
