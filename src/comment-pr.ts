@@ -20,10 +20,16 @@ export async function commentPr(
   config: ConfigurationOptions,
   issueFound: boolean
 ): Promise<void> {
-  if (!(
+  // For 'on-failure' mode, we need to handle both failure and success cases
+  // - On failure: create/update comment with issues
+  // - On success: update existing comment to show resolution (if one exists)
+  const shouldComment =
     config.comment_summary_in_pr === 'always' ||
-    (config.comment_summary_in_pr === 'on-failure' && issueFound)
-  )) {
+    (config.comment_summary_in_pr === 'on-failure' && issueFound) ||
+    (config.comment_summary_in_pr === 'on-failure' &&
+      !issueFound &&
+      (await hasExistingComment()))
+  if (!shouldComment) {
     return
   }
 
@@ -71,6 +77,15 @@ export async function commentPr(
       }
     }
   }
+}
+
+async function hasExistingComment(): Promise<boolean> {
+  if (!github.context.payload.pull_request) {
+    return false
+  }
+
+  const existingCommentId = await findCommentByMarker(COMMENT_MARKER)
+  return existingCommentId !== undefined
 }
 
 async function findCommentByMarker(
