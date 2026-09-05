@@ -152,6 +152,49 @@ const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
 const truncatedDGLicense = (license: string): boolean =>
   license.length === 255 && !spdx.isValid(license)
 
+// Builds a key identifying a package across manifest and lock files, so that
+// duplicate entries for the same package (differing only by version specifier)
+// can be matched. Changes are keyed by their parsed PURL type and full name,
+// ignoring the version.
+function packageKey(change: Change): string {
+  const purl = parsePURL(change.package_url)
+  const type = purl.type.toLowerCase()
+
+  const fullName =
+    purl.namespace && purl.name
+      ? `${purl.namespace}/${purl.name}`
+      : purl.name ?? purl.namespace
+
+  if (type && fullName) {
+    return `${type}/${fullName.toLowerCase()}`
+  }
+
+  // Fall back to ecosystem + name when the PURL can't be parsed.
+  return `${change.ecosystem.toLowerCase()}/${change.name.toLowerCase()}`
+}
+
+// The dependency graph API can list the same package more than once: e.g. from
+// a manifest file (like pyproject.toml) with a version range and a null
+// license, and from a lock file (like poetry.lock) with a pinned version and a
+// resolved license. This drops the null-license entries for a package when
+// another entry of the same change_type resolves a license for it, so the
+// package is not incorrectly reported as unlicensed.
+function filterLicensedDuplicates(changes: Changes): Changes {
+  const licensedKeys = new Set<string>()
+  for (const change of changes) {
+    if (change.change_type !== 'removed' && change.license !== null) {
+      licensedKeys.add(`${change.change_type}/${packageKey(change)}`)
+    }
+  }
+
+  return changes.filter(change => {
+    if (change.change_type === 'removed' || change.license !== null) {
+      return true
+    }
+    return !licensedKeys.has(`${change.change_type}/${packageKey(change)}`)
+  })
+}
+
 async function groupChanges(
   changes: Changes,
   licenseExclusions: PackageURL[] | null = null
@@ -188,6 +231,8 @@ async function groupChanges(
       }
     })
   }
+
+  candidateChanges = filterLicensedDuplicates(candidateChanges)
 
   const ghChanges = []
 
