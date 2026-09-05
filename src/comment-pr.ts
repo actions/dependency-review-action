@@ -29,7 +29,6 @@ export async function commentPr(
     (config.comment_summary_in_pr === 'on-failure' &&
       !issueFound &&
       (await hasExistingComment()))
-
   if (!shouldComment) {
     return
   }

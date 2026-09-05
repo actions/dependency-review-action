@@ -17,9 +17,7 @@ import * as spdx from './spdx'
  * @returns {Promise<{Object.<string, Array.<Change>>}} A promise to a Record Object. The keys are strings, unlicensed, unresolved and forbidden. The values are a list of changes
  */
 export type InvalidLicenseChangeTypes =
-  | 'unlicensed'
-  | 'unresolved'
-  | 'forbidden'
+  'unlicensed' | 'unresolved' | 'forbidden'
 export type InvalidLicenseChanges = Record<InvalidLicenseChangeTypes, Changes>
 export async function getInvalidLicenseChanges(
   changes: Change[],
@@ -84,7 +82,7 @@ export async function getInvalidLicenseChanges(
             invalidLicenseChanges.unresolved.push(change)
           }
         }
-      } catch (err) {
+      } catch {
         invalidLicenseChanges.unresolved.push(change)
       }
     }
@@ -107,7 +105,7 @@ const fetchGHLicense = async (
       repo
     })
     return response.data.license?.spdx_id ?? null
-  } catch (_) {
+  } catch {
     return null
   }
 }
@@ -123,7 +121,7 @@ const parseGitHubURL = (url: string): {owner: string; repo: string} | null => {
       return null
     }
     return {owner: components[1], repo: components[2]}
-  } catch (_) {
+  } catch {
     return null
   }
 }
