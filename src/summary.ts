@@ -1,7 +1,13 @@
 import * as core from '@actions/core'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
-import {Change, Changes, ConfigurationOptions, Scorecard} from './schemas'
+import {
+  Change,
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  ResolvedVulnerabilities
+} from './schemas'
 import {
   groupDependenciesByManifest,
   getManifestsSet,
@@ -150,6 +156,7 @@ export function addSummaryToSummary(
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
   scorecard: Scorecard,
+  resolvedVulnerabilities: ResolvedVulnerabilities,
   config: ConfigurationOptions
 ): string {
   if (config.deny_licenses && config.deny_licenses.length > 0) {
@@ -176,15 +183,29 @@ export function addSummaryToSummary(
       config.show_openssf_scorecard ? 'OpenSSF Scorecard issues' : ''
     ]
 
+    const activeIssueTypes = issueTypes.filter(Boolean)
     let msg = ''
-    if (issueTypes.filter(Boolean).length === 0) {
+    if (activeIssueTypes.length === 0) {
       msg = `${icons.check} No issues found.`
     } else {
-      msg = `${icons.check} No ${issueTypes.filter(Boolean).join(' or ')} found.`
+      msg = `${icons.check} No ${activeIssueTypes.join(' or ')} found.`
     }
 
-    core.summary.addRaw(msg)
-    out.push(msg)
+    let msgHtml = msg
+    let msgMarkdown = msg
+
+    // Add extra positive message if vulnerabilities were resolved
+    if (
+      config.show_resolved_vulnerabilities &&
+      config.vulnerability_check &&
+      resolvedVulnerabilities.length > 0
+    ) {
+      msgHtml += ` Additionally, this PR resolves <strong>${resolvedVulnerabilities.length}</strong> existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
+      msgMarkdown += ` Additionally, this PR resolves **${resolvedVulnerabilities.length}** existing ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}! 🎉`
+    }
+
+    core.summary.addRaw(msgHtml)
+    out.push(msgMarkdown)
     return out.join('\n')
   }
 
@@ -192,43 +213,74 @@ export function addSummaryToSummary(
   core.summary.addRaw(foundIssuesHeader)
   out.push(foundIssuesHeader)
 
-  const summaryList: string[] = [
-    ...(config.vulnerability_check
-      ? [
-          `${checkOrFailIcon(vulnerableChanges.length)} ${
-            vulnerableChanges.length
-          } vulnerable package(s)`
-        ]
-      : []),
-    ...(config.license_check
-      ? [
-          `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
-            invalidLicenseChanges.forbidden.length
-          } package(s) with incompatible licenses`,
-          `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-            invalidLicenseChanges.unresolved.length
-          } package(s) with invalid SPDX license definitions`,
-          `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
-            invalidLicenseChanges.unlicensed.length
-          } package(s) with unknown licenses.`
-        ]
-      : []),
-    ...(deniedChanges.length > 0
-      ? [
-          `${checkOrWarnIcon(deniedChanges.length)} ${
-            deniedChanges.length
-          } package(s) denied.`
-        ]
-      : []),
-    ...(config.show_openssf_scorecard && scorecardWarnings > 0
-      ? [
-          `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
-        ]
-      : [])
-  ]
+  // Build a single structured list of summary items, then render for each context.
+  // Items with a `count` get bold formatting (HTML <strong> / Markdown **);
+  // items without are rendered as plain text.
+  const summaryItems: {icon: string; text: string; count?: number}[] = []
 
-  core.summary.addList(summaryList)
-  for (const line of summaryList) {
+  if (
+    config.show_resolved_vulnerabilities &&
+    config.vulnerability_check &&
+    resolvedVulnerabilities.length > 0
+  ) {
+    const count = resolvedVulnerabilities.length
+    summaryItems.push({
+      icon: icons.check,
+      text: `${count === 1 ? 'vulnerability' : 'vulnerabilities'} resolved 🎉`,
+      count
+    })
+  }
+  if (config.vulnerability_check) {
+    summaryItems.push({
+      icon: checkOrFailIcon(vulnerableChanges.length),
+      text: `${vulnerableChanges.length} vulnerable package(s)`
+    })
+  }
+  if (config.license_check) {
+    summaryItems.push(
+      {
+        icon: checkOrFailIcon(invalidLicenseChanges.forbidden.length),
+        text: `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`
+      },
+      {
+        icon: checkOrFailIcon(invalidLicenseChanges.unresolved.length),
+        text: `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`
+      },
+      {
+        icon: checkOrWarnIcon(invalidLicenseChanges.unlicensed.length),
+        text: `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses.`
+      }
+    )
+  }
+  if (deniedChanges.length > 0) {
+    summaryItems.push({
+      icon: checkOrWarnIcon(deniedChanges.length),
+      text: `${deniedChanges.length} package(s) denied.`
+    })
+  }
+  if (config.show_openssf_scorecard && scorecardWarnings > 0) {
+    summaryItems.push({
+      icon: checkOrWarnIcon(scorecardWarnings),
+      text: `${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+    })
+  }
+
+  // Render for HTML (Action summary) — uses <strong> for count
+  const summaryListHtml = summaryItems.map(item =>
+    item.count !== undefined
+      ? `${item.icon} <strong>${item.count}</strong> ${item.text}`
+      : `${item.icon} ${item.text}`
+  )
+
+  // Render for Markdown (PR comment) — uses **bold** for count
+  const summaryListMarkdown = summaryItems.map(item =>
+    item.count !== undefined
+      ? `${item.icon} **${item.count}** ${item.text}`
+      : `${item.icon} ${item.text}`
+  )
+
+  core.summary.addList(summaryListHtml)
+  for (const line of summaryListMarkdown) {
     out.push(`* ${line}`)
   }
 
@@ -751,4 +803,113 @@ function checkOrFailIcon(count: number): string {
 
 function checkOrWarnIcon(count: number): string {
   return count === 0 ? icons.check : icons.warning
+}
+
+export function addResolvedVulnerabilitiesToSummary(
+  resolvedVulnerabilities: ResolvedVulnerabilities,
+  vulnerableChanges: Changes = []
+): void {
+  if (resolvedVulnerabilities.length === 0) {
+    return
+  }
+
+  const vulnCount = resolvedVulnerabilities.length
+  const vulnWord = vulnCount === 1 ? 'vulnerability' : 'vulnerabilities'
+
+  core.summary.addHeading('Resolved Vulnerabilities', 2)
+  core.summary.addRaw(
+    `${icons.check} Great job! This PR resolves <strong>${vulnCount}</strong> ${vulnWord}:`
+  )
+  core.summary.addBreak()
+
+  // Build a set of packages that still have vulnerabilities in the updated version
+  const stillVulnerablePackages = new Set<string>()
+  for (const change of vulnerableChanges) {
+    if (change.change_type === 'added' && change.vulnerabilities.length > 0) {
+      stillVulnerablePackages.add(`${change.name}|${change.ecosystem}`)
+    }
+  }
+
+  // Group vulnerabilities by package (name + version + manifest)
+  const grouped = new Map<
+    string,
+    {
+      manifest: string
+      name: string
+      version: string
+      ecosystem: string
+      vulns: typeof resolvedVulnerabilities
+    }
+  >()
+  for (const vuln of resolvedVulnerabilities) {
+    const key = `${vuln.manifest}|${vuln.package_name}|${vuln.package_version}`
+    let entry = grouped.get(key)
+    if (!entry) {
+      entry = {
+        manifest: vuln.manifest,
+        name: vuln.package_name,
+        version: vuln.package_version,
+        ecosystem: vuln.ecosystem,
+        vulns: []
+      }
+      grouped.set(key, entry)
+    }
+    entry.vulns.push(vuln)
+  }
+
+  const packageCount = grouped.size
+  const COLLAPSE_THRESHOLD = 4
+
+  if (packageCount <= COLLAPSE_THRESHOLD) {
+    // Small number of packages — render a flat table
+    const tableRows: SummaryTableRow[] = [
+      [
+        {data: 'Package', header: true},
+        {data: 'Version', header: true},
+        {data: 'Vulnerability', header: true},
+        {data: 'Severity', header: true}
+      ]
+    ]
+    for (const vuln of resolvedVulnerabilities) {
+      tableRows.push([
+        `${vuln.manifest} » <strong>${vuln.package_name}</strong>`,
+        vuln.package_version,
+        renderUrl(vuln.advisory_url, vuln.advisory_summary),
+        vuln.severity
+      ])
+    }
+    core.summary.addTable(tableRows)
+
+    // Add per-package warnings for packages that still have vulnerabilities
+    for (const [, pkg] of grouped) {
+      if (stillVulnerablePackages.has(`${pkg.name}|${pkg.ecosystem}`)) {
+        core.summary.addRaw(
+          `<blockquote>${icons.warning} <strong>${pkg.name}</strong> still has unresolved vulnerabilities in the updated version. Consider upgrading further.</blockquote>`,
+          true
+        )
+      }
+    }
+  } else {
+    // Many packages — group by package inside collapsible sections
+    for (const [, pkg] of grouped) {
+      const hasRemaining = stillVulnerablePackages.has(
+        `${pkg.name}|${pkg.ecosystem}`
+      )
+      const label = `${pkg.manifest} » <strong>${pkg.name}</strong>@${pkg.version} — ${pkg.vulns.length} ${pkg.vulns.length === 1 ? 'vulnerability' : 'vulnerabilities'} resolved`
+      let tableHtml = '<table><tr><th>Vulnerability</th><th>Severity</th></tr>'
+      for (const vuln of pkg.vulns) {
+        tableHtml += `<tr><td>${renderUrl(vuln.advisory_url, vuln.advisory_summary)}</td><td>${vuln.severity}</td></tr>`
+      }
+      tableHtml += '</table>'
+      if (hasRemaining) {
+        tableHtml += `<blockquote>${icons.warning} This package still has unresolved vulnerabilities in the updated version. Consider upgrading further.</blockquote>`
+      }
+      core.summary.addRaw(
+        `<details><summary>${label}</summary>${tableHtml}</details>`,
+        true
+      )
+    }
+  }
+
+  core.summary.addRaw('Keep up the great work securing your dependencies! 🎉')
 }

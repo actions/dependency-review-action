@@ -207,6 +207,49 @@ jobs:
           echo "$VULNERABLE_CHANGES" | jq '.[].package_url'
 ```
 
+## Accessing resolved vulnerabilities output
+
+When dependencies with known vulnerabilities are removed in your PR, the action can report these as "resolved vulnerabilities" through the `resolved-vulnerabilities` output. This feature is opt-in via the `show-resolved-vulnerabilities` input.
+
+A vulnerability is considered "resolved" when the advisory that affected a removed dependency does not appear on any remaining or newly-added dependency. This avoids false positives during upgrades where the same advisory may still apply to the new version.
+
+```yaml
+name: 'Dependency Review with Resolved Vulnerabilities'
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v6
+      - name: 'Dependency Review'
+        id: review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+          show-resolved-vulnerabilities: true
+      - name: 'Celebrate Resolved Vulnerabilities'
+        if: steps.review.outputs.resolved-vulnerabilities != '[]'
+        env:
+          RESOLVED_VULNERABILITIES: ${{ steps.review.outputs.resolved-vulnerabilities }}
+        run: |
+          echo "🎉 Great job! This PR resolves vulnerabilities:"
+          echo "$RESOLVED_VULNERABILITIES" | jq -r '.[] | "- \(.severity | ascii_upcase): \(.advisory_summary) in \(.package_name)@\(.package_version)"'
+```
+
+When `show-resolved-vulnerabilities` is enabled, the `resolved-vulnerabilities` output is always set — to `'[]'` when no vulnerabilities were resolved, so downstream conditions are reliable. When the input is omitted or `false`, the output is not set. Each resolved vulnerability includes:
+- `severity`: The severity level of the resolved vulnerability
+- `advisory_ghsa_id`: The GitHub Advisory Database ID
+- `advisory_summary`: A summary of the vulnerability
+- `advisory_url`: URL to the advisory
+- `package_name`: Name of the package that had the vulnerability
+- `package_version`: Version of the package that had the vulnerability
+
 ## Exclude dependencies from the license check
 
 Using the `allow-dependencies-licenses` you can exclude dependencies from the license check. The values should be provided in [purl](https://github.com/package-url/purl-spec) format.

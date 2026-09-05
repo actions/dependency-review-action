@@ -116,6 +116,7 @@ export const ConfigurationOptionsSchema = z
     show_openssf_scorecard: z.boolean().optional().default(true),
     warn_on_openssf_scorecard_level: z.number().default(3),
     show_patched_versions: z.boolean().default(false),
+    show_resolved_vulnerabilities: z.boolean().default(false),
     comment_summary_in_pr: z
       .union([
         z.preprocess(
@@ -160,6 +161,24 @@ export const ConfigurationOptionsSchema = z
   })
 
 export const ChangesSchema = z.array(ChangeSchema)
+
+// Schema for resolved vulnerabilities - vulnerabilities that were present in base but no longer in head
+export const ResolvedVulnerabilitySchema = z.object({
+  severity: SeveritySchema,
+  advisory_ghsa_id: z.string(),
+  advisory_summary: z.string(),
+  advisory_url: z.string(),
+  package_name: z.string(),
+  package_version: z.string(),
+  package_url: z.string(),
+  manifest: z.string(),
+  ecosystem: z.string()
+})
+
+export const ResolvedVulnerabilitiesSchema = z.array(
+  ResolvedVulnerabilitySchema
+)
+
 export const ComparisonResponseSchema = z.object({
   changes: z.array(ChangeSchema),
   snapshot_warnings: z.string()
@@ -213,3 +232,7 @@ export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
 export type Scorecard = z.infer<typeof ScorecardSchema>
 export type ScorecardApi = z.infer<typeof ScorecardApiSchema>
+export type ResolvedVulnerability = z.infer<typeof ResolvedVulnerabilitySchema>
+export type ResolvedVulnerabilities = z.infer<
+  typeof ResolvedVulnerabilitiesSchema
+>
