@@ -56,12 +56,14 @@ export async function getInvalidLicenseChanges(
   const validityCache = new Map<string, boolean>()
 
   for (const change of licensedChanges) {
-    const license = change.license
-
     // should never happen since licensedChanges always have licenses but license is nullable in changes schema
-    if (license === null) {
+    if (change.license === null) {
       continue
     }
+
+    // some registries report licenses with non-canonical casing, so
+    // normalize them before validation
+    const license = spdx.normalizeLicenseCase(change.license)
 
     if (license === 'NOASSERTION') {
       invalidLicenseChanges.unlicensed.push(change)
