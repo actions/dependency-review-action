@@ -66,6 +66,9 @@
     "eslint-plugin-escompat": "3.4.0",
     "@octokit/request-error@5.0.1": "5.1.1",
     "undici": "^6.27.0",
-    "minimatch": "^9.0.7"
+    "minimatch": "^9.0.7",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "3.15.2"
+    }
   }
 }
