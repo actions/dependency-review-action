@@ -1,5 +1,10 @@
 import {expect, jest, test, beforeEach} from '@jest/globals'
-import {Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
+import {
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  ResolvedVulnerabilities
+} from '../src/schemas'
 import * as summary from '../src/summary'
 import * as core from '@actions/core'
 import {createTestChange} from './fixtures/create-test-change'
@@ -32,6 +37,7 @@ const emptyInvalidLicenseChanges = {
 const emptyScorecard: Scorecard = {
   dependencies: []
 }
+const emptyResolvedVulnerabilities: ResolvedVulnerabilities = []
 const defaultConfig: ConfigurationOptions = {
   vulnerability_check: true,
   license_check: true,
@@ -48,7 +54,8 @@ const defaultConfig: ConfigurationOptions = {
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: false,
-  show_patched_versions: false
+  show_patched_versions: false,
+  show_resolved_vulnerabilities: false
 }
 
 const changesWithEmptyManifests: Changes = [
@@ -116,6 +123,7 @@ test('prints headline as h1', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -129,6 +137,7 @@ test('does not add deprecation warning for deny-licenses option if not set', () 
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -144,6 +153,7 @@ test('adds deprecation warning for deny-licenses option if set', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     config
   )
   const text = core.summary.stringify()
@@ -169,6 +179,7 @@ test('returns minimal summary formatted for posting as a PR comment', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     scorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
@@ -195,6 +206,7 @@ test('only includes "No vulnerabilities or license issues found"-message if both
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -209,6 +221,7 @@ test('only includes "No vulnerabilities found"-message if "license_check" is set
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     config
   )
   const text = core.summary.stringify()
@@ -223,6 +236,7 @@ test('only includes "No license issues found"-message if "vulnerability_check" i
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     config
   )
   const text = core.summary.stringify()
@@ -236,6 +250,7 @@ test('groups dependencies with empty manifest paths together', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   summary.addScannedFiles(changesWithEmptyManifests)
@@ -250,6 +265,7 @@ test('does not include status section if nothing was found', () => {
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
   const text = core.summary.stringify()
@@ -273,6 +289,7 @@ test('includes count and status icons for all findings', () => {
     licenseIssues,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
@@ -293,6 +310,7 @@ test('uses checkmarks for license issues if only vulnerabilities were found', ()
     emptyInvalidLicenseChanges,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
@@ -317,6 +335,7 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
     licenseIssues,
     emptyChanges,
     emptyScorecard,
+    emptyResolvedVulnerabilities,
     defaultConfig
   )
 
@@ -327,6 +346,42 @@ test('uses checkmarks for vulnerabilities if only license issues were found', ()
   )
   expect(text).toContain('❌ 1 package(s) with incompatible licenses')
   expect(text).toContain('✅ 0 package(s) with unknown licenses')
+})
+
+test('includes resolved vulnerabilities in summary list when issues are also found', () => {
+  const vulnerabilities = [createTestChange()]
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Test vuln',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  const result = summary.addSummaryToSummary(
+    vulnerabilities,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    resolvedVulns,
+    {...defaultConfig, show_resolved_vulnerabilities: true}
+  )
+
+  const text = core.summary.stringify()
+  // HTML summary should bold the count
+  expect(text).toContain('<strong>1</strong>')
+  expect(text).toContain('vulnerability resolved')
+  // Markdown output should use ** for bold
+  expect(result).toContain('**1**')
+  expect(result).toContain('vulnerability resolved')
+  // Should also contain vulnerability issues
+  expect(text).toContain('vulnerable package(s)')
 })
 
 test('addChangeVulnerabilitiesToSummary() - only includes section if any vulnerabilities found', async () => {
@@ -962,4 +1017,243 @@ test('addChangeVulnerabilitiesToSummary() - completes all tasks even with varyin
   // Verify all 20 unique advisories were fetched and completed
   expect(completedAdvisories.size).toBe(20)
   expect(mockOctokitRequest).toHaveBeenCalledTimes(20)
+})
+
+test('addResolvedVulnerabilitiesToSummary renders table with correct heading', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Prototype pollution in lodash',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  expect(rendered).toContain('Resolved Vulnerabilities')
+  expect(rendered).toContain('1')
+  expect(rendered).toContain('vulnerability')
+  expect(rendered).toContain('lodash')
+  expect(rendered).toContain('4.17.20')
+  expect(rendered).toContain('high')
+})
+
+test('addResolvedVulnerabilitiesToSummary uses plural for multiple vulns', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Vuln 1',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    },
+    {
+      severity: 'critical',
+      advisory_ghsa_id: 'GHSA-4444-5555-6666',
+      advisory_summary: 'Vuln 2',
+      advisory_url: 'https://github.com/advisories/GHSA-4444-5555-6666',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  expect(rendered).toContain('2')
+  expect(rendered).toContain('vulnerabilities')
+})
+
+test('addSummaryToSummary does not show resolved vulns when show_resolved_vulnerabilities is false', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Test vuln',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  const result = summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    resolvedVulns,
+    {...defaultConfig, show_resolved_vulnerabilities: false}
+  )
+
+  expect(result).not.toContain('resolved')
+  expect(result).not.toContain('🎉')
+})
+
+test('addSummaryToSummary shows resolved vulns when show_resolved_vulnerabilities is true', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1234-5678-9012',
+      advisory_summary: 'Test vuln',
+      advisory_url: 'https://github.com/advisories/GHSA-1234-5678-9012',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  const result = summary.addSummaryToSummary(
+    emptyChanges,
+    emptyInvalidLicenseChanges,
+    emptyChanges,
+    emptyScorecard,
+    resolvedVulns,
+    {...defaultConfig, show_resolved_vulnerabilities: true}
+  )
+
+  expect(result).toContain('resolves')
+  expect(result).toContain('🎉')
+})
+
+test('addResolvedVulnerabilitiesToSummary uses collapsible sections for many packages', () => {
+  const packages = ['lodash', 'express', 'axios', 'moment', 'underscore']
+  const resolvedVulns: ResolvedVulnerabilities = packages.map((pkg, i) => ({
+    severity: 'high' as const,
+    advisory_ghsa_id: `GHSA-${i}-${i}-${i}`,
+    advisory_summary: `Vuln in ${pkg}`,
+    advisory_url: `https://github.com/advisories/GHSA-${i}`,
+    package_name: pkg,
+    package_version: '1.0.0',
+    package_url: `pkg:npm/${pkg}@1.0.0`,
+    manifest: 'package.json',
+    ecosystem: 'npm'
+  }))
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  // Should use collapsible <details> sections, not a flat table
+  expect(rendered).toContain('<details>')
+  expect(rendered).toContain('</details>')
+  for (const pkg of packages) {
+    expect(rendered).toContain(pkg)
+  }
+  // Should NOT contain <th>Package</th> (that's the flat table header)
+  expect(rendered).not.toContain('<th>Package</th>')
+})
+
+test('addResolvedVulnerabilitiesToSummary uses flat table for few packages', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Vuln 1',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    },
+    {
+      severity: 'critical',
+      advisory_ghsa_id: 'GHSA-4444-5555-6666',
+      advisory_summary: 'Vuln 2',
+      advisory_url: 'https://github.com/advisories/GHSA-4444-5555-6666',
+      package_name: 'express',
+      package_version: '4.17.1',
+      package_url: 'pkg:npm/express@4.17.1',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns)
+
+  const rendered = core.summary.stringify()
+  // Should use flat table, not collapsible sections
+  expect(rendered).toContain('<th>Package</th>')
+  expect(rendered).not.toContain('<details>')
+})
+
+test('addResolvedVulnerabilitiesToSummary warns when updated version still has vulns', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Old vuln in lodash',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  // lodash was updated but still has a different vulnerability
+  const vulnerableChanges: Changes = [
+    createTestChange({
+      name: 'lodash',
+      version: '4.17.21',
+      ecosystem: 'npm',
+      change_type: 'added',
+      vulnerabilities: [
+        createTestVulnerability({
+          severity: 'moderate',
+          advisory_ghsa_id: 'GHSA-9999-8888-7777',
+          advisory_summary: 'New vuln in lodash',
+          advisory_url: 'https://github.com/advisories/GHSA-9999-8888-7777'
+        })
+      ]
+    })
+  ]
+
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns, vulnerableChanges)
+
+  const rendered = core.summary.stringify()
+  expect(rendered).toContain('still has unresolved vulnerabilities')
+  expect(rendered).toContain('lodash')
+  expect(rendered).toContain('⚠️')
+})
+
+test('addResolvedVulnerabilitiesToSummary does not warn when package is fully resolved', () => {
+  const resolvedVulns: ResolvedVulnerabilities = [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-1111-2222-3333',
+      advisory_summary: 'Old vuln in lodash',
+      advisory_url: 'https://github.com/advisories/GHSA-1111-2222-3333',
+      package_name: 'lodash',
+      package_version: '4.17.20',
+      package_url: 'pkg:npm/lodash@4.17.20',
+      manifest: 'package.json',
+      ecosystem: 'npm'
+    }
+  ]
+
+  // No vulnerable changes remain
+  summary.addResolvedVulnerabilitiesToSummary(resolvedVulns, [])
+
+  const rendered = core.summary.stringify()
+  expect(rendered).not.toContain('still has unresolved vulnerabilities')
 })

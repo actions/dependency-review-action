@@ -6,7 +6,13 @@
  * npx ts-node scripts/create_summary.ts
  */
 
-import {Change, Changes, ConfigurationOptions, Scorecard} from '../src/schemas'
+import {
+  Change,
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  ResolvedVulnerabilities
+} from '../src/schemas'
 import {createTestChange} from '../__tests__/fixtures/create-test-change'
 import {InvalidLicenseChanges} from '../src/licenses'
 import * as fs from 'fs'
@@ -36,7 +42,8 @@ const defaultConfig: ConfigurationOptions = {
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: true,
-  show_patched_versions: false
+  show_patched_versions: false,
+  show_resolved_vulnerabilities: false
 }
 
 const scorecard: Scorecard = {
@@ -124,11 +131,13 @@ async function createSummary(
   config: ConfigurationOptions,
   fileName: string
 ): Promise<void> {
+  const emptyResolvedVulnerabilities: ResolvedVulnerabilities = []
   summary.addSummaryToSummary(
     vulnerabilities,
     licenseIssues,
     denied,
     scorecard,
+    emptyResolvedVulnerabilities,
     config
   )
   await summary.addChangeVulnerabilitiesToSummary(

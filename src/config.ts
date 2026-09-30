@@ -53,6 +53,9 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     'warn-on-openssf-scorecard-level'
   )
   const show_patched_versions = getOptionalBoolean('show-patched-versions')
+  const show_resolved_vulnerabilities = getOptionalBoolean(
+    'show-resolved-vulnerabilities'
+  )
 
   validateLicenses('allow-licenses', allow_licenses)
   validateLicenses('deny-licenses', deny_licenses)
@@ -76,7 +79,8 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     warn_only,
     show_openssf_scorecard,
     warn_on_openssf_scorecard_level,
-    show_patched_versions
+    show_patched_versions,
+    show_resolved_vulnerabilities
   }
 
   return Object.fromEntries(

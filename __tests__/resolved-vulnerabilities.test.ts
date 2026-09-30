@@ -1,0 +1,232 @@
+import {test, expect} from '@jest/globals'
+import {getResolvedVulnerabilities} from '../src/resolved-vulnerabilities'
+import {Changes, Change} from '../src/schemas'
+
+const vulnerableRemovedChange: Change = {
+  change_type: 'removed',
+  manifest: 'package.json',
+  ecosystem: 'npm',
+  name: 'lodash',
+  version: '4.17.20',
+  package_url: 'pkg:npm/lodash@4.17.20',
+  license: 'MIT',
+  source_repository_url: 'https://github.com/lodash/lodash',
+  scope: 'runtime',
+  vulnerabilities: [
+    {
+      severity: 'high',
+      advisory_ghsa_id: 'GHSA-35jh-r3h4-6jhm',
+      advisory_summary: 'lodash Prototype Pollution vulnerability',
+      advisory_url: 'https://github.com/advisories/GHSA-35jh-r3h4-6jhm'
+    },
+    {
+      severity: 'critical',
+      advisory_ghsa_id: 'GHSA-p6mc-m468-83gw',
+      advisory_summary: 'lodash Command Injection via template',
+      advisory_url: 'https://github.com/advisories/GHSA-p6mc-m468-83gw'
+    }
+  ]
+}
+
+const nonVulnerableRemovedChange: Change = {
+  change_type: 'removed',
+  manifest: 'package.json',
+  ecosystem: 'npm',
+  name: 'express',
+  version: '4.18.0',
+  package_url: 'pkg:npm/express@4.18.0',
+  license: 'MIT',
+  source_repository_url: 'https://github.com/expressjs/express',
+  scope: 'runtime',
+  vulnerabilities: []
+}
+
+const addedChange: Change = {
+  change_type: 'added',
+  manifest: 'package.json',
+  ecosystem: 'npm',
+  name: 'react',
+  version: '18.0.0',
+  package_url: 'pkg:npm/react@18.0.0',
+  license: 'MIT',
+  source_repository_url: 'https://github.com/facebook/react',
+  scope: 'runtime',
+  vulnerabilities: [
+    {
+      severity: 'moderate',
+      advisory_ghsa_id: 'GHSA-test-1234',
+      advisory_summary: 'Test vulnerability',
+      advisory_url: 'https://github.com/advisories/GHSA-test-1234'
+    }
+  ]
+}
+
+test('extracts resolved vulnerabilities from removed packages', () => {
+  const changes: Changes = [
+    vulnerableRemovedChange,
+    nonVulnerableRemovedChange,
+    addedChange
+  ]
+
+  const resolvedVulns = getResolvedVulnerabilities(changes)
+
+  expect(resolvedVulns).toHaveLength(2)
+
+  expect(resolvedVulns[0]).toEqual({
+    severity: 'high',
+    advisory_ghsa_id: 'GHSA-35jh-r3h4-6jhm',
+    advisory_summary: 'lodash Prototype Pollution vulnerability',
+    advisory_url: 'https://github.com/advisories/GHSA-35jh-r3h4-6jhm',
+    package_name: 'lodash',
+    package_version: '4.17.20',
+    package_url: 'pkg:npm/lodash@4.17.20',
+    manifest: 'package.json',
+    ecosystem: 'npm'
+  })
+
+  expect(resolvedVulns[1]).toEqual({
+    severity: 'critical',
+    advisory_ghsa_id: 'GHSA-p6mc-m468-83gw',
+    advisory_summary: 'lodash Command Injection via template',
+    advisory_url: 'https://github.com/advisories/GHSA-p6mc-m468-83gw',
+    package_name: 'lodash',
+    package_version: '4.17.20',
+    package_url: 'pkg:npm/lodash@4.17.20',
+    manifest: 'package.json',
+    ecosystem: 'npm'
+  })
+})
+
+test('returns empty array when no removed packages have vulnerabilities', () => {
+  const changes: Changes = [nonVulnerableRemovedChange, addedChange]
+
+  const resolvedVulns = getResolvedVulnerabilities(changes)
+
+  expect(resolvedVulns).toHaveLength(0)
+})
+
+test('ignores added packages with vulnerabilities', () => {
+  const changes: Changes = [addedChange]
+
+  const resolvedVulns = getResolvedVulnerabilities(changes)
+
+  expect(resolvedVulns).toHaveLength(0)
+})
+
+test('handles empty changes array', () => {
+  const changes: Changes = []
+
+  const resolvedVulns = getResolvedVulnerabilities(changes)
+
+  expect(resolvedVulns).toHaveLength(0)
+})
+
+test('filters out advisories that still exist on added packages', () => {
+  const sharedAdvisoryId = 'GHSA-35jh-r3h4-6jhm'
+
+  const removedWithSharedVuln: Change = {
+    change_type: 'removed',
+    manifest: 'package.json',
+    ecosystem: 'npm',
+    name: 'lodash',
+    version: '4.17.20',
+    package_url: 'pkg:npm/lodash@4.17.20',
+    license: 'MIT',
+    source_repository_url: 'https://github.com/lodash/lodash',
+    scope: 'runtime',
+    vulnerabilities: [
+      {
+        severity: 'high',
+        advisory_ghsa_id: sharedAdvisoryId,
+        advisory_summary: 'lodash Prototype Pollution vulnerability',
+        advisory_url: 'https://github.com/advisories/GHSA-35jh-r3h4-6jhm'
+      },
+      {
+        severity: 'critical',
+        advisory_ghsa_id: 'GHSA-unique-resolved',
+        advisory_summary: 'A unique vulnerability only on old version',
+        advisory_url: 'https://github.com/advisories/GHSA-unique-resolved'
+      }
+    ]
+  }
+
+  const addedWithSameVuln: Change = {
+    change_type: 'added',
+    manifest: 'package.json',
+    ecosystem: 'npm',
+    name: 'lodash',
+    version: '4.17.21',
+    package_url: 'pkg:npm/lodash@4.17.21',
+    license: 'MIT',
+    source_repository_url: 'https://github.com/lodash/lodash',
+    scope: 'runtime',
+    vulnerabilities: [
+      {
+        severity: 'high',
+        advisory_ghsa_id: sharedAdvisoryId,
+        advisory_summary: 'lodash Prototype Pollution vulnerability',
+        advisory_url: 'https://github.com/advisories/GHSA-35jh-r3h4-6jhm'
+      }
+    ]
+  }
+
+  const changes: Changes = [removedWithSharedVuln, addedWithSameVuln]
+  const resolvedVulns = getResolvedVulnerabilities(changes)
+
+  // Only the unique advisory should be reported as resolved
+  expect(resolvedVulns).toHaveLength(1)
+  expect(resolvedVulns[0].advisory_ghsa_id).toBe('GHSA-unique-resolved')
+})
+
+test('does not suppress resolution when same GHSA exists on a different package', () => {
+  const sharedAdvisoryId = 'GHSA-shared-across-pkgs'
+
+  const removedLodash: Change = {
+    change_type: 'removed',
+    manifest: 'package.json',
+    ecosystem: 'npm',
+    name: 'lodash',
+    version: '4.17.20',
+    package_url: 'pkg:npm/lodash@4.17.20',
+    license: 'MIT',
+    source_repository_url: 'https://github.com/lodash/lodash',
+    scope: 'runtime',
+    vulnerabilities: [
+      {
+        severity: 'high',
+        advisory_ghsa_id: sharedAdvisoryId,
+        advisory_summary: 'Shared advisory affecting multiple packages',
+        advisory_url: `https://github.com/advisories/${sharedAdvisoryId}`
+      }
+    ]
+  }
+
+  // Same GHSA on a completely different package — should NOT suppress lodash resolution
+  const addedUnrelatedPkg: Change = {
+    change_type: 'added',
+    manifest: 'package.json',
+    ecosystem: 'npm',
+    name: 'underscore',
+    version: '1.13.0',
+    package_url: 'pkg:npm/underscore@1.13.0',
+    license: 'MIT',
+    source_repository_url: 'https://github.com/jashkenas/underscore',
+    scope: 'runtime',
+    vulnerabilities: [
+      {
+        severity: 'high',
+        advisory_ghsa_id: sharedAdvisoryId,
+        advisory_summary: 'Shared advisory affecting multiple packages',
+        advisory_url: `https://github.com/advisories/${sharedAdvisoryId}`
+      }
+    ]
+  }
+
+  const changes: Changes = [removedLodash, addedUnrelatedPkg]
+  const resolvedVulns = getResolvedVulnerabilities(changes)
+
+  // lodash resolution should NOT be suppressed by underscore having the same GHSA
+  expect(resolvedVulns).toHaveLength(1)
+  expect(resolvedVulns[0].package_name).toBe('lodash')
+  expect(resolvedVulns[0].advisory_ghsa_id).toBe(sharedAdvisoryId)
+})
