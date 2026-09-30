@@ -79,6 +79,9 @@ inputs:
   show-patched-versions:
     description: When set to `true`, the vulnerability summary table will include a column showing the first patched version for each vulnerability.
     required: false
+  show-fixes-in-summary:
+    description: When set to `true`, the summary will include a "🎉 Issues Fixed" section showing vulnerabilities resolved by the PR.
+    required: false
 outputs:
   comment-content:
     description: Prepared dependency report comment
