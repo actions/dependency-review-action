@@ -358,6 +358,33 @@ describe('GH License API fallback', () => {
     expect(unlicensed.length).toEqual(1)
   })
 
+  test('it fetches a GitHub Actions license from the package URL when source_repository_url is null', async () => {
+    const githubActionsChange: Change = {
+      change_type: 'added',
+      manifest: '.github/workflows/test.yml',
+      ecosystem: 'actions',
+      name: 'actions/cache',
+      version: '6.*.*',
+      package_url: 'pkg:githubactions/actions/cache@6.%2A.%2A',
+      license: null,
+      source_repository_url: null,
+      scope: 'runtime',
+      vulnerabilities: []
+    }
+
+    const {unlicensed} = await getInvalidLicenseChanges(
+      [githubActionsChange],
+      {}
+    )
+
+    expect(mockOctokit.rest.licenses.getForRepo).toHaveBeenCalledWith({
+      owner: 'actions',
+      repo: 'cache'
+    })
+
+    expect(unlicensed.length).toEqual(0)
+  })
+
   test('it does not call licenses API endpoint if licenses for all changes are present', async () => {
     const {unlicensed} = await getInvalidLicenseChanges(
       [npmChange, rubyChange],
