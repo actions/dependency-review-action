@@ -135,29 +135,44 @@ test('allows packages not defined in the deny packages and groups list', async (
   expect(deniedChanges.length).toEqual(0)
 })
 
+test('allows packages with the same name, but different namespaces', async () => {
+  const changes: Changes = [npmChange]
+  const deniedPackages = createTestPURLs([
+    'pkg:npm/lodasher/lodash',
+    'pkg:npm/malicious/lodash@4.17.20'
+  ])
+  const deniedChanges = await getDeniedChanges(changes, deniedPackages, [])
+
+  expect(deniedChanges.length).toEqual(0)
+})
+
 test('deny packages does not prevent removal of denied packages', async () => {
   const changes: Changes = [
     createTestChange({
       change_type: 'added',
       name: 'deny-by-name-and-version',
+      package_url: 'pkg:npm/org.test.deny.by/deny-by-name-and-version@1.0.0',
       version: '1.0.0',
       ecosystem: 'npm'
     }),
     createTestChange({
       change_type: 'removed',
       name: 'pass-by-name-and-version',
+      package_url: 'pkg:npm/org.test.pass.by/pass-by-name-and-version@1.0.0',
       version: '1.0.0',
       ecosystem: 'npm'
     }),
     createTestChange({
       change_type: 'added',
       name: 'deny-by-name',
+      package_url: 'pkg:npm/org.test.deny.by/deny-by-name',
       version: '1.0.0',
       ecosystem: 'npm'
     }),
     createTestChange({
       change_type: 'removed',
       name: 'pass-by-name',
+      package_url: 'pkg:npm/org.test.pass.by/pass-by-name',
       version: '1.0.0',
       ecosystem: 'npm'
     }),

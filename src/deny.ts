@@ -14,17 +14,19 @@ export async function getDeniedChanges(
       continue
     }
 
+    const namespace = getNamespace(change)
+
     for (const denied of deniedPackages) {
       if (
         (!denied.version || change.version === denied.version) &&
-        change.name === denied.name
+        change.name === denied.name &&
+        namespace === denied.namespace
       ) {
         changesDenied.push(change)
       }
     }
 
     for (const denied of deniedGroups) {
-      const namespace = getNamespace(change)
       if (!denied.namespace) {
         core.error(
           `Denied group represented by '${denied.original}' does not have a namespace. The format should be 'pkg:<type>/<namespace>/'.`
