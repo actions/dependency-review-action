@@ -4,7 +4,7 @@ import * as core from '@actions/core'
 export async function getScorecardLevels(
   changes: Change[]
 ): Promise<Scorecard> {
-  const data: Scorecard = {dependencies: []} as Scorecard
+  const data: Scorecard = {dependencies: []}
   for (const change of changes) {
     const ecosystem = change.ecosystem
     const packageName = change.name

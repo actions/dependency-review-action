@@ -74,7 +74,7 @@ function versionInRange(
   // Validate version and range explicitly to enforce fail-closed semantics
   // semver.satisfies() typically returns false for invalid inputs without throwing
   let validVersion = semver.valid(trimmedVersion)
-  const validRange = semver.validRange(semverRange)
+  let validRange = semver.validRange(semverRange)
 
   // For fail-open mode (patch selection), try coercing invalid versions
   // to handle common real-world formats like "8.0", date-based versions, etc.
@@ -85,6 +85,26 @@ function versionInRange(
       core.debug(
         `Coerced version "${trimmedVersion}" to "${validVersion}" for range matching`
       )
+    }
+  }
+
+  // For fail-open mode, try coercing invalid version components within the range string
+  // to handle formats like "2.0-beta9" which should be "2.0.0-beta9" for strict semver
+  if (!validRange && !failClosed) {
+    const coercedRangeStr = semverRange.replace(
+      /(?<=[><=~^\s]|^)(\d+\.\d+(?:\.\d+)?(?:-[^\s]*)?)(?=\s|$)/g,
+      match => {
+        const coerced = semver.coerce(match)
+        return coerced ? coerced.version : match
+      }
+    )
+    if (coercedRangeStr !== semverRange) {
+      validRange = semver.validRange(coercedRangeStr)
+      if (validRange) {
+        core.debug(
+          `Coerced range "${semverRange}" to "${coercedRangeStr}" for range matching`
+        )
+      }
     }
   }
 
@@ -115,7 +135,7 @@ function extractPatchVersionId(patchData: unknown): string | null {
 
   // Handle object format with identifier field (for backward compatibility)
   if (patchData && typeof patchData === 'object' && 'identifier' in patchData) {
-    const id = (patchData as {identifier: unknown}).identifier
+    const id = patchData.identifier
     return typeof id === 'string' ? id : null
   }
 
@@ -565,8 +585,7 @@ export async function addChangeVulnerabilitiesToSummary(
           // Find matching entry by ecosystem, package name (case-insensitive), and version range
           // Use pre-normalized values from cache to avoid repeated lowercasing and range conversion
           let foundEntry:
-            | {eco: string; pkg: string; range: string; patch: string}
-            | undefined
+            {eco: string; pkg: string; range: string; patch: string} | undefined
           for (const vulnEntry of advisoryEntries) {
             if (vulnEntry.ecoLower !== ecoLowercase) continue
             if (vulnEntry.pkgLower !== packageLowercase) continue

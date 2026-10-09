@@ -15,7 +15,7 @@ export function satisfies(candidateExpr: string, allowList: string[]): boolean {
   candidateExpr = cleanInvalidSPDX(candidateExpr)
   try {
     return spdxSatisfies(candidateExpr, allowList)
-  } catch (_) {
+  } catch {
     return false
   }
 }
@@ -28,7 +28,7 @@ export function satisfiesAny(
   candidateExpr = cleanInvalidSPDX(candidateExpr)
   try {
     return spdxlib.satisfiesAny(candidateExpr, licenses)
-  } catch (_) {
+  } catch {
     return false
   }
 }
@@ -41,7 +41,7 @@ export function satisfiesAll(
   candidateExpr = cleanInvalidSPDX(candidateExpr)
   try {
     return spdxlib.satisfiesAll(candidateExpr, licenses)
-  } catch (_) {
+  } catch {
     return false
   }
 }
@@ -52,7 +52,7 @@ export function isValid(spdxExpr: string): boolean {
   try {
     parse(spdxExpr)
     return true
-  } catch (_) {
+  } catch {
     return false
   }
 }

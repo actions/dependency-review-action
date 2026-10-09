@@ -22,7 +22,7 @@
 ## Overview
 
 The dependency review action scans your pull requests for dependency changes, and will raise an error if any vulnerabilities or invalid licenses are being introduced.
-The action is supported by an [API endpoint](https://docs.github.com/en/rest/dependency-graph/dependency-review?apiVersion=2022-11-28) that diffs the dependencies between any two revisions on your default branch.
+The action is supported by an [API endpoint](https://docs.github.com/en/rest/dependency-graph/dependency-review?apiVersion=2026-03-10) that diffs the dependencies between any two revisions on your default branch.
 
 The action is available for:
 
@@ -54,6 +54,8 @@ When the action runs, you can see the results on:
 
 You can install the action on any public repository, or any organization-owned private repository, provided the organization has a GitHub Advanced Security license.
 
+> Note: Dependency Review Action v5.0.0 updates the runtime to node24. This requires a minimum Actions Runner version [v2.327.1](https://github.com/actions/runner/releases/tag/v2.327.1) to run.
+
 1. Add a new YAML workflow to your `.github/workflows` folder:
 
    ```yaml
@@ -68,9 +70,9 @@ You can install the action on any public repository, or any organization-owned p
        runs-on: ubuntu-latest
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: 'Dependency Review'
-           uses: actions/dependency-review-action@v4
+           uses: actions/dependency-review-action@v5
    ```
 
 #### Installation (GitHub Enterprise Server)
@@ -93,9 +95,9 @@ You can install the action on repositories on GitHub Enterprise Server.
        runs-on: self-hosted
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: 'Dependency Review'
-           uses: actions/dependency-review-action@v4
+           uses: actions/dependency-review-action@v5
    ```
 
 4. In the workflow file, replace the `runs-on` value with the label of any of your runners. (The default value is `self-hosted`.)
@@ -163,9 +165,9 @@ You can pass configuration options to the dependency review action using your wo
        runs-on: ubuntu-latest
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: Dependency Review
-           uses: actions/dependency-review-action@v4
+           uses: actions/dependency-review-action@v5
            with:
              fail-on-severity: moderate
 
@@ -190,9 +192,9 @@ You can use an external configuration file to specify settings for this action. 
        runs-on: ubuntu-latest
        steps:
          - name: 'Checkout Repository'
-           uses: actions/checkout@v4
+           uses: actions/checkout@v6
          - name: Dependency Review
-           uses: actions/dependency-review-action@v4
+           uses: actions/dependency-review-action@v5
            with:
              config-file: './.github/dependency-review-config.yml'
    ```
@@ -205,7 +207,7 @@ You can use an external configuration file to specify settings for this action. 
 
    ```yaml
    - name: Dependency Review
-     uses: actions/dependency-review-action@v4
+     uses: actions/dependency-review-action@v5
      with:
        config-file: 'github/octorepo/dependency-review-config.yml@main'
        external-repo-token: 'ghp_123456789abcde'

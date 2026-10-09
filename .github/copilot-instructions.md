@@ -4,7 +4,7 @@ Trust these instructions. Only search the codebase if information here is incomp
 
 ## Repository Overview
 
-**dependency-review-action** is a GitHub Action (TypeScript/Node.js 20) that scans pull requests for dependency changes, raising errors for vulnerabilities or invalid licenses. It queries the GitHub Dependency Review API, evaluates changes against configured rules, and produces job summaries and PR comments. The action entry point is `dist/index.js` (bundled via `ncc`). The repo is small (~15 source files, ~15 test files).
+**dependency-review-action** is a GitHub Action (TypeScript/Node.js 24) that scans pull requests for dependency changes, raising errors for vulnerabilities or invalid licenses. It queries the GitHub Dependency Review API, evaluates changes against configured rules, and produces job summaries and PR comments. The action entry point is `dist/index.js` (bundled via `ncc`). The repo is small (~15 source files, ~15 test files).
 
 ## Build & Validation Commands
 
@@ -36,7 +36,7 @@ If format-check fails, run `npm run format` to auto-fix, then re-check.
 
 ### CI Checks (`.github/workflows/ci.yml`)
 
-CI runs on PRs (excluding `**.md` changes) with Node 20:
+CI runs on PRs (excluding `**.md` changes) with Node 24:
 
 1. **test** job: `npm ci --ignore-scripts` → `npm test`
 2. **lint** job: `npm ci --ignore-scripts` → `npm run format-check` → `npm run lint`
@@ -103,7 +103,7 @@ action.yml            # Action metadata — inputs, outputs, and `runs.main: dis
 
 ### Important Notes
 
-- The action runs on `node20` (declared in `action.yml`)
+- The action runs on `node24` (declared in `action.yml`)
 - Source imports often use relative `../src/` paths (e.g. `import {readConfig} from '../src/config'`)
 - Adding a new action input requires changes in: `action.yml` (input definition), `src/schemas.ts` (Zod schema with default), `src/config.ts` (reading the input), and relevant source/test files
 - `dist/index.js` is committed for GitHub Actions but PR contributors should NOT include `dist/` changes — maintainers handle rebuilding
