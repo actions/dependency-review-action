@@ -390,3 +390,51 @@ describe('GH License API fallback', () => {
     expect(unlicensed.length).toEqual(1)
   })
 })
+
+describe('manifest/lock file license deduplication', () => {
+  const manifestChange: Change = {
+    change_type: 'added',
+    manifest: 'pyproject.toml',
+    ecosystem: 'pip',
+    name: 'pydantic',
+    version: '^ 2.11.0',
+    package_url: 'pkg:pypi/pydantic',
+    license: null,
+    source_repository_url: null,
+    scope: 'runtime',
+    vulnerabilities: []
+  }
+
+  const lockChange: Change = {
+    ...manifestChange,
+    manifest: 'poetry.lock',
+    version: '2.11.0',
+    package_url: 'pkg:pypi/pydantic@2.11.0',
+    license: 'MIT'
+  }
+
+  test('does not flag an unlicensed manifest entry when a licensed lock entry exists', async () => {
+    const {unlicensed} = await getInvalidLicenseChanges(
+      [manifestChange, lockChange],
+      {}
+    )
+
+    expect(mockOctokit.rest.licenses.getForRepo).not.toHaveBeenCalled()
+    expect(unlicensed.length).toEqual(0)
+  })
+
+  test('still flags an unlicensed manifest entry when there is no licensed counterpart', async () => {
+    const {unlicensed} = await getInvalidLicenseChanges([manifestChange], {})
+
+    expect(unlicensed.length).toEqual(1)
+  })
+
+  test('does not deduplicate across differing change_types', async () => {
+    const {unlicensed} = await getInvalidLicenseChanges(
+      [manifestChange, {...lockChange, change_type: 'removed'}],
+      {}
+    )
+
+    expect(unlicensed.length).toEqual(1)
+  })
+})
