@@ -79,6 +79,9 @@ inputs:
   show-patched-versions:
     description: When set to `true`, the vulnerability summary table will include a column showing the first patched version for each vulnerability.
     required: false
+  fail-on-unknown-license:
+    description: When set to `true`, the action will fail if any dependency has an unknown or undetectable license.
+    required: false
 outputs:
   comment-content:
     description: Prepared dependency report comment

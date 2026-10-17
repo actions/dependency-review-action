@@ -10,6 +10,7 @@ export function clearInputs(): void {
   const allowedOptions = [
     'FAIL-ON-SEVERITY',
     'FAIL-ON-SCOPES',
+    'FAIL-ON-UNKNOWN-LICENSE',
     'ALLOW-LICENSES',
     'ALLOW-DEPENDENCIES-LICENSES',
     'DENY-LICENSES',

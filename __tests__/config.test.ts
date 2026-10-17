@@ -26,6 +26,17 @@ test('it defaults to false for warn-only', async () => {
   expect(config.warn_only).toEqual(false)
 })
 
+test('it defaults to not failing on unknown licenses', async () => {
+  const config = await readConfig()
+  expect(config.fail_on_unknown_license).toBe(false)
+})
+
+test('it parses the fail-on-unknown-license input', async () => {
+  setInput('fail-on-unknown-license', 'true')
+  const config = await readConfig()
+  expect(config.fail_on_unknown_license).toBe(true)
+})
+
 test('it defaults to empty allow/deny lists ', async () => {
   const config = await readConfig()
 

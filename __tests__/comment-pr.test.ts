@@ -60,6 +60,7 @@ const defaultConfig: ConfigurationOptions = {
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
   show_patched_versions: false,
+  fail_on_unknown_license: false,
   base_ref: '',
   head_ref: '',
   deny_packages: [],

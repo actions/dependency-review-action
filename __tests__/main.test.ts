@@ -10,7 +10,8 @@ import * as fs from 'fs'
 import * as core from '@actions/core'
 import {DefaultArtifactClient} from '@actions/artifact'
 import type {SpyInstance} from 'jest-mock'
-import {handleLargeSummary} from '../src/main'
+import {handleLargeSummary, printLicensesBlock} from '../src/main'
+import {createTestChange} from './fixtures/create-test-change'
 
 jest.mock('ansi-styles', () => ({
   __esModule: true,
@@ -160,5 +161,41 @@ describe('handleLargeSummary', () => {
     expect(warningMock).toHaveBeenCalledWith(
       expect.stringContaining('Failed to upload large summary as artifact')
     )
+  })
+})
+
+describe('printLicensesBlock', () => {
+  const invalidLicenseChanges = {
+    forbidden: [],
+    unresolved: [],
+    unlicensed: [createTestChange({license: null})]
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  test('fails when unknown licenses are found and the option is enabled', async () => {
+    const issueFound = await printLicensesBlock(
+      invalidLicenseChanges,
+      false,
+      true
+    )
+
+    expect(issueFound).toBe(true)
+    expect(core.setFailed).toHaveBeenCalledWith(
+      'Dependency review detected packages with unknown licenses.'
+    )
+  })
+
+  test('does not fail on unknown licenses when the option is disabled', async () => {
+    const issueFound = await printLicensesBlock(
+      invalidLicenseChanges,
+      false,
+      false
+    )
+
+    expect(issueFound).toBe(false)
+    expect(core.setFailed).not.toHaveBeenCalled()
   })
 })

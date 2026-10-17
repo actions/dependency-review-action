@@ -48,7 +48,8 @@ const defaultConfig: ConfigurationOptions = {
   warn_only: false,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: false,
-  show_patched_versions: false
+  show_patched_versions: false,
+  fail_on_unknown_license: false
 }
 
 const changesWithEmptyManifests: Changes = [
