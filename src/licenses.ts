@@ -126,21 +126,47 @@ const parseGitHubURL = (url: string): {owner: string; repo: string} | null => {
   }
 }
 
+const parseGitHubActionsPURL = (
+  packageUrl: string
+): {owner: string; repo: string} | null => {
+  const purl = parsePURL(packageUrl)
+
+  if (
+    purl.error !== null ||
+    purl.type.toLowerCase() !== 'githubactions' ||
+    purl.namespace === null ||
+    purl.name === null
+  ) {
+    return null
+  }
+
+  return {
+    owner: purl.namespace,
+    repo: purl.name.split('/')[0]
+  }
+}
+
 const setGHLicenses = async (changes: Change[]): Promise<Change[]> => {
   const updatedChanges = changes.map(async change => {
-    if (change.license !== null || change.source_repository_url === null) {
+    if (change.license !== null) {
       return change
     }
 
-    const githubUrl = parseGitHubURL(change.source_repository_url)
+    let githubRepo: {owner: string; repo: string} | null = null
 
-    if (githubUrl === null) {
+    if (change.source_repository_url !== null) {
+      githubRepo = parseGitHubURL(change.source_repository_url)
+    } else {
+      githubRepo = parseGitHubActionsPURL(change.package_url)
+    }
+
+    if (githubRepo === null) {
       return change
     }
 
     return {
       ...change,
-      license: await fetchGHLicense(githubUrl.owner, githubUrl.repo)
+      license: await fetchGHLicense(githubRepo.owner, githubRepo.repo)
     }
   })
 
@@ -197,7 +223,10 @@ async function groupChanges(
     }
 
     if (change.license === null) {
-      if (change.source_repository_url !== null) {
+      if (
+        change.source_repository_url !== null ||
+        parseGitHubActionsPURL(change.package_url) !== null
+      ) {
         ghChanges.push(change)
       } else {
         result.unlicensed.push(change)
