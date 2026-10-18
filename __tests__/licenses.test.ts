@@ -240,6 +240,28 @@ test('it adds all licenses to unresolved if it is unable to determine the validi
   expect(invalidLicenses.unresolved.length).toEqual(2)
 })
 
+test('it normalizes the casing of licenses before validation', async () => {
+  const changes: Changes = [
+    {...npmChange, license: 'bsd-3-clause'},
+    {...rubyChange, license: 'mit or apache-2.0'}
+  ]
+  const invalidLicenses = await getInvalidLicenseChanges(changes, {
+    allow: ['BSD-3-Clause', 'MIT']
+  })
+  expect(invalidLicenses.forbidden.length).toEqual(0)
+  expect(invalidLicenses.unlicensed.length).toEqual(0)
+  expect(invalidLicenses.unresolved.length).toEqual(0)
+})
+
+test('it detects denied licenses in expressions with lowercase operators', async () => {
+  const changes: Changes = [{...npmChange, license: 'mit or apache-2.0'}]
+  const {forbidden, unresolved} = await getInvalidLicenseChanges(changes, {
+    deny: ['MIT']
+  })
+  expect(forbidden.length).toEqual(1)
+  expect(unresolved.length).toEqual(0)
+})
+
 test('it does not filter out changes that are on the exclusions list', async () => {
   const changes: Changes = [pipChange, npmChange, rubyChange]
   const licensesConfig = {
