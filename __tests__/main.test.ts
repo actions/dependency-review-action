@@ -9,8 +9,9 @@ import {
 import * as fs from 'fs'
 import * as core from '@actions/core'
 import {DefaultArtifactClient} from '@actions/artifact'
+import * as dependencyGraph from '../src/dependency-graph'
 import type {SpyInstance} from 'jest-mock'
-import {handleLargeSummary} from '../src/main'
+import {getComparison, handleLargeSummary} from '../src/main'
 
 jest.mock('ansi-styles', () => ({
   __esModule: true,
@@ -24,7 +25,9 @@ jest.mock('ansi-styles', () => ({
     bold: {open: '', close: ''}
   }
 }))
-jest.mock('../src/dependency-graph', () => ({}))
+jest.mock('../src/dependency-graph', () => ({
+  compare: jest.fn()
+}))
 jest.mock('@actions/core', () => {
   const summary = {
     addRaw: jest.fn().mockReturnThis(),
@@ -159,6 +162,42 @@ describe('handleLargeSummary', () => {
     expect(addRawMock).toHaveBeenCalledWith(result)
     expect(warningMock).toHaveBeenCalledWith(
       expect.stringContaining('Failed to upload large summary as artifact')
+    )
+  })
+})
+
+describe('getComparison retries', () => {
+  beforeEach(() => {
+    process.env.GITHUB_REPOSITORY = 'owner/repo'
+  })
+
+  afterEach(() => {
+    process.env = {...ORIGINAL_ENV}
+  })
+  test('uses different request parameters on retry', async () => {
+    const compareMock = dependencyGraph.compare as jest.MockedFunction<
+      typeof dependencyGraph.compare
+    >
+
+    compareMock.mockReset()
+    compareMock
+      .mockResolvedValueOnce({
+        changes: [],
+        snapshot_warnings: 'No snapshots found'
+      })
+      .mockResolvedValueOnce({
+        changes: [],
+        snapshot_warnings: ''
+      })
+
+    await getComparison('base', 'head', {
+      retryUntil: Date.now() + 10000,
+      retryDelay: 0
+    })
+
+    expect(compareMock).toHaveBeenCalledTimes(2)
+    expect(compareMock.mock.calls[1][0]).not.toEqual(
+      compareMock.mock.calls[0][0]
     )
   })
 })
