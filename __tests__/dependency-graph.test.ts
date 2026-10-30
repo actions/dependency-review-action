@@ -27,3 +27,14 @@ test('it properly catches RequestError type', async () => {
     expect(error).toBeInstanceOf(RequestError)
   }
 })
+test('comparison page size stays within API limits', () => {
+  const sizes = Array.from({length: 97}, (_, attempt) =>
+    dependencyGraph.getComparisonPageSize(attempt)
+  )
+
+  expect(sizes[0]).toBe(5)
+  expect(sizes[1]).toBe(6)
+  expect(sizes[95]).toBe(100)
+  expect(sizes[96]).toBe(5)
+  expect(new Set(sizes.slice(0, 96)).size).toBe(96)
+})

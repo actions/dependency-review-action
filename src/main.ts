@@ -33,19 +33,21 @@ async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function getComparison(
+export async function getComparison(
   baseRef: string,
   headRef: string,
   retryOpts?: {
     retryUntil: number
     retryDelay: number
-  }
+  },
+  attempt = 0
 ): ReturnType<typeof dependencyGraph.compare> {
   const comparison = await dependencyGraph.compare({
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
     baseRef,
-    headRef
+    headRef,
+    attempt
   })
 
   if (comparison.snapshot_warnings.trim() !== '') {
@@ -57,7 +59,7 @@ async function getComparison(
       } else {
         core.info(`Retrying in ${retryOpts.retryDelay} seconds...`)
         await delay(retryOpts.retryDelay * 1000)
-        return getComparison(baseRef, headRef, retryOpts)
+        return getComparison(baseRef, headRef, retryOpts, attempt + 1)
       }
     }
   }

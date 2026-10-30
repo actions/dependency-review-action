@@ -13,16 +13,22 @@ const octo = new retryingOctokit(
   githubUtils.getOctokitOptions(core.getInput('repo-token', {required: true}))
 )
 
+export function getComparisonPageSize(attempt: number): number {
+  return 5 + (attempt % 96)
+}
+
 export async function compare({
   owner,
   repo,
   baseRef,
-  headRef
+  headRef,
+  attempt = 0
 }: {
   owner: string
   repo: string
   baseRef: string
   headRef: string
+  attempt?: number
 }): Promise<ComparisonResponse> {
   let snapshot_warnings = ''
   const changes = await octo.paginate(
@@ -32,7 +38,7 @@ export async function compare({
       owner,
       repo,
       basehead: `${baseRef}...${headRef}`,
-      per_page: 5
+      per_page: getComparisonPageSize(attempt)
     },
     response => {
       if (
