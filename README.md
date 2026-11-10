@@ -271,6 +271,8 @@ Dependency review action can create [outputs](https://docs.github.com/en/actions
 
 ## Getting help
 
+The action reports API error messages for rate limits and access restrictions. A `403` response does not necessarily mean that Dependency graph is disabled: it can also indicate an exhausted token rate limit or insufficient permissions. For rate-limit errors, wait for the limit to reset before rerunning the action (see [GitHub's rate-limit troubleshooting guidance](https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api#rate-limit-errors)).
+
 If you have bug reports, questions or suggestions please [create a new issue](https://github.com/actions/dependency-review-action/issues/new/choose).
 
 ## Contributing
