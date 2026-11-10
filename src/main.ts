@@ -8,7 +8,8 @@ import {
   Severity,
   Changes,
   ConfigurationOptions,
-  Scorecard
+  Scorecard,
+  ResolvedVulnerabilities
 } from './schemas'
 import {readConfig} from '../src/config'
 import {
@@ -20,6 +21,7 @@ import {getInvalidLicenseChanges} from './licenses'
 import {getScorecardLevels} from './scorecard'
 import * as summary from './summary'
 import {getRefs} from './git-refs'
+import {getResolvedVulnerabilities} from './resolved-vulnerabilities'
 
 import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
@@ -147,6 +149,11 @@ async function run(): Promise<void> {
       return
     }
 
+    // Extract resolved vulnerabilities from the full (unfiltered) change set.
+    // This intentionally runs before scope/advisory filtering so that all
+    // resolutions are reported regardless of fail_on_scopes or allow_ghsas.
+    const resolvedVulnerabilities = getResolvedVulnerabilities(changes)
+
     const scopedChanges = filterChangesByScopes(config.fail_on_scopes, changes)
 
     const filteredChanges = filterAllowedAdvisories(
@@ -197,6 +204,7 @@ async function run(): Promise<void> {
       invalidLicenseChanges,
       deniedChanges,
       scorecard,
+      resolvedVulnerabilities,
       config
     )
 
@@ -205,6 +213,21 @@ async function run(): Promise<void> {
     }
 
     let issueFound = false
+
+    // Show resolved vulnerabilities first to give positive feedback
+    if (config.show_resolved_vulnerabilities) {
+      core.setOutput(
+        'resolved-vulnerabilities',
+        JSON.stringify(resolvedVulnerabilities)
+      )
+      if (config.vulnerability_check && resolvedVulnerabilities.length > 0) {
+        summary.addResolvedVulnerabilitiesToSummary(
+          resolvedVulnerabilities,
+          vulnerableChanges
+        )
+        printResolvedVulnerabilitiesBlock(resolvedVulnerabilities)
+      }
+    }
 
     if (config.vulnerability_check) {
       core.setOutput('vulnerable-changes', JSON.stringify(vulnerableChanges))
@@ -526,6 +549,27 @@ async function createScorecardWarnings(
       )
     }
   }
+}
+
+async function printResolvedVulnerabilitiesBlock(
+  resolvedVulnerabilities: ResolvedVulnerabilities
+): Promise<void> {
+  return core.group('✅ Resolved Vulnerabilities', async () => {
+    core.info(
+      `${styles.color.green.open}Great job! This PR resolves ${resolvedVulnerabilities.length} ${resolvedVulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}:${styles.color.green.close}`
+    )
+
+    for (const vuln of resolvedVulnerabilities) {
+      core.info(
+        `${styles.color.green.open}✅ ${vuln.manifest} » ${vuln.package_name}@${vuln.package_version}${styles.color.green.close} – ${vuln.advisory_summary} ${renderSeverity(vuln.severity)}`
+      )
+      core.info(`  ↪ ${vuln.advisory_url}`)
+    }
+
+    core.info(
+      `${styles.color.green.open}Keep up the great work securing your dependencies! 🎉${styles.color.green.close}`
+    )
+  })
 }
 
 run()
