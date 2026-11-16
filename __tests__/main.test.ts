@@ -8,9 +8,14 @@ import {
 } from '@jest/globals'
 import * as fs from 'fs'
 import * as core from '@actions/core'
+import * as github from '@actions/github'
 import {DefaultArtifactClient} from '@actions/artifact'
+import {RequestError} from '@octokit/request-error'
 import type {SpyInstance} from 'jest-mock'
-import {handleLargeSummary} from '../src/main'
+import {handleLargeSummary, run} from '../src/main'
+import {compare} from '../src/dependency-graph'
+import {readConfig} from '../src/config'
+import {ConfigurationOptionsSchema} from '../src/schemas'
 
 jest.mock('ansi-styles', () => ({
   __esModule: true,
@@ -24,7 +29,19 @@ jest.mock('ansi-styles', () => ({
     bold: {open: '', close: ''}
   }
 }))
-jest.mock('../src/dependency-graph', () => ({}))
+jest.mock('../src/dependency-graph', () => ({
+  compare: jest.fn()
+}))
+jest.mock('../src/config', () => ({
+  readConfig: jest.fn()
+}))
+jest.mock('@actions/github', () => ({
+  context: {
+    repo: {owner: 'owner', repo: 'repo'},
+    serverUrl: 'https://github.com',
+    payload: {repository: {private: false}}
+  }
+}))
 jest.mock('@actions/core', () => {
   const summary = {
     addRaw: jest.fn().mockReturnThis(),
@@ -74,6 +91,103 @@ const DefaultArtifactClientMock = DefaultArtifactClient as unknown as jest.Mock
 
 const createArtifactClient = (): ArtifactClientInstance => ({
   uploadArtifact: jest.fn(async () => undefined)
+})
+
+describe('run API errors', () => {
+  beforeEach(() => {
+    jest.mocked(readConfig).mockResolvedValue(
+      ConfigurationOptionsSchema.parse({
+        fail_on_severity: 'low',
+        base_ref: 'base',
+        head_ref: 'head'
+      })
+    )
+  })
+
+  test.each([false, true])(
+    'preserves API errors when repository.private is %s',
+    async repoIsPrivate => {
+      github.context.payload.repository = {
+        name: 'repo',
+        owner: {login: 'owner'},
+        private: repoIsPrivate
+      }
+      const failures = [
+        {
+          status: 403,
+          message: 'API rate limit exceeded for installation ID 123.'
+        },
+        {status: 403, message: 'You have exceeded a secondary rate limit.'},
+        {
+          status: 429,
+          message: 'API rate limit exceeded for installation ID 123.'
+        },
+        {status: 429, message: 'You have exceeded a secondary rate limit.'},
+        {status: 403, message: 'Resource not accessible by integration'},
+        {
+          status: 403,
+          message: 'Dependency review is not supported for this repository.'
+        }
+      ]
+
+      for (const {status, message} of failures) {
+        jest.clearAllMocks()
+        const writeSummary = jest.spyOn(core.summary, 'write')
+        jest.mocked(compare).mockRejectedValueOnce(
+          new RequestError(message, status, {
+            request: {
+              method: 'GET',
+              url: '/repos/owner/repo/dependency-graph/compare/base...head',
+              headers: {}
+            }
+          })
+        )
+
+        await run()
+
+        expect(compare).toHaveBeenCalledWith({
+          owner: 'owner',
+          repo: 'repo',
+          baseRef: 'base',
+          headRef: 'head'
+        })
+        expect(core.setFailed).toHaveBeenCalledTimes(1)
+        expect(core.setFailed).toHaveBeenCalledWith(message)
+        expect(core.setOutput).not.toHaveBeenCalled()
+        expect(writeSummary).toHaveBeenCalledTimes(1)
+      }
+    }
+  )
+
+  test('preserves the existing diagnostic for missing dependency data', async () => {
+    jest.mocked(compare).mockRejectedValueOnce(
+      new RequestError('Not Found', 404, {
+        request: {method: 'GET', url: '/compare', headers: {}}
+      })
+    )
+
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith(
+      'Dependency review could not obtain dependency data for the specified owner, repository, or revision range.'
+    )
+  })
+
+  test('preserves non-HTTP errors', async () => {
+    jest.mocked(compare).mockRejectedValueOnce(new Error('Connection failed'))
+
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Connection failed')
+  })
+
+  test('reports unexpected failures', async () => {
+    jest.mocked(compare).mockRejectedValueOnce('unexpected')
+
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Unexpected fatal error')
+  })
 })
 
 describe('handleLargeSummary', () => {

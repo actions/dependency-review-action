@@ -27,8 +27,6 @@ import {getDeniedChanges} from './deny'
 import {DefaultArtifactClient} from '@actions/artifact'
 import * as fs from 'fs'
 
-import type {PayloadRepository} from '@actions/github/lib/interfaces.d'
-
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -117,11 +115,7 @@ Please download the artifact named "${artifactName}" to view the complete report
   }
 }
 
-interface RepoWithPrivate extends PayloadRepository {
-  private: boolean
-}
-
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   try {
     const config = await readConfig()
 
@@ -264,21 +258,6 @@ async function run(): Promise<void> {
       core.setFailed(
         `Dependency review could not obtain dependency data for the specified owner, repository, or revision range.`
       )
-    } else if (error instanceof RequestError && error.status === 403) {
-      let repoIsPrivate = false
-      if ('repository' in github.context.payload) {
-        const repo = github.context.payload.repository as RepoWithPrivate
-        repoIsPrivate = repo.private
-      }
-      if (repoIsPrivate) {
-        core.setFailed(
-          `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled along with GitHub Advanced Security, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
-        )
-      } else {
-        core.setFailed(
-          `Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled, see ${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/settings/security_analysis`
-        )
-      }
     } else {
       if (error instanceof Error) {
         core.setFailed(error.message)
