@@ -48,7 +48,7 @@
     "@types/node": "^24",
     "@types/semver": "^7.8.0",
     "@types/spdx-expression-parse": "^4.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
     "@typescript-eslint/parser": "^8.68.0",
     "@vercel/ncc": "^0.45.0",
     "esbuild-register": "^3.6.0",
@@ -58,7 +58,7 @@
     "eslint-plugin-prettier": "^5.5.7",
     "js-yaml": "^5.5.0",
     "nodemon": "^3.1.14",
-    "prettier": "3.9.10",
+    "prettier": "3.10.1",
     "typescript": "^5.9.2"
   },
   "overrides": {
