@@ -225,7 +225,11 @@ async function run(): Promise<void> {
         JSON.stringify(invalidLicenseChanges)
       )
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      issueFound ||= await printLicensesBlock(invalidLicenseChanges, warnOnly)
+      issueFound ||= await printLicensesBlock(
+        invalidLicenseChanges,
+        warnOnly,
+        config.fail_on_unknown_license
+      )
     }
     if (config.deny_packages || config.deny_groups) {
       core.setOutput('denied-changes', JSON.stringify(deniedChanges))
@@ -340,9 +344,10 @@ function printChangeVulnerabilities(change: Change): boolean {
   return change.vulnerabilities.length > 0
 }
 
-async function printLicensesBlock(
+export async function printLicensesBlock(
   invalidLicenseChanges: Record<string, Changes>,
-  warnOnly: boolean
+  warnOnly: boolean,
+  failOnUnknownLicense = false
 ): Promise<boolean> {
   return core.group('Licenses', async () => {
     let issueFound = false
@@ -368,7 +373,18 @@ async function printLicensesBlock(
         'Dependency review could not detect the validity of all licenses.'
       )
     }
-    printNullLicenses(invalidLicenseChanges.unlicensed)
+    if (invalidLicenseChanges.unlicensed.length > 0) {
+      printNullLicenses(invalidLicenseChanges.unlicensed)
+      if (failOnUnknownLicense) {
+        issueFound = true
+        const msg = 'Dependency review detected packages with unknown licenses.'
+        if (warnOnly) {
+          core.warning(msg)
+        } else {
+          core.setFailed(msg)
+        }
+      }
+    }
 
     return issueFound
   })
