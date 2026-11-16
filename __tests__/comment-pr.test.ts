@@ -55,6 +55,7 @@ const defaultConfig: ConfigurationOptions = {
   license_check: true,
   vulnerability_check: true,
   warn_only: false,
+  warn_on_vulnerability_cooldown: 0,
   show_openssf_scorecard: false,
   warn_on_openssf_scorecard_level: 3,
   retry_on_snapshot_warnings: false,

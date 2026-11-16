@@ -8,7 +8,8 @@ import {
   Severity,
   Changes,
   ConfigurationOptions,
-  Scorecard
+  Scorecard,
+  VulnerabilityCooldowns
 } from './schemas'
 import {readConfig} from '../src/config'
 import {
@@ -24,6 +25,7 @@ import {getRefs} from './git-refs'
 import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
+import {getVulnerabilityCooldowns} from './vulnerability-cooldown'
 import {DefaultArtifactClient} from '@actions/artifact'
 import * as fs from 'fs'
 
@@ -121,7 +123,7 @@ interface RepoWithPrivate extends PayloadRepository {
   private: boolean
 }
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   try {
     const config = await readConfig()
 
@@ -166,6 +168,13 @@ async function run(): Promise<void> {
       minSeverity,
       filteredChanges
     )
+    const cooldowns: VulnerabilityCooldowns =
+      config.vulnerability_check && !warnOnly
+        ? await getVulnerabilityCooldowns(
+            vulnerableChanges,
+            config.warn_on_vulnerability_cooldown
+          )
+        : new Map()
 
     const invalidLicenseChanges = await getInvalidLicenseChanges(
       filteredChanges,
@@ -197,7 +206,8 @@ async function run(): Promise<void> {
       invalidLicenseChanges,
       deniedChanges,
       scorecard,
-      config
+      config,
+      cooldowns
     )
 
     if (snapshot_warnings) {
@@ -211,12 +221,14 @@ async function run(): Promise<void> {
       await summary.addChangeVulnerabilitiesToSummary(
         vulnerableChanges,
         minSeverity,
-        config.show_patched_versions
+        config.show_patched_versions,
+        cooldowns
       )
       issueFound ||= await printVulnerabilitiesBlock(
         vulnerableChanges,
         minSeverity,
-        warnOnly
+        warnOnly,
+        cooldowns
       )
     }
     if (config.license_check) {
@@ -300,13 +312,15 @@ async function run(): Promise<void> {
 async function printVulnerabilitiesBlock(
   addedChanges: Changes,
   minSeverity: Severity,
-  warnOnly: boolean
+  warnOnly: boolean,
+  cooldowns: VulnerabilityCooldowns
 ): Promise<boolean> {
   return core.group('Vulnerabilities', async () => {
     let vulnFound = false
 
     for (const change of addedChanges) {
-      vulnFound ||= printChangeVulnerabilities(change)
+      vulnFound =
+        printChangeVulnerabilities(change, cooldowns.get(change)) || vulnFound
     }
 
     if (vulnFound) {
@@ -316,7 +330,7 @@ async function printVulnerabilitiesBlock(
       } else {
         core.setFailed(msg)
       }
-    } else {
+    } else if (addedChanges.length === 0) {
       core.info(
         `Dependency review did not detect any vulnerable packages with severity level "${minSeverity}" or higher.`
       )
@@ -326,7 +340,11 @@ async function printVulnerabilitiesBlock(
   })
 }
 
-function printChangeVulnerabilities(change: Change): boolean {
+function printChangeVulnerabilities(
+  change: Change,
+  cooldowns: Map<string, string> | undefined
+): boolean {
+  let blocking = false
   for (const vuln of change.vulnerabilities) {
     core.info(
       `${styles.bold.open}${change.manifest} » ${change.name}@${
@@ -336,8 +354,16 @@ function printChangeVulnerabilities(change: Change): boolean {
       )}`
     )
     core.info(`  ↪ ${vuln.advisory_url}`)
+    const until = cooldowns?.get(vuln.advisory_ghsa_id)
+    if (until) {
+      core.warning(
+        `${change.name}@${change.version} (${vuln.advisory_ghsa_id}) is temporarily warning-only until ${until}: the patched release is still within warn-on-vulnerability-cooldown.`
+      )
+    } else {
+      blocking = true
+    }
   }
-  return change.vulnerabilities.length > 0
+  return blocking
 }
 
 async function printLicensesBlock(

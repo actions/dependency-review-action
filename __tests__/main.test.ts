@@ -10,7 +10,16 @@ import * as fs from 'fs'
 import * as core from '@actions/core'
 import {DefaultArtifactClient} from '@actions/artifact'
 import type {SpyInstance} from 'jest-mock'
-import {handleLargeSummary} from '../src/main'
+import {handleLargeSummary, run} from '../src/main'
+import * as dependencyGraph from '../src/dependency-graph'
+import {readConfig} from '../src/config'
+import {getRefs} from '../src/git-refs'
+import {getInvalidLicenseChanges} from '../src/licenses'
+import {getDeniedChanges} from '../src/deny'
+import {getVulnerabilityCooldowns} from '../src/vulnerability-cooldown'
+import {commentPr} from '../src/comment-pr'
+import {ConfigurationOptionsSchema} from '../src/schemas'
+import {createTestChange} from './fixtures/create-test-change'
 
 jest.mock('ansi-styles', () => ({
   __esModule: true,
@@ -24,12 +33,24 @@ jest.mock('ansi-styles', () => ({
     bold: {open: '', close: ''}
   }
 }))
-jest.mock('../src/dependency-graph', () => ({}))
+jest.mock('../src/dependency-graph', () => ({compare: jest.fn()}))
+jest.mock('../src/config')
+jest.mock('../src/git-refs')
+jest.mock('../src/licenses')
+jest.mock('../src/deny')
+jest.mock('../src/vulnerability-cooldown')
+jest.mock('../src/comment-pr', () => ({
+  ...jest.requireActual<typeof import('../src/comment-pr')>(
+    '../src/comment-pr'
+  ),
+  commentPr: jest.fn()
+}))
 jest.mock('@actions/core', () => {
   const summary = {
     addRaw: jest.fn().mockReturnThis(),
     addHeading: jest.fn().mockReturnThis(),
     addTable: jest.fn().mockReturnThis(),
+    addQuote: jest.fn().mockReturnThis(),
     addSeparator: jest.fn().mockReturnThis(),
     addImage: jest.fn().mockReturnThis(),
     addList: jest.fn().mockReturnThis(),
@@ -76,7 +97,7 @@ const createArtifactClient = (): ArtifactClientInstance => ({
   uploadArtifact: jest.fn(async () => undefined)
 })
 
-describe('handleLargeSummary', () => {
+describe('main', () => {
   let writeFileSpy: SpyInstance<typeof fs.promises.writeFile>
 
   beforeEach(() => {
@@ -86,6 +107,183 @@ describe('handleLargeSummary', () => {
       .mockImplementation(async () => undefined)
     DefaultArtifactClientMock.mockClear()
     DefaultArtifactClientMock.mockImplementation(() => createArtifactClient())
+  })
+
+  describe('vulnerability cooldown enforcement', () => {
+    const change = createTestChange()
+    const until = '2026-11-16T21:08:24.000Z'
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+      process.env.GITHUB_REPOSITORY = 'owner/repo'
+      jest.mocked(readConfig).mockResolvedValue(
+        ConfigurationOptionsSchema.parse({
+          warn_on_vulnerability_cooldown: 7,
+          show_openssf_scorecard: false
+        })
+      )
+      jest.mocked(getRefs).mockReturnValue({base: 'base-sha', head: 'head-sha'})
+      jest.mocked(dependencyGraph.compare).mockResolvedValue({
+        changes: [change],
+        snapshot_warnings: ''
+      })
+      jest.mocked(getInvalidLicenseChanges).mockResolvedValue({
+        forbidden: [],
+        unresolved: [],
+        unlicensed: []
+      })
+      jest.mocked(getDeniedChanges).mockResolvedValue([])
+      jest
+        .mocked(getVulnerabilityCooldowns)
+        .mockImplementation(
+          async changes =>
+            new Map(
+              changes.map(entry => [
+                entry,
+                new Map(
+                  entry.vulnerabilities.map(vulnerability => [
+                    vulnerability.advisory_ghsa_id,
+                    until
+                  ])
+                )
+              ])
+            )
+        )
+    })
+
+    afterEach(() => {
+      process.env = {...ORIGINAL_ENV}
+    })
+
+    test('warns without failing and keeps all vulnerabilities in the output', async () => {
+      await run()
+
+      expect(core.setFailed).not.toHaveBeenCalled()
+      expect(core.warning).toHaveBeenCalledWith(
+        expect.stringContaining(`warning-only until ${until}`)
+      )
+      expect(core.setOutput).toHaveBeenCalledWith(
+        'vulnerable-changes',
+        JSON.stringify([change])
+      )
+      expect(commentPr).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Object),
+        false
+      )
+    })
+
+    test('still fails if another advisory for the same package is blocking', async () => {
+      jest
+        .mocked(getVulnerabilityCooldowns)
+        .mockImplementation(
+          async changes =>
+            new Map([
+              [
+                changes[0],
+                new Map([
+                  [changes[0].vulnerabilities[0].advisory_ghsa_id, until]
+                ])
+              ]
+            ])
+        )
+      await run()
+
+      expect(core.warning).toHaveBeenCalledWith(
+        expect.stringContaining(`warning-only until ${until}`)
+      )
+      expect(core.setFailed).toHaveBeenCalledWith(
+        'Dependency review detected vulnerable packages.'
+      )
+    })
+
+    test('prints every vulnerable package after a blocking vulnerability', async () => {
+      const other = createTestChange({name: 'another-package'})
+      jest.mocked(dependencyGraph.compare).mockResolvedValue({
+        changes: [change, other],
+        snapshot_warnings: ''
+      })
+      jest.mocked(getVulnerabilityCooldowns).mockResolvedValue(new Map())
+      await run()
+
+      expect(core.info).toHaveBeenCalledWith(
+        expect.stringContaining('another-package')
+      )
+      expect(core.setFailed).toHaveBeenCalledWith(
+        'Dependency review detected vulnerable packages.'
+      )
+    })
+
+    test.each([
+      ['license', 'Dependency review detected incompatible licenses.'],
+      [
+        'unresolved',
+        'Dependency review could not detect the validity of all licenses.'
+      ],
+      ['deny', 'Dependency review detected denied packages.']
+    ])(
+      'does not let cooldown warnings bypass a %s failure',
+      async (kind, message) => {
+        jest.mocked(getInvalidLicenseChanges).mockResolvedValue({
+          forbidden: kind === 'license' ? [change] : [],
+          unresolved: kind === 'unresolved' ? [change] : [],
+          unlicensed: []
+        })
+        jest
+          .mocked(getDeniedChanges)
+          .mockResolvedValue(kind === 'deny' ? [change] : [])
+        await run()
+
+        expect(core.warning).toHaveBeenCalledWith(
+          expect.stringContaining(`warning-only until ${until}`)
+        )
+        expect(core.setFailed).toHaveBeenCalledWith(message)
+        expect(core.setFailed).not.toHaveBeenCalledWith(
+          'Dependency review detected vulnerable packages.'
+        )
+      }
+    )
+
+    test.each(['deny', 'unresolved'])(
+      'preserves existing global warn-only behavior with a %s finding',
+      async kind => {
+        jest.mocked(readConfig).mockResolvedValue(
+          ConfigurationOptionsSchema.parse({
+            warn_only: true,
+            show_openssf_scorecard: false
+          })
+        )
+        jest.mocked(getInvalidLicenseChanges).mockResolvedValue({
+          forbidden: [],
+          unresolved: kind === 'unresolved' ? [change] : [],
+          unlicensed: []
+        })
+        jest
+          .mocked(getDeniedChanges)
+          .mockResolvedValue(kind === 'deny' ? [change] : [])
+        await run()
+
+        expect(core.setFailed).not.toHaveBeenCalled()
+      }
+    )
+
+    test.each(['warn-only', 'vulnerability-check'])(
+      'skips cooldown metadata when %s overrides it',
+      async option => {
+        jest.mocked(readConfig).mockResolvedValue(
+          ConfigurationOptionsSchema.parse({
+            warn_on_vulnerability_cooldown: 7,
+            warn_only: option === 'warn-only',
+            vulnerability_check: option !== 'vulnerability-check',
+            show_openssf_scorecard: false
+          })
+        )
+        await run()
+
+        expect(getVulnerabilityCooldowns).not.toHaveBeenCalled()
+        expect(core.setFailed).not.toHaveBeenCalled()
+      }
+    )
   })
 
   afterEach(() => {

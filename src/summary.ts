@@ -1,7 +1,13 @@
 import * as core from '@actions/core'
 import {SummaryTableRow} from '@actions/core/lib/summary'
 import {InvalidLicenseChanges, InvalidLicenseChangeTypes} from './licenses'
-import {Change, Changes, ConfigurationOptions, Scorecard} from './schemas'
+import {
+  Change,
+  Changes,
+  ConfigurationOptions,
+  Scorecard,
+  VulnerabilityCooldowns
+} from './schemas'
 import {
   groupDependenciesByManifest,
   getManifestsSet,
@@ -150,7 +156,8 @@ export function addSummaryToSummary(
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
   scorecard: Scorecard,
-  config: ConfigurationOptions
+  config: ConfigurationOptions,
+  cooldowns: VulnerabilityCooldowns = new Map()
 ): string {
   if (config.deny_licenses && config.deny_licenses.length > 0) {
     addDenyListsDeprecationWarningToSummary()
@@ -160,6 +167,20 @@ export function addSummaryToSummary(
 
   const scorecardWarnings = countScorecardWarnings(scorecard, config)
   const licenseIssues = countLicenseIssues(invalidLicenseChanges)
+  const cooldownCount = Array.from(cooldowns.values()).reduce(
+    (count, advisories) => count + advisories.size,
+    0
+  )
+  const blockingVulnerabilities = vulnerableChanges.some(change =>
+    change.vulnerabilities.some(
+      vulnerability =>
+        !cooldowns.get(change)?.has(vulnerability.advisory_ghsa_id)
+    )
+  )
+  const vulnerabilityIcon =
+    cooldownCount > 0 && !blockingVulnerabilities
+      ? icons.warning
+      : checkOrFailIcon(vulnerableChanges.length)
 
   core.summary.addHeading('Dependency Review', 1)
   out.push('# Dependency Review')
@@ -195,9 +216,9 @@ export function addSummaryToSummary(
   const summaryList: string[] = [
     ...(config.vulnerability_check
       ? [
-          `${checkOrFailIcon(vulnerableChanges.length)} ${
+          `${vulnerabilityIcon} ${
             vulnerableChanges.length
-          } vulnerable package(s)`
+          } vulnerable package(s)${cooldownCount > 0 ? ` (${cooldownCount} finding(s) temporarily warning-only during cooldown)` : ''}`
         ]
       : []),
     ...(config.license_check
@@ -299,7 +320,8 @@ async function promisePool(
 export async function addChangeVulnerabilitiesToSummary(
   vulnerableChanges: Changes,
   severity: string,
-  showPatchedVersions = false
+  showPatchedVersions = false,
+  cooldowns: VulnerabilityCooldowns = new Map()
 ): Promise<void> {
   if (vulnerableChanges.length === 0) {
     return
@@ -404,6 +426,8 @@ export async function addChangeVulnerabilitiesToSummary(
       let previous_package = ''
       let previous_version = ''
       for (const vuln of change.vulnerabilities) {
+        const until = cooldowns.get(change)?.get(vuln.advisory_ghsa_id)
+        const enforcement = until ? `Warning until ${until}` : 'Blocking'
         const sameAsPrevious =
           previous_package === change.name &&
           previous_version === change.version
@@ -473,6 +497,9 @@ export async function addChangeVulnerabilitiesToSummary(
           if (showPatchedVersions) {
             row.push(patchVer)
           }
+          if (cooldowns.size > 0) {
+            row.push(enforcement)
+          }
           rows.push(row)
         } else {
           const row: SummaryTableRow = [
@@ -482,6 +509,9 @@ export async function addChangeVulnerabilitiesToSummary(
           ]
           if (showPatchedVersions) {
             row.push(patchVer)
+          }
+          if (cooldowns.size > 0) {
+            row.push(enforcement)
           }
           rows.push(row)
         }
@@ -497,6 +527,9 @@ export async function addChangeVulnerabilitiesToSummary(
     ]
     if (showPatchedVersions) {
       headerRow.push({data: 'Patched Version', header: true})
+    }
+    if (cooldowns.size > 0) {
+      headerRow.push({data: 'Enforcement', header: true})
     }
     core.summary
       .addHeading(`<em>${manifest}</em>`, 4)

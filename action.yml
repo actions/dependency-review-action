@@ -70,6 +70,9 @@ inputs:
   warn-only:
     description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
     required: false
+  warn-on-vulnerability-cooldown:
+    description: Number of days after patched releases are published to report affected vulnerabilities as warnings instead of failing. Disabled by default. Unverifiable release dates leave normal enforcement unchanged.
+    required: false
   show-openssf-scorecard:
     description: Show a summary of the OpenSSF Scorecard scores.
     required: false

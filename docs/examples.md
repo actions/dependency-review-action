@@ -47,6 +47,39 @@ jobs:
           deny-licenses: LGPL-2.0, BSD-2-Clause
 ```
 
+## Warning while patched releases are in cooldown
+
+Package feeds can hold new releases before making them available. To avoid
+requiring a fix that is still in that release-age window, opt in to a vulnerability
+cooldown:
+
+```yaml
+- name: 'Dependency Review'
+  uses: actions/dependency-review-action@v5
+  with:
+    warn-on-vulnerability-cooldown: 7
+```
+
+The value is a number of 24-hour days from the patched release's publication,
+not the advisory's publication or the workflow's first run. It applies to all
+severities that meet `fail-on-severity`, including critical vulnerabilities.
+Findings remain in the logs, summary, and `vulnerable-changes` output. Warnings
+and the summary show the expiry time; reruns at or after that time fail normally.
+Expiry is evaluated when the action runs; it does not schedule another check.
+
+Release dates are obtained from deps.dev for Cargo, Go, Maven, npm, NuGet, PyPI,
+and RubyGems, using package names and patched versions from public GitHub
+advisories. GitHub credentials are not sent to deps.dev. Every first-patched
+version listed for the package must have a verifiable date inside the window;
+an older fix on another release branch prevents cooldown. Missing fixes,
+unsupported ecosystems, API failures, and missing, invalid, or future release
+dates leave normal vulnerability enforcement unchanged. GitHub Enterprise
+Server is not supported.
+
+The default is `0` (disabled). License checks and package/group deny lists are
+unaffected. This setting estimates a release-age window, not the availability
+of a version in a particular feed. Global `warn-only: true` takes precedence.
+
 ## Using a configuration file
 
 The following example will use a configuration file to configure the action. This is useful if you want to keep your configuration in a single place and makes it easier to manage as the configuration grows.
