@@ -8,12 +8,13 @@ import {
 } from '@jest/globals'
 import * as fs from 'fs'
 import * as core from '@actions/core'
+import * as github from '@actions/github'
 import {DefaultArtifactClient} from '@actions/artifact'
+import {RequestError} from '@octokit/request-error'
 import type {SpyInstance} from 'jest-mock'
 import {handleLargeSummary, run} from '../src/main'
-import * as dependencyGraph from '../src/dependency-graph'
+import {compare} from '../src/dependency-graph'
 import {readConfig} from '../src/config'
-import {getRefs} from '../src/git-refs'
 import {getInvalidLicenseChanges} from '../src/licenses'
 import {getDeniedChanges} from '../src/deny'
 import {getVulnerabilityCooldowns} from '../src/vulnerability-cooldown'
@@ -35,7 +36,6 @@ jest.mock('ansi-styles', () => ({
 }))
 jest.mock('../src/dependency-graph', () => ({compare: jest.fn()}))
 jest.mock('../src/config')
-jest.mock('../src/git-refs')
 jest.mock('../src/licenses')
 jest.mock('../src/deny')
 jest.mock('../src/vulnerability-cooldown')
@@ -44,6 +44,21 @@ jest.mock('../src/comment-pr', () => ({
     '../src/comment-pr'
   ),
   commentPr: jest.fn()
+}))
+jest.mock('@actions/github', () => ({
+  context: {
+    repo: {owner: 'owner', repo: 'repo'},
+    serverUrl: 'https://github.com',
+    eventName: 'pull_request',
+    payload: {
+      repository: {private: false},
+      pull_request: {
+        number: 1,
+        base: {sha: 'base-sha'},
+        head: {sha: 'head-sha'}
+      }
+    }
+  }
 }))
 jest.mock('@actions/core', () => {
   const summary = {
@@ -97,6 +112,103 @@ const createArtifactClient = (): ArtifactClientInstance => ({
   uploadArtifact: jest.fn(async () => undefined)
 })
 
+describe('run API errors', () => {
+  beforeEach(() => {
+    jest.mocked(readConfig).mockResolvedValue(
+      ConfigurationOptionsSchema.parse({
+        fail_on_severity: 'low',
+        base_ref: 'base',
+        head_ref: 'head'
+      })
+    )
+  })
+
+  test.each([false, true])(
+    'preserves API errors when repository.private is %s',
+    async repoIsPrivate => {
+      github.context.payload.repository = {
+        name: 'repo',
+        owner: {login: 'owner'},
+        private: repoIsPrivate
+      }
+      const failures = [
+        {
+          status: 403,
+          message: 'API rate limit exceeded for installation ID 123.'
+        },
+        {status: 403, message: 'You have exceeded a secondary rate limit.'},
+        {
+          status: 429,
+          message: 'API rate limit exceeded for installation ID 123.'
+        },
+        {status: 429, message: 'You have exceeded a secondary rate limit.'},
+        {status: 403, message: 'Resource not accessible by integration'},
+        {
+          status: 403,
+          message: 'Dependency review is not supported for this repository.'
+        }
+      ]
+
+      for (const {status, message} of failures) {
+        jest.clearAllMocks()
+        const writeSummary = jest.spyOn(core.summary, 'write')
+        jest.mocked(compare).mockRejectedValueOnce(
+          new RequestError(message, status, {
+            request: {
+              method: 'GET',
+              url: '/repos/owner/repo/dependency-graph/compare/base...head',
+              headers: {}
+            }
+          })
+        )
+
+        await run()
+
+        expect(compare).toHaveBeenCalledWith({
+          owner: 'owner',
+          repo: 'repo',
+          baseRef: 'base',
+          headRef: 'head'
+        })
+        expect(core.setFailed).toHaveBeenCalledTimes(1)
+        expect(core.setFailed).toHaveBeenCalledWith(message)
+        expect(core.setOutput).not.toHaveBeenCalled()
+        expect(writeSummary).toHaveBeenCalledTimes(1)
+      }
+    }
+  )
+
+  test('preserves the existing diagnostic for missing dependency data', async () => {
+    jest.mocked(compare).mockRejectedValueOnce(
+      new RequestError('Not Found', 404, {
+        request: {method: 'GET', url: '/compare', headers: {}}
+      })
+    )
+
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith(
+      'Dependency review could not obtain dependency data for the specified owner, repository, or revision range.'
+    )
+  })
+
+  test('preserves non-HTTP errors', async () => {
+    jest.mocked(compare).mockRejectedValueOnce(new Error('Connection failed'))
+
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Connection failed')
+  })
+
+  test('reports unexpected failures', async () => {
+    jest.mocked(compare).mockRejectedValueOnce('unexpected')
+
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Unexpected fatal error')
+  })
+})
+
 describe('main', () => {
   let writeFileSpy: SpyInstance<typeof fs.promises.writeFile>
 
@@ -122,8 +234,7 @@ describe('main', () => {
           show_openssf_scorecard: false
         })
       )
-      jest.mocked(getRefs).mockReturnValue({base: 'base-sha', head: 'head-sha'})
-      jest.mocked(dependencyGraph.compare).mockResolvedValue({
+      jest.mocked(compare).mockResolvedValue({
         changes: [change],
         snapshot_warnings: ''
       })
@@ -199,7 +310,7 @@ describe('main', () => {
 
     test('prints every vulnerable package after a blocking vulnerability', async () => {
       const other = createTestChange({name: 'another-package'})
-      jest.mocked(dependencyGraph.compare).mockResolvedValue({
+      jest.mocked(compare).mockResolvedValue({
         changes: [change, other],
         snapshot_warnings: ''
       })
