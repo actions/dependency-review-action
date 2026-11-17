@@ -76,6 +76,9 @@ inputs:
   warn-on-openssf-scorecard-level:
     description: Numeric threshold for the OpenSSF Scorecard score. If the score is below this threshold, the action will warn you.
     required: false
+  show-resolved-vulnerabilities:
+    description: When set to `true`, the action will report vulnerabilities resolved by this PR (removed from previously-vulnerable dependencies). Defaults to `false`.
+    required: false
   show-patched-versions:
     description: When set to `true`, the vulnerability summary table will include a column showing the first patched version for each vulnerability.
     required: false
@@ -90,6 +93,8 @@ outputs:
     description: Invalid license dependency changes (JSON)
   denied-changes:
     description: Denied dependency changes (JSON)
+  resolved-vulnerabilities:
+    description: Vulnerabilities resolved by this PR (JSON). Only set when show-resolved-vulnerabilities is true.
 
 runs:
   using: 'node24'
