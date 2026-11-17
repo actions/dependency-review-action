@@ -161,6 +161,14 @@ export async function run(): Promise<void> {
       filteredChanges
     )
 
+    const fixedVulns: Changes = config.show_fixes_in_summary
+      ? filteredChanges.filter(
+          change =>
+            change.change_type === 'removed' &&
+            change.vulnerabilities.length > 0
+        )
+      : []
+
     const invalidLicenseChanges = await getInvalidLicenseChanges(
       filteredChanges,
       {
@@ -191,7 +199,8 @@ export async function run(): Promise<void> {
       invalidLicenseChanges,
       deniedChanges,
       scorecard,
-      config
+      config,
+      fixedVulns
     )
 
     if (snapshot_warnings) {
@@ -230,6 +239,9 @@ export async function run(): Promise<void> {
       summary.addScorecardToSummary(scorecard, config)
       printScorecardBlock(scorecard, config)
       createScorecardWarnings(scorecard, config)
+    }
+    if (config.show_fixes_in_summary) {
+      summary.addFixedVulnerabilitiesToSummary(fixedVulns)
     }
 
     core.setOutput('dependency-changes', JSON.stringify(changes))
