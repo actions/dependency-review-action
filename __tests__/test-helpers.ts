@@ -21,6 +21,7 @@ export function clearInputs(): void {
     'HEAD-REF',
     'COMMENT-SUMMARY-IN-PR',
     'WARN-ONLY',
+    'WARN-ON-VULNERABILITY-COOLDOWN',
     'DENY-GROUPS',
     'DENY-PACKAGES'
   ]

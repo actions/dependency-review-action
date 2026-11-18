@@ -26,6 +26,29 @@ test('it defaults to false for warn-only', async () => {
   expect(config.warn_only).toEqual(false)
 })
 
+test('it reads cooldown from YAML and lets inline configuration override it', async () => {
+  setInput('config-file', './__tests__/fixtures/config-cooldown-sample.yml')
+  expect((await readConfig()).warn_on_vulnerability_cooldown).toBe(7)
+
+  setInput('warn-on-vulnerability-cooldown', '3')
+  expect((await readConfig()).warn_on_vulnerability_cooldown).toBe(3)
+
+  setInput('warn-on-vulnerability-cooldown', '0')
+  expect((await readConfig()).warn_on_vulnerability_cooldown).toBe(0)
+})
+
+test.each([
+  '-1',
+  '1.5',
+  'not-a-number',
+  'Infinity',
+  '9007199254740992',
+  '100000000'
+])('it rejects invalid vulnerability cooldown %s', async value => {
+  setInput('warn-on-vulnerability-cooldown', value)
+  await expect(readConfig()).rejects.toThrow('warn_on_vulnerability_cooldown')
+})
+
 test('it defaults to empty allow/deny lists ', async () => {
   const config = await readConfig()
 

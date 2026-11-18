@@ -125,6 +125,19 @@ export const ConfigurationOptionsSchema = z
         z.enum(['always', 'never', 'on-failure'])
       ])
       .default('never'),
+    warn_on_vulnerability_cooldown: z
+      .number()
+      .int()
+      .nonnegative()
+      .safe()
+      .refine(
+        days =>
+          Number.isFinite(
+            new Date(Date.now() + days * 24 * 60 * 60 * 1000).getTime()
+          ),
+        'Cooldown is too large to represent an expiry date'
+      )
+      .default(0),
     warn_only: z.boolean().default(false)
   })
   .transform(config => {
@@ -164,6 +177,31 @@ export const ComparisonResponseSchema = z.object({
   changes: z.array(ChangeSchema),
   snapshot_warnings: z.string()
 })
+
+const OptionalPublicationDate = z.unknown().transform(value => {
+  const date = z.string().datetime({offset: true}).safeParse(value)
+  return date.success ? date.data : undefined
+})
+
+export const CooldownAdvisorySchema = z.object({
+  published_at: OptionalPublicationDate,
+  vulnerabilities: z.array(
+    z.object({
+      package: z.object({ecosystem: z.string(), name: z.string()}),
+      first_patched_version: z.string().min(1).nullish()
+    })
+  )
+})
+
+export const PublishedVersionSchema = z.object({
+  publishedAt: OptionalPublicationDate,
+  advisoryKeys: z.array(z.object({id: z.string()}))
+})
+
+export const VulnerabilityCooldownsSchema = z.map(
+  ChangeSchema,
+  z.map(z.string(), z.string().datetime())
+)
 
 export const ScorecardApiSchema = z.object({
   date: z.string(),
@@ -211,5 +249,10 @@ export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
+export type CooldownAdvisory = z.infer<typeof CooldownAdvisorySchema>
+export type PublishedVersion = z.infer<typeof PublishedVersionSchema>
+export type VulnerabilityCooldowns = z.infer<
+  typeof VulnerabilityCooldownsSchema
+>
 export type Scorecard = z.infer<typeof ScorecardSchema>
 export type ScorecardApi = z.infer<typeof ScorecardApiSchema>

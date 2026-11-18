@@ -46,6 +46,7 @@ const defaultConfig: ConfigurationOptions = {
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
   warn_only: false,
+  warn_on_vulnerability_cooldown: 0,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: false,
   show_patched_versions: false
@@ -121,6 +122,66 @@ test('prints headline as h1', () => {
   const text = core.summary.stringify()
 
   expect(text).toContain('<h1>Dependency Review</h1>')
+})
+
+test('marks cooldown-only findings as warnings in full and minimal summaries', async () => {
+  const change = createTestChange({
+    vulnerabilities: [createTestVulnerability()]
+  })
+  const until = '2026-11-16T21:08:24.000Z'
+  const cooldowns = new Map([
+    [change, new Map([[change.vulnerabilities[0].advisory_ghsa_id, until]])]
+  ])
+  const minimal = summary.addSummaryToSummary(
+    [change],
+    emptyInvalidLicenseChanges,
+    [],
+    emptyScorecard,
+    defaultConfig,
+    cooldowns
+  )
+  await summary.addChangeVulnerabilitiesToSummary(
+    [change],
+    'low',
+    false,
+    cooldowns
+  )
+
+  expect(minimal).toContain('⚠️ 1 vulnerable package(s)')
+  expect(minimal).toContain('1 finding(s) temporarily warning-only')
+  expect(core.summary.stringify()).toContain(`Warning until ${until}`)
+  expect(core.summary.stringify()).toContain('Enforcement')
+})
+
+test('keeps mixed findings marked as blocking while showing cooldown expiry', async () => {
+  const change = createTestChange()
+  const cooldowns = new Map([
+    [
+      change,
+      new Map([
+        [change.vulnerabilities[0].advisory_ghsa_id, '2026-11-16T21:08:24.000Z']
+      ])
+    ]
+  ])
+  const minimal = summary.addSummaryToSummary(
+    [change],
+    emptyInvalidLicenseChanges,
+    [],
+    emptyScorecard,
+    defaultConfig,
+    cooldowns
+  )
+  await summary.addChangeVulnerabilitiesToSummary(
+    [change],
+    'low',
+    true,
+    cooldowns
+  )
+
+  expect(minimal).toContain('❌ 1 vulnerable package(s)')
+  expect(core.summary.stringify()).toContain('Warning until')
+  expect(core.summary.stringify()).toContain('Blocking')
+  expect(core.summary.stringify()).toContain('Patched Version')
 })
 
 test('does not add deprecation warning for deny-licenses option if not set', () => {
