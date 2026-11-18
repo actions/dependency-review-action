@@ -178,7 +178,13 @@ export const ComparisonResponseSchema = z.object({
   snapshot_warnings: z.string()
 })
 
+const OptionalPublicationDate = z.unknown().transform(value => {
+  const date = z.string().datetime({offset: true}).safeParse(value)
+  return date.success ? date.data : undefined
+})
+
 export const CooldownAdvisorySchema = z.object({
+  published_at: OptionalPublicationDate,
   vulnerabilities: z.array(
     z.object({
       package: z.object({ecosystem: z.string(), name: z.string()}),
@@ -188,7 +194,7 @@ export const CooldownAdvisorySchema = z.object({
 })
 
 export const PublishedVersionSchema = z.object({
-  publishedAt: z.string().datetime({offset: true}),
+  publishedAt: OptionalPublicationDate,
   advisoryKeys: z.array(z.object({id: z.string()}))
 })
 

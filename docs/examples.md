@@ -61,7 +61,9 @@ cooldown:
 ```
 
 The value is a number of 24-hour days from the patched release's publication,
-not the advisory's publication or the workflow's first run. It applies to all
+or from the advisory's original publication if a listed fix has no available
+release date. Editing the advisory or rerunning the workflow does not restart
+the window. The cooldown applies to all
 severities that meet `fail-on-severity`, including critical vulnerabilities.
 Findings remain in the logs, summary, and `vulnerable-changes` output. Warnings
 and the summary show the expiry time; reruns at or after that time fail normally.
@@ -70,10 +72,12 @@ Expiry is evaluated when the action runs; it does not schedule another check.
 Release dates are obtained from deps.dev for Cargo, Go, Maven, npm, NuGet, PyPI,
 and RubyGems, using package names and patched versions from public GitHub
 advisories. GitHub credentials are not sent to deps.dev. Every first-patched
-version listed for the package must have a verifiable date inside the window;
-an older fix on another release branch prevents cooldown. Missing fixes,
-unsupported ecosystems, API failures, and missing, invalid, or future release
-dates leave normal vulnerability enforcement unchanged. GitHub Enterprise
+version listed for the package must be inside the window. If deps.dev cannot
+provide a release date, the action uses the advisory's GitHub `published_at`
+for that version, never `updated_at`. An older known fix still prevents cooldown.
+No matching fix, a fix still flagged by the advisory, an unsupported ecosystem,
+or a missing or invalid fallback date leaves the finding blocking. Future
+dates do not grant cooldown. GitHub Enterprise
 Server is not supported. Cooldown lookups share a 30-second budget. Findings
 that have not been verified by then still block, as do cooldowns that have
 expired by the time the action makes its enforcement decision.

@@ -346,7 +346,7 @@ function printChangeVulnerabilities(
     const until = cooldowns?.get(vuln.advisory_ghsa_id)
     if (until) {
       core.warning(
-        `${change.name}@${change.version} (${vuln.advisory_ghsa_id}) is temporarily warning-only until ${until}: the patched release is still within warn-on-vulnerability-cooldown.`
+        `${change.name}@${change.version} (${vuln.advisory_ghsa_id}) is temporarily warning-only until ${until} under warn-on-vulnerability-cooldown.`
       )
     } else {
       blocking = true
