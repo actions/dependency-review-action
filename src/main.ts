@@ -195,6 +195,16 @@ export async function run(): Promise<void> {
       scorecard = await getScorecardLevels(scorecardChanges)
     }
 
+    let issueFound = false
+    if (config.vulnerability_check) {
+      issueFound = await printVulnerabilitiesBlock(
+        vulnerableChanges,
+        minSeverity,
+        warnOnly,
+        cooldowns
+      )
+    }
+
     const minSummary = summary.addSummaryToSummary(
       vulnerableChanges,
       invalidLicenseChanges,
@@ -208,20 +218,12 @@ export async function run(): Promise<void> {
       summary.addSnapshotWarnings(config, snapshot_warnings)
     }
 
-    let issueFound = false
-
     if (config.vulnerability_check) {
       core.setOutput('vulnerable-changes', JSON.stringify(vulnerableChanges))
       await summary.addChangeVulnerabilitiesToSummary(
         vulnerableChanges,
         minSeverity,
         config.show_patched_versions,
-        cooldowns
-      )
-      issueFound ||= await printVulnerabilitiesBlock(
-        vulnerableChanges,
-        minSeverity,
-        warnOnly,
         cooldowns
       )
     }
@@ -295,6 +297,14 @@ async function printVulnerabilitiesBlock(
   cooldowns: VulnerabilityCooldowns
 ): Promise<boolean> {
   return core.group('Vulnerabilities', async () => {
+    // Take one enforcement snapshot for both the job result and the summary.
+    const now = Date.now()
+    for (const [change, advisories] of cooldowns) {
+      for (const [id, until] of advisories) {
+        if (Date.parse(until) <= now) advisories.delete(id)
+      }
+      if (!advisories.size) cooldowns.delete(change)
+    }
     let vulnFound = false
 
     for (const change of addedChanges) {

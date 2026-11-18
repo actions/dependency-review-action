@@ -74,7 +74,9 @@ version listed for the package must have a verifiable date inside the window;
 an older fix on another release branch prevents cooldown. Missing fixes,
 unsupported ecosystems, API failures, and missing, invalid, or future release
 dates leave normal vulnerability enforcement unchanged. GitHub Enterprise
-Server is not supported.
+Server is not supported. Cooldown lookups share a 30-second budget. Findings
+that have not been verified by then still block, as do cooldowns that have
+expired by the time the action makes its enforcement decision.
 
 The default is `0` (disabled). License checks and package/group deny lists are
 unaffected. This setting estimates a release-age window, not the availability

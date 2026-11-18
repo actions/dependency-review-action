@@ -227,6 +227,7 @@ describe('main', () => {
 
     beforeEach(() => {
       jest.clearAllMocks()
+      jest.spyOn(Date, 'now').mockReturnValue(Date.parse(until) - 1000)
       process.env.GITHUB_REPOSITORY = 'owner/repo'
       jest.mocked(readConfig).mockResolvedValue(
         ConfigurationOptionsSchema.parse({
@@ -263,7 +264,22 @@ describe('main', () => {
     })
 
     afterEach(() => {
+      jest.mocked(Date.now).mockRestore()
       process.env = {...ORIGINAL_ENV}
+    })
+
+    test('blocks when a verified cooldown expires before enforcement', async () => {
+      jest.mocked(getDeniedChanges).mockImplementationOnce(async () => {
+        jest.mocked(Date.now).mockReturnValue(Date.parse(until))
+        return []
+      })
+      await run()
+      expect(core.setFailed).toHaveBeenCalledWith(
+        'Dependency review detected vulnerable packages.'
+      )
+      expect(core.warning).not.toHaveBeenCalledWith(
+        expect.stringContaining('warning-only until')
+      )
     })
 
     test('warns without failing and keeps all vulnerabilities in the output', async () => {
