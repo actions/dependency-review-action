@@ -71,7 +71,7 @@ inputs:
     description: When set to `true` this action will always complete with success, overriding the `fail-on-severity` parameter.
     required: false
   warn-on-vulnerability-cooldown:
-    description: Days to warn instead of failing after a patched release. Uses the advisory publication date if a listed fix has no available release date. Disabled by default.
+    description: Days (0-365) to warn instead of failing after a patched release. Uses the advisory publication date only when deps.dev returns 404 for a listed fix. Zero disables cooldown.
     required: false
   show-openssf-scorecard:
     description: Show a summary of the OpenSSF Scorecard scores.

@@ -232,6 +232,7 @@ describe('main', () => {
       jest.mocked(readConfig).mockResolvedValue(
         ConfigurationOptionsSchema.parse({
           warn_on_vulnerability_cooldown: 7,
+          comment_summary_in_pr: 'on-failure',
           show_openssf_scorecard: false
         })
       )
@@ -295,8 +296,8 @@ describe('main', () => {
       )
       expect(commentPr).toHaveBeenCalledWith(
         expect.any(String),
-        expect.any(Object),
-        false
+        expect.objectContaining({comment_summary_in_pr: 'on-failure'}),
+        true
       )
     })
 

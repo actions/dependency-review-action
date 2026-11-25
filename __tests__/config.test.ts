@@ -43,6 +43,10 @@ test.each([
   'not-a-number',
   'Infinity',
   '9007199254740992',
+  '366',
+  '0x10',
+  '1e1',
+  ' 7 ',
   '100000000'
 ])('it rejects invalid vulnerability cooldown %s', async value => {
   setInput('warn-on-vulnerability-cooldown', value)

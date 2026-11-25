@@ -129,14 +129,7 @@ export const ConfigurationOptionsSchema = z
       .number()
       .int()
       .nonnegative()
-      .safe()
-      .refine(
-        days =>
-          Number.isFinite(
-            new Date(Date.now() + days * 24 * 60 * 60 * 1000).getTime()
-          ),
-        'Cooldown is too large to represent an expiry date'
-      )
+      .max(365)
       .default(0),
     warn_only: z.boolean().default(false)
   })
@@ -194,14 +187,9 @@ export const CooldownAdvisorySchema = z.object({
 })
 
 export const PublishedVersionSchema = z.object({
-  publishedAt: OptionalPublicationDate,
+  publishedAt: z.string().datetime({offset: true}),
   advisoryKeys: z.array(z.object({id: z.string()}))
 })
-
-export const VulnerabilityCooldownsSchema = z.map(
-  ChangeSchema,
-  z.map(z.string(), z.string().datetime())
-)
 
 export const ScorecardApiSchema = z.object({
   date: z.string(),
@@ -251,8 +239,6 @@ export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
 export type CooldownAdvisory = z.infer<typeof CooldownAdvisorySchema>
 export type PublishedVersion = z.infer<typeof PublishedVersionSchema>
-export type VulnerabilityCooldowns = z.infer<
-  typeof VulnerabilityCooldownsSchema
->
+export type VulnerabilityCooldowns = Map<Change, Map<string, string>>
 export type Scorecard = z.infer<typeof ScorecardSchema>
 export type ScorecardApi = z.infer<typeof ScorecardApiSchema>

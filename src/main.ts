@@ -26,6 +26,7 @@ import {groupDependenciesByManifest} from './utils'
 import {commentPr, MAX_COMMENT_LENGTH} from './comment-pr'
 import {getDeniedChanges} from './deny'
 import {getVulnerabilityCooldowns} from './vulnerability-cooldown'
+import {advisoryLookup} from './advisories'
 import {DefaultArtifactClient} from '@actions/artifact'
 import * as fs from 'fs'
 
@@ -162,11 +163,14 @@ export async function run(): Promise<void> {
       minSeverity,
       filteredChanges
     )
-    const cooldowns: VulnerabilityCooldowns =
+    const getAdvisory = advisoryLookup()
+    const candidates: VulnerabilityCooldowns =
       config.vulnerability_check && !warnOnly
         ? await getVulnerabilityCooldowns(
             vulnerableChanges,
-            config.warn_on_vulnerability_cooldown
+            config.warn_on_vulnerability_cooldown,
+            Date.now(),
+            getAdvisory
           )
         : new Map()
 
@@ -195,6 +199,14 @@ export async function run(): Promise<void> {
       scorecard = await getScorecardLevels(scorecardChanges)
     }
 
+    const cooldowns: VulnerabilityCooldowns = new Map()
+    const now = Date.now()
+    for (const [change, advisories] of candidates) {
+      const active = new Map(
+        [...advisories].filter(([, until]) => Date.parse(until) > now)
+      )
+      if (active.size) cooldowns.set(change, active)
+    }
     let issueFound = false
     if (config.vulnerability_check) {
       issueFound = await printVulnerabilitiesBlock(
@@ -224,7 +236,8 @@ export async function run(): Promise<void> {
         vulnerableChanges,
         minSeverity,
         config.show_patched_versions,
-        cooldowns
+        cooldowns,
+        getAdvisory
       )
     }
     if (config.license_check) {
@@ -266,7 +279,7 @@ export async function run(): Promise<void> {
     }
 
     // update the PR comment if needed with the right-sized summary
-    await commentPr(rendered, config, issueFound)
+    await commentPr(rendered, config, issueFound || cooldowns.size > 0)
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       core.setFailed(
@@ -297,14 +310,6 @@ async function printVulnerabilitiesBlock(
   cooldowns: VulnerabilityCooldowns
 ): Promise<boolean> {
   return core.group('Vulnerabilities', async () => {
-    // Take one enforcement snapshot for both the job result and the summary.
-    const now = Date.now()
-    for (const [change, advisories] of cooldowns) {
-      for (const [id, until] of advisories) {
-        if (Date.parse(until) <= now) advisories.delete(id)
-      }
-      if (!advisories.size) cooldowns.delete(change)
-    }
     let vulnFound = false
 
     for (const change of addedChanges) {

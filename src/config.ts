@@ -48,9 +48,20 @@ function readInlineConfig(): ConfigurationOptionsPartial {
     'retry-on-snapshot-warnings-timeout'
   )
   const warn_only = getOptionalBoolean('warn-only')
-  const cooldown = getOptionalInput('warn-on-vulnerability-cooldown')
+  const cooldown = core.getInput('warn-on-vulnerability-cooldown', {
+    trimWhitespace: false
+  })
   const warn_on_vulnerability_cooldown =
-    cooldown === undefined ? undefined : Number(cooldown)
+    cooldown === ''
+      ? undefined
+      : z
+          .string()
+          .regex(
+            /^\d+$/,
+            'warn_on_vulnerability_cooldown must be a decimal integer'
+          )
+          .transform(Number)
+          .parse(cooldown)
   const show_openssf_scorecard = getOptionalBoolean('show-openssf-scorecard')
   const warn_on_openssf_scorecard_level = getOptionalNumber(
     'warn-on-openssf-scorecard-level'

@@ -60,23 +60,27 @@ cooldown:
     warn-on-vulnerability-cooldown: 7
 ```
 
-The value is a number of 24-hour days from the patched release's publication,
-or from the advisory's original publication if a listed fix has no available
-release date. Editing the advisory or rerunning the workflow does not restart
+Choose a whole number from 0 to 365. The window is measured in 24-hour days
+from the patched release's publication. Editing the advisory or rerunning the workflow does not restart
 the window. The cooldown applies to all
 severities that meet `fail-on-severity`, including critical vulnerabilities.
 Findings remain in the logs, summary, and `vulnerable-changes` output. Warnings
 and the summary show the expiry time; reruns at or after that time fail normally.
-Expiry is evaluated when the action runs; it does not schedule another check.
+With `comment-summary-in-pr: on-failure`, a cooldown warning also triggers a
+PR comment without failing the job. Expiry is evaluated only when the action
+runs. Merging during cooldown leaves the vulnerable version on the default
+branch; expiry does not schedule another check or upgrade it. Choose a short
+window and use Dependabot alerts or another process to track remediation.
 
 Release dates are obtained from deps.dev for Cargo, Go, Maven, npm, NuGet, PyPI,
 and RubyGems, using package names and patched versions from public GitHub
 advisories. GitHub credentials are not sent to deps.dev. Every first-patched
-version listed for the package must be inside the window. If deps.dev cannot
-provide a release date, the action uses the advisory's GitHub `published_at`
+version listed for the package must be inside the window. Only if deps.dev
+returns HTTP 404 for a listed fix does the action use the advisory's GitHub `published_at`
 for that version, never `updated_at`. An older known fix still prevents cooldown.
 No matching fix, a fix still flagged by the advisory, an unsupported ecosystem,
-or a missing or invalid fallback date leaves the finding blocking. Future
+or a missing or invalid fallback date leaves the finding blocking. Invalid
+release records, timeouts, rate limits, and other lookup errors also block. Future
 dates do not grant cooldown. GitHub Enterprise
 Server is not supported. Cooldown lookups share a 30-second budget. Findings
 that have not been verified by then still block, as do cooldowns that have
