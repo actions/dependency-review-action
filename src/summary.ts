@@ -150,7 +150,8 @@ export function addSummaryToSummary(
   invalidLicenseChanges: InvalidLicenseChanges,
   deniedChanges: Changes,
   scorecard: Scorecard,
-  config: ConfigurationOptions
+  config: ConfigurationOptions,
+  fixedVulns: Changes = []
 ): string {
   if (config.deny_licenses && config.deny_licenses.length > 0) {
     addDenyListsDeprecationWarningToSummary()
@@ -164,12 +165,15 @@ export function addSummaryToSummary(
   core.summary.addHeading('Dependency Review', 1)
   out.push('# Dependency Review')
 
-  if (
-    vulnerableChanges.length === 0 &&
-    licenseIssues === 0 &&
-    deniedChanges.length === 0 &&
-    scorecardWarnings === 0
-  ) {
+  const hasIssues =
+    (config.vulnerability_check && vulnerableChanges.length > 0) ||
+    (config.license_check && licenseIssues > 0) ||
+    deniedChanges.length > 0 ||
+    (config.show_openssf_scorecard && scorecardWarnings > 0)
+
+  const showFixesSection = config.show_fixes_in_summary && fixedVulns.length > 0
+
+  if (!hasIssues && !showFixesSection) {
     const issueTypes = [
       config.vulnerability_check ? 'vulnerabilities' : '',
       config.license_check ? 'license issues' : '',
@@ -188,48 +192,90 @@ export function addSummaryToSummary(
     return out.join('\n')
   }
 
-  const foundIssuesHeader = 'The following issues were found:'
-  core.summary.addRaw(foundIssuesHeader)
-  out.push(foundIssuesHeader)
+  if (showFixesSection) {
+    if (hasIssues) {
+      core.summary.addRaw(`${icons.cross} <strong>Action Needed</strong>`, true)
+      out.push(`${icons.cross} **Action Needed**`)
+      const actionList = buildActionNeededList(
+        vulnerableChanges,
+        invalidLicenseChanges,
+        deniedChanges,
+        scorecardWarnings,
+        config
+      )
+      core.summary.addList(actionList)
+      for (const line of actionList) {
+        out.push(`* ${line}`)
+      }
+    }
 
-  const summaryList: string[] = [
-    ...(config.vulnerability_check
-      ? [
-          `${checkOrFailIcon(vulnerableChanges.length)} ${
-            vulnerableChanges.length
-          } vulnerable package(s)`
-        ]
-      : []),
-    ...(config.license_check
-      ? [
-          `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
-            invalidLicenseChanges.forbidden.length
-          } package(s) with incompatible licenses`,
-          `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
-            invalidLicenseChanges.unresolved.length
-          } package(s) with invalid SPDX license definitions`,
-          `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
-            invalidLicenseChanges.unlicensed.length
-          } package(s) with unknown licenses.`
-        ]
-      : []),
-    ...(deniedChanges.length > 0
-      ? [
-          `${checkOrWarnIcon(deniedChanges.length)} ${
-            deniedChanges.length
-          } package(s) denied.`
-        ]
-      : []),
-    ...(config.show_openssf_scorecard && scorecardWarnings > 0
-      ? [
-          `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
-        ]
-      : [])
-  ]
+    core.summary.addRaw(`🎉 <strong>Issues Fixed</strong>`, true)
+    out.push(`🎉 **Issues Fixed**`)
+    const fixedList = buildFixedVulnList(fixedVulns)
+    core.summary.addList(fixedList)
+    for (const line of fixedList) {
+      out.push(`* ${line}`)
+    }
 
-  core.summary.addList(summaryList)
-  for (const line of summaryList) {
-    out.push(`* ${line}`)
+    const passedList = buildChecksPassedList(
+      vulnerableChanges,
+      invalidLicenseChanges,
+      deniedChanges,
+      scorecardWarnings,
+      config
+    )
+    if (passedList.length > 0) {
+      core.summary.addRaw(`${icons.check} <strong>Checks Passed</strong>`, true)
+      out.push(`${icons.check} **Checks Passed**`)
+      core.summary.addList(passedList)
+      for (const line of passedList) {
+        out.push(`* ${line}`)
+      }
+    }
+  } else {
+    const foundIssuesHeader = 'The following issues were found:'
+    core.summary.addRaw(foundIssuesHeader)
+    out.push(foundIssuesHeader)
+
+    const summaryList: string[] = [
+      ...(config.vulnerability_check
+        ? [
+            `${checkOrFailIcon(vulnerableChanges.length)} ${
+              vulnerableChanges.length
+            } vulnerable package(s)`
+          ]
+        : []),
+      ...(config.license_check
+        ? [
+            `${checkOrFailIcon(invalidLicenseChanges.forbidden.length)} ${
+              invalidLicenseChanges.forbidden.length
+            } package(s) with incompatible licenses`,
+            `${checkOrFailIcon(invalidLicenseChanges.unresolved.length)} ${
+              invalidLicenseChanges.unresolved.length
+            } package(s) with invalid SPDX license definitions`,
+            `${checkOrWarnIcon(invalidLicenseChanges.unlicensed.length)} ${
+              invalidLicenseChanges.unlicensed.length
+            } package(s) with unknown licenses.`
+          ]
+        : []),
+      ...(deniedChanges.length > 0
+        ? [
+            `${checkOrWarnIcon(deniedChanges.length)} ${
+              deniedChanges.length
+            } package(s) denied.`
+          ]
+        : []),
+      ...(config.show_openssf_scorecard && scorecardWarnings > 0
+        ? [
+            `${checkOrWarnIcon(scorecardWarnings)} ${scorecardWarnings ? scorecardWarnings : 'No'} packages with OpenSSF Scorecard issues.`
+          ]
+        : [])
+    ]
+
+    core.summary.addList(summaryList)
+    for (const line of summaryList) {
+      out.push(`* ${line}`)
+    }
   }
 
   core.summary.addRaw('See the Details below.')
@@ -245,6 +291,123 @@ function addDenyListsDeprecationWarningToSummary(): void {
     `${icons.warning} <strong>Deprecation Warning</strong>: The <em>deny-licenses</em> option is deprecated for possible removal in the next major release. For more information, see issue 997.`,
     true
   )
+}
+
+function buildActionNeededList(
+  vulnerableChanges: Changes,
+  invalidLicenseChanges: InvalidLicenseChanges,
+  deniedChanges: Changes,
+  scorecardWarnings: number,
+  config: ConfigurationOptions
+): string[] {
+  const items: string[] = []
+  if (config.vulnerability_check && vulnerableChanges.length > 0) {
+    items.push(`${vulnerableChanges.length} vulnerable package(s)`)
+  }
+  if (config.license_check) {
+    if (invalidLicenseChanges.forbidden.length > 0) {
+      items.push(
+        `${invalidLicenseChanges.forbidden.length} package(s) with incompatible licenses`
+      )
+    }
+    if (invalidLicenseChanges.unresolved.length > 0) {
+      items.push(
+        `${invalidLicenseChanges.unresolved.length} package(s) with invalid SPDX license definitions`
+      )
+    }
+    if (invalidLicenseChanges.unlicensed.length > 0) {
+      items.push(
+        `${invalidLicenseChanges.unlicensed.length} package(s) with unknown licenses`
+      )
+    }
+  }
+  if (deniedChanges.length > 0) {
+    items.push(`${deniedChanges.length} package(s) denied`)
+  }
+  if (config.show_openssf_scorecard && scorecardWarnings > 0) {
+    items.push(`${scorecardWarnings} package(s) with OpenSSF Scorecard issues`)
+  }
+  return items
+}
+
+function buildChecksPassedList(
+  vulnerableChanges: Changes,
+  invalidLicenseChanges: InvalidLicenseChanges,
+  deniedChanges: Changes,
+  scorecardWarnings: number,
+  config: ConfigurationOptions
+): string[] {
+  const items: string[] = []
+  if (config.vulnerability_check && vulnerableChanges.length === 0) {
+    items.push('No vulnerable packages')
+  }
+  if (config.license_check) {
+    if (invalidLicenseChanges.forbidden.length === 0) {
+      items.push('No incompatible licenses')
+    }
+    if (invalidLicenseChanges.unresolved.length === 0) {
+      items.push('No invalid SPDX license definitions')
+    }
+    if (invalidLicenseChanges.unlicensed.length === 0) {
+      items.push('No unknown licenses')
+    }
+  }
+  if (config.show_openssf_scorecard && scorecardWarnings === 0) {
+    items.push('No OpenSSF Scorecard issues')
+  }
+  // Only show denied check as passed if there's a deny list configured
+  if (
+    (config.deny_packages.length > 0 || config.deny_groups.length > 0) &&
+    deniedChanges.length === 0
+  ) {
+    items.push('No denied packages')
+  }
+  return items
+}
+
+function buildFixedVulnList(fixedVulns: Changes): string[] {
+  const items: string[] = []
+  for (const change of fixedVulns) {
+    for (const vuln of change.vulnerabilities) {
+      items.push(
+        `Fixed: ${vuln.advisory_summary} in ${change.name}@${change.version} (${vuln.severity} severity)`
+      )
+    }
+  }
+  return items
+}
+
+export function addFixedVulnerabilitiesToSummary(fixedVulns: Changes): void {
+  if (fixedVulns.length === 0) {
+    return
+  }
+
+  core.summary.addHeading('Fixed Vulnerabilities', 2)
+
+  const manifests = getManifestsSet(fixedVulns)
+
+  for (const manifest of manifests) {
+    const rows: SummaryTableRow[] = []
+    for (const change of fixedVulns.filter(pkg => pkg.manifest === manifest)) {
+      for (const vuln of change.vulnerabilities) {
+        rows.push([
+          renderUrl(change.source_repository_url, change.name),
+          change.version,
+          renderUrl(vuln.advisory_url, vuln.advisory_summary),
+          vuln.severity
+        ])
+      }
+    }
+    core.summary.addHeading(`<em>${manifest}</em>`, 4).addTable([
+      [
+        {data: 'Name', header: true},
+        {data: 'Version', header: true},
+        {data: 'Vulnerability', header: true},
+        {data: 'Severity', header: true}
+      ],
+      ...rows
+    ])
+  }
 }
 
 function countScorecardWarnings(

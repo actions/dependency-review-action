@@ -116,6 +116,7 @@ export const ConfigurationOptionsSchema = z
     show_openssf_scorecard: z.boolean().optional().default(true),
     warn_on_openssf_scorecard_level: z.number().default(3),
     show_patched_versions: z.boolean().default(false),
+    show_fixes_in_summary: z.boolean().default(false),
     comment_summary_in_pr: z
       .union([
         z.preprocess(
