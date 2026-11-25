@@ -125,6 +125,12 @@ export const ConfigurationOptionsSchema = z
         z.enum(['always', 'never', 'on-failure'])
       ])
       .default('never'),
+    warn_on_vulnerability_cooldown: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(365)
+      .default(0),
     warn_only: z.boolean().default(false)
   })
   .transform(config => {
@@ -163,6 +169,26 @@ export const ChangesSchema = z.array(ChangeSchema)
 export const ComparisonResponseSchema = z.object({
   changes: z.array(ChangeSchema),
   snapshot_warnings: z.string()
+})
+
+const OptionalPublicationDate = z.unknown().transform(value => {
+  const date = z.string().datetime({offset: true}).safeParse(value)
+  return date.success ? date.data : undefined
+})
+
+export const CooldownAdvisorySchema = z.object({
+  published_at: OptionalPublicationDate,
+  vulnerabilities: z.array(
+    z.object({
+      package: z.object({ecosystem: z.string(), name: z.string()}),
+      first_patched_version: z.string().min(1).nullish()
+    })
+  )
+})
+
+export const PublishedVersionSchema = z.object({
+  publishedAt: z.string().datetime({offset: true}),
+  advisoryKeys: z.array(z.object({id: z.string()}))
 })
 
 export const ScorecardApiSchema = z.object({
@@ -211,5 +237,8 @@ export type ComparisonResponse = z.infer<typeof ComparisonResponseSchema>
 export type ConfigurationOptions = z.infer<typeof ConfigurationOptionsSchema>
 export type Severity = z.infer<typeof SeveritySchema>
 export type Scope = (typeof SCOPES)[number]
+export type CooldownAdvisory = z.infer<typeof CooldownAdvisorySchema>
+export type PublishedVersion = z.infer<typeof PublishedVersionSchema>
+export type VulnerabilityCooldowns = Map<Change, Map<string, string>>
 export type Scorecard = z.infer<typeof ScorecardSchema>
 export type ScorecardApi = z.infer<typeof ScorecardApiSchema>

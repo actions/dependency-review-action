@@ -34,6 +34,7 @@ const defaultConfig: ConfigurationOptions = {
   retry_on_snapshot_warnings: false,
   retry_on_snapshot_warnings_timeout: 120,
   warn_only: false,
+  warn_on_vulnerability_cooldown: 0,
   warn_on_openssf_scorecard_level: 3,
   show_openssf_scorecard: true,
   show_patched_versions: false

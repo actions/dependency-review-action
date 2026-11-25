@@ -47,6 +47,49 @@ jobs:
           deny-licenses: LGPL-2.0, BSD-2-Clause
 ```
 
+## Warning while patched releases are in cooldown
+
+Package feeds can hold new releases before making them available. To avoid
+requiring a fix that is still in that release-age window, opt in to a vulnerability
+cooldown:
+
+```yaml
+- name: 'Dependency Review'
+  uses: actions/dependency-review-action@v5
+  with:
+    warn-on-vulnerability-cooldown: 7
+```
+
+Choose a whole number from 0 to 365. The window is measured in 24-hour days
+from the patched release's publication. Editing the advisory or rerunning the workflow does not restart
+the window. The cooldown applies to all
+severities that meet `fail-on-severity`, including critical vulnerabilities.
+Findings remain in the logs, summary, and `vulnerable-changes` output. Warnings
+and the summary show the expiry time; reruns at or after that time fail normally.
+With `comment-summary-in-pr: on-failure`, a cooldown warning also triggers a
+PR comment without failing the job. Expiry is evaluated only when the action
+runs. Merging during cooldown leaves the vulnerable version on the default
+branch; expiry does not schedule another check or upgrade it. Choose a short
+window and use Dependabot alerts or another process to track remediation.
+
+Release dates are obtained from deps.dev for Cargo, Go, Maven, npm, NuGet, PyPI,
+and RubyGems, using package names and patched versions from public GitHub
+advisories. GitHub credentials are not sent to deps.dev. Every first-patched
+version listed for the package must be inside the window. Only if deps.dev
+returns HTTP 404 for a listed fix does the action use the advisory's GitHub `published_at`
+for that version, never `updated_at`. An older known fix still prevents cooldown.
+No matching fix, a fix still flagged by the advisory, an unsupported ecosystem,
+or a missing or invalid fallback date leaves the finding blocking. Invalid
+release records, timeouts, rate limits, and other lookup errors also block. Future
+dates do not grant cooldown. GitHub Enterprise
+Server is not supported. Cooldown lookups share a 30-second budget. Findings
+that have not been verified by then still block, as do cooldowns that have
+expired by the time the action makes its enforcement decision.
+
+The default is `0` (disabled). License checks and package/group deny lists are
+unaffected. This setting estimates a release-age window, not the availability
+of a version in a particular feed. Global `warn-only: true` takes precedence.
+
 ## Using a configuration file
 
 The following example will use a configuration file to configure the action. This is useful if you want to keep your configuration in a single place and makes it easier to manage as the configuration grows.
