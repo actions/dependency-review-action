@@ -25,7 +25,7 @@ If you'd like to make a contribution yourself, we ask that before significant ef
 
 ## Stalebot
 
-We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see [the configuration](.github/workflows/stalebot.yml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
+We have begun using a [Stalebot action](https://github.com/actions/stale) to help keep the Issues and Pull requests backlogs tidy. You can see [the configuration](.github/workflows/stale.yaml). If you'd like to keep an issue open after getting a stalebot warning, simply comment on it and it'll reset the clock.
 
 ## Development lifecycle
 
@@ -67,7 +67,7 @@ $ GITHUB_TOKEN=<token> ./scripts/scan_pr https://github.com/actions/dependency-r
 ```
 
 [Configuration options](README.md#configuration-options) can be set by
-passing an external YAML [configuration file](README.md#configuration-file) to the
+passing an external YAML [configuration file](README.md#option-2-using-an-external-configuration-file) to the
 `scan_pr` script with the `-c`/`--config-file` option:
 
 ```sh
